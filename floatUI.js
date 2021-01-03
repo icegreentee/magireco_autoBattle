@@ -522,7 +522,7 @@ function getDrugNum(text) {
     return parseInt(text.slice(0, text.length - 1))
 }
 
-floatUI.adjust = function () {
+floatUI.adjust = function (config) {
     limit = config
     log(limit)
     toastLog("修改完成")
