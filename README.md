@@ -1,5 +1,5 @@
 # magireco_autoBattle
-魔法纪录自动周回脚本，自动使用AP回复药  
+魔法纪录自动周回脚本，自动使用AP回复药，可以直接在手机端运行，国服台服通用  
 基于autojs开发，可自行打包
 
 ## how to use
