@@ -398,19 +398,25 @@ var DrugLang = {
     ch: ["AP回复药50", "AP回复药", "魔法石", "回复"],
     tai: ["AP回復藥50", "AP回復藥", "魔法石", "進行回復"]
 }
-var jishu =0
+var jishu = 0
 function autoMain() {
     while (true) {
         //开始 ----------------检测体力-------
-        jishu+=1
-        log("-------第"+jishu+"次开始------------")
-        let aps = id("ap").findOne().text().split("/")
-        let apNow = parseInt(aps[0])
-        let apMax = parseInt(aps[1])
-        log("检测体力,当前体力为"+apNow)
-        log("设置为：",limit)
-        log((!limit.drug1 && !limit.drug2 && !limit.drug3), apNow, limit.limitAP)
-        log("嗑药判定为：",!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= limit.limitAP)
+        jishu += 1
+        log("-------第" + jishu + "次开始------------")
+        let apCon = id("ap").findOne()
+        //个别手机布局问题，存在子节点
+        if(apCon.childCount!=0){
+            apCon = apCon.child(0)
+        }
+        let aps=apCon.text()
+        log("text:",aps)
+        // aps  55/122  获得字符串中第一串数字
+        let apNow = parseInt(aps.match(/\d+/)[0])
+        // log("检测体力,当前体力为" + apNow)
+        // log("设置为：", limit)
+        // log((!limit.drug1 && !limit.drug2 && !limit.drug3), apNow, limit.limitAP)
+        // log("嗑药判定为：", !(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= limit.limitAP)
         if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
             //嗑药
             //打开ap面板
@@ -448,7 +454,7 @@ function autoMain() {
                 //关掉面板继续周回
                 log("none")
             }
-            
+
             log("点击进行回复")
             //点击进行回复
             if (apHui) {
