@@ -398,17 +398,23 @@ var DrugLang = {
     ch: ["AP回复药50", "AP回复药", "魔法石", "回复"],
     tai: ["AP回復藥50", "AP回復藥", "魔法石", "進行回復"]
 }
+var jishu =0
 function autoMain() {
     while (true) {
         //开始 ----------------检测体力-------
+        jishu+=1
+        log("-------第"+jishu+"次开始------------")
         let aps = id("ap").findOne().text().split("/")
         let apNow = parseInt(aps[0])
         let apMax = parseInt(aps[1])
+        log("检测体力,当前体力为"+apNow)
+        log("设置为：",limit)
         log((!limit.drug1 && !limit.drug2 && !limit.drug3), apNow, limit.limitAP)
-        // log("检测体力")
-        if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= limit.limitAP) {
+        log("嗑药判定为：",!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= limit.limitAP)
+        if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
             //嗑药
             //打开ap面板
+            log("嗑药面板开启")
             let ap = id("ap").findOne();
             let drugText = DrugLang.ch
             sleep(1000)
@@ -430,14 +436,19 @@ function autoMain() {
             let apHui = null
             if (apDrug50Num > 0 && limit.drug1) {
                 apHui = apDrug50
+                log(50)
             } else if (apDrugFullNum > 0 && limit.drug2) {
                 apHui = apDrugFull
+                log("full")
             }
             else if (apMoneyNum > 5 && limit.drug3) {
                 apHui = apMoney
+                log("魔法石")
             } else {
                 //关掉面板继续周回
+                log("none")
             }
+            
             log("点击进行回复")
             //点击进行回复
             if (apHui) {
@@ -449,6 +460,7 @@ function autoMain() {
                 sleep(1000)
             }
             //关掉ap面板
+            log("关掉面板")
             while (id("popupInfoDetailTitle").findOnce()) {
                 let close = id("popupInfoDetailTitle").findOne().parent()
                 sleep(1000)
