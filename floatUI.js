@@ -406,11 +406,11 @@ function autoMain() {
         log("-------第" + jishu + "次开始------------")
         let apCon = id("ap").findOne()
         //个别手机布局问题，存在子节点
-        if(apCon.childCount!=0){
+        if (apCon.childCount() != 0) {
             apCon = apCon.child(0)
         }
-        let aps=apCon.text()
-        log("text:",aps)
+        let aps = apCon.text()
+        log("text:", aps)
         // aps  55/122  获得字符串中第一串数字
         let apNow = parseInt(aps.match(/\d+/)[0])
         // log("检测体力,当前体力为" + apNow)
