@@ -395,8 +395,8 @@ var limit = {
     isStable: false
 }
 var DrugLang = {
-    ch: ["AP回复药50", "AP回复药", "魔法石", "回复"],
-    tai: ["AP回復藥50", "AP回復藥", "魔法石", "進行回復"]
+    ch: ["回复", "回复"],
+    tai: ["回復", "進行回復"]
 }
 var jishu = 0
 function autoMain() {
@@ -404,64 +404,66 @@ function autoMain() {
         //开始 ----------------检测体力-------
         jishu += 1
         log("-------第" + jishu + "次开始------------")
-        let apCon = id("ap").findOne()
-        //个别手机布局问题，存在子节点
-        if (apCon.childCount() != 0) {
-            apCon = apCon.child(0)
-        }
-        let aps = apCon.text()
+        //体力检测方式变更，改为正则寻找体力
+        let apCom = textMatches(/^\d+\/\d+$/).findOne()
+        let aps = apCom.text()
         log("text:", aps)
         // aps  55/122  获得字符串中第一串数字
         let apNow = parseInt(aps.match(/\d+/)[0])
-        // log("检测体力,当前体力为" + apNow)
+        log("检测体力,当前体力为" + apNow)
         // log("设置为：", limit)
-        // log((!limit.drug1 && !limit.drug2 && !limit.drug3), apNow, limit.limitAP)
+        log((!limit.drug1 && !limit.drug2 && !limit.drug3), apNow, limit.limitAP)
         // log("嗑药判定为：", !(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= limit.limitAP)
         if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
             //嗑药
             //打开ap面板
             log("嗑药面板开启")
-            let ap = id("ap").findOne();
+            // let ap = id("ap").findOne();
             let drugText = DrugLang.ch
             sleep(1000)
-            click(ap.bounds().left + ap.bounds().width(), ap.bounds().centerY())
+            click(apCom.bounds().centerX(), apCom.bounds().centerY())
             sleep(500)
+            let apDrugNums;
             //判断中台服
             if (text("AP回復藥").findOnce()) {
                 //台服
                 drugText = DrugLang.tai
+                apDrugNums = textMatches(/^\d+個$/).find()
+            } else {
+                apDrugNums = textMatches(/^\d+个$/).find()
             }
             log("当前为：" + drugText)
-            //选择回复药水
-            let apDrug50 = text(drugText[0]).findOne().parent()
-            let apDrug50Num = getDrugNum(apDrug50.child(3).child(2).text())
-            let apDrugFull = text(drugText[1]).findOne().parent()
-            let apDrugFullNum = getDrugNum(apDrugFull.child(3).child(2).text())
-            let apMoney = text(drugText[2]).findOne().parent()
-            let apMoneyNum = getDrugNum(apMoney.child(3).child(2).text())
+
+            // log(text("回复").find())
+            //获得回复药水数量
+            let apDrug50Num = getDrugNum(apDrugNums[0].text())
+            let apDrugFullNum = getDrugNum(apDrugNums[1].text())
+            let apMoneyNum = getDrugNum(apDrugNums[2].text())
+            log("药数量分别为",apDrug50Num,apDrugFullNum,apMoneyNum)
+            // 根据条件选择药水
             let apHui = null
             if (apDrug50Num > 0 && limit.drug1) {
-                apHui = apDrug50
-                log(50)
+                apHui = 0
+                log("ap50")
             } else if (apDrugFullNum > 0 && limit.drug2) {
-                apHui = apDrugFull
-                log("full")
+                apHui = 1
+                log("apfull")
             }
             else if (apMoneyNum > 5 && limit.drug3) {
-                apHui = apMoney
+                apHui = 2
                 log("魔法石")
             } else {
                 //关掉面板继续周回
                 log("none")
             }
-
+            sleep(500)
             log("点击进行回复")
             //点击进行回复
-            if (apHui) {
-                apHui = apHui.child(4)
-                click(apHui.bounds().centerX(), apHui.bounds().centerY())
-                sleep(1500)
-                let finish = text(drugText[3]).findOne()
+            if (apHui!=null) {
+                let huiCom = text(drugText[0]).find()[apHui]
+                click(huiCom.bounds().centerX(), huiCom.bounds().centerY())
+                sleep(1000)
+                let finish = text(drugText[1]).findOne()
                 click(finish.bounds().centerX(), finish.bounds().centerY())
                 sleep(1000)
             }

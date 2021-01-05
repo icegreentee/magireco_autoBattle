@@ -41,10 +41,10 @@ ui.layout(
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0" elevation="1dp">
                     <Switch id="stable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
                 </vertical>
-                {/* <linear>
+                <linear>
                     <text layout_weight="1" size="19" color="#222222" text="日志" />
                     <button id="tolog" h="40" text="全部日志" style="Widget.AppCompat.Button.Borderless.Colored" />
-                </linear> */}
+                </linear>
                 <linear padding="10 6 0 6" bg="#ffffff">
                     <text id="versionMsg" layout_weight="1"  color="#666666" text="尝试获取最新版本信息" />
                 </linear>
@@ -68,9 +68,9 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
     ui.autoService.setChecked(auto.service != null)
 });
 
-// ui.tolog.click(() => {
-//     app.startActivity("console")
-// })
+ui.tolog.click(() => {
+    app.startActivity("console")
+})
 
 
 //回到本界面时，resume事件会被触发
