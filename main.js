@@ -39,6 +39,9 @@ ui.layout(
                     </linear>
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0" elevation="1dp">
+                    <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用NPC" />
+                </vertical>
+                <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0" elevation="1dp">
                     <Switch id="stable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
                 </vertical>
                 <linear>
@@ -88,7 +91,8 @@ ui.start.click(() => {
         drug1: ui.drug1.isChecked(),
         drug2: ui.drug2.isChecked(),
         drug3: ui.drug3.isChecked(),
-        isStable: ui.stable.isChecked()
+        isStable: ui.stable.isChecked(),
+        justNPC:ui.justNPC.isChecked()
     })
 });
 //版本获取

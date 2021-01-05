@@ -392,7 +392,8 @@ var limit = {
     drug1: false,
     drug2: false,
     drug3: false,
-    isStable: false
+    isStable: false,
+    justNPC:false
 }
 var DrugLang = {
     ch: ["回复", "回复"],
@@ -418,7 +419,6 @@ function autoMain() {
             //嗑药
             //打开ap面板
             log("嗑药面板开启")
-            // let ap = id("ap").findOne();
             let drugText = DrugLang.ch
             sleep(1000)
             click(apCom.bounds().centerX(), apCom.bounds().centerY())
@@ -434,12 +434,11 @@ function autoMain() {
             }
             log("当前为：" + drugText)
 
-            // log(text("回复").find())
             //获得回复药水数量
             let apDrug50Num = getDrugNum(apDrugNums[0].text())
             let apDrugFullNum = getDrugNum(apDrugNums[1].text())
             let apMoneyNum = getDrugNum(apDrugNums[2].text())
-            log("药数量分别为",apDrug50Num,apDrugFullNum,apMoneyNum)
+            log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
             // 根据条件选择药水
             let apHui = null
             if (apDrug50Num > 0 && limit.drug1) {
@@ -459,7 +458,7 @@ function autoMain() {
             sleep(500)
             log("点击进行回复")
             //点击进行回复
-            if (apHui!=null) {
+            if (apHui != null) {
                 let huiCom = text(drugText[0]).find()[apHui]
                 click(huiCom.bounds().centerX(), huiCom.bounds().centerY())
                 sleep(1000)
@@ -472,7 +471,7 @@ function autoMain() {
             while (id("popupInfoDetailTitle").findOnce()) {
                 let close = id("popupInfoDetailTitle").findOne().parent()
                 sleep(1000)
-                click(close.bounds().right, close.bounds().top)
+                click(close.bounds().right-5, close.bounds().top+5)
                 sleep(1000)
             }
 
@@ -481,16 +480,33 @@ function autoMain() {
         // -----------选援助----------------
         // 互关好友all位不得为空，否则会卡住
         // 15为npc助战  0~14为玩家助战
-        let firends = id("friendWrap").findOne().child(0)
+        //确定在选人阶段
+        id("friendWrap").findOne()
+        let layout = className("android.widget.FrameLayout").depth(4).findOne().bounds()
+        sleep(500)
+        let ptCom = textMatches(/^\+\d+$/).find()
+        //可点击的助战列表
+        let ptComCanClick = []
+        for (let i = 0; i < ptCom.length; i++) {
+            //在可见范围内
+            if (ptCom[i].bounds().centerY() < layout.bottom) {
+                if (ptComCanClick.length != 0) {
+                    //新加入的pt若比第一次加入的要小，舍去
+                    if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
+                        continue
+                    }
+                }
+                ptComCanClick.push(ptCom[i])
+            }
+        }
+        log("候选列表", ptComCanClick)
         sleep(1000)
-        // 判断是否为互相关注的，若是则选择，若不是选择npc
-        // 无npc自动选择第一个
-        if (isFocus(firends.child(0)) || firends.childCount() <= 15) {
-            click(firends.child(0).bounds().centerX(), firends.child(0).bounds().centerY());
+        // 是单纯选npc还是，优先助战
+        let finalPt = ptComCanClick[0]
+        if (limit.justNPC) {
+            finalPt = ptComCanClick[ptComCanClick.length - 1]
         }
-        else {
-            click(firends.child(15).bounds().centerX(), firends.child(15).bounds().centerY());
-        }
+        click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
         // -----------开始----------------
         //国台服不同
         log("进入开始")
@@ -500,7 +516,6 @@ function autoMain() {
         log("进入战斗")
         //---------战斗------------------
         // 断线重连位置
-        let layout = className("android.widget.FrameLayout").depth(4).findOne().bounds()
         if (limit.isStable) {
             while (!id("ResultWrap").findOnce()) {
                 sleep(3000)
@@ -535,8 +550,12 @@ function autoMain() {
         sleep(2500)
     }
 }
-function isFocus(friend) {
-    return friend.child(5).childCount() == 3
+// function isFocus(friend) {
+//     return friend.child(5).childCount() == 3
+// }
+function getPt(com) {
+    let txt = com.text()
+    return parseInt(txt.slice(1, text.length))
 }
 function getDrugNum(text) {
     return parseInt(text.slice(0, text.length - 1))
