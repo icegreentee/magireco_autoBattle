@@ -501,19 +501,24 @@ function autoMain() {
             }
         }
         log("候选列表", ptComCanClick)
-        sleep(1000)
         // 是单纯选npc还是，优先助战
         let finalPt = ptComCanClick[0]
         if (limit.justNPC || finalPt < ptComCanClick[ptComCanClick.length - 1]) {
             finalPt = ptComCanClick[ptComCanClick.length - 1]
         }
+        sleep(1000)
         click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
         // -----------开始----------------
         //国台服不同
         log("进入开始")
         sleep(1000)
-        let start = textMatches(/.始$/).findOne()
-        click(start.bounds().centerX(), start.bounds().centerY());
+        while(!textMatches(/.始$/).findOnce()){
+            sleep(1000)
+            let start = textMatches(/.始$/).findOne()
+            click(start.bounds().centerX(), start.bounds().centerY());
+            sleep(1000)
+        }
+        
         log("进入战斗")
         //---------战斗------------------
         // 断线重连位置
