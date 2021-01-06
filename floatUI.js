@@ -510,8 +510,8 @@ function autoMain() {
         // -----------开始----------------
         //国台服不同
         log("进入开始")
-        let start = id("pieceEquipBtn").findOne().parent().child(5)
         sleep(1000)
+        let start = textMatches(/.始$/).findOne()
         click(start.bounds().centerX(), start.bounds().centerY());
         log("进入战斗")
         //---------战斗------------------
