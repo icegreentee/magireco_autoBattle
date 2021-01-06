@@ -393,7 +393,7 @@ var limit = {
     drug2: false,
     drug3: false,
     isStable: false,
-    justNPC:false
+    justNPC: false
 }
 var DrugLang = {
     ch: ["回复", "回复"],
@@ -460,7 +460,8 @@ function autoMain() {
             //点击进行回复
             if (apHui != null) {
                 let huiCom = text(drugText[0]).find()[apHui]
-                click(huiCom.bounds().centerX(), huiCom.bounds().centerY())
+                log("回复按钮范围", huiCom.bounds())
+                click(huiCom.bounds().centerX(), huiCom.bounds().bottom-5)
                 sleep(1000)
                 let finish = text(drugText[1]).findOne()
                 click(finish.bounds().centerX(), finish.bounds().centerY())
@@ -471,7 +472,7 @@ function autoMain() {
             while (id("popupInfoDetailTitle").findOnce()) {
                 let close = id("popupInfoDetailTitle").findOne().parent()
                 sleep(1000)
-                click(close.bounds().right-5, close.bounds().top+5)
+                click(close.bounds().right - 5, close.bounds().top + 5)
                 sleep(1000)
             }
 
@@ -503,7 +504,7 @@ function autoMain() {
         sleep(1000)
         // 是单纯选npc还是，优先助战
         let finalPt = ptComCanClick[0]
-        if (limit.justNPC) {
+        if (limit.justNPC || finalPt < ptComCanClick[ptComCanClick.length - 1]) {
             finalPt = ptComCanClick[ptComCanClick.length - 1]
         }
         click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
