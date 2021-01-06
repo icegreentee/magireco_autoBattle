@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "1.2.0"
+var version = "1.3.0"
 var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
@@ -103,7 +103,7 @@ if (res.statusCode != 200) {
 } else {
     let resJson = res.body.json();
     log(resJson.versionName);
-    if(resJson.versionName==version){
+    if(resJson.versionName.slice(0,resJson.versionName.length-2)==version.slice(0,version.length-2)){
         ui.versionMsg.setText("当前为最新版本")
     }else{
         ui.versionMsg.setText("最新版本为"+resJson.versionName+",需要更新")

@@ -420,9 +420,12 @@ function autoMain() {
             //打开ap面板
             log("嗑药面板开启")
             let drugText = DrugLang.ch
-            sleep(1000)
-            click(apCom.bounds().centerX(), apCom.bounds().centerY())
-            sleep(500)
+            //确定要嗑药后等3s，打开面板
+            while(!id("popupInfoDetailTitle").findOnce()){
+                sleep(1000)
+                click(apCom.bounds().centerX(), apCom.bounds().centerY())
+                sleep(2000)
+            }
             let apDrugNums;
             //判断中台服
             if (text("AP回復藥").findOnce()) {
@@ -461,11 +464,14 @@ function autoMain() {
             if (apHui != null) {
                 let huiCom = text(drugText[0]).find()[apHui]
                 log("回复按钮范围", huiCom.bounds())
-                click(huiCom.bounds().centerX(), huiCom.bounds().bottom-5)
+                sleep(1500)
+                log("点击回复")
+                click(huiCom.bounds().centerX(), huiCom.bounds().bottom - 5)
                 sleep(1000)
                 let finish = text(drugText[1]).findOne()
+                sleep(1500)
+                log("确认回复")
                 click(finish.bounds().centerX(), finish.bounds().centerY())
-                sleep(1000)
             }
             //关掉ap面板
             log("关掉面板")
@@ -473,7 +479,7 @@ function autoMain() {
                 let close = id("popupInfoDetailTitle").findOne().parent()
                 sleep(1000)
                 click(close.bounds().right - 5, close.bounds().top + 5)
-                sleep(1000)
+                sleep(2000)
             }
 
         }
@@ -482,15 +488,14 @@ function autoMain() {
         // 互关好友all位不得为空，否则会卡住
         // 15为npc助战  0~14为玩家助战
         //确定在选人阶段
-        id("friendWrap").findOne()
+        let friendWrap = id("friendWrap").findOne().bounds()
         let layout = className("android.widget.FrameLayout").depth(4).findOne().bounds()
-        sleep(500)
         let ptCom = textMatches(/^\+\d+$/).find()
         //可点击的助战列表
         let ptComCanClick = []
         for (let i = 0; i < ptCom.length; i++) {
             //在可见范围内
-            if (ptCom[i].bounds().centerY() < layout.bottom) {
+            if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
                 if (ptComCanClick.length != 0) {
                     //新加入的pt若比第一次加入的要小，舍去
                     if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
@@ -498,27 +503,35 @@ function autoMain() {
                     }
                 }
                 ptComCanClick.push(ptCom[i])
+                log(ptCom[i].bounds())
             }
         }
         log("候选列表", ptComCanClick)
+        log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
         // 是单纯选npc还是，优先助战
         let finalPt = ptComCanClick[0]
-        if (limit.justNPC || finalPt < ptComCanClick[ptComCanClick.length - 1]) {
+        if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
             finalPt = ptComCanClick[ptComCanClick.length - 1]
         }
-        sleep(1000)
-        click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+        log("选择", finalPt)
+        while (id("friendWrap").findOnce()) {
+            sleep(1000)
+            click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+            sleep(2000)
+        }
         // -----------开始----------------
         //国台服不同
+        textMatches(/.始$/).findOne()
         log("进入开始")
-        sleep(1000)
-        while(!textMatches(/.始$/).findOnce()){
+        while (textMatches(/.始$/).findOnce()) {
             sleep(1000)
-            let start = textMatches(/.始$/).findOne()
-            click(start.bounds().centerX(), start.bounds().centerY());
-            sleep(1000)
+            let begin = textMatches(/.始$/).findOnce()
+            if(!begin){
+                break
+            }
+            click(begin.bounds().centerX(), begin.bounds().centerY());
+            sleep(3000)
         }
-        
         log("进入战斗")
         //---------战斗------------------
         // 断线重连位置
@@ -561,7 +574,7 @@ function autoMain() {
 // }
 function getPt(com) {
     let txt = com.text()
-    return parseInt(txt.slice(1, text.length))
+    return parseInt(txt.slice(1))
 }
 function getDrugNum(text) {
     return parseInt(text.slice(0, text.length - 1))
