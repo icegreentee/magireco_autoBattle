@@ -393,7 +393,8 @@ var limit = {
     drug2: false,
     drug3: false,
     isStable: false,
-    justNPC: false
+    justNPC: false,
+    drug1y: 910
 }
 var DrugLang = {
     ch: ["回复", "回复"],
@@ -421,7 +422,7 @@ function autoMain() {
             log("嗑药面板开启")
             let drugText = DrugLang.ch
             //确定要嗑药后等3s，打开面板
-            while(!id("popupInfoDetailTitle").findOnce()){
+            while (!id("popupInfoDetailTitle").findOnce()) {
                 sleep(1000)
                 click(apCom.bounds().centerX(), apCom.bounds().centerY())
                 sleep(2000)
@@ -458,7 +459,6 @@ function autoMain() {
                 //关掉面板继续周回
                 log("none")
             }
-            sleep(500)
             log("点击进行回复")
             //点击进行回复
             if (apHui != null) {
@@ -466,14 +466,11 @@ function autoMain() {
                 log("回复按钮范围", huiCom.bounds())
                 sleep(1500)
                 log("点击回复")
-                if(limit.drug1y&&apHui==0){
-                    click(huiCom.bounds().centerX(), limit.drug1y)
-                }else if(limit.drug2y&&apHui==1){
-                    click(huiCom.bounds().centerX(), limit.drug2y)
-                }else if(limit.drug3y&&apHui==2){
-                    click(huiCom.bounds().centerX(), limit.drug3y)
+                if (limit.drug1y) {
+                    log(limit.drug1y)
+                    click(huiCom.bounds().centerX(), parseInt(limit.drug1y))
                 }
-                else{
+                else {
                     click(huiCom.bounds().centerX(), huiCom.bounds().bottom - 5)
                 }
                 sleep(1000)
@@ -535,7 +532,7 @@ function autoMain() {
         while (textMatches(/.始$/).findOnce()) {
             sleep(1000)
             let begin = textMatches(/.始$/).findOnce()
-            if(!begin){
+            if (!begin) {
                 break
             }
             click(begin.bounds().centerX(), begin.bounds().centerY());
