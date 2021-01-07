@@ -28,14 +28,17 @@ ui.layout(
                     <View h="5" />
                     <linear>
                         <checkbox id="drug1" text="ap恢复药50" layout_weight="1" />
+                        <input maxLength="3" id="drug1y" text="" inputType="number" />
                     </linear>
                     <View h="5" />
                     <linear>
                         <checkbox id="drug2" text="ap恢复药全" layout_weight="1" />
+                        <input maxLength="3" id="drug2y" text="" inputType="number" />
                     </linear>
                     <View h="5" />
                     <linear>
                         <checkbox id="drug3" text="魔法石" layout_weight="1" />
+                        <input maxLength="3" id="drug3y" text="" inputType="number" />
                     </linear>
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0" elevation="1dp">
@@ -92,7 +95,10 @@ ui.start.click(() => {
         drug2: ui.drug2.isChecked(),
         drug3: ui.drug3.isChecked(),
         isStable: ui.stable.isChecked(),
-        justNPC:ui.justNPC.isChecked()
+        justNPC:ui.justNPC.isChecked(),
+        drug1y:ui.drug1y.getText(),
+        drug2y:ui.drug2y.getText(),
+        drug3y:ui.drug3y.getText(),
     })
 });
 //版本获取

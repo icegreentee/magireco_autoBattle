@@ -466,7 +466,16 @@ function autoMain() {
                 log("回复按钮范围", huiCom.bounds())
                 sleep(1500)
                 log("点击回复")
-                click(huiCom.bounds().centerX(), huiCom.bounds().bottom - 5)
+                if(limit.drug1y&&apHui==0){
+                    click(huiCom.bounds().centerX(), limit.drug1y)
+                }else if(limit.drug2y&&apHui==1){
+                    click(huiCom.bounds().centerX(), limit.drug2y)
+                }else if(limit.drug3y&&apHui==2){
+                    click(huiCom.bounds().centerX(), limit.drug3y)
+                }
+                else{
+                    click(huiCom.bounds().centerX(), huiCom.bounds().bottom - 5)
+                }
                 sleep(1000)
                 let finish = text(drugText[1]).findOne()
                 sleep(1500)
