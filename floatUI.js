@@ -394,7 +394,10 @@ var limit = {
     drug3: false,
     isStable: false,
     justNPC: false,
-    drug1y: 910
+    drug1y: 910,
+    helpx: 1300,
+    helpy: 400,
+    lvupy: 910
 }
 var DrugLang = {
     ch: ["回复", "回复"],
@@ -408,6 +411,7 @@ function autoMain() {
         log("-------第" + jishu + "次开始------------")
         //体力检测方式变更，改为正则寻找体力
         let apCom = textMatches(/^\d+\/\d+$/).findOne()
+        sleep(1000)
         let aps = apCom.text()
         log("text:", aps)
         // aps  55/122  获得字符串中第一串数字
@@ -467,8 +471,8 @@ function autoMain() {
                 sleep(1500)
                 log("点击回复")
                 if (limit.drug1y) {
-                    log(limit.drug1y)
-                    click(huiCom.bounds().centerX(), parseInt(limit.drug1y))
+                    log("自定义回复点击")
+                    click(huiCom.bounds().centerX(), limit.drug1y)
                 }
                 else {
                     click(huiCom.bounds().centerX(), huiCom.bounds().bottom - 5)
@@ -496,34 +500,44 @@ function autoMain() {
         //确定在选人阶段
         let friendWrap = id("friendWrap").findOne().bounds()
         let layout = className("android.widget.FrameLayout").depth(4).findOne().bounds()
-        let ptCom = textMatches(/^\+\d+$/).find()
-        //可点击的助战列表
-        let ptComCanClick = []
-        for (let i = 0; i < ptCom.length; i++) {
-            //在可见范围内
-            if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
-                if (ptComCanClick.length != 0) {
-                    //新加入的pt若比第一次加入的要小，舍去
-                    if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
-                        continue
-                    }
-                }
-                ptComCanClick.push(ptCom[i])
-                log(ptCom[i].bounds())
+        log(limit.helpx && limit.helpy)
+        if (limit.helpx && limit.helpy) {
+            while (id("friendWrap").findOnce()) {
+                log("助战点击",limit.helpx, limit.helpy)
+                sleep(1000)
+                click(limit.helpx, limit.helpy)
+                sleep(2000)
             }
-        }
-        log("候选列表", ptComCanClick)
-        log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
-        // 是单纯选npc还是，优先助战
-        let finalPt = ptComCanClick[0]
-        if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
-            finalPt = ptComCanClick[ptComCanClick.length - 1]
-        }
-        log("选择", finalPt)
-        while (id("friendWrap").findOnce()) {
-            sleep(1000)
-            click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
-            sleep(2000)
+        } else {
+            let ptCom = textMatches(/^\+\d+$/).find()
+            //可点击的助战列表
+            let ptComCanClick = []
+            for (let i = 0; i < ptCom.length; i++) {
+                //在可见范围内
+                if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
+                    if (ptComCanClick.length != 0) {
+                        //新加入的pt若比第一次加入的要小，舍去
+                        if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
+                            continue
+                        }
+                    }
+                    ptComCanClick.push(ptCom[i])
+                    log(ptCom[i].bounds())
+                }
+            }
+            log("候选列表", ptComCanClick)
+            log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
+            // 是单纯选npc还是，优先助战
+            let finalPt = ptComCanClick[0]
+            if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
+                finalPt = ptComCanClick[ptComCanClick.length - 1]
+            }
+            log("选择", finalPt)
+            while (id("friendWrap").findOnce()) {
+                sleep(1000)
+                click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+                sleep(2000)
+            }
         }
         // -----------开始----------------
         //国台服不同
@@ -556,8 +570,13 @@ function autoMain() {
         while (!id("retryWrap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
             if (id("rankUpWrap").findOnce()) {
-                let rankupwrap = id("rankUpWrap").findOnce().child(5).bounds()
-                click(rankupwrap.centerX(), rankupwrap.centerY());
+                if (limit.lvupy) {
+                    log("lvupclick")
+                    click(layout.centerX(), limit.lvupy);
+                } else {
+                    let rankupwrap = id("rankUpWrap").findOnce().child(5).bounds()
+                    click(rankupwrap.centerX(), rankupwrap.centerY());
+                }
             }
             if (id("ap").findOnce()) {
                 return;
