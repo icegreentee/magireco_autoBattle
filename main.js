@@ -204,9 +204,9 @@ ui.start.click(() => {
     storage.put("lvupy", lvupy)
     storage.put("battley", battley)
 });
-http.__okhttp__.setTimeout(5000);
-//版本获取
-try {
+// http.__okhttp__.setTimeout(5000);
+// //版本获取
+// try {
     var res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
     if (res.statusCode != 200) {
         log("请求失败: " + res.statusCode + " " + res.statusMessage);
@@ -224,6 +224,6 @@ try {
             });
         }
     }
-} catch (e) {
-    ui.versionMsg.setText("获取失败")
-}
+// } catch (e) {
+//     ui.versionMsg.setText("获取失败")
+// }
