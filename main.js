@@ -5,7 +5,7 @@ var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
 ui.layout(
-    <drawer id="drawer">
+    <ScrollView id="drawer">
         <vertical>
             <appbar>
                 <toolbar id="toolbar" bg="#ff4fb3ff" title="{{appName}}" />
@@ -73,9 +73,10 @@ ui.layout(
                 <list bg="#ffffff" elevation="1dp" h="*" id="logList">
                 </list>
             </vertical>
+            <View h="5" />
             <button id="start" text="修改配置" tag="ScriptTag" color="#ffffff" bg="#FF4FB3FF" foreground="?selectableItemBackground" />
         </vertical>
-    </drawer>
+    </ScrollView>
 );
 
 

@@ -689,6 +689,16 @@ function autoMainver2() {
             }
 
         }
+        // ------------选择挑战------------------
+        log("选择挑战")
+        let battlex=id("questListWrap").findOne().bounds().centerX();
+        while (id("questListWrap").findOnce()) {
+            log("选择挑战:", battlex, limit.battley)
+            sleep(1000)
+            click(battlex, limit.battley)
+            sleep(2000)
+        }
+
         log("选择助战")
         // -----------选援助----------------
         // 互关好友all位不得为空，否则会卡住
@@ -763,7 +773,7 @@ function autoMainver2() {
         id("ResultWrap").findOne()
         sleep(3000)
 
-        while (!id("retryWrap").findOnce()) {
+        while (!id("ap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
             if (id("rankUpWrap").findOnce()) {
                 if (limit.lvupy) {
@@ -774,9 +784,9 @@ function autoMainver2() {
                     click(rankupwrap.centerX(), rankupwrap.centerY());
                 }
             }
-            if (id("ap").findOnce()) {
-                return;
-            }
+            // if (id("ap").findOnce()) {
+            //     return;
+            // }
             sleep(1000)
             // 循环点击的位置为短线重连确定点
             click(layout.centerX() - 200, layout.bottom * 0.67)
@@ -784,10 +794,10 @@ function autoMainver2() {
             sleep(2000)
         }
         //--------------再战--------------------------
-        let restart = id("retryWrap").findOne().bounds();
-        sleep(1000)
-        click(restart.centerX(), restart.centerY());
-        sleep(2500)
+        // let restart = id("retryWrap").findOne().bounds();
+        // sleep(1000)
+        // click(restart.centerX(), restart.centerY());
+        // sleep(2500)
     }
 }
 // function isFocus(friend) {
