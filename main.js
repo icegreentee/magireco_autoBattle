@@ -54,6 +54,11 @@ ui.layout(
                         <text text="升级确认按钮位置 y坐标自定义：" />
                         <input maxLength="4" id="lvupy" text="910" inputType="number" />
                     </linear>
+                    <View h="5" />
+                    <linear>
+                        <text text="贞德活动周回挑战的点击y坐标自定义：" />
+                        <input maxLength="4" id="battley" text="550" inputType="number" />
+                    </linear>
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0" elevation="1dp">
                     <Switch id="stable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
@@ -106,33 +111,61 @@ var drug1y = storage.get("drug1y")
 var helpx = storage.get("helpx")
 var helpy = storage.get("helpy")
 var lvupy = storage.get("lvupy")
-log(drug1y)
+var battley = storage.get("battley")
+
+var initCount = 1
+
 if (drug1y != undefined) {
     ui.run(function () {
         ui.drug1y.setText(drug1y + "")
+        init()
     })
+}else{
+    init()
 }
 if (helpx != undefined) {
     ui.run(function () {
         ui.helpx.setText(helpx + "")
+        init()
     })
+}else{
+    init()
 }
 if (helpy != undefined) {
     ui.run(function () {
         ui.helpy.setText(helpy + "")
+        init()
     })
+}else{
+    init()
 }
 if (lvupy != undefined) {
     ui.run(function () {
         ui.lvupy.setText(lvupy + "")
+        init()
     })
+}else{
+    init()
+}
+if (battley != undefined) {
+    ui.run(function () {
+        ui.battley.setText(battley + "")
+        init()
+    })
+}else{
+    init()
 }
 
-ui.start.click(() => {
+function init(){
+    if(initCount!=5){
+        initCount++
+        return;
+    }
     let drug1y = ui.drug1y.getText() == "" ? 0 : parseInt(ui.drug1y.getText())
     let helpx = ui.helpx.getText() == "" ? 0 : parseInt(ui.helpx.getText())
     let helpy = ui.helpy.getText() == "" ? 0 : parseInt(ui.helpy.getText())
     let lvupy = ui.lvupy.getText() == "" ? 0 : parseInt(ui.lvupy.getText())
+    let battley = ui.battley.getText() == "" ? 0 : parseInt(ui.battley.getText())
     floatUI.adjust({
         limitAP: ui.limitAP.getText(),
         drug1: ui.drug1.isChecked(),
@@ -142,12 +175,33 @@ ui.start.click(() => {
         drug1y: drug1y,
         helpx: helpx,
         helpy: helpy,
-        lvupy: lvupy
+        lvupy: lvupy,
+        battley:battley
+    })
+}
+ui.start.click(() => {
+    let drug1y = ui.drug1y.getText() == "" ? 0 : parseInt(ui.drug1y.getText())
+    let helpx = ui.helpx.getText() == "" ? 0 : parseInt(ui.helpx.getText())
+    let helpy = ui.helpy.getText() == "" ? 0 : parseInt(ui.helpy.getText())
+    let lvupy = ui.lvupy.getText() == "" ? 0 : parseInt(ui.lvupy.getText())
+    let battley = ui.battley.getText() == "" ? 0 : parseInt(ui.battley.getText())
+    floatUI.adjust({
+        limitAP: ui.limitAP.getText(),
+        drug1: ui.drug1.isChecked(),
+        drug2: ui.drug2.isChecked(),
+        drug3: ui.drug3.isChecked(),
+        isStable: ui.stable.isChecked(),
+        drug1y: drug1y,
+        helpx: helpx,
+        helpy: helpy,
+        lvupy: lvupy,
+        battley:battley
     })
     storage.put("drug1y", drug1y)
     storage.put("helpx", helpx)
     storage.put("helpy", helpy)
     storage.put("lvupy", lvupy)
+    storage.put("battley", battley)
 });
 http.__okhttp__.setTimeout(5000);
 //版本获取
