@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "1.3.1"
+var version = "1.4.0"
 var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
@@ -109,22 +109,22 @@ var lvupy = storage.get("lvupy")
 log(drug1y)
 if (drug1y != undefined) {
     ui.run(function () {
-        ui.drug1y.setText(drug1y+"")
+        ui.drug1y.setText(drug1y + "")
     })
 }
 if (helpx != undefined) {
     ui.run(function () {
-        ui.helpx.setText(helpx+"")
+        ui.helpx.setText(helpx + "")
     })
 }
 if (helpy != undefined) {
     ui.run(function () {
-        ui.helpy.setText(helpy+"")
+        ui.helpy.setText(helpy + "")
     })
 }
 if (lvupy != undefined) {
     ui.run(function () {
-        ui.lvupy.setText(lvupy+"")
+        ui.lvupy.setText(lvupy + "")
     })
 }
 
@@ -149,21 +149,26 @@ ui.start.click(() => {
     storage.put("helpy", helpy)
     storage.put("lvupy", lvupy)
 });
+http.__okhttp__.setTimeout(5000);
 //版本获取
-var res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
-if (res.statusCode != 200) {
-    log("请求失败: " + res.statusCode + " " + res.statusMessage);
-    ui.versionMsg.setText("获取失败")
-} else {
-    let resJson = res.body.json();
-    log(resJson.versionName);
-    if (resJson.versionName.slice(0, resJson.versionName.length - 2) == version.slice(0, version.length - 2)) {
-        ui.run(function () {
-            ui.versionMsg.setText("当前为最新版本")
-        });
+try {
+    var res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
+    if (res.statusCode != 200) {
+        log("请求失败: " + res.statusCode + " " + res.statusMessage);
+        ui.versionMsg.setText("获取失败")
     } else {
-        ui.run(function () {
-            ui.versionMsg.setText("最新版本为" + resJson.versionName + ",需要更新")
-        });
+        let resJson = res.body.json();
+        log(resJson.versionName);
+        if (resJson.versionName.slice(0, resJson.versionName.length - 2) == version.slice(0, version.length - 2)) {
+            ui.run(function () {
+                ui.versionMsg.setText("当前为最新版本")
+            });
+        } else {
+            ui.run(function () {
+                ui.versionMsg.setText("最新版本为" + resJson.versionName + ",需要更新")
+            });
+        }
     }
+} catch (e) {
+    ui.versionMsg.setText("获取失败")
 }
