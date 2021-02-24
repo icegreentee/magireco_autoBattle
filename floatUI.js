@@ -545,6 +545,7 @@ function autoMain() {
             }
         }
         // -----------开始----------------
+        //开始按钮部分手机无法确定位置 需要改
         //国台服不同
         textMatches(/.始$/).findOne()
         log("进入开始")
@@ -554,7 +555,8 @@ function autoMain() {
             if (!begin) {
                 break
             }
-            click(begin.bounds().centerX(), begin.bounds().centerY());
+            console.log(2100,1000)
+            click(2100,1000);
             sleep(3000)
         }
         log("进入战斗")
