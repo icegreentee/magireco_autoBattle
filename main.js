@@ -63,6 +63,9 @@ ui.layout(
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0" elevation="1dp">
                     <Switch id="stable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
                 </vertical>
+                <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0" elevation="1dp">
+                    <Switch id="root" w="*" checked="false" textColor="#666666" text="Root点击模式（Android 5兼容）" />
+                </vertical>
                 <linear>
                     <text layout_weight="1" size="19" color="#222222" text="日志" />
                     <button id="tolog" h="40" text="全部日志" style="Widget.AppCompat.Button.Borderless.Colored" />
@@ -173,6 +176,7 @@ function init(){
         drug2: ui.drug2.isChecked(),
         drug3: ui.drug3.isChecked(),
         isStable: ui.stable.isChecked(),
+        isRoot: ui.root.isChecked(),
         drug1y: drug1y,
         helpx: helpx,
         helpy: helpy,
@@ -192,6 +196,7 @@ ui.start.click(() => {
         drug2: ui.drug2.isChecked(),
         drug3: ui.drug3.isChecked(),
         isStable: ui.stable.isChecked(),
+        isRoot: ui.root.isChecked(),
         drug1y: drug1y,
         helpx: helpx,
         helpy: helpy,
