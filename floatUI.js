@@ -406,6 +406,7 @@ var limit = {
     drug2: false,
     drug3: false,
     isStable: false,
+    isRoot: false,
     justNPC: false,
     isRoot: false
 }
@@ -443,7 +444,7 @@ function autoMain() {
             //确定要嗑药后等3s，打开面板
             while (!id("popupInfoDetailTitle").findOnce()) {
                 sleep(1000)
-                click(apCom.bounds().centerX(), apCom.bounds().centerY())
+                compatClick(apCom.bounds().centerX(), apCom.bounds().centerY())
                 sleep(2000)
             }
             let apDrugNums = textMatches(/^\d+个$/).find()
@@ -486,14 +487,14 @@ function autoMain() {
                 let finish = text("回复").findOne()
                 sleep(1500)
                 log("确认回复")
-                click(finish.bounds().centerX(), finish.bounds().centerY())
+                compatClick(finish.bounds().centerX(), finish.bounds().centerY())
             }
             //关掉ap面板
             log("关掉面板")
             while (id("popupInfoDetailTitle").findOnce()) {
                 let close = id("popupInfoDetailTitle").findOne().parent()
                 sleep(1000)
-                click(close.bounds().right - 5, close.bounds().top + 5)
+                compatClick(close.bounds().right - 5, close.bounds().top + 5)
                 sleep(2000)
             }
 
@@ -541,7 +542,7 @@ function autoMain() {
             log("选择", finalPt)
             while (id("friendWrap").findOnce()) {
                 sleep(1000)
-                click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+                compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
                 sleep(2000)
             }
         }
@@ -574,7 +575,7 @@ function autoMain() {
             while (!id("ResultWrap").findOnce()) {
                 sleep(3000)
                 // 循环点击的位置为短线重连确定点
-                click(layout.centerX() - 200, layout.bottom * 0.67)
+                compatClick(layout.centerX() - 200, layout.bottom * 0.67)
                 sleep(2000)
             }
         }
@@ -590,7 +591,7 @@ function autoMain() {
                     click(layout.centerX(), parseInt(limit.lvupy));
                 } else {
                     let rankupwrap = id("rankUpWrap").findOnce().child(5).bounds()
-                    click(rankupwrap.centerX(), rankupwrap.centerY());
+                    compatClick(rankupwrap.centerX(), rankupwrap.centerY());
                 }
             }
             if (id("ap").findOnce()) {
@@ -598,14 +599,14 @@ function autoMain() {
             }
             sleep(1000)
             // 循环点击的位置为短线重连确定点
-            click(layout.centerX() - 200, layout.bottom * 0.67)
+            compatClick(layout.centerX() - 200, layout.bottom * 0.67)
             // 点击完毕后 再战不会马上出来，需要等待
             sleep(2000)
         }
         //--------------再战--------------------------
         let restart = id("retryWrap").findOne().bounds();
         sleep(1000)
-        click(restart.centerX(), restart.centerY());
+        compatClick(restart.centerX(), restart.centerY());
         sleep(2500)
     }
 }
@@ -632,7 +633,7 @@ function autoMainver2() {
             //确定要嗑药后等3s，打开面板
             while (!id("popupInfoDetailTitle").findOnce()) {
                 sleep(1000)
-                click(apCom.bounds().centerX(), apCom.bounds().centerY())
+                compatClick(apCom.bounds().centerX(), apCom.bounds().centerY())
                 sleep(2000)
             }
             let apDrugNums = textMatches(/^\d+个$/).find()
@@ -675,14 +676,14 @@ function autoMainver2() {
                 let finish = text("回复").findOne()
                 sleep(1500)
                 log("确认回复")
-                click(finish.bounds().centerX(), finish.bounds().centerY())
+                compatClick(finish.bounds().centerX(), finish.bounds().centerY())
             }
             //关掉ap面板
             log("关掉面板")
             while (id("popupInfoDetailTitle").findOnce()) {
                 let close = id("popupInfoDetailTitle").findOne().parent()
                 sleep(1000)
-                click(close.bounds().right - 5, close.bounds().top + 5)
+                compatClick(close.bounds().right - 5, close.bounds().top + 5)
                 sleep(2000)
             }
 
@@ -738,7 +739,7 @@ function autoMainver2() {
             log("选择", finalPt)
             while (id("friendWrap").findOnce()) {
                 sleep(1000)
-                click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+                compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
                 sleep(2000)
             }
         }
@@ -771,7 +772,7 @@ function autoMainver2() {
             while (!id("ResultWrap").findOnce()) {
                 sleep(3000)
                 // 循环点击的位置为短线重连确定点
-                click(layout.centerX() - 200, layout.bottom * 0.67)
+                compatClick(layout.centerX() - 200, layout.bottom * 0.67)
                 sleep(2000)
             }
         }
@@ -787,7 +788,7 @@ function autoMainver2() {
                     click(layout.centerX(), parseInt(limit.lvupy));
                 } else {
                     let rankupwrap = id("rankUpWrap").findOnce().child(5).bounds()
-                    click(rankupwrap.centerX(), rankupwrap.centerY());
+                    compatClick(rankupwrap.centerX(), rankupwrap.centerY());
                 }
             }
             if (id("ap").findOnce()) {
@@ -803,7 +804,7 @@ function autoMainver2() {
         //--------------再战--------------------------
         // let restart = id("retryWrap").findOne().bounds();
         // sleep(1000)
-        // click(restart.centerX(), restart.centerY());
+        // compatClick(restart.centerX(), restart.centerY());
         // sleep(2500)
     }
 }

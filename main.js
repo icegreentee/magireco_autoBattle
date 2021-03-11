@@ -76,7 +76,6 @@ ui.layout(
                         <input maxLength="4" id="starty" text="910" inputType="number|none" />
                     </linear>
                 </vertical>
-
                 <linear>
                     <text layout_weight="1" size="19" color="#222222" text="日志" />
                     <button id="tolog" h="40" text="全部日志" style="Widget.AppCompat.Button.Borderless.Colored" />
