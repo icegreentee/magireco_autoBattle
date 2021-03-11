@@ -8,3 +8,5 @@
 2. 只需给APP悬浮窗权限
 3. 每一次运行，需开启无障碍服务，设置需要的参数
 4. 进入游戏选择助战阶段，悬浮窗中启动脚本
+
+<!-- https://purge.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json -->

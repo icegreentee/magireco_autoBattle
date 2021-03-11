@@ -181,7 +181,7 @@ floatUI.main = function () {
     })
 
     win.id_1_click.on("click", () => {
-        toastLog("贞德sp启动")
+        toastLog("活动sp启动")
         if (task) {
             task.interrupt()
         }
@@ -391,62 +391,62 @@ floatUI.main = function () {
         return true;
     });
 }
+// ------------主要逻辑--------------------
 var limit = {
-    limitAP: 20,
+    limitAP: '20',
+    drug1y: '',
+    helpx: '',
+    helpy: '',
+    lvupy: '',
+    shuix: '',
+    shuiy: '',
+    startx: '',
+    starty: '',
     drug1: false,
     drug2: false,
     drug3: false,
     isStable: false,
     justNPC: false,
-    drug1y: 910,
-    helpx: 1300,
-    helpy: 400,
-    lvupy: 910,
-    battley: 550
+    isRoot: false
 }
-var DrugLang = {
-    ch: ["回复", "回复"],
-    tai: ["回復", "進行回復"]
-}
-var jishu = 0
+// var DrugLang = {
+//     ch: ["回复", "回复"],
+//     tai: ["回復", "進行回復"]
+// }
+// function compatClick(x, y) {
+//     if (limit.isRoot) {
+//         shell("input tap " + x + " " + y, true)
+//     }
+//     else {
+//         click(x, y);
+//     }
+// }
 function autoMain() {
     while (true) {
-        //开始 ----------------检测体力-------
-        jishu += 1
-        log("-------第" + jishu + "次开始------------")
-        //体力检测方式变更，改为正则寻找体力
+        //开始
+        //---------嗑药模块------------------
+        log("开始检测ap")
         let apCom = textMatches(/^\d+\/\d+$/).findOne()
         sleep(1000)
         let aps = apCom.text()
-        log("text:", aps)
+        log("ap:", aps)
         // aps  55/122  获得字符串中第一串数字
         let apNow = parseInt(aps.match(/\d+/)[0])
-        log("检测体力,当前体力为" + apNow)
-        // log("设置为：", limit)
-        log((!limit.drug1 && !limit.drug2 && !limit.drug3), apNow, limit.limitAP)
-        // log("嗑药判定为：", !(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= limit.limitAP)
+
+        log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
+        log("嗑药设置体力：", limit.limitAP)
+        log("当前体力为" + apNow)
         if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
             //嗑药
             //打开ap面板
             log("嗑药面板开启")
-            let drugText = DrugLang.ch
             //确定要嗑药后等3s，打开面板
             while (!id("popupInfoDetailTitle").findOnce()) {
                 sleep(1000)
                 click(apCom.bounds().centerX(), apCom.bounds().centerY())
                 sleep(2000)
             }
-            let apDrugNums;
-            //判断中台服
-            if (text("AP回復藥").findOnce()) {
-                //台服
-                drugText = DrugLang.tai
-                apDrugNums = textMatches(/^\d+個$/).find()
-            } else {
-                apDrugNums = textMatches(/^\d+个$/).find()
-            }
-            log("当前为：" + drugText)
-
+            let apDrugNums = textMatches(/^\d+个$/).find()
             //获得回复药水数量
             let apDrug50Num = getDrugNum(apDrugNums[0].text())
             let apDrugFullNum = getDrugNum(apDrugNums[1].text())
@@ -456,10 +456,10 @@ function autoMain() {
             let apHui = null
             if (apDrug50Num > 0 && limit.drug1) {
                 apHui = 0
-                log("ap50")
+                log("ap回复药50")
             } else if (apDrugFullNum > 0 && limit.drug2) {
                 apHui = 1
-                log("apfull")
+                log("ap回复药")
             }
             else if (apMoneyNum > 5 && limit.drug3) {
                 apHui = 2
@@ -468,22 +468,22 @@ function autoMain() {
                 //关掉面板继续周回
                 log("none")
             }
-            log("点击进行回复")
+
             //点击进行回复
             if (apHui != null) {
-                let huiCom = text(drugText[0]).find()[apHui]
-                log("回复按钮范围", huiCom.bounds())
+                let huiCom = text("回复").find()[apHui]
                 sleep(1500)
-                log("点击回复")
+                log("点击回复按钮")
                 if (limit.drug1y) {
                     log("自定义回复点击")
-                    click(huiCom.bounds().centerX(), limit.drug1y)
+                    click(huiCom.bounds().centerX(), parseInt(limit.drug1y))
                 }
                 else {
+                    log("回复按钮y坐标", huiCom.bounds().centerY())
                     click(huiCom.bounds().centerX(), huiCom.bounds().bottom - 5)
                 }
                 sleep(1000)
-                let finish = text(drugText[1]).findOne()
+                let finish = text("回复").findOne()
                 sleep(1500)
                 log("确认回复")
                 click(finish.bounds().centerX(), finish.bounds().centerY())
@@ -498,19 +498,20 @@ function autoMain() {
             }
 
         }
+        //----------------------------------
         log("选择助战")
         // -----------选援助----------------
-        // 互关好友all位不得为空，否则会卡住
         // 15为npc助战  0~14为玩家助战
         //确定在选人阶段
         let friendWrap = id("friendWrap").findOne().bounds()
         let layout = className("android.widget.FrameLayout").depth(4).findOne().bounds()
-        log(limit.helpx && limit.helpy)
+
         if (limit.helpx && limit.helpy) {
+            log(limit.helpx && limit.helpy)
             while (id("friendWrap").findOnce()) {
                 log("助战点击", limit.helpx, limit.helpy)
                 sleep(1000)
-                click(limit.helpx, limit.helpy)
+                click(parseInt(limit.helpx), parseInt(limit.helpy))
                 sleep(2000)
             }
         } else {
@@ -555,8 +556,15 @@ function autoMain() {
             if (!begin) {
                 break
             }
-            console.log(2100,1000)
-            click(2100,1000);
+
+            if (limit.startx != "" && limit.starty != "") {
+                console.log(limit.startx, limit.starty)
+                click(parseInt(limit.startx), parseInt(limit.starty));
+            }
+            else {
+                console.log(begin.bounds().centerX(), begin.bounds().centerY())
+                click(begin.bounds().centerX(), begin.bounds().centerY());
+            }
             sleep(3000)
         }
         log("进入战斗")
@@ -579,7 +587,7 @@ function autoMain() {
             if (id("rankUpWrap").findOnce()) {
                 if (limit.lvupy) {
                     log("lvupclick")
-                    click(layout.centerX(), limit.lvupy);
+                    click(layout.centerX(), parseInt(limit.lvupy));
                 } else {
                     let rankupwrap = id("rankUpWrap").findOnce().child(5).bounds()
                     click(rankupwrap.centerX(), rankupwrap.centerY());
@@ -604,42 +612,30 @@ function autoMain() {
 // 贞德副本特殊周回
 function autoMainver2() {
     while (true) {
-        //开始 ----------------检测体力-------
-        jishu += 1
-        log("-------第" + jishu + "次开始------------")
-        //体力检测方式变更，改为正则寻找体力
+        //开始
+        //---------嗑药模块------------------
+        log("开始检测ap")
         let apCom = textMatches(/^\d+\/\d+$/).findOne()
         sleep(1000)
         let aps = apCom.text()
-        log("text:", aps)
+        log("ap:", aps)
         // aps  55/122  获得字符串中第一串数字
         let apNow = parseInt(aps.match(/\d+/)[0])
-        log("检测体力,当前体力为" + apNow)
-        // log("设置为：", limit)
-        log((!limit.drug1 && !limit.drug2 && !limit.drug3), apNow, limit.limitAP)
-        // log("嗑药判定为：", !(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= limit.limitAP)
+
+        log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
+        log("嗑药设置体力：", limit.limitAP)
+        log("当前体力为" + apNow)
         if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
             //嗑药
             //打开ap面板
             log("嗑药面板开启")
-            let drugText = DrugLang.ch
             //确定要嗑药后等3s，打开面板
             while (!id("popupInfoDetailTitle").findOnce()) {
                 sleep(1000)
                 click(apCom.bounds().centerX(), apCom.bounds().centerY())
                 sleep(2000)
             }
-            let apDrugNums;
-            //判断中台服
-            if (text("AP回復藥").findOnce()) {
-                //台服
-                drugText = DrugLang.tai
-                apDrugNums = textMatches(/^\d+個$/).find()
-            } else {
-                apDrugNums = textMatches(/^\d+个$/).find()
-            }
-            log("当前为：" + drugText)
-
+            let apDrugNums = textMatches(/^\d+个$/).find()
             //获得回复药水数量
             let apDrug50Num = getDrugNum(apDrugNums[0].text())
             let apDrugFullNum = getDrugNum(apDrugNums[1].text())
@@ -649,10 +645,10 @@ function autoMainver2() {
             let apHui = null
             if (apDrug50Num > 0 && limit.drug1) {
                 apHui = 0
-                log("ap50")
+                log("ap回复药50")
             } else if (apDrugFullNum > 0 && limit.drug2) {
                 apHui = 1
-                log("apfull")
+                log("ap回复药")
             }
             else if (apMoneyNum > 5 && limit.drug3) {
                 apHui = 2
@@ -661,22 +657,22 @@ function autoMainver2() {
                 //关掉面板继续周回
                 log("none")
             }
-            log("点击进行回复")
+
             //点击进行回复
             if (apHui != null) {
-                let huiCom = text(drugText[0]).find()[apHui]
-                log("回复按钮范围", huiCom.bounds())
+                let huiCom = text("回复").find()[apHui]
                 sleep(1500)
-                log("点击回复")
+                log("点击回复按钮")
                 if (limit.drug1y) {
                     log("自定义回复点击")
-                    click(huiCom.bounds().centerX(), limit.drug1y)
+                    click(huiCom.bounds().centerX(), parseInt(limit.drug1y))
                 }
                 else {
+                    log("回复按钮y坐标", huiCom.bounds().centerY())
                     click(huiCom.bounds().centerX(), huiCom.bounds().bottom - 5)
                 }
                 sleep(1000)
-                let finish = text(drugText[1]).findOne()
+                let finish = text("回复").findOne()
                 sleep(1500)
                 log("确认回复")
                 click(finish.bounds().centerX(), finish.bounds().centerY())
@@ -691,29 +687,28 @@ function autoMainver2() {
             }
 
         }
-        // ------------选择挑战------------------
-        log("选择挑战")
-        let battlex=id("questListWrap").findOne().bounds().centerX();
-        while (id("questListWrap").findOnce()) {
-            log("选择挑战:", battlex, limit.battley)
-            sleep(1000)
-            click(battlex, limit.battley)
-            sleep(2000)
-        }
+        //----------------------------------
+        log(limit.shuix, limit.shuiy)
+        sleep(1500)
+        click(parseInt(limit.shuix), parseInt(limit.shuiy))
+        sleep(1500)
+        let shuiok = text("确定").findOne().bounds()
+        click(shuiok.centerX(), shuiok.centerY())
+
 
         log("选择助战")
         // -----------选援助----------------
-        // 互关好友all位不得为空，否则会卡住
         // 15为npc助战  0~14为玩家助战
         //确定在选人阶段
         let friendWrap = id("friendWrap").findOne().bounds()
         let layout = className("android.widget.FrameLayout").depth(4).findOne().bounds()
-        log(limit.helpx && limit.helpy)
+
         if (limit.helpx && limit.helpy) {
+            log(limit.helpx && limit.helpy)
             while (id("friendWrap").findOnce()) {
                 log("助战点击", limit.helpx, limit.helpy)
                 sleep(1000)
-                click(limit.helpx, limit.helpy)
+                click(parseInt(limit.helpx), parseInt(limit.helpy))
                 sleep(2000)
             }
         } else {
@@ -748,6 +743,7 @@ function autoMainver2() {
             }
         }
         // -----------开始----------------
+        //开始按钮部分手机无法确定位置 需要改
         //国台服不同
         textMatches(/.始$/).findOne()
         log("进入开始")
@@ -757,7 +753,15 @@ function autoMainver2() {
             if (!begin) {
                 break
             }
-            click(begin.bounds().centerX(), begin.bounds().centerY());
+
+            if (limit.startx != "" && limit.starty != "") {
+                console.log(limit.startx, limit.starty)
+                click(parseInt(limit.startx), parseInt(limit.starty));
+            }
+            else {
+                console.log(begin.bounds().centerX(), begin.bounds().centerY())
+                click(begin.bounds().centerX(), begin.bounds().centerY());
+            }
             sleep(3000)
         }
         log("进入战斗")
@@ -780,18 +784,19 @@ function autoMainver2() {
             if (id("rankUpWrap").findOnce()) {
                 if (limit.lvupy) {
                     log("lvupclick")
-                    click(layout.centerX(), limit.lvupy);
+                    click(layout.centerX(), parseInt(limit.lvupy));
                 } else {
                     let rankupwrap = id("rankUpWrap").findOnce().child(5).bounds()
                     click(rankupwrap.centerX(), rankupwrap.centerY());
                 }
             }
-            // if (id("ap").findOnce()) {
-            //     return;
-            // }
+            if (id("ap").findOnce()) {
+                return;
+            }
             sleep(1000)
             // 循环点击的位置为短线重连确定点
-            click(layout.centerX() - 200, layout.bottom * 0.67)
+            // click(layout.centerX() - 200, layout.bottom * 0.67)
+            click(layout.right-50,50)
             // 点击完毕后 再战不会马上出来，需要等待
             sleep(2000)
         }
@@ -815,8 +820,7 @@ function getDrugNum(text) {
 
 floatUI.adjust = function (config) {
     limit = config
-    log(limit)
-    toastLog("修改完成")
+    log("参数：", limit)
 }
 
 module.exports = floatUI;

@@ -5,6 +5,7 @@
         "build"
     ],
     "packageName": "top.momoe.auto",
-    "versionName": "1.4.0",
+    "versionName": "1.5.0",
+    "versionInfo": "重构，增加踩水活动",
     "versionCode": 1
 }

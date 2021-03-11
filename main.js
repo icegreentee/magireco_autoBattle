@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "1.4.0"
+var version = "1.5.0"
 var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
@@ -18,8 +18,8 @@ ui.layout(
 
                 <vertical margin="0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear>
-                        <text text="恢复药使用,当AP小于：" />
-                        <input maxLength="3" id="limitAP" text="20" inputType="number" />
+                        <text text="药使用时的AP(大于等于副本ap*2)：" />
+                        <input maxLength="3" id="limitAP" text="" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
@@ -38,37 +38,54 @@ ui.layout(
                         <checkbox id="drug3" text="魔法石" layout_weight="1" />
                     </linear>
                 </vertical>
+                <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
+                    <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
+                    <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用npc（不设置此项，默认优先 互关好友-npc）" />
+                    {/* <Switch id="isRoot" w="*" checked="false" textColor="#666666" text="android7以下适配(需要root)" /> */}
+                </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear>
-                        <text text="ap使用界面，恢复按钮 y坐标自定义：" />
-                        <input maxLength="4" id="drug1y" text="910" inputType="number" />
+                        <text text="踩水活动 x，y坐标自定义：" />
+                        <input maxLength="4" id="shuix" text="" inputType="number|none" />
+                        <input maxLength="4" id="shuiy" text="" inputType="number|none" />
+                    </linear>
+                    <linear>
+                        <text text="以下参数根据个人情况进行设置(识别的点击位置不对时,可以自行设置,没有卡住等情况可以不设置)" textColor="#000000" />
+                    </linear>
+
+                    <View h="5" />
+                    <linear>
+                        <text text="ap回复界面，回复按钮 y坐标自定义：" />
+                        <input maxLength="4" id="drug1y" text="" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
-                        <text text="助战选择位置 x，y坐标自定义：" />
-                        <input maxLength="4" id="helpx" text="1300" inputType="number" />
-                        <input maxLength="4" id="helpy" text="400" inputType="number" />
+                        <text text="助战选择的位置 x，y坐标自定义：" />
+                        <input maxLength="4" id="helpx" text="1300" inputType="number|none" />
+                        <input maxLength="4" id="helpy" text="400" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
                         <text text="升级确认按钮位置 y坐标自定义：" />
-                        <input maxLength="4" id="lvupy" text="910" inputType="number" />
+                        <input maxLength="4" id="lvupy" text="910" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
-                        <text text="贞德活动周回挑战的点击y坐标自定义：" />
-                        <input maxLength="4" id="battley" text="550" inputType="number" />
+                        <text text="开始按钮 x，y坐标：" />
+                        <input maxLength="4" id="startx" text="910" inputType="number|none" />
+                        <input maxLength="4" id="starty" text="910" inputType="number|none" />
                     </linear>
                 </vertical>
-                <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0" elevation="1dp">
-                    <Switch id="stable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
-                </vertical>
+
                 <linear>
                     <text layout_weight="1" size="19" color="#222222" text="日志" />
                     <button id="tolog" h="40" text="全部日志" style="Widget.AppCompat.Button.Borderless.Colored" />
                 </linear>
                 <linear padding="10 6 0 6" bg="#ffffff">
                     <text id="versionMsg" layout_weight="1" color="#666666" text="尝试获取最新版本信息" />
+                </linear>
+                <linear padding="10 6 0 6" bg="#ffffff">
+                    <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，不可进行出售盈利。作者bilibili 虹之宝玉" />
                 </linear>
                 <list bg="#ffffff" elevation="1dp" h="*" id="logList">
                 </list>
@@ -102,115 +119,83 @@ ui.emitter.on("resume", () => {
     ui.autoService.checked = auto.service != null;
 });
 
+//-----------------自定义逻辑-------------------------------------------
 var floatUI = require('floatUI.js');
 floatUI.main()
 
-var storage = storages.create("auto3.1");
-// log("a = " + storage.get("a"));
+var storage = storages.create("sssssas");
+var data = storage.get("data");
+const parmasList = ["limitAP", "drug1y", "helpx", "helpy", "lvupy", "shuix", "shuiy", "startx", "starty"]
+const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC"]
+var parmasMap = {}
 
-var drug1y = storage.get("drug1y")
-var helpx = storage.get("helpx")
-var helpy = storage.get("helpy")
-var lvupy = storage.get("lvupy")
-var battley = storage.get("battley")
+//若没有存储信息进行存储初始化
+if (data == undefined) {
+    for (let i = 0; i < parmasList.length; i++) {
+        if (i == 0) {
+            //特殊初始值
+            parmasMap[parmasList[i]] = "20"
+        } else {
+            parmasMap[parmasList[i]] = ""
+        }
 
-var initCount = 1
-
-if (drug1y != undefined) {
-    ui.run(function () {
-        ui.drug1y.setText(drug1y + "")
-        init()
-    })
-}else{
-    init()
-}
-if (helpx != undefined) {
-    ui.run(function () {
-        ui.helpx.setText(helpx + "")
-        init()
-    })
-}else{
-    init()
-}
-if (helpy != undefined) {
-    ui.run(function () {
-        ui.helpy.setText(helpy + "")
-        init()
-    })
-}else{
-    init()
-}
-if (lvupy != undefined) {
-    ui.run(function () {
-        ui.lvupy.setText(lvupy + "")
-        init()
-    })
-}else{
-    init()
-}
-if (battley != undefined) {
-    ui.run(function () {
-        ui.battley.setText(battley + "")
-        init()
-    })
-}else{
-    init()
-}
-
-function init(){
-    if(initCount!=5){
-        initCount++
-        return;
     }
-    let drug1y = ui.drug1y.getText() == "" ? 0 : parseInt(ui.drug1y.getText())
-    let helpx = ui.helpx.getText() == "" ? 0 : parseInt(ui.helpx.getText())
-    let helpy = ui.helpy.getText() == "" ? 0 : parseInt(ui.helpy.getText())
-    let lvupy = ui.lvupy.getText() == "" ? 0 : parseInt(ui.lvupy.getText())
-    let battley = ui.battley.getText() == "" ? 0 : parseInt(ui.battley.getText())
-    floatUI.adjust({
-        limitAP: ui.limitAP.getText(),
-        drug1: ui.drug1.isChecked(),
-        drug2: ui.drug2.isChecked(),
-        drug3: ui.drug3.isChecked(),
-        isStable: ui.stable.isChecked(),
-        drug1y: drug1y,
-        helpx: helpx,
-        helpy: helpy,
-        lvupy: lvupy,
-        battley:battley
+    // log(JSON.stringify(parmasMap))
+    storage.put("data", JSON.stringify(parmasMap))
+}
+else {
+    parmasMap = JSON.parse(data)
+}
+//ui界面赋值
+for (let i = 0; i < parmasList.length; i++) {
+    let key = parmasList[i]
+    let value = parmasMap[key]
+    ui.run(function () {
+        ui[key].setText(value)
     })
 }
+
+//无需复制的属性
+for (let i = 0; i < parmasNotInitList.length; i++) {
+    parmasMap[parmasNotInitList[i]] = false;
+}
+
+//同步值
+floatUI.adjust(parmasMap)
+
 ui.start.click(() => {
-    let drug1y = ui.drug1y.getText() == "" ? 0 : parseInt(ui.drug1y.getText())
-    let helpx = ui.helpx.getText() == "" ? 0 : parseInt(ui.helpx.getText())
-    let helpy = ui.helpy.getText() == "" ? 0 : parseInt(ui.helpy.getText())
-    let lvupy = ui.lvupy.getText() == "" ? 0 : parseInt(ui.lvupy.getText())
-    let battley = ui.battley.getText() == "" ? 0 : parseInt(ui.battley.getText())
-    floatUI.adjust({
-        limitAP: ui.limitAP.getText(),
-        drug1: ui.drug1.isChecked(),
-        drug2: ui.drug2.isChecked(),
-        drug3: ui.drug3.isChecked(),
-        isStable: ui.stable.isChecked(),
-        drug1y: drug1y,
-        helpx: helpx,
-        helpy: helpy,
-        lvupy: lvupy,
-        battley:battley
-    })
-    storage.put("drug1y", drug1y)
-    storage.put("helpx", helpx)
-    storage.put("helpy", helpy)
-    storage.put("lvupy", lvupy)
-    storage.put("battley", battley)
+    for (let i = 0; i < parmasList.length; i++) {
+        let key = parmasList[i]
+        let value = ui[key].getText() + ""
+        // log(value)
+        if (value == "") {
+            parmasMap[key] = ""
+        }
+        else {
+            parmasMap[key] = value
+        }
+
+    }
+    // log(parmasMap)
+    // log(JSON.stringify(parmasMap))
+    storage.remove("data")
+    storage.put("data", JSON.stringify(parmasMap))
+    for (let i = 0; i < parmasNotInitList.length; i++) {
+        parmasMap[parmasNotInitList[i]] = ui[parmasNotInitList[i]].isChecked();
+    }
+    floatUI.adjust(parmasMap)
+    toastLog("修改完成")
 });
+
 http.__okhttp__.setTimeout(5000);
 //版本获取
 try {
     var res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
     if (res.statusCode != 200) {
         log("请求失败: " + res.statusCode + " " + res.statusMessage);
-        ui.versionMsg.setText("获取失败")
+        ui.run(function () {
+            ui.versionMsg.setText("获取失败")
+        })
     } else {
         let resJson = res.body.json();
         log(resJson.versionName);
@@ -220,10 +205,12 @@ try {
             });
         } else {
             ui.run(function () {
-                ui.versionMsg.setText("最新版本为" + resJson.versionName + ",需要更新")
+                ui.versionMsg.setText("最新版本为" + resJson.versionName )
             });
         }
     }
 } catch (e) {
-    ui.versionMsg.setText("获取失败")
+    ui.run(function () {
+        ui.versionMsg.setText("获取失败2")
+    })
 }
