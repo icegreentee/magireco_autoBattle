@@ -406,8 +406,7 @@ var limit = {
     drug2: false,
     drug3: false,
     isStable: false,
-    justNPC: false,
-    isRoot: false
+    justNPC: false
 }
 // var DrugLang = {
 //     ch: ["回复", "回复"],
@@ -615,7 +614,13 @@ function autoMainver2() {
         //开始
         //---------嗑药模块------------------
         log("开始检测ap")
-        let apCom = textMatches(/^\d+\/\d+$/).findOne()
+        let apComlikes = textMatches(/^\d+\/\d+$/).find()
+        let apCom = apComlikes[0]
+        for (let i = 1; i < apComlikes.length; i++) {
+            if (apCom.bounds().top > apComlikes[i].bounds().top) {
+                apCom = apComlikes[i]
+            }
+        }
         sleep(1000)
         let aps = apCom.text()
         log("ap:", aps)
