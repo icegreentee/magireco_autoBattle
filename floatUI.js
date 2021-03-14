@@ -725,9 +725,14 @@ function autoMainver2() {
         //开始
         //---------嗑药模块------------------
         log("开始检测ap")
+        id("ap").findOne()
+        sleep(1000)
         let apComlikes = textMatches(/^\d+\/\d+$/).find()
+        log(apComlikes)
         let apCom = apComlikes[0]
+        log(apCom.bounds())
         for (let i = 1; i < apComlikes.length; i++) {
+            log(apComlikes[i].bounds())
             if (apCom.bounds().top > apComlikes[i].bounds().top) {
                 apCom = apComlikes[i]
             }
