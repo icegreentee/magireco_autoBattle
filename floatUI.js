@@ -547,6 +547,9 @@ function autoMain() {
                 sleep(2000)
             }
             let apDrugNums = textMatches(/^\d+个$/).find()
+            if(limit.lang == "jp"){
+                apDrugNums = textMatches(/^\d+個$/).find()
+            }
             //获得回复药水数量
             let apDrug50Num = getDrugNum(apDrugNums[0].text())
             let apDrugFullNum = getDrugNum(apDrugNums[1].text())
@@ -757,6 +760,9 @@ function autoMainver2() {
                 sleep(2000)
             }
             let apDrugNums = textMatches(/^\d+个$/).find()
+            if(limit.lang == "jp"){
+                apDrugNums = textMatches(/^\d+個$/).find()
+            }
             //获得回复药水数量
             let apDrug50Num = getDrugNum(apDrugNums[0].text())
             let apDrugFullNum = getDrugNum(apDrugNums[1].text())
