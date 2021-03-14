@@ -392,34 +392,135 @@ floatUI.main = function () {
     });
 }
 // ------------主要逻辑--------------------
+var language = {
+    zh: ["回复确认", "回复", "开始", "关注", "关注追加"],
+    jp: ["回復確認", "回復する", "開始", "フォロー", "フォロー追加"],
+    tai: []
+}
+var nowlang = language.zh
 var limit = {
     limitAP: '20',
-    drug1y: '',
-    helpx: '',
-    helpy: '',
-    lvupy: '',
-    shuix: '',
-    shuiy: '',
-    startx: '',
-    starty: '',
+    shuix: '250',
+    shuiy: '200',
     drug1: false,
     drug2: false,
     drug3: false,
     isStable: false,
-    justNPC: false
+    justNPC: false,
+    lang: 'zh'
 }
-// var DrugLang = {
-//     ch: ["回复", "回复"],
-//     tai: ["回復", "進行回復"]
-// }
-// function compatClick(x, y) {
-//     if (limit.isRoot) {
-//         shell("input tap " + x + " " + y, true)
-//     }
-//     else {
-//         click(x, y);
-//     }
-// }
+var clickSets = {
+    ap: {
+        x: 1000,
+        y: 50,
+        pos: "top"
+    },
+    ap50: {
+        x: 400,
+        y: 900,
+        pos: "center"
+    },
+    apfull: {
+        x: 900,
+        y: 900,
+        pos: "center"
+    },
+    apjin: {
+        x: 1500,
+        y: 900,
+        pos: "center"
+    },
+    aphui: {
+        x: 1160,
+        y: 730,
+        pos: "center"
+    },
+    apclose: {
+        x: 1900,
+        y: 20,
+        pos: "center"
+    },
+    start: {
+        x: 1800,
+        y: 1000,
+        pos: "bottom"
+    },
+    levelup: {
+        x: 960,
+        y: 870,
+        pos: "center"
+    },
+    restart: {
+        x: 1800,
+        y: 1000,
+        pos: "bottom"
+    },
+    reconection: {
+        x: 700,
+        y: 750,
+        pos: "center"
+    },
+    yesfocus: {
+        x: 1220,
+        y: 860,
+        pos: "center"
+    },
+    focusclose: {
+        x: 950,
+        y: 820,
+        pos: "center"
+    },
+    skip: {
+        x: 1870,
+        y: 50,
+        pos: "top"
+    },
+    huodongok: {
+        x: 1600,
+        y: 800,
+        pos: "center"
+    }
+}
+var devicex = device.width;
+var devicey = device.height;
+
+//x>y
+if (devicex < devicey) {
+    let z = devicex;
+    devicex = devicey;
+    devicey = z;
+}
+//屏幕是否大于16比9
+var deviceflat = false;
+if (devicex / devicey >= 16 / 9) {
+    deviceflat = true;
+}
+var initx = 1920
+var inity = 1080
+function screenutilClick(d) {
+    if (deviceflat) {
+        let gamey = devicey
+        let gamex = devicey * 16 / 9
+        let rate = gamey / inity
+        click((devicex - gamex) / 2 + d.x * rate, d.y * rate)
+    }
+    else {
+        let gamey = devicey
+        let gamex = devicex
+        if (d.pos == "top") {
+            let rate = gamex / initx
+            click(d.x * rate, d.y * rate)
+        } else if (d.pos == "center") {
+            let rate = gamex / initx
+            let realy = gamex * 9 / 16
+
+            click(d.x * rate, (gamey - (realy)) / 2 + d.y * rate)
+        } else {
+            let rate = gamex / initx
+            click(d.x * rate, (gamey - (inity - d.y) * rate))
+        }
+    }
+}
 function autoMain() {
     while (true) {
         //开始
@@ -442,7 +543,7 @@ function autoMain() {
             //确定要嗑药后等3s，打开面板
             while (!id("popupInfoDetailTitle").findOnce()) {
                 sleep(1000)
-                click(apCom.bounds().centerX(), apCom.bounds().centerY())
+                screenutilClick(clickSets.ap)
                 sleep(2000)
             }
             let apDrugNums = textMatches(/^\d+个$/).find()
@@ -452,50 +553,62 @@ function autoMain() {
             let apMoneyNum = getDrugNum(apDrugNums[2].text())
             log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
             // 根据条件选择药水
-            let apHui = null
+
             if (apDrug50Num > 0 && limit.drug1) {
-                apHui = 0
-                log("ap回复药50")
+                while (!text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.ap50)
+                    sleep(2000)
+                }
+                text(nowlang[1]).findOne()
+                sleep(1500)
+                log("确认回复")
+                while (text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.aphui)
+                    sleep(2000)
+                }
             } else if (apDrugFullNum > 0 && limit.drug2) {
-                apHui = 1
-                log("ap回复药")
+                while (!text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.apfull)
+                    sleep(2000)
+                }
+                text(nowlang[1]).findOne()
+                sleep(1500)
+                log("确认回复")
+                while (text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.aphui)
+                    sleep(2000)
+                }
             }
             else if (apMoneyNum > 5 && limit.drug3) {
-                apHui = 2
-                log("魔法石")
+                while (!text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.apjin)
+                    sleep(2000)
+                }
+                text(nowlang[1]).findOne()
+                sleep(1500)
+                log("确认回复")
+                while (text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.aphui)
+                    sleep(2000)
+                }
             } else {
                 //关掉面板继续周回
                 log("none")
             }
 
-            //点击进行回复
-            if (apHui != null) {
-                let huiCom = text("回复").find()[apHui]
-                sleep(1500)
-                log("点击回复按钮")
-                if (limit.drug1y) {
-                    log("自定义回复点击")
-                    click(huiCom.bounds().centerX(), parseInt(limit.drug1y))
-                }
-                else {
-                    log("回复按钮y坐标", huiCom.bounds().centerY())
-                    click(huiCom.bounds().centerX(), huiCom.bounds().bottom - 5)
-                }
-                sleep(1000)
-                let finish = text("回复").findOne()
-                sleep(1500)
-                log("确认回复")
-                click(finish.bounds().centerX(), finish.bounds().centerY())
-            }
             //关掉ap面板
             log("关掉面板")
             while (id("popupInfoDetailTitle").findOnce()) {
-                let close = id("popupInfoDetailTitle").findOne().parent()
                 sleep(1000)
-                click(close.bounds().right - 5, close.bounds().top + 5)
+                screenutilClick(clickSets.apclose)
                 sleep(2000)
             }
-
         }
         //----------------------------------
         log("选择助战")
@@ -503,14 +616,10 @@ function autoMain() {
         // 15为npc助战  0~14为玩家助战
         //确定在选人阶段
         let friendWrap = id("friendWrap").findOne().bounds()
-        let layout = className("android.widget.FrameLayout").depth(4).findOne().bounds()
-
-        if (limit.helpx && limit.helpy) {
-            log(limit.helpx && limit.helpy)
+        if (limit.lang == "jp") {
             while (id("friendWrap").findOnce()) {
-                log("助战点击", limit.helpx, limit.helpy)
                 sleep(1000)
-                click(parseInt(limit.helpx), parseInt(limit.helpy))
+                click(friendWrap.centerX(), friendWrap.top + 100)
                 sleep(2000)
             }
         } else {
@@ -544,26 +653,16 @@ function autoMain() {
                 sleep(2000)
             }
         }
+
+
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
         //国台服不同
-        textMatches(/.始$/).findOne()
+        text(nowlang[2]).findOne()
         log("进入开始")
-        while (textMatches(/.始$/).findOnce()) {
+        while (text(nowlang[2]).findOnce()) {
             sleep(1000)
-            let begin = textMatches(/.始$/).findOnce()
-            if (!begin) {
-                break
-            }
-
-            if (limit.startx != "" && limit.starty != "") {
-                console.log(limit.startx, limit.starty)
-                click(parseInt(limit.startx), parseInt(limit.starty));
-            }
-            else {
-                console.log(begin.bounds().centerX(), begin.bounds().centerY())
-                click(begin.bounds().centerX(), begin.bounds().centerY());
-            }
+            screenutilClick(clickSets.start)
             sleep(3000)
         }
         log("进入战斗")
@@ -573,7 +672,7 @@ function autoMain() {
             while (!id("ResultWrap").findOnce()) {
                 sleep(3000)
                 // 循环点击的位置为短线重连确定点
-                click(layout.centerX() - 200, layout.bottom * 0.67)
+                screenutilClick(clickSets.reconection)
                 sleep(2000)
             }
         }
@@ -583,13 +682,23 @@ function autoMain() {
 
         while (!id("retryWrap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
+            if (text(nowlang[3]).findOnce()) {
+                while (text(nowlang[3]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.yesfocus)
+                    sleep(3000)
+                }
+                while (text(nowlang[4]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.focusclose)
+                    sleep(3000)
+                }
+            }
             if (id("rankUpWrap").findOnce()) {
-                if (limit.lvupy) {
-                    log("lvupclick")
-                    click(layout.centerX(), parseInt(limit.lvupy));
-                } else {
-                    let rankupwrap = id("rankUpWrap").findOnce().child(5).bounds()
-                    click(rankupwrap.centerX(), rankupwrap.centerY());
+                while (id("rankUpWrap").findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.levelup)
+                    sleep(3000)
                 }
             }
             if (id("ap").findOnce()) {
@@ -597,26 +706,33 @@ function autoMain() {
             }
             sleep(1000)
             // 循环点击的位置为短线重连确定点
-            click(layout.centerX() - 200, layout.bottom * 0.67)
+            screenutilClick(clickSets.reconection)
             // 点击完毕后 再战不会马上出来，需要等待
             sleep(2000)
         }
         //--------------再战--------------------------
-        let restart = id("retryWrap").findOne().bounds();
-        sleep(1000)
-        click(restart.centerX(), restart.centerY());
-        sleep(2500)
+        while (id("retryWrap").findOnce()) {
+            sleep(1000)
+            screenutilClick(clickSets.restart)
+            sleep(2500)
+        }
+
     }
 }
-// 贞德副本特殊周回
+
 function autoMainver2() {
     while (true) {
         //开始
         //---------嗑药模块------------------
         log("开始检测ap")
+        id("ap").findOne()
+        sleep(1000)
         let apComlikes = textMatches(/^\d+\/\d+$/).find()
+        log(apComlikes)
         let apCom = apComlikes[0]
+        log(apCom.bounds())
         for (let i = 1; i < apComlikes.length; i++) {
+            log(apComlikes[i].bounds())
             if (apCom.bounds().top > apComlikes[i].bounds().top) {
                 apCom = apComlikes[i]
             }
@@ -637,7 +753,7 @@ function autoMainver2() {
             //确定要嗑药后等3s，打开面板
             while (!id("popupInfoDetailTitle").findOnce()) {
                 sleep(1000)
-                click(apCom.bounds().centerX(), apCom.bounds().centerY())
+                screenutilClick(clickSets.ap)
                 sleep(2000)
             }
             let apDrugNums = textMatches(/^\d+个$/).find()
@@ -647,126 +763,120 @@ function autoMainver2() {
             let apMoneyNum = getDrugNum(apDrugNums[2].text())
             log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
             // 根据条件选择药水
-            let apHui = null
+
             if (apDrug50Num > 0 && limit.drug1) {
-                apHui = 0
-                log("ap回复药50")
+                while (!text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.ap50)
+                    sleep(2000)
+                }
+                text(nowlang[1]).findOne()
+                sleep(1500)
+                log("确认回复")
+                while (text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.aphui)
+                    sleep(2000)
+                }
             } else if (apDrugFullNum > 0 && limit.drug2) {
-                apHui = 1
-                log("ap回复药")
+                while (!text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.apfull)
+                    sleep(2000)
+                }
+                text(nowlang[1]).findOne()
+                sleep(1500)
+                log("确认回复")
+                while (text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.aphui)
+                    sleep(2000)
+                }
             }
             else if (apMoneyNum > 5 && limit.drug3) {
-                apHui = 2
-                log("魔法石")
+                while (!text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.apjin)
+                    sleep(2000)
+                }
+                text(nowlang[1]).findOne()
+                sleep(1500)
+                log("确认回复")
+                while (text(nowlang[0]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.aphui)
+                    sleep(2000)
+                }
             } else {
                 //关掉面板继续周回
                 log("none")
             }
 
-            //点击进行回复
-            if (apHui != null) {
-                let huiCom = text("回复").find()[apHui]
-                sleep(1500)
-                log("点击回复按钮")
-                if (limit.drug1y) {
-                    log("自定义回复点击")
-                    click(huiCom.bounds().centerX(), parseInt(limit.drug1y))
-                }
-                else {
-                    log("回复按钮y坐标", huiCom.bounds().centerY())
-                    click(huiCom.bounds().centerX(), huiCom.bounds().bottom - 5)
-                }
-                sleep(1000)
-                let finish = text("回复").findOne()
-                sleep(1500)
-                log("确认回复")
-                click(finish.bounds().centerX(), finish.bounds().centerY())
-            }
             //关掉ap面板
             log("关掉面板")
             while (id("popupInfoDetailTitle").findOnce()) {
-                let close = id("popupInfoDetailTitle").findOne().parent()
                 sleep(1000)
-                click(close.bounds().right - 5, close.bounds().top + 5)
+                screenutilClick(clickSets.apclose)
                 sleep(2000)
             }
-
         }
         //----------------------------------
         log(limit.shuix, limit.shuiy)
-        sleep(1500)
-        click(parseInt(limit.shuix), parseInt(limit.shuiy))
-        sleep(1500)
-        let shuiok = text("确定").findOne().bounds()
-        click(shuiok.centerX(), shuiok.centerY())
+        while (!text("确定").findOnce()) {
+            sleep(1500)
+            click(parseInt(limit.shuix), parseInt(limit.shuiy))
+            sleep(1500)
+        }
 
+        while (text("确定").findOnce()) {
+            sleep(1000)
+            screenutilClick(clickSets.huodongok)
+            sleep(1500)
+        }
 
         log("选择助战")
         // -----------选援助----------------
         // 15为npc助战  0~14为玩家助战
         //确定在选人阶段
         let friendWrap = id("friendWrap").findOne().bounds()
-        let layout = className("android.widget.FrameLayout").depth(4).findOne().bounds()
-
-        if (limit.helpx && limit.helpy) {
-            log(limit.helpx && limit.helpy)
-            while (id("friendWrap").findOnce()) {
-                log("助战点击", limit.helpx, limit.helpy)
-                sleep(1000)
-                click(parseInt(limit.helpx), parseInt(limit.helpy))
-                sleep(2000)
-            }
-        } else {
-            let ptCom = textMatches(/^\+\d+$/).find()
-            //可点击的助战列表
-            let ptComCanClick = []
-            for (let i = 0; i < ptCom.length; i++) {
-                //在可见范围内
-                if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
-                    if (ptComCanClick.length != 0) {
-                        //新加入的pt若比第一次加入的要小，舍去
-                        if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
-                            continue
-                        }
+        let ptCom = textMatches(/^\+\d+$/).find()
+        //可点击的助战列表
+        let ptComCanClick = []
+        for (let i = 0; i < ptCom.length; i++) {
+            //在可见范围内
+            if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
+                if (ptComCanClick.length != 0) {
+                    //新加入的pt若比第一次加入的要小，舍去
+                    if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
+                        continue
                     }
-                    ptComCanClick.push(ptCom[i])
-                    log(ptCom[i].bounds())
                 }
-            }
-            log("候选列表", ptComCanClick)
-            log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
-            // 是单纯选npc还是，优先助战
-            let finalPt = ptComCanClick[0]
-            if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
-                finalPt = ptComCanClick[ptComCanClick.length - 1]
-            }
-            log("选择", finalPt)
-            while (id("friendWrap").findOnce()) {
-                sleep(1000)
-                click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
-                sleep(2000)
+                ptComCanClick.push(ptCom[i])
+                log(ptCom[i].bounds())
             }
         }
+        log("候选列表", ptComCanClick)
+        log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
+        // 是单纯选npc还是，优先助战
+        let finalPt = ptComCanClick[0]
+        if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
+            finalPt = ptComCanClick[ptComCanClick.length - 1]
+        }
+        log("选择", finalPt)
+        while (id("friendWrap").findOnce()) {
+            sleep(1000)
+            click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+            sleep(2000)
+        }
+
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
         //国台服不同
-        textMatches(/.始$/).findOne()
+        text(nowlang[2]).findOne()
         log("进入开始")
-        while (textMatches(/.始$/).findOnce()) {
+        while (text(nowlang[2]).findOnce()) {
             sleep(1000)
-            let begin = textMatches(/.始$/).findOnce()
-            if (!begin) {
-                break
-            }
-
-            if (limit.startx != "" && limit.starty != "") {
-                console.log(limit.startx, limit.starty)
-                click(parseInt(limit.startx), parseInt(limit.starty));
-            }
-            else {
-                console.log(begin.bounds().centerX(), begin.bounds().centerY())
-                click(begin.bounds().centerX(), begin.bounds().centerY());
-            }
+            screenutilClick(clickSets.start)
             sleep(3000)
         }
         log("进入战斗")
@@ -776,7 +886,7 @@ function autoMainver2() {
             while (!id("ResultWrap").findOnce()) {
                 sleep(3000)
                 // 循环点击的位置为短线重连确定点
-                click(layout.centerX() - 200, layout.bottom * 0.67)
+                screenutilClick(clickSets.reconection)
                 sleep(2000)
             }
         }
@@ -784,15 +894,25 @@ function autoMainver2() {
         id("ResultWrap").findOne()
         sleep(3000)
 
-        while (!id("ap").findOnce()) {
+        while (id("ResultWrap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
+            if (text(nowlang[3]).findOnce()) {
+                while (text(nowlang[3]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.yesfocus)
+                    sleep(3000)
+                }
+                while (text(nowlang[4]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.focusclose)
+                    sleep(3000)
+                }
+            }
             if (id("rankUpWrap").findOnce()) {
-                if (limit.lvupy) {
-                    log("lvupclick")
-                    click(layout.centerX(), parseInt(limit.lvupy));
-                } else {
-                    let rankupwrap = id("rankUpWrap").findOnce().child(5).bounds()
-                    click(rankupwrap.centerX(), rankupwrap.centerY());
+                while (id("rankUpWrap").findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.levelup)
+                    sleep(3000)
                 }
             }
             if (id("ap").findOnce()) {
@@ -800,21 +920,20 @@ function autoMainver2() {
             }
             sleep(1000)
             // 循环点击的位置为短线重连确定点
-            // click(layout.centerX() - 200, layout.bottom * 0.67)
-            click(layout.right-50,50)
+            screenutilClick(clickSets.reconection)
             // 点击完毕后 再战不会马上出来，需要等待
             sleep(2000)
         }
-        //--------------再战--------------------------
-        // let restart = id("retryWrap").findOne().bounds();
-        // sleep(1000)
-        // click(restart.centerX(), restart.centerY());
-        // sleep(2500)
+        //--------------skip--------------------------
+        sleep(1000)
+        if (!id("ap").findOnce()) {
+            sleep(1000)
+            screenutilClick(clickSets.skip)
+        }
+
     }
 }
-// function isFocus(friend) {
-//     return friend.child(5).childCount() == 3
-// }
+
 function getPt(com) {
     let txt = com.text()
     return parseInt(txt.slice(1))
@@ -826,6 +945,7 @@ function getDrugNum(text) {
 floatUI.adjust = function (config) {
     limit = config
     log("参数：", limit)
+    nowlang = language[limit.lang]
 }
 
 module.exports = floatUI;
