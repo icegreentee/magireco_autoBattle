@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "1.6.0"
+var version = "2.1.0"
 var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
@@ -49,37 +49,24 @@ ui.layout(
                         <input maxLength="4" id="shuix" text="" inputType="number|none" />
                         <input maxLength="4" id="shuiy" text="" inputType="number|none" />
                     </linear>
-                    <linear>
-                        <text text="以下参数根据个人情况进行设置(识别的点击位置不对时,可以自行设置,没有卡住等情况可以不设置)" textColor="#000000" />
-                    </linear>
-
-                    <View h="5" />
-                    <linear>
-                        <text text="ap回复界面，回复按钮 y坐标自定义：" />
-                        <input maxLength="4" id="drug1y" text="" inputType="number|none" />
-                    </linear>
-                    <View h="5" />
-                    <linear>
-                        <text text="助战选择的位置 x，y坐标自定义：" />
-                        <input maxLength="4" id="helpx" text="1300" inputType="number|none" />
-                        <input maxLength="4" id="helpy" text="400" inputType="number|none" />
-                    </linear>
-                    <View h="5" />
-                    <linear>
-                        <text text="升级确认按钮位置 y坐标自定义：" />
-                        <input maxLength="4" id="lvupy" text="910" inputType="number|none" />
-                    </linear>
-                    <View h="5" />
-                    <linear>
-                        <text text="开始按钮 x，y坐标：" />
-                        <input maxLength="4" id="startx" text="910" inputType="number|none" />
-                        <input maxLength="4" id="starty" text="910" inputType="number|none" />
-                    </linear>
                 </vertical>
 
                 <linear>
                     <text layout_weight="1" size="19" color="#222222" text="日志" />
                     <button id="tolog" h="40" text="全部日志" style="Widget.AppCompat.Button.Borderless.Colored" />
+                </linear>
+                <linear padding="5 5 0 5" bg="#ffffff" margin="0 0 0 5" >
+
+
+                    <linear padding="0 0 0 0" bg="#ffffff">
+                        <radiogroup id="cb">
+                            <text layout_weight="1" size="19" color="#222222" text="区服：" />
+                            <radio id="cb1" text="国服" checked="true" />
+                            <radio id="cb2" text="日服" />
+                            {/* <radio id="cb3" text="台服" /> */}
+                        </radiogroup>
+                    </linear>
+
                 </linear>
                 <linear padding="10 6 0 6" bg="#ffffff">
                     <text id="versionMsg" layout_weight="1" color="#666666" text="尝试获取最新版本信息" />
@@ -123,11 +110,13 @@ ui.emitter.on("resume", () => {
 var floatUI = require('floatUI.js');
 floatUI.main()
 
-var storage = storages.create("sssssas");
+var storage = storages.create("sssssas2");
 var data = storage.get("data");
-const parmasList = ["limitAP", "drug1y", "helpx", "helpy", "lvupy", "shuix", "shuiy", "startx", "starty"]
+const parmasList = ["limitAP", "shuix", "shuiy"]
 const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC"]
 var parmasMap = {}
+
+
 
 //若没有存储信息进行存储初始化
 if (data == undefined) {
@@ -159,7 +148,7 @@ for (let i = 0; i < parmasList.length; i++) {
 for (let i = 0; i < parmasNotInitList.length; i++) {
     parmasMap[parmasNotInitList[i]] = false;
 }
-
+parmasMap["lang"] = "zh"
 //同步值
 floatUI.adjust(parmasMap)
 
@@ -183,6 +172,14 @@ ui.start.click(() => {
     for (let i = 0; i < parmasNotInitList.length; i++) {
         parmasMap[parmasNotInitList[i]] = ui[parmasNotInitList[i]].isChecked();
     }
+    if (ui.cb1.checked) {
+        parmasMap["lang"] = "zh"
+    } else if (ui.cb2.checked) {
+        parmasMap["lang"] = "jp"
+    } 
+    // else if (ui.cb3.checked) {
+    //     parmasMap["lang"] = "tai"
+    // }
     floatUI.adjust(parmasMap)
     toastLog("修改完成")
 });
@@ -205,7 +202,7 @@ try {
             });
         } else {
             ui.run(function () {
-                ui.versionMsg.setText("最新版本为" + resJson.versionName )
+                ui.versionMsg.setText("最新版本为" + resJson.versionName)
             });
         }
     }
