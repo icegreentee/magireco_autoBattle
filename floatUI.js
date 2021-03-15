@@ -932,10 +932,9 @@ function autoMainver2() {
             sleep(2000)
         }
         //--------------skip--------------------------
-        sleep(1000)
-        if (!id("ap").findOnce()) {
-            sleep(1000)
+        while (!id("ap").findOnce()) {
             screenutilClick(clickSets.skip)
+            sleep(3000)
         }
 
     }
