@@ -63,7 +63,7 @@ ui.layout(
                             <text layout_weight="1" size="19" color="#222222" text="区服：" />
                             <radio id="cb1" text="国服" checked="true" />
                             <radio id="cb2" text="日服" />
-                            {/* <radio id="cb3" text="台服" /> */}
+                            <radio id="cb3" text="台服" />
                         </radiogroup>
                     </linear>
 
@@ -177,9 +177,9 @@ ui.start.click(() => {
     } else if (ui.cb2.checked) {
         parmasMap["lang"] = "jp"
     } 
-    // else if (ui.cb3.checked) {
-    //     parmasMap["lang"] = "tai"
-    // }
+    else if (ui.cb3.checked) {
+        parmasMap["lang"] = "tai"
+    }
     floatUI.adjust(parmasMap)
     toastLog("修改完成")
 });
