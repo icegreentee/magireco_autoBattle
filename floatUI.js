@@ -395,7 +395,7 @@ floatUI.main = function () {
 var language = {
     zh: ["回复确认", "回复", "开始", "关注", "关注追加"],
     jp: ["回復確認", "回復する", "開始", "フォロー", "フォロー追加"],
-    tai: []
+    tai: ["回復確認", "進行回復", "開始", "關注", "追加關注"]
 }
 var nowlang = language.zh
 var limit = {
@@ -546,9 +546,10 @@ function autoMain() {
                 screenutilClick(clickSets.ap)
                 sleep(2000)
             }
-            let apDrugNums = textMatches(/^\d+个$/).find()
-            if(limit.lang == "jp"){
-                apDrugNums = textMatches(/^\d+個$/).find()
+            let apDrugNums = textMatches(/^\d+個$/).find()
+
+            if (limit.lang == "zh") {
+                apDrugNums = textMatches(/^\d+个$/).find()
             }
             //获得回复药水数量
             let apDrug50Num = getDrugNum(apDrugNums[0].text())
@@ -619,7 +620,7 @@ function autoMain() {
         // 15为npc助战  0~14为玩家助战
         //确定在选人阶段
         let friendWrap = id("friendWrap").findOne().bounds()
-        if (limit.lang == "jp") {
+        if (limit.lang != "zh") {
             while (id("friendWrap").findOnce()) {
                 sleep(1000)
                 click(friendWrap.centerX(), friendWrap.top + 100)
@@ -759,9 +760,9 @@ function autoMainver2() {
                 screenutilClick(clickSets.ap)
                 sleep(2000)
             }
-            let apDrugNums = textMatches(/^\d+个$/).find()
-            if(limit.lang == "jp"){
-                apDrugNums = textMatches(/^\d+個$/).find()
+            let apDrugNums = textMatches(/^\d+個$/).find()
+            if (limit.lang == "zh") {
+                apDrugNums = textMatches(/^\d+个$/).find()
             }
             //获得回复药水数量
             let apDrug50Num = getDrugNum(apDrugNums[0].text())
