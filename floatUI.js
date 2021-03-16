@@ -432,14 +432,17 @@ var language = {
 var nowlang = language.zh
 var limit = {
     limitAP: '20',
-    shuix: '250',
-    shuiy: '200',
+    shuix: '',
+    shuiy: '',
+    helpx: '',
+    helpy: '',
     drug1: false,
     drug2: false,
     drug3: false,
     isStable: false,
     justNPC: false,
-    lang: 'zh'
+    lang: 'zh',
+    version: '2.1.0'
 }
 var clickSets = {
     ap: {
@@ -652,7 +655,15 @@ function autoMain() {
         // 15为npc助战  0~14为玩家助战
         //确定在选人阶段
         let friendWrap = id("friendWrap").findOne().bounds()
-        if (limit.lang != "zh") {
+
+        if (limit.helpx != "" && limit.helpy != "") {
+            while (id("friendWrap").findOnce()) {
+                sleep(1000)
+                click(parseInt(limit.helpx), parseInt(limit.helpy))
+                sleep(2000)
+            }
+        }
+        else if (limit.lang != "zh") {
             while (id("friendWrap").findOnce()) {
                 sleep(1000)
                 click(friendWrap.centerX(), friendWrap.top + 100)
