@@ -54,6 +54,9 @@ ui.layout(
                         <input maxLength="4" id="shuix" text="" inputType="number|none" />
                         <input maxLength="4" id="shuiy" text="" inputType="number|none" />
                     </linear>
+                    <linear>
+                        <checkbox id="isSkip" text="是否会进行跳过剧情" layout_weight="1" />
+                    </linear>
                 </vertical>
 
                 <linear>
@@ -119,7 +122,7 @@ floatUI.main()
 var storage = storages.create("soha");
 var data = storage.get("data");
 const parmasList = ["limitAP", "shuix", "shuiy", "helpx", "helpy"]
-const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC"]
+const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC","isSkip"]
 var parmasMap = {}
 
 

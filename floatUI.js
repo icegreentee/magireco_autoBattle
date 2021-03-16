@@ -50,7 +50,7 @@ floatUI.main = function () {
         <frame id="id_logo" w="150" h="210" alpha="0"  >
                 <frame id="id_0" w="44" h="44" margin="33 0 0 0" alpha="1">
                     <img w="44" h="44" src="#009687" circle="true" />
-                    <img w="28" h="28" src="@drawable/ic_perm_identity_black_48dp" tint="#ffffff" gravity="center" layout_gravity="center" />
+                    <img w="28" h="28" src="@drawable/ic_play_arrow_black_48dp" tint="#ffffff" gravity="center" layout_gravity="center" />
                     <img id="id_0_click" w="*" h="*" src="#ffffff" circle="true" alpha="0" />
                 </frame>
                 <frame id="id_1" w="44" h="44" margin="86 28 0 0" alpha="1">
@@ -176,7 +176,11 @@ floatUI.main = function () {
         动画()
     }
     win.id_0_click.on("click", () => {
-        toastLog("暂时无功能定义")
+        toastLog("境界启动")
+        if (task) {
+            task.interrupt()
+        }
+        task = threads.start(jingMain)
         img_down()
     })
 
@@ -441,6 +445,7 @@ var limit = {
     drug3: false,
     isStable: false,
     justNPC: false,
+    isSkip: false,
     lang: 'zh',
     version: '2.1.0'
 }
@@ -975,13 +980,18 @@ function autoMainver2() {
             sleep(2000)
         }
         //--------------skip--------------------------
-        while (!id("ap").findOnce()) {
-            screenutilClick(clickSets.skip)
-            sleep(3000)
+        if (limit.isSkip) {
+            while (!id("ap").findOnce()) {
+                screenutilClick(clickSets.skip)
+                sleep(4000)
+            }
         }
-
     }
 }
+function jingMain(){
+    
+}
+
 
 function getPt(com) {
     let txt = com.text()
