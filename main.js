@@ -208,6 +208,6 @@ try {
     }
 } catch (e) {
     ui.run(function () {
-        ui.versionMsg.setText("获取失败2")
+        ui.versionMsg.setText("请求超时")
     })
 }
