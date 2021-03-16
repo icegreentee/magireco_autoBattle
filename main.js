@@ -70,9 +70,10 @@ ui.layout(
                 </linear>
                 <linear padding="10 6 0 6" bg="#ffffff">
                     <text id="versionMsg" layout_weight="1" color="#666666" text="尝试获取最新版本信息" />
+                    <text id="versionMsg2" layout_weight="1" color="#ff0000" text="" />
                 </linear>
                 <linear padding="10 6 0 6" bg="#ffffff">
-                    <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，不可进行出售盈利。作者bilibili 虹之宝玉" />
+                    <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，不可进行出售盈利。作者bilibili 虹之宝玉  群号：453053507" />
                 </linear>
                 <list bg="#ffffff" elevation="1dp" h="*" id="logList">
                 </list>
@@ -149,6 +150,7 @@ for (let i = 0; i < parmasNotInitList.length; i++) {
     parmasMap[parmasNotInitList[i]] = false;
 }
 parmasMap["lang"] = "zh"
+parmasMap["version"] = version
 //同步值
 floatUI.adjust(parmasMap)
 
@@ -176,10 +178,11 @@ ui.start.click(() => {
         parmasMap["lang"] = "zh"
     } else if (ui.cb2.checked) {
         parmasMap["lang"] = "jp"
-    } 
+    }
     else if (ui.cb3.checked) {
         parmasMap["lang"] = "tai"
     }
+    parmasMap["version"] = version
     floatUI.adjust(parmasMap)
     toastLog("修改完成")
 });
@@ -195,14 +198,14 @@ try {
         })
     } else {
         let resJson = res.body.json();
-        log(resJson.versionName);
-        if (resJson.versionName.slice(0, resJson.versionName.length - 2) == version.slice(0, version.length - 2)) {
+        if (parseInt(resJson.versionName.split(".").join("")) == parseInt(version.split(".").join(""))) {
             ui.run(function () {
                 ui.versionMsg.setText("当前为最新版本")
             });
         } else {
             ui.run(function () {
-                ui.versionMsg.setText("最新版本为" + resJson.versionName)
+                ui.versionMsg.setText("")
+                ui.versionMsg2.setText("最新版本为" + resJson.versionName + ",点击悬浮窗第五个按钮进行在线更新")
             });
         }
     }

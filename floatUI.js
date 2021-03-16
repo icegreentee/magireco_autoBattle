@@ -208,22 +208,34 @@ floatUI.main = function () {
 
     win.id_4_click.on("click", () => {
         try {
-            var main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/main.js");
-            var float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/floatUI.js");
-            if (main_script.statusCode == 200 && float_script.statusCode == 200) {
-                toastLog("更新加载中");
-                var mainjs = main_script.body.string();
-                var floatjs = float_script.body.string();
-                files.write(engines.myEngine().cwd() + "/main.js", mainjs)
-                files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
-                engines.stopAll()
-                events.on("exit", function () {
-                    engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
-                    toast("更新完毕")
-                })
+            var res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
+            if (res.statusCode != 200) {
+                toastLog("请求超时")
             } else {
-                toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessag);
+                let resJson = res.body.json();
+                if (parseInt(resJson.versionName.split(".").join("")) == parseInt(limit.version.split(".").join(""))) {
+                    toastLog("为最新版本，无需更新")
+                } else {
+                    var main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/main.js");
+                    var float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/floatUI.js");
+                    if (main_script.statusCode == 200 && float_script.statusCode == 200) {
+                        toastLog("更新加载中");
+                        var mainjs = main_script.body.string();
+                        var floatjs = float_script.body.string();
+                        files.write(engines.myEngine().cwd() + "/main.js", mainjs)
+                        files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
+                        engines.stopAll()
+                        events.on("exit", function () {
+                            engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
+                            toast("更新完毕")
+                        })
+                    } else {
+                        toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessag);
+                    }
+                }
             }
+            // -------
+
         } catch (error) {
             toastLog("请求超时，可再一次尝试")
         }
