@@ -28,14 +28,17 @@ ui.layout(
                     <View h="5" />
                     <linear>
                         <checkbox id="drug1" text="ap恢复药50" layout_weight="1" />
+                        <input maxLength="3" id="drug1num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
                         <checkbox id="drug2" text="ap恢复药全" layout_weight="1" />
+                        <input maxLength="3" id="drug2num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                     <View h="5" />
                     <linear>
                         <checkbox id="drug3" text="魔法石" layout_weight="1" />
+                        <input maxLength="3" id="drug3num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
                     </linear>
                 </vertical>
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
@@ -127,7 +130,7 @@ floatUI.main()
 var storage = storages.create("soha");
 var data = storage.get("data");
 const parmasList = ["limitAP", "shuix", "shuiy", "helpx", "helpy"]
-const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC","isSkip","jjcisuse"]
+const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "isSkip", "jjcisuse"]
 var parmasMap = {}
 
 
@@ -164,6 +167,11 @@ for (let i = 0; i < parmasNotInitList.length; i++) {
 }
 parmasMap["lang"] = "zh"
 parmasMap["version"] = version
+
+parmasMap["drug1num"] = ""
+parmasMap["drug2num"] = ""
+parmasMap["drug3num"] = ""
+
 //同步值
 floatUI.adjust(parmasMap)
 
@@ -196,6 +204,9 @@ ui.start.click(() => {
         parmasMap["lang"] = "tai"
     }
     parmasMap["version"] = version
+    parmasMap["drug1num"] = ui["drug1num"].getText()+""
+    parmasMap["drug2num"] = ui["drug2num"].getText()+""
+    parmasMap["drug3num"] = ui["drug3num"].getText()+""
     floatUI.adjust(parmasMap)
     toastLog("修改完成")
 });

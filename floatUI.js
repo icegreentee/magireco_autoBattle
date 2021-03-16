@@ -446,8 +446,12 @@ var limit = {
     isStable: false,
     justNPC: false,
     isSkip: false,
+    jjcisuse: false,
     lang: 'zh',
-    version: '2.1.0'
+    version: '2.2.0',
+    drug1num: '',
+    drug2num: '',
+    drug3num: ''
 }
 var clickSets = {
     ap: {
@@ -597,6 +601,11 @@ function screenutilClick(d) {
     }
 }
 function autoMain() {
+    var druglimit = {
+        drug1limit: limit.drug1num,
+        drug2limit: limit.drug2num,
+        drug3limit: limit.drug3num
+    }
     while (true) {
         //开始
         //---------嗑药模块------------------
@@ -633,7 +642,10 @@ function autoMain() {
             log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
             // 根据条件选择药水
 
-            if (apDrug50Num > 0 && limit.drug1) {
+            if (apDrug50Num > 0 && limit.drug1 && druglimit.drug1limit != "0") {
+                if (druglimit.drug1limit) {
+                    druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
+                }
                 while (!text(nowlang[0]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.ap50)
@@ -647,7 +659,10 @@ function autoMain() {
                     screenutilClick(clickSets.aphui)
                     sleep(2000)
                 }
-            } else if (apDrugFullNum > 0 && limit.drug2) {
+            } else if (apDrugFullNum > 0 && limit.drug2 && druglimit.drug2limit != "0") {
+                if (druglimit.drug2limit) {
+                    druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
+                }
                 while (!text(nowlang[0]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.apfull)
@@ -662,7 +677,10 @@ function autoMain() {
                     sleep(2000)
                 }
             }
-            else if (apMoneyNum > 5 && limit.drug3) {
+            else if (apMoneyNum > 5 && limit.drug3 && druglimit.drug3limit != "0") {
+                if (druglimit.drug3limit) {
+                    druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
+                }
                 while (!text(nowlang[0]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.apjin)
@@ -854,7 +872,10 @@ function autoMainver2() {
             log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
             // 根据条件选择药水
 
-            if (apDrug50Num > 0 && limit.drug1) {
+            if (apDrug50Num > 0 && limit.drug1 && druglimit.drug1limit != "0") {
+                if (druglimit.drug1limit) {
+                    druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
+                }
                 while (!text(nowlang[0]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.ap50)
@@ -868,7 +889,10 @@ function autoMainver2() {
                     screenutilClick(clickSets.aphui)
                     sleep(2000)
                 }
-            } else if (apDrugFullNum > 0 && limit.drug2) {
+            } else if (apDrugFullNum > 0 && limit.drug2 && druglimit.drug2limit != "0") {
+                if (druglimit.drug2limit) {
+                    druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
+                }
                 while (!text(nowlang[0]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.apfull)
@@ -883,7 +907,10 @@ function autoMainver2() {
                     sleep(2000)
                 }
             }
-            else if (apMoneyNum > 5 && limit.drug3) {
+            else if (apMoneyNum > 5 && limit.drug3 && druglimit.drug3limit != "0") {
+                if (druglimit.drug3limit) {
+                    druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
+                }
                 while (!text(nowlang[0]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.apjin)
