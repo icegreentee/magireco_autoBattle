@@ -519,7 +519,42 @@ var clickSets = {
         x: 1600,
         y: 800,
         pos: "center"
-    }
+    },
+    bphui: {
+        x: 1180,
+        y: 830,
+        pos: "center"
+    },
+    bphui2: {
+        x: 960,
+        y: 880,
+        pos: "center"
+    },
+    bphuiok: {
+        x: 960,
+        y: 900,
+        pos: "center"
+    },
+    bpclose: {
+        x: 750,
+        y: 830,
+        pos: "center"
+    },
+    battlePan1: {
+        x: 400,
+        y: 950,
+        pos: "bottom"
+    },
+    battlePan2: {
+        x: 700,
+        y: 950,
+        pos: "bottom"
+    },
+    battlePan3: {
+        x: 1000,
+        y: 950,
+        pos: "bottom"
+    },
 }
 var devicex = device.width;
 var devicey = device.height;
@@ -988,8 +1023,62 @@ function autoMainver2() {
         }
     }
 }
-function jingMain(){
-    
+function jingMain() {
+    while (true) {
+        let matchWrap = id("matchingWrap").findOne().bounds()
+        while (!id("battleStartBtn").findOnce()) {
+            sleep(1000)
+            click(matchWrap.centerX(), matchWrap.bottom - 50)
+            sleep(2000)
+        }
+        let btn = id("battleStartBtn").findOne().bounds()
+        while (id("battleStartBtn").findOnce()) {
+            sleep(1000)
+            click(btn.centerX(), btn.centerY())
+            sleep(1000)
+            if (id("popupInfoDetailTitle").findOnce()) {
+                if (limit.jjcisuse) {
+                    while (!id("BpCureWrap").findOnce()) {
+                        screenutilClick(clickSets.bphui)
+                        sleep(1500)
+                    }
+                    while (id("BpCureWrap").findOnce()) {
+                        screenutilClick(clickSets.bphui2)
+                        sleep(1500)
+                    }
+                    while (id("popupInfoDetailTitle").findOnce()) {
+                        screenutilClick(clickSets.bphuiok)
+                        sleep(1500)
+                    }
+                } else {
+                    screenutilClick(clickSets.bpclose)
+                    log("jjc结束")
+                    return;
+                }
+            }
+            sleep(1000)
+        }
+        log("进入战斗")
+        while (!id("matchingWrap").findOnce()) {
+            if (!id("ArenaResult").findOnce()) {
+                screenutilClick(clickSets.battlePan1)
+                sleep(1000)
+            }
+            if (!id("ArenaResult").findOnce()) {
+                screenutilClick(clickSets.battlePan2)
+                sleep(1000)
+            }
+            if (!id("ArenaResult").findOnce()) {
+                screenutilClick(clickSets.battlePan3)
+                sleep(1000)
+            }
+            if (id("ArenaResult").findOnce()) {
+                screenutilClick(clickSets.levelup)
+            }
+            sleep(3000)
+
+        }
+    }
 }
 
 

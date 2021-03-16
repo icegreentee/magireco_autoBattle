@@ -58,6 +58,11 @@ ui.layout(
                         <checkbox id="isSkip" text="是否会进行跳过剧情" layout_weight="1" />
                     </linear>
                 </vertical>
+                <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
+                    <linear>
+                        <checkbox id="jjcisuse" text="境界是否嗑药" layout_weight="1" />
+                    </linear>
+                </vertical>
 
                 <linear>
                     <text layout_weight="1" size="19" color="#222222" text="日志" />
@@ -81,7 +86,7 @@ ui.layout(
                     <text id="versionMsg2" layout_weight="1" color="#ff0000" text="" />
                 </linear>
                 <linear padding="10 6 0 6" bg="#ffffff">
-                    <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，不可进行出售盈利。作者bilibili 虹之宝玉  群号：453053507" />
+                    <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，且永久免费，不可进行出售盈利。作者bilibili 虹之宝玉  群号：453053507" />
                 </linear>
                 <list bg="#ffffff" elevation="1dp" h="*" id="logList">
                 </list>
@@ -122,7 +127,7 @@ floatUI.main()
 var storage = storages.create("soha");
 var data = storage.get("data");
 const parmasList = ["limitAP", "shuix", "shuiy", "helpx", "helpy"]
-const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC","isSkip"]
+const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC","isSkip","jjcisuse"]
 var parmasMap = {}
 
 
