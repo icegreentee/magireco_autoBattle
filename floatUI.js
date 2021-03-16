@@ -826,6 +826,11 @@ function autoMain() {
 }
 
 function autoMainver2() {
+    var druglimit = {
+        drug1limit: limit.drug1num,
+        drug2limit: limit.drug2num,
+        drug3limit: limit.drug3num
+    }
     while (true) {
         //开始
         //---------嗑药模块------------------
