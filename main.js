@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "2.1.0"
+var version = "2.2.0"
 var appName = Name + " v" + version;
 
 ui.statusBarColor("#FF4FB3FF")
@@ -41,6 +41,11 @@ ui.layout(
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
                     <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
                     <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用npc（不设置此项，默认优先 互关好友-npc）" />
+                    <linear>
+                        <text text="助战x，y坐标自定义：" />
+                        <input maxLength="4" id="helpx" text="" inputType="number|none" />
+                        <input maxLength="4" id="helpy" text="" inputType="number|none" />
+                    </linear>
                     {/* <Switch id="isRoot" w="*" checked="false" textColor="#666666" text="android7以下适配(需要root)" /> */}
                 </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
@@ -48,6 +53,9 @@ ui.layout(
                         <text text="踩水活动 x，y坐标自定义：" />
                         <input maxLength="4" id="shuix" text="" inputType="number|none" />
                         <input maxLength="4" id="shuiy" text="" inputType="number|none" />
+                    </linear>
+                    <linear>
+                        <checkbox id="isSkip" text="是否会进行跳过剧情" layout_weight="1" />
                     </linear>
                 </vertical>
 
@@ -70,9 +78,10 @@ ui.layout(
                 </linear>
                 <linear padding="10 6 0 6" bg="#ffffff">
                     <text id="versionMsg" layout_weight="1" color="#666666" text="尝试获取最新版本信息" />
+                    <text id="versionMsg2" layout_weight="1" color="#ff0000" text="" />
                 </linear>
                 <linear padding="10 6 0 6" bg="#ffffff">
-                    <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，不可进行出售盈利。作者bilibili 虹之宝玉" />
+                    <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，不可进行出售盈利。作者bilibili 虹之宝玉  群号：453053507" />
                 </linear>
                 <list bg="#ffffff" elevation="1dp" h="*" id="logList">
                 </list>
@@ -110,10 +119,10 @@ ui.emitter.on("resume", () => {
 var floatUI = require('floatUI.js');
 floatUI.main()
 
-var storage = storages.create("sssssas2");
+var storage = storages.create("soha");
 var data = storage.get("data");
-const parmasList = ["limitAP", "shuix", "shuiy"]
-const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC"]
+const parmasList = ["limitAP", "shuix", "shuiy", "helpx", "helpy"]
+const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC","isSkip"]
 var parmasMap = {}
 
 
@@ -149,6 +158,7 @@ for (let i = 0; i < parmasNotInitList.length; i++) {
     parmasMap[parmasNotInitList[i]] = false;
 }
 parmasMap["lang"] = "zh"
+parmasMap["version"] = version
 //同步值
 floatUI.adjust(parmasMap)
 
@@ -176,10 +186,11 @@ ui.start.click(() => {
         parmasMap["lang"] = "zh"
     } else if (ui.cb2.checked) {
         parmasMap["lang"] = "jp"
-    } 
+    }
     else if (ui.cb3.checked) {
         parmasMap["lang"] = "tai"
     }
+    parmasMap["version"] = version
     floatUI.adjust(parmasMap)
     toastLog("修改完成")
 });
@@ -195,19 +206,19 @@ try {
         })
     } else {
         let resJson = res.body.json();
-        log(resJson.versionName);
-        if (resJson.versionName.slice(0, resJson.versionName.length - 2) == version.slice(0, version.length - 2)) {
+        if (parseInt(resJson.versionName.split(".").join("")) == parseInt(version.split(".").join(""))) {
             ui.run(function () {
                 ui.versionMsg.setText("当前为最新版本")
             });
         } else {
             ui.run(function () {
-                ui.versionMsg.setText("最新版本为" + resJson.versionName)
+                ui.versionMsg.setText("")
+                ui.versionMsg2.setText("最新版本为" + resJson.versionName + ",点击悬浮窗第五个按钮进行在线更新")
             });
         }
     }
 } catch (e) {
     ui.run(function () {
-        ui.versionMsg.setText("获取失败2")
+        ui.versionMsg.setText("请求超时")
     })
 }

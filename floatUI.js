@@ -50,7 +50,7 @@ floatUI.main = function () {
         <frame id="id_logo" w="150" h="210" alpha="0"  >
                 <frame id="id_0" w="44" h="44" margin="33 0 0 0" alpha="1">
                     <img w="44" h="44" src="#009687" circle="true" />
-                    <img w="28" h="28" src="@drawable/ic_perm_identity_black_48dp" tint="#ffffff" gravity="center" layout_gravity="center" />
+                    <img w="28" h="28" src="@drawable/ic_play_arrow_black_48dp" tint="#ffffff" gravity="center" layout_gravity="center" />
                     <img id="id_0_click" w="*" h="*" src="#ffffff" circle="true" alpha="0" />
                 </frame>
                 <frame id="id_1" w="44" h="44" margin="86 28 0 0" alpha="1">
@@ -176,7 +176,11 @@ floatUI.main = function () {
         动画()
     }
     win.id_0_click.on("click", () => {
-        toastLog("暂时无功能定义")
+        toastLog("境界启动")
+        if (task) {
+            task.interrupt()
+        }
+        task = threads.start(jingMain)
         img_down()
     })
 
@@ -207,7 +211,39 @@ floatUI.main = function () {
     })
 
     win.id_4_click.on("click", () => {
-        toastLog("暂时无功能定义")
+        try {
+            var res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
+            if (res.statusCode != 200) {
+                toastLog("请求超时")
+            } else {
+                let resJson = res.body.json();
+                if (parseInt(resJson.versionName.split(".").join("")) == parseInt(limit.version.split(".").join(""))) {
+                    toastLog("为最新版本，无需更新")
+                } else {
+                    var main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/main.js");
+                    var float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/floatUI.js");
+                    if (main_script.statusCode == 200 && float_script.statusCode == 200) {
+                        toastLog("更新加载中");
+                        var mainjs = main_script.body.string();
+                        var floatjs = float_script.body.string();
+                        files.write(engines.myEngine().cwd() + "/main.js", mainjs)
+                        files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
+                        engines.stopAll()
+                        events.on("exit", function () {
+                            engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
+                            toast("更新完毕")
+                        })
+                    } else {
+                        toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessag);
+                    }
+                }
+            }
+            // -------
+
+        } catch (error) {
+            toastLog("请求超时，可再一次尝试")
+        }
+
         img_down();
     })
 
@@ -400,14 +436,18 @@ var language = {
 var nowlang = language.zh
 var limit = {
     limitAP: '20',
-    shuix: '250',
-    shuiy: '200',
+    shuix: '',
+    shuiy: '',
+    helpx: '',
+    helpy: '',
     drug1: false,
     drug2: false,
     drug3: false,
     isStable: false,
     justNPC: false,
-    lang: 'zh'
+    isSkip: false,
+    lang: 'zh',
+    version: '2.1.0'
 }
 var clickSets = {
     ap: {
@@ -620,7 +660,15 @@ function autoMain() {
         // 15为npc助战  0~14为玩家助战
         //确定在选人阶段
         let friendWrap = id("friendWrap").findOne().bounds()
-        if (limit.lang != "zh") {
+
+        if (limit.helpx != "" && limit.helpy != "") {
+            while (id("friendWrap").findOnce()) {
+                sleep(1000)
+                click(parseInt(limit.helpx), parseInt(limit.helpy))
+                sleep(2000)
+            }
+        }
+        else if (limit.lang != "zh") {
             while (id("friendWrap").findOnce()) {
                 sleep(1000)
                 click(friendWrap.centerX(), friendWrap.top + 100)
@@ -932,13 +980,18 @@ function autoMainver2() {
             sleep(2000)
         }
         //--------------skip--------------------------
-        while (!id("ap").findOnce()) {
-            screenutilClick(clickSets.skip)
-            sleep(3000)
+        if (limit.isSkip) {
+            while (!id("ap").findOnce()) {
+                screenutilClick(clickSets.skip)
+                sleep(4000)
+            }
         }
-
     }
 }
+function jingMain(){
+    
+}
+
 
 function getPt(com) {
     let txt = com.text()
