@@ -29,15 +29,15 @@ importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
 floatUI.main = function () {
-    var task = null;
-    var logo_switch = false;//全局: 悬浮窗的开启关闭检测
-    var logo_buys = false;//全局: 开启和关闭时占用状态 防止多次点击触发
-    var logo_fx = true//全局: 悬浮按钮所在的方向 真左 假右
-    var time_0, time_1, time_3//全局: 定时器 点击退出悬浮窗时定时器关闭
+    let task = null;
+    let logo_switch = false;//全局: 悬浮窗的开启关闭检测
+    let logo_buys = false;//全局: 开启和关闭时占用状态 防止多次点击触发
+    let logo_fx = true//全局: 悬浮按钮所在的方向 真左 假右
+    let time_0, time_1, time_3//全局: 定时器 点击退出悬浮窗时定时器关闭
     //可修改参数
-    var logo_ms = 200//全局:  动画播放时间
-    var DHK_ms = 200//全局:  对话框动画播放时间
-    var tint_color = "#00000"//全局:  对话框图片颜色
+    let logo_ms = 200//全局:  动画播放时间
+    let DHK_ms = 200//全局:  对话框动画播放时间
+    let tint_color = "#00000"//全局:  对话框图片颜色
     /**
      * 需要三个悬浮窗一起协作达到Auto.js悬浮窗效果
      * win  子菜单悬浮窗 处理子菜单选项点击事件
@@ -45,7 +45,7 @@ floatUI.main = function () {
      * win_2  悬浮按钮动画替身,只有在手指移动主按钮的时候才会被触发 
      * 触发时,替身Y值会跟主按钮Y值绑定一起,手指弹起时代替主按钮显示跳动的小球动画
      */
-    var win = floaty.rawWindow(
+    let win = floaty.rawWindow(
         <frame >//子菜单悬浮窗
         <frame id="id_logo" w="150" h="210" alpha="0"  >
                 <frame id="id_0" w="44" h="44" margin="33 0 0 0" alpha="1">
@@ -80,7 +80,7 @@ floatUI.main = function () {
     )
     // win.setTouchable(false);//设置子菜单不接收触摸消息
 
-    var win_1 = floaty.rawWindow(
+    let win_1 = floaty.rawWindow(
         <frame id="logo" w="44" h="44" alpha="0.4" >//悬浮按钮
         <img w="44" h="44" src="#ffffff" circle="true" alpha="0.8" />
             <img id="img_logo" w="32" h="32" src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png" gravity="center" layout_gravity="center" />
@@ -89,7 +89,7 @@ floatUI.main = function () {
     )
     // win_1.setPosition(-30, device.height / 4)//悬浮按钮定位
 
-    var win_2 = floaty.rawWindow(
+    let win_2 = floaty.rawWindow(
         <frame id="logo" w="{{device.width}}px" h="44" alpha="0" >//悬浮按钮 弹性替身
         <img w="44" h="44" src="#ffffff" circle="true" alpha="0.8" />
             <img id="img_logo" w="32" h="32" src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png" margin="6 6" />
@@ -100,7 +100,7 @@ floatUI.main = function () {
     /**
      * 脚本广播事件
      */
-    var XY = [], XY1 = [], TT = [], TT1 = [], img_dp = {}, dpZ = 0, logo_right = 0, dpB = 0, dp_H = 0
+    let XY = [], XY1 = [], TT = [], TT1 = [], img_dp = {}, dpZ = 0, logo_right = 0, dpB = 0, dp_H = 0
     events.broadcast.on("定时器关闭", function (X) { clearInterval(X) })
     events.broadcast.on("悬浮开关", function (X) {
         ui.run(function () {
@@ -129,7 +129,7 @@ floatUI.main = function () {
     /**
      * 等待悬浮窗初始化
      */
-    var terid = setInterval(() => {
+    let terid = setInterval(() => {
         // log("13")
         if (TT.length == 0 && win.logo.getY() > 0) {// 不知道界面初始化的事件  只能放到这里将就下了
             ui.run(function () {
@@ -212,7 +212,7 @@ floatUI.main = function () {
 
     win.id_4_click.on("click", () => {
         try {
-            var res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
+            let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
             if (res.statusCode != 200) {
                 toastLog("请求超时")
             } else {
@@ -220,12 +220,12 @@ floatUI.main = function () {
                 if (parseInt(resJson.versionName.split(".").join("")) == parseInt(limit.version.split(".").join(""))) {
                     toastLog("为最新版本，无需更新")
                 } else {
-                    var main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/main.js");
-                    var float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/floatUI.js");
+                    let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/main.js");
+                    let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/floatUI.js");
                     if (main_script.statusCode == 200 && float_script.statusCode == 200) {
                         toastLog("更新加载中");
-                        var mainjs = main_script.body.string();
-                        var floatjs = float_script.body.string();
+                        let mainjs = main_script.body.string();
+                        let floatjs = float_script.body.string();
                         files.write(engines.myEngine().cwd() + "/main.js", mainjs)
                         files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
                         engines.stopAll()
@@ -254,7 +254,7 @@ floatUI.main = function () {
      * 补间动画
      */
     function 动画() {
-        var anX = [], anY = [], slX = [], slY = []
+        let anX = [], anY = [], slX = [], slY = []
         if (logo_switch) {
             if (logo_fx) {
                 for (let i = 0; i < XY.length; i++) {
@@ -311,7 +311,7 @@ floatUI.main = function () {
         set.start();
     }
     function 对话框动画(X, Y, Z) {//X布尔值 标识显示还是隐藏 Y背景的视图 Z对话框的视图
-        var anX = [], anY = [], slX = [], slY = []
+        let anX = [], anY = [], slX = [], slY = []
         if (X) {
             anX = ObjectAnimator.ofFloat(Z, "translationX", win_1.getX() - (Z.getRight() / 2) + dpB - Z.getLeft(), 0);
             anY = ObjectAnimator.ofFloat(Z, "translationY", win_1.getY() - (Z.getBottom() / 2) + img_dp.h_b - Z.getTop(), 0);
@@ -335,12 +335,12 @@ floatUI.main = function () {
     }
 
     //记录按键被按下时的触摸坐标
-    var x = 0,
+    let x = 0,
         y = 0;
     //记录按键被按下时的悬浮窗位置
-    var windowX, windowY; G_Y = 0
+    let windowX, windowY; G_Y = 0
     //记录按键被按下的时间以便判断长按等动作
-    var downTime; yd = false;
+    let downTime; yd = false;
     win_1.logo.setOnTouchListener(function (view, event) {
         if (logo_buys) { return false }
         // log(event.getAction())
@@ -601,7 +601,7 @@ function screenutilClick(d) {
     }
 }
 function autoMain() {
-    var druglimit = {
+    let druglimit = {
         drug1limit: limit.drug1num,
         drug2limit: limit.drug2num,
         drug3limit: limit.drug3num
@@ -826,7 +826,7 @@ function autoMain() {
 }
 
 function autoMainver2() {
-    var druglimit = {
+    let druglimit = {
         drug1limit: limit.drug1num,
         drug2limit: limit.drug2num,
         drug3limit: limit.drug3num
