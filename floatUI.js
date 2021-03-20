@@ -849,10 +849,10 @@ function detectAP() {
     throw "detectAPFailed" //should never reach here
 }//end function
 
+//嗑药
 function refillAP() {
-    //嗑药
     //打开ap面板
-    log("嗑药面板开启")
+    log("开启嗑药面板")
     //确定要嗑药后等3s，打开面板
     while (!id("popupInfoDetailTitle").findOnce()) {
         sleep(1000)
@@ -860,14 +860,32 @@ function refillAP() {
         sleep(2000)
     }
     let apDrugNums = textMatches(/^\d+個$/).find()
-
+    if (apDrugNums.empty()) {
+        apDrugNums = descMatches(/^\d+個$/).find()
+    }
     if (currentLang == "chs") {
         apDrugNums = textMatches(/^\d+个$/).find()
+        if (apDrugNums.empty()) {
+            apDrugNums = descMatches(/^\d+个$/).find()
+        }
     }
     //获得回复药水数量
-    let apDrug50Num = getDrugNum(apDrugNums[0].text())
-    let apDrugFullNum = getDrugNum(apDrugNums[1].text())
-    let apMoneyNum = getDrugNum(apDrugNums[2].text())
+    let readDesc = false;
+    let apDrug50txt = apDrugNums[0].text();
+    if (apDrug50txt == null) readDesc = true;
+    if (apDrug50txt == "") readDesc = true;
+    let apDrug50Num = 0
+    let apDrugFullNum = 0
+    let apMoneyNum = 0;
+    if (readDesc) {
+        apDrug50Num = getDrugNum(apDrugNums[0].desc())
+        apDrugFullNum = getDrugNum(apDrugNums[1].desc())
+        apMoneyNum = getDrugNum(apDrugNums[2].desc())
+    } else {
+        apDrug50Num = getDrugNum(apDrugNums[0].text())
+        apDrugFullNum = getDrugNum(apDrugNums[1].text())
+        apMoneyNum = getDrugNum(apDrugNums[2].text())
+    }
     log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
     // 根据条件选择药水
 
@@ -875,15 +893,17 @@ function refillAP() {
         if (druglimit.drug1limit) {
             druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
         }
-        while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
+        while ((!text(keywords.confirmRefill[currentLang]).findOnce())&&(!desc(keywords.confirmRefill[currentLang]).findOnce())) {
             sleep(1000)
             screenutilClick(clickSets.ap50)
             sleep(2000)
         }
-        text(keywords.refill[currentLang]).findOne()
+        while ((!text(keywords.refill[currentLang]).findOnce())&&(!desc(keywords.refill[currentLang]).findOnce())) {
+            sleep(1000);
+        }
         sleep(1500)
         log("确认回复")
-        while (text(keywords.confirmRefill[currentLang]).findOnce()) {
+        while (text(keywords.confirmRefill[currentLang]).findOnce()||desc(keywords.confirmRefill[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.aphui)
             sleep(2000)
@@ -892,15 +912,17 @@ function refillAP() {
         if (druglimit.drug2limit) {
             druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
         }
-        while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
+        while ((!text(keywords.confirmRefill[currentLang]).findOnce())&&(!desc(keywords.confirmRefill[currentLang]).findOnce())) {
             sleep(1000)
             screenutilClick(clickSets.apfull)
             sleep(2000)
         }
-        text(keywords.refill[currentLang]).findOne()
+        while ((!text(keywords.refill[currentLang]).findOnce())&&(!desc(keywords.refill[currentLang]).findOnce())) {
+            sleep(1000);
+        }
         sleep(1500)
         log("确认回复")
-        while (text(keywords.confirmRefill[currentLang]).findOnce()) {
+        while (text(keywords.confirmRefill[currentLang]).findOnce()||desc(keywords.confirmRefill[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.aphui)
             sleep(2000)
@@ -910,15 +932,17 @@ function refillAP() {
         if (druglimit.drug3limit) {
             druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
         }
-        while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
+        while ((!text(keywords.confirmRefill[currentLang]).findOnce())&&(!desc(keywords.confirmRefill[currentLang]).findOnce())) {
             sleep(1000)
             screenutilClick(clickSets.apjin)
             sleep(2000)
         }
-        text(keywords.refill[currentLang]).findOne()
+        while ((!text(keywords.refill[currentLang]).findOnce())&&(!desc(keywords.refill[currentLang]).findOnce())) {
+            sleep(1000);
+        }
         sleep(1500)
         log("确认回复")
-        while (text(keywords.confirmRefill[currentLang]).findOnce()) {
+        while (text(keywords.confirmRefill[currentLang]).findOnce()||desc(keywords.confirmRefill[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.aphui)
             sleep(2000)
@@ -935,7 +959,7 @@ function refillAP() {
         screenutilClick(clickSets.apclose)
         sleep(2000)
     }
-}
+} //end function
 
 //选择Pt最高的助战
 function pickSupportWithTheMostPt() {
