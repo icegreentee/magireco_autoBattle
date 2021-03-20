@@ -758,6 +758,23 @@ function screenutilClick(d) {
   compatClick(converted.x, converted.y);
 }
 
+
+//有root权限的情况下解决Android 7.0以下不能按坐标点击的问题
+function compatClick() {
+    if (arguments.length != 2 || device.sdkInt >= 24) {
+        //Android 7.0及以上，以及非坐标点击
+        click.apply(this, arguments);
+    } else if (arguments.length == 2) {
+        //Android 7.0以下，需要root权限
+        let coords = " " + arguments[0] + " " + arguments[1];
+        coords = coords.match(/^ \d+ \d+$/)[0];
+        let shellcmd = "input tap" + coords;
+        let root = true;
+        log("点击屏幕 root shell command: \""+shellcmd+"\"");
+        shell(shellcmd, root);
+    }
+}
+
 //检测AP
 function detectAP() {
     while (true) {
