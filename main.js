@@ -55,7 +55,7 @@ ui.layout(
                 </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear>
-                        <checkbox id="isSkip" text="是否会进行跳过剧情" layout_weight="1" />
+                        <checkbox id="skipStoryUseScreenCapture" text="点SKIP跳过剧情时，借助截屏识图防止误点MENU（可能不稳定）" layout_weight="1" />
                     </linear>
                 </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
@@ -126,7 +126,7 @@ floatUI.main()
 var storage = storages.create("soha");
 var data = storage.get("data");
 const paramsList = ["limitAP", "shuix", "shuiy"]
-const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "isSkip", "BPAutoRefill"]
+const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "skipStoryUseScreenCapture", "BPAutoRefill"]
 var paramsMap = {}
 
 
@@ -171,6 +171,7 @@ paramsMap["drug3num"] = ""
 
 //同步值
 floatUI.adjust(paramsMap)
+
 
 ui.start.click(() => {
     for (let i = 0; i < paramsList.length; i++) {

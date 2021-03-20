@@ -580,7 +580,7 @@ var limit = {
     drug3: false,
     isStable: false,
     justNPC: false,
-    isSkip: false,
+    skipStoryUseScreenCapture: false,
     BPAutoRefill: false,
     mirrorsUseScreenCapture: false,
     version: '2.2.0',
@@ -848,6 +848,105 @@ function compatClick() {
         log("点击屏幕 root shell command: \""+shellcmd+"\"");
         shell(shellcmd, root);
     }
+}
+
+//截屏取色
+//已知坐标和像素颜色
+var knownPx = {
+    mainMenuOpen: {
+        coords: {
+            x:   1829,
+            y:   51,
+            pos: "top"
+        },
+        color: "#ff7ea7"
+    },
+    mainMenuClosed: {
+        coords: {
+            x:   1830,
+            y:   11,
+            pos: "top"
+        },
+        color: "#c3a35a"
+    },
+    skipButton: {
+        coords: {
+            x:   1822,
+            y:   74,
+            pos: "top"
+        },
+        color: "#f4e9d3"
+    },
+    logButton: {
+        coords: {
+            x:   75,
+            y:   85,
+            pos: "top"
+        },
+        color: "#ff5f96"
+    },
+    storyAutoButton: {
+        coords: {
+            x:   75,
+            y:   205,
+            pos: "top"
+        },
+        color: "#ff5f96"
+    }
+};
+
+function isSkipButtonCovered() {
+    var threshold = 20;
+    screenshot = compatCaptureScreen();
+    var buttons = [];
+
+    buttons.push(knownPx.logButton, knownPx.storyAutoButton, knownPx.skipButton);
+
+    for (let i = 0; i < buttons.length; i++) {
+        var converted = convertCoords(buttons[i].coords);
+        if (!images.detectsColor(screenshot, buttons[i].color, converted.x, converted.y, threshold, "diff")) {
+            log("看不清SKIP按钮，可能被遮挡了");
+            return true;
+        }
+    }
+    log("可以看到SKIP按钮");
+    return false;
+}
+
+//判断主菜单是否打开
+function getMainMenuStatus() {
+    var result = {
+        open:    false,
+        exist:   false,
+        covered: true
+    };
+    var threshold = 20;
+    if (id("menu")) {
+        result.exist = true;
+        screenshot = compatCaptureScreen();
+        var converted = convertCoords(knownPx.mainMenuOpen.coords);
+        if (images.detectsColor(screenshot, knownPx.mainMenuOpen.color, converted.x, converted.y, threshold, "diff")) {
+            log("主菜单处于打开状态");
+            result.covered = false;
+            result.open = true;
+        } else {
+            converted = convertCoords(knownPx.mainMenuClosed.coords);
+            if (images.detectsColor(screenshot, knownPx.mainMenuClosed.color, converted.x, converted.y, threshold, "diff")) {
+                log("主菜单处于关闭状态");
+                result.covered = false;
+                result.open = false;
+            } else {
+                log("看不清主菜单是否打开，可能被遮挡了");
+                result.covered = true;
+            }
+        }
+    } else {
+        log("找不到id为menu的控件");
+        result.exist = false;
+        result.open = false;
+        result.covered = true;
+    }
+    return result;
 }
 
 //检测AP
@@ -1219,6 +1318,10 @@ function autoMain() {
 function autoMainver2() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
+    if (limit.skipStoryUseScreenCapture) {
+        startScreenCapture();
+        waitUntilScreenCaptureReady();
+    }
 
     let druglimit = {
         drug1limit: limit.drug1num,
@@ -1321,14 +1424,32 @@ function autoMainver2() {
             sleep(2000)
         }
         //--------------skip--------------------------
-        if (limit.isSkip) {
-            while (!id("ap").findOnce()) {
-                screenutilClick(clickSets.skip)
-                sleep(4000)
-            }
+        sleep(2000);
+        while (!id("ap").findOnce()) {
+            if ((!limit.skipStoryUseScreenCapture)||(!isSkipButtonCovered())) screenutilClick(clickSets.skip);
+            sleep(3000);
+            if (!limit.skipStoryUseScreenCapture) break; //如果不用识图来跳过剧情、防止点到MENU，那就只点击一次SKIP按钮
         }
+        while (id("ap").findOnce()) {
+            if (!limit.skipStoryUseScreenCapture) {
+                break; //不用识图来防止点到MENU
+            }
+            var mainMenuStatus = getMainMenuStatus();
+            if (mainMenuStatus.exist && (!mainMenuStatus.covered)) {
+                if (mainMenuStatus.open) {
+                    log("点击MENU按钮以关闭主菜单");
+                    screenutilClick(clickSets.skip); //skip按钮和menu按钮重合
+                } else {
+                    log("主菜单已被关闭");
+                    break;
+                }
+            }
+            sleep(1000);
+        }
+
     }
 }
+
 
 
 //镜界自动战斗
@@ -2332,7 +2453,6 @@ function jingMain() {
     }
 
 }
-
 
 function getPt(com) {
     let txt = com.text()
