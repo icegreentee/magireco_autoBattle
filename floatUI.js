@@ -711,6 +711,60 @@ function refillAP() {
     }
 }
 
+//选择Pt最高的助战
+function pickSupportWithTheMostPt() {
+    log("选择助战")
+    // -----------选援助----------------
+    // 15为npc助战  0~14为玩家助战
+    //确定在选人阶段
+    let friendWrap = id("friendWrap").findOne().bounds()
+
+    if (limit.helpx != "" && limit.helpy != "") {
+        while (id("friendWrap").findOnce()) {
+            sleep(1000)
+            click(parseInt(limit.helpx), parseInt(limit.helpy))
+            sleep(2000)
+        }
+    }
+    else if (limit.lang != "zh") {
+        while (id("friendWrap").findOnce()) {
+            sleep(1000)
+            click(friendWrap.centerX(), friendWrap.top + 100)
+            sleep(2000)
+        }
+    } else {
+        let ptCom = textMatches(/^\+\d+$/).find()
+        //可点击的助战列表
+        let ptComCanClick = []
+        for (let i = 0; i < ptCom.length; i++) {
+            //在可见范围内
+            if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
+                if (ptComCanClick.length != 0) {
+                    //新加入的pt若比第一次加入的要小，舍去
+                    if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
+                        continue
+                    }
+                }
+                ptComCanClick.push(ptCom[i])
+                log(ptCom[i].bounds())
+            }
+        }
+        log("候选列表", ptComCanClick)
+        log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
+        // 是单纯选npc还是，优先助战
+        let finalPt = ptComCanClick[0]
+        if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
+            finalPt = ptComCanClick[ptComCanClick.length - 1]
+        }
+        log("选择", finalPt)
+        while (id("friendWrap").findOnce()) {
+            sleep(1000)
+            click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+            sleep(2000)
+        }
+    }
+}
+
 function autoMain() {
     let druglimit = {
         drug1limit: limit.drug1num,
@@ -729,58 +783,8 @@ function autoMain() {
             //嗑药
             refillAP();
         }
-        //----------------------------------
-        log("选择助战")
-        // -----------选援助----------------
-        // 15为npc助战  0~14为玩家助战
-        //确定在选人阶段
-        let friendWrap = id("friendWrap").findOne().bounds()
-
-        if (limit.helpx != "" && limit.helpy != "") {
-            while (id("friendWrap").findOnce()) {
-                sleep(1000)
-                click(parseInt(limit.helpx), parseInt(limit.helpy))
-                sleep(2000)
-            }
-        }
-        else if (limit.lang != "zh") {
-            while (id("friendWrap").findOnce()) {
-                sleep(1000)
-                click(friendWrap.centerX(), friendWrap.top + 100)
-                sleep(2000)
-            }
-        } else {
-            let ptCom = textMatches(/^\+\d+$/).find()
-            //可点击的助战列表
-            let ptComCanClick = []
-            for (let i = 0; i < ptCom.length; i++) {
-                //在可见范围内
-                if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
-                    if (ptComCanClick.length != 0) {
-                        //新加入的pt若比第一次加入的要小，舍去
-                        if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
-                            continue
-                        }
-                    }
-                    ptComCanClick.push(ptCom[i])
-                    log(ptCom[i].bounds())
-                }
-            }
-            log("候选列表", ptComCanClick)
-            log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
-            // 是单纯选npc还是，优先助战
-            let finalPt = ptComCanClick[0]
-            if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
-                finalPt = ptComCanClick[ptComCanClick.length - 1]
-            }
-            log("选择", finalPt)
-            while (id("friendWrap").findOnce()) {
-                sleep(1000)
-                click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
-                sleep(2000)
-            }
-        }
-
+        //选择Pt最高的助战并点击
+        pickSupportWithTheMostPt();
 
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
@@ -880,40 +884,8 @@ function autoMainver2() {
             sleep(1500)
         }
 
-        log("选择助战")
-        // -----------选援助----------------
-        // 15为npc助战  0~14为玩家助战
-        //确定在选人阶段
-        let friendWrap = id("friendWrap").findOne().bounds()
-        let ptCom = textMatches(/^\+\d+$/).find()
-        //可点击的助战列表
-        let ptComCanClick = []
-        for (let i = 0; i < ptCom.length; i++) {
-            //在可见范围内
-            if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
-                if (ptComCanClick.length != 0) {
-                    //新加入的pt若比第一次加入的要小，舍去
-                    if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
-                        continue
-                    }
-                }
-                ptComCanClick.push(ptCom[i])
-                log(ptCom[i].bounds())
-            }
-        }
-        log("候选列表", ptComCanClick)
-        log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
-        // 是单纯选npc还是，优先助战
-        let finalPt = ptComCanClick[0]
-        if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
-            finalPt = ptComCanClick[ptComCanClick.length - 1]
-        }
-        log("选择", finalPt)
-        while (id("friendWrap").findOnce()) {
-            sleep(1000)
-            click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
-            sleep(2000)
-        }
+        //选择Pt最高的助战并点击
+        pickSupportWithTheMostPt();
 
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
