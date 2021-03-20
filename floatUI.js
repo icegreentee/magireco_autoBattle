@@ -966,53 +966,62 @@ function pickSupportWithTheMostPt() {
     log("选择助战")
     // -----------选援助----------------
     // 15为npc助战  0~14为玩家助战
-    //确定在选人阶段
-    let friendWrap = id("friendWrap").findOne().bounds()
-
-    if (limit.helpx != "" && limit.helpy != "") {
-        while (id("friendWrap").findOnce()) {
-            sleep(1000)
-            click(parseInt(limit.helpx), parseInt(limit.helpy))
-            sleep(2000)
+    // Pt数值控件显示范围
+    let knownPtArea = {
+      topLeft: {x: 1680, y: 280, pos: "top"},
+      bottomRight: {x: 1870, y: 1079, pos: "bottom"}
+    };
+    let ptArea = {
+      topLeft: {x: 0, y: 0, pos: "top"},
+      bottomRight: {x: 0, y: 0, pos: "bottom"}
+    };
+    ptArea.topLeft = convertCoords(knownPtArea.topLeft);
+    ptArea.bottomRight = convertCoords(knownPtArea.bottomRight);
+    log("ptAreatopLeft", ptArea.topLeft.x, ptArea.topLeft.y);
+    log("ptAreabottomRight", ptArea.bottomRight.x, ptArea.bottomRight.y);
+    let ptCom = textMatches(/^\+{0,1}\d+$/).find();
+    if (ptCom.empty()) ptCom = descMatches(/^\+{0,1}\d+$/).find();
+    //可见的助战列表
+    let ptComVisible = [];
+    let ptComCanClick = [];
+    var highestPt = 0;
+    for (let i = 0; i < ptCom.length; i++) {
+        //在可见范围内
+        if (ptCom[i].bounds().centerX() > ptArea.topLeft.x && ptCom[i].bounds().centerX() < ptArea.bottomRight.x &&
+            ptCom[i].bounds().centerY() > ptArea.topLeft.y && ptCom[i].bounds().centerY() < ptArea.bottomRight.y) {
+            //找到最大pt值
+            if (highestPt < getPt(ptCom[i])) highestPt = getPt(ptCom[i]);
+            ptComVisible.push(ptCom[i])
+            log(ptCom[i].bounds())
         }
     }
-    else if (currentLang != "chs") {
-        while (id("friendWrap").findOnce()) {
-            sleep(1000)
-            click(friendWrap.centerX(), friendWrap.top + 100)
-            sleep(2000)
+    log("可见助战列表", ptComVisible);
+    log("从可见助战列表中筛选最高Pt的助战，并按照显示位置排序");
+    for (let i = 0; i < ptComVisible.length; i++) {
+        if (getPt(ptComVisible[i]) == highestPt) {
+            ptComCanClick.push(ptComVisible[i]);
         }
-    } else {
-        let ptCom = textMatches(/^\+\d+$/).find()
-        //可点击的助战列表
-        let ptComCanClick = []
-        for (let i = 0; i < ptCom.length; i++) {
-            //在可见范围内
-            if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
-                if (ptComCanClick.length != 0) {
-                    //新加入的pt若比第一次加入的要小，舍去
-                    if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
-                        continue
-                    }
-                }
-                ptComCanClick.push(ptCom[i])
-                log(ptCom[i].bounds())
+    }
+    //根据助战Y坐标排序，最上面的NPC排到前面 （这个排序算法很烂，不过元素少，无所谓）
+    for (let i = 0; i < ptComCanClick.length - 1; i++) {
+        for (let j = i + 1; j < ptComCanClick.length; j++) {
+            if (ptComCanClick[j].bounds().centerY() < ptComCanClick[i].bounds().centerY()) {
+                let tempPtCom = ptComCanClick[i];
+                ptComCanClick[i] = ptComCanClick[j];
+                ptComCanClick[j] = tempPtCom;
             }
         }
-        log("候选列表", ptComCanClick)
-        log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
-        // 是单纯选npc还是，优先助战
-        let finalPt = ptComCanClick[0]
-        if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
-            finalPt = ptComCanClick[ptComCanClick.length - 1]
-        }
-        log("选择", finalPt)
-        while (id("friendWrap").findOnce()) {
-            sleep(1000)
-            click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
-            sleep(2000)
-        }
     }
+    log("候选助战列表", ptComCanClick);
+    // 是单纯选npc还是，优先助战
+    if (limit.justNPC) {
+        log("justNPC==true");
+        finalPt = ptComCanClick[0];
+    } else {
+        finalPt = ptComCanClick[ptComCanClick.length - 1];
+    }
+    log("选择", finalPt)
+    return finalPt;
 }
 
 function autoMain() {
@@ -1036,8 +1045,17 @@ function autoMain() {
             //嗑药
             refillAP();
         }
-        //选择Pt最高的助战并点击
-        pickSupportWithTheMostPt();
+
+        while (!id("friendWrap").findOnce()) {
+            log("等待好友列表控件出现...");
+            sleep(1000);
+        }
+        while (id("friendWrap").findOnce()) {
+            //选择Pt最高的助战点击
+            finalPt = pickSupportWithTheMostPt();
+            compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+            sleep(2000)
+        }
 
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
@@ -1140,8 +1158,16 @@ function autoMainver2() {
             sleep(1500)
         }
 
-        //选择Pt最高的助战并点击
-        pickSupportWithTheMostPt();
+        while (!id("friendWrap").findOnce()) {
+            log("等待好友列表控件出现...");
+            sleep(1000);
+        }
+        while (id("friendWrap").findOnce()) {
+            //选择Pt最高的助战点击
+            finalPt = pickSupportWithTheMostPt();
+            compatClick(finalPt.bounds().centerX(), finalPt.bounds().centerY())
+            sleep(2000)
+        }
 
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
