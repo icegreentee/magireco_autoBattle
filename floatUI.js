@@ -2289,13 +2289,13 @@ function jingMain() {
         let matchWrap = id("matchingWrap").findOne().bounds()
         while (!id("battleStartBtn").findOnce()) {
             sleep(1000)
-            click(matchWrap.centerX(), matchWrap.bottom - 50)
+            compatClick(matchWrap.centerX(), matchWrap.bottom - 50)
             sleep(2000)
         }
         let btn = id("battleStartBtn").findOne().bounds()
         while (id("battleStartBtn").findOnce()) {
             sleep(1000)
-            click(btn.centerX(), btn.centerY())
+            compatClick(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
                 if (limit.BPAutoRefill) {
