@@ -146,9 +146,11 @@ else {
 for (let i = 0; i < paramsList.length; i++) {
     let key = paramsList[i]
     let value = paramsMap[key]
-    ui.run(function () {
-        ui[key].setText(value)
-    })
+    if (value != null) {
+        ui.run(function () {
+            ui[key].setText(value)
+        });
+    }
 }
 
 //无需复制的属性
