@@ -73,16 +73,6 @@ ui.layout(
                 </linear>
                 <linear padding="5 5 0 5" bg="#ffffff" margin="0 0 0 5" >
 
-
-                    <linear padding="0 0 0 0" bg="#ffffff">
-                        <radiogroup id="cb">
-                            <text layout_weight="1" size="19" color="#222222" text="区服：" />
-                            <radio id="cb1" text="国服" checked="true" />
-                            <radio id="cb2" text="日服" />
-                            <radio id="cb3" text="台服" />
-                        </radiogroup>
-                    </linear>
-
                 </linear>
                 <linear padding="10 6 0 6" bg="#ffffff">
                     <text id="versionMsg" layout_weight="1" color="#666666" text="尝试获取最新版本信息" />
@@ -165,7 +155,6 @@ for (let i = 0; i < parmasList.length; i++) {
 for (let i = 0; i < parmasNotInitList.length; i++) {
     parmasMap[parmasNotInitList[i]] = false;
 }
-parmasMap["lang"] = "zh"
 parmasMap["version"] = version
 
 parmasMap["drug1num"] = ""
@@ -194,14 +183,6 @@ ui.start.click(() => {
     storage.put("data", JSON.stringify(parmasMap))
     for (let i = 0; i < parmasNotInitList.length; i++) {
         parmasMap[parmasNotInitList[i]] = ui[parmasNotInitList[i]].isChecked();
-    }
-    if (ui.cb1.checked) {
-        parmasMap["lang"] = "zh"
-    } else if (ui.cb2.checked) {
-        parmasMap["lang"] = "jp"
-    }
-    else if (ui.cb3.checked) {
-        parmasMap["lang"] = "tai"
     }
     parmasMap["version"] = version
     parmasMap["drug1num"] = ui["drug1num"].getText()+""
