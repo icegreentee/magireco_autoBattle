@@ -44,11 +44,6 @@ ui.layout(
                 <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
                     <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
                     <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用npc（不设置此项，默认优先 互关好友-npc）" />
-                    <linear>
-                        <text text="助战x，y坐标自定义：" />
-                        <input maxLength="4" id="helpx" text="" inputType="number|none" />
-                        <input maxLength="4" id="helpy" text="" inputType="number|none" />
-                    </linear>
                     {/* <Switch id="isRoot" w="*" checked="false" textColor="#666666" text="android7以下适配(需要root)" /> */}
                 </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
@@ -119,9 +114,9 @@ floatUI.main()
 
 var storage = storages.create("soha");
 var data = storage.get("data");
-const paramsList = ["limitAP", "shuix", "shuiy", "helpx", "helpy"]
+const paramsList = ["limitAP", "shuix", "shuiy"]
 const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "isSkip", "jjcisuse"]
-var paramsMap = {}
+var parmasMap = {}
 
 
 
