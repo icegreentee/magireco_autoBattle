@@ -80,21 +80,25 @@ floatUI.main = function () {
     )
     // win.setTouchable(false);//设置子菜单不接收触摸消息
 
-    let win_1 = floaty.rawWindow(
-        <frame id="logo" w="44" h="44" alpha="0.4" >//悬浮按钮
-        <img w="44" h="44" src="#ffffff" circle="true" alpha="0.8" />
-            <img id="img_logo" w="32" h="32" src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png" gravity="center" layout_gravity="center" />
-            <img id="logo_click" w="*" h="*" src="#ffffff" alpha="0" />
-        </frame>
-    )
+    let cwd_str = files.cwd();
+    //悬浮按钮
+    let win_1_xmlstr = "<frame id=\"logo\" w=\"44\" h=\"44\" alpha=\"0.4\" ><img w=\"44\" h=\"44\" src=\"#ffffff\" circle=\"true\" alpha=\"0.8\" />";
+    win_1_xmlstr += "<img id=\"img_logo\" w=\"32\" h=\"32\" src=\"file://";
+    win_1_xmlstr += cwd_str;
+    win_1_xmlstr += "/res/icon.png\" gravity=\"center\" layout_gravity=\"center\" />";
+    win_1_xmlstr += "<img id=\"logo_click\" w=\"*\" h=\"*\" src=\"#ffffff\" alpha=\"0\" />";
+    win_1_xmlstr += "</frame>";
+    let win_1 = floaty.rawWindow(win_1_xmlstr);
     // win_1.setPosition(-30, device.height / 4)//悬浮按钮定位
 
-    let win_2 = floaty.rawWindow(
-        <frame id="logo" w="{{device.width}}px" h="44" alpha="0" >//悬浮按钮 弹性替身
-        <img w="44" h="44" src="#ffffff" circle="true" alpha="0.8" />
-            <img id="img_logo" w="32" h="32" src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png" margin="6 6" />
-        </frame>
-    )
+    //悬浮按钮 弹性替身
+    let win_2_xmlstr = "<frame id=\"logo\" w=\"{{device.width}}px\" h=\"44\" alpha=\"0\" >";
+    win_2_xmlstr += "<img w=\"44\" h=\"44\" src=\"#ffffff\" circle=\"true\" alpha=\"0.8\" />";
+    win_2_xmlstr += "<img id=\"img_logo\" w=\"32\" h=\"32\" src=\"file://";
+    win_2_xmlstr += cwd_str;
+    win_2_xmlstr += "/res/icon.png\" margin=\"6 6\" />";
+    win_2_xmlstr += "</frame>";
+    let win_2 = floaty.rawWindow(win_2_xmlstr);
     // win_2.setTouchable(false);//设置弹性替身不接收触摸消息
 
     /**
