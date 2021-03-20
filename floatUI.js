@@ -505,7 +505,7 @@ var limit = {
     isStable: false,
     justNPC: false,
     isSkip: false,
-    jjcisuse: false,
+    BPAutoRefill: false,
     version: '2.2.0',
     drug1num: '',
     drug2num: '',
@@ -1295,7 +1295,7 @@ function jingMain() {
             click(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                if (limit.jjcisuse) {
+                if (limit.BPAutoRefill) {
                     while (!id("BpCureWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)

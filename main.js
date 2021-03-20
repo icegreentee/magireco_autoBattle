@@ -52,13 +52,24 @@ ui.layout(
                         <input maxLength="4" id="shuix" text="" inputType="number|none" />
                         <input maxLength="4" id="shuiy" text="" inputType="number|none" />
                     </linear>
+                </vertical>
+                <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear>
                         <checkbox id="isSkip" text="是否会进行跳过剧情" layout_weight="1" />
                     </linear>
                 </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
+                    <linear padding="0 0 0 0" bg="#ffffff">
+                        <radiogroup id="mirrorsAutoBattleStrategy">
+                            <text layout_weight="1" size="19" color="#222222" text="镜界自动战斗策略：" />
+                            <radio id="mirrorsAutoBattleStrategy1" text="简单" checked="true" />
+                            <radio id="mirrorsAutoBattleStrategy2" text="复杂（依赖截屏识图，可能不稳定）" />
+                        </radiogroup>
+                    </linear>
+                </vertical>
+                <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear>
-                        <checkbox id="jjcisuse" text="镜界是否嗑药" layout_weight="1" />
+                        <checkbox id="BPAutoRefill" text="镜界是否嗑药" layout_weight="1" />
                     </linear>
                 </vertical>
 
@@ -115,8 +126,8 @@ floatUI.main()
 var storage = storages.create("soha");
 var data = storage.get("data");
 const paramsList = ["limitAP", "shuix", "shuiy"]
-const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "isSkip", "jjcisuse"]
-var parmasMap = {}
+const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "isSkip", "BPAutoRefill"]
+var paramsMap = {}
 
 
 
@@ -185,6 +196,7 @@ ui.start.click(() => {
     paramsMap["drug1num"] = ui["drug1num"].getText()+""
     paramsMap["drug2num"] = ui["drug2num"].getText()+""
     paramsMap["drug3num"] = ui["drug3num"].getText()+""
+    paramsMap["mirrorsUseScreenCapture"] = ui["mirrorsAutoBattleStrategy2"].checked;
     floatUI.adjust(paramsMap)
     toastLog("修改完成")
 });
