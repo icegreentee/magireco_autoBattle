@@ -154,7 +154,7 @@ floatUI.main = function () {
      */
     let win = floaty.rawWindow(
         <frame >//子菜单悬浮窗
-        <frame id="id_logo" w="150" h="210" alpha="0"  >
+            <frame id="id_logo" w="150" h="210" alpha="0"  >
                 <frame id="id_0" w="44" h="44" margin="33 0 0 0" alpha="1">
                     <img w="44" h="44" src="#009687" circle="true" />
                     <img w="28" h="28" src="@drawable/ic_play_arrow_black_48dp" tint="#ffffff" gravity="center" layout_gravity="center" />
