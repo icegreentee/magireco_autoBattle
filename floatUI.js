@@ -1252,6 +1252,32 @@ function autoMainver2() {
         }
     }
 }
+
+function mirrorsSimpleAutoBattleMain() {
+    //强制必须先把游戏切换到前台再开始运行脚本，否则退出
+    waitForGameForeground(); //注意，函数里还有游戏区服的识别
+
+    //简单镜层自动战斗
+    while (!id("matchingWrap").findOnce()) {
+        if (!id("ArenaResult").findOnce()) {
+            screenutilClick(clickSets.battlePan1)
+            sleep(1000)
+        }
+        if (!id("ArenaResult").findOnce()) {
+            screenutilClick(clickSets.battlePan2)
+            sleep(1000)
+        }
+        if (!id("ArenaResult").findOnce()) {
+            screenutilClick(clickSets.battlePan3)
+            sleep(1000)
+        }
+        if (id("ArenaResult").findOnce()) {
+            screenutilClick(clickSets.levelup)
+        }
+        sleep(3000)
+    }
+}
+
 function jingMain() {
     //强制必须先把游戏切换到前台再开始运行脚本，否则退出
     waitForGameForeground(); //注意，函数里还有游戏区服的识别
@@ -1291,26 +1317,11 @@ function jingMain() {
             sleep(1000)
         }
         log("进入战斗")
-        while (!id("matchingWrap").findOnce()) {
-            if (!id("ArenaResult").findOnce()) {
-                screenutilClick(clickSets.battlePan1)
-                sleep(1000)
-            }
-            if (!id("ArenaResult").findOnce()) {
-                screenutilClick(clickSets.battlePan2)
-                sleep(1000)
-            }
-            if (!id("ArenaResult").findOnce()) {
-                screenutilClick(clickSets.battlePan3)
-                sleep(1000)
-            }
-            if (id("ArenaResult").findOnce()) {
-                screenutilClick(clickSets.levelup)
-            }
-            sleep(3000)
-
-        }
+        //简单镜层自动战斗
+        log("镜层周回 - 自动战斗开始：简单自动战斗");
+        mirrorsSimpleAutoBattleMain();
     }
+
 }
 
 
