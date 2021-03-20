@@ -499,8 +499,6 @@ var limit = {
     limitAP: '20',
     shuix: '',
     shuiy: '',
-    helpx: '',
-    helpy: '',
     drug1: false,
     drug2: false,
     drug3: false,
