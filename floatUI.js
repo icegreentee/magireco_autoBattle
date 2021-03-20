@@ -1178,10 +1178,12 @@ function jingMain() {
 
 function getPt(com) {
     let txt = com.text()
-    return parseInt(txt.slice(1))
+    if (txt==null) txt = com.desc();
+    if (txt=="") txt = com.desc();
+    return parseInt(txt.match(/\d+/)[0]);
 }
 function getDrugNum(text) {
-    return parseInt(text.slice(0, text.length - 1))
+    return parseInt(text.match(/\d+/)[0]);
 }
 
 floatUI.adjust = function (config) {
