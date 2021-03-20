@@ -600,6 +600,29 @@ function screenutilClick(d) {
         }
     }
 }
+
+function detectAP() {
+    log("开始检测ap")
+    id("ap").findOne()
+    sleep(1000)
+    let apComlikes = textMatches(/^\d+\/\d+$/).find()
+    log(apComlikes)
+    let apCom = apComlikes[0]
+    log(apCom.bounds())
+    for (let i = 1; i < apComlikes.length; i++) {
+        log(apComlikes[i].bounds())
+        if (apCom.bounds().top > apComlikes[i].bounds().top) {
+            apCom = apComlikes[i]
+        }
+    }
+    sleep(1000)
+    let aps = apCom.text()
+    log("ap:", aps)
+    // aps  55/122  获得字符串中第一串数字
+    let apNow = parseInt(aps.match(/\d+/)[0])
+    return apNow;
+}
+
 function autoMain() {
     let druglimit = {
         drug1limit: limit.drug1num,
@@ -608,14 +631,8 @@ function autoMain() {
     }
     while (true) {
         //开始
-        //---------嗑药模块------------------
-        log("开始检测ap")
-        let apCom = textMatches(/^\d+\/\d+$/).findOne()
-        sleep(1000)
-        let aps = apCom.text()
-        log("ap:", aps)
-        // aps  55/122  获得字符串中第一串数字
-        let apNow = parseInt(aps.match(/\d+/)[0])
+        //检测AP
+        let apNow = detectAP();
 
         log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
         log("嗑药设置体力：", limit.limitAP)
@@ -833,25 +850,9 @@ function autoMainver2() {
     }
     while (true) {
         //开始
-        //---------嗑药模块------------------
-        log("开始检测ap")
-        id("ap").findOne()
-        sleep(1000)
-        let apComlikes = textMatches(/^\d+\/\d+$/).find()
-        log(apComlikes)
-        let apCom = apComlikes[0]
-        log(apCom.bounds())
-        for (let i = 1; i < apComlikes.length; i++) {
-            log(apComlikes[i].bounds())
-            if (apCom.bounds().top > apComlikes[i].bounds().top) {
-                apCom = apComlikes[i]
-            }
-        }
-        sleep(1000)
-        let aps = apCom.text()
-        log("ap:", aps)
-        // aps  55/122  获得字符串中第一串数字
-        let apNow = parseInt(aps.match(/\d+/)[0])
+
+        //检测AP
+        let apNow = detectAP();
 
         log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
         log("嗑药设置体力：", limit.limitAP)
