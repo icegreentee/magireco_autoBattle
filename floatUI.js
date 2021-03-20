@@ -560,45 +560,142 @@ var clickSets = {
         pos: "bottom"
     },
 }
-var devicex = device.width;
-var devicey = device.height;
 
-//x>y
-if (devicex < devicey) {
-    let z = devicex;
-    devicex = devicey;
-    devicey = z;
+//坐标转换
+//初始化变量
+var known = {
+  res: {width: 0, height: 0}, //在开发者自己的手机上截图取已知坐标时用的分辨率，后面会填上1920x1080
+  ratio: {x: 0, y: 0}         //宽高比，后面会填上16:9
+};
+var scr = {
+  res: {width: 0, height: 0}, //当前真实屏幕的分辨率
+  ratio: {x: 0, y: 0},        //宽高比
+  ref: {                      //ref是假想的16:9参照屏幕，宽或高放缩到和当前屏幕一样
+    width: 0, height: 0,
+    offset: {
+      wider: {x: 0, y: 0},    //带鱼屏。假想的参照屏幕高度缩放到和当前真实屏幕一样，宽度比当前真实屏幕小。实际上带鱼屏左右两侧有黑边。
+      higher: {               //方块屏。假想的参照屏幕宽度缩放到和当前真实屏幕一样，高度比当前真实屏幕小。
+        top: {x: 0, y: 0},    //  实际上方块屏在纵向可以容纳更多控件，
+        center: {x: 0, y: 0}, //  所以要让居中控件下移；
+        bottom: {x: 0, y: 0}  //  底端控件需要下移更多距离。
+      }
+    }
+  }
+};
+var conversion_mode = "simple_scaling";
+
+//已知控件坐标是在1920x1080下测得的，宽高比16:9，以此为参照
+known.res.width = 1920;
+known.res.height = 1080;
+known.ratio.x = 16;
+known.ratio.y = 9;
+
+//获取当前屏幕分辨率
+if(device.height > device.width){
+  //魔纪只能横屏显示
+  scr.res.width = device.height;
+  scr.res.height = device.width;
+} else {
+  scr.res.width = device.width;
+  scr.res.height = device.height;
 }
-//屏幕是否大于16比9
-var deviceflat = false;
-if (devicex / devicey >= 16 / 9) {
-    deviceflat = true;
+
+//判断当前屏幕的宽高比
+//辗转相除法取最大公约数
+function get_gcd(a, b) {
+    if (a % b === 0) {
+        return b;
+    }
+    return get_gcd(b, a % b);
 }
-var initx = 1920
-var inity = 1080
+var gcd = get_gcd(scr.res.width, scr.res.height);
+//得到宽高比
+scr.ratio.x = Math.round(scr.res.width / gcd);
+scr.ratio.y = Math.round(scr.res.height / gcd);
+log("当前屏幕分辨率", scr.res.width, "x", scr.res.height, "宽高比", scr.ratio.x, ":", scr.ratio.y);
+
+if (scr.ratio.x == known.ratio.x && scr.ratio.y == known.ratio.y) {
+  //最简单的等比例缩放
+  conversion_mode = "simple_scaling";
+  scr.ref.width = scr.res.width;  // reference width, equals to actual
+  scr.ref.height = scr.res.height;  // reference height, equals to actual
+} else {
+  if (scr.ratio.x * known.ratio.y > known.ratio.x * scr.ratio.y) {
+    //带鱼屏，其实还是简单的等比例缩放，只是左右两侧有黑边要跳过
+    conversion_mode = "wider_screen";
+    scr.ref.width = parseInt(scr.res.height * known.res.width / known.res.height);  // reference width, smaller than actual
+    scr.ref.height = scr.res.height;                                                // reference height
+    scr.ref.offset.wider.x = parseInt((scr.res.width - scr.ref.width) / 2);         // black bar width, assuming ref screen is at the center
+  } else if (scr.ratio.x * known.ratio.y < known.ratio.x * scr.ratio.y) {
+    //方块屏，略复杂，其实还是等比例缩放，但是X轴布局不变，Y轴布局变了，有更大空间显示更多控件
+    conversion_mode = "higher_screen";
+    scr.ref.width = scr.res.width;                                                  // reference width
+    scr.ref.height = parseInt(scr.res.width * known.res.height / known.res.width);  // reference height, smaller than actual
+    //居中控件和底端控件需要对应下移
+    scr.ref.offset.higher.center.y = parseInt((scr.res.height - scr.ref.height) / 2);      // height gap, assuming ref screen is at the center
+    scr.ref.offset.higher.bottom.y = scr.res.height - scr.ref.height;                      // height gap, assuming ref screen is at the bottom
+  } else {
+    throw "unexpected_error";
+  }
+}
+
+//换算坐标 1920x1080=>当前屏幕分辨率
+function convertCoords(d)
+{
+  var verboselog = false
+  if (verboselog) log("换算前的坐标: x=", d.x, " y=", d.y, " pos=", d.pos);
+  var actual = {
+    x:   0,
+    y:   0,
+    pos: 0
+  };
+  var pos = d.pos;
+  //输入的X、Y是1920x1080下测得的
+  //想象一个放大过的16:9的参照屏幕，覆盖在当前的真实屏幕上
+  actual.x = d.x * scr.ref.width / known.res.width;
+  actual.y = d.y * scr.ref.height / known.res.height;
+  if (conversion_mode == "simple_scaling") {
+    //简单缩放，参照屏幕完全覆盖真实屏幕，无需进一步处理
+  if (verboselog) log("  换算方法：简单缩放");
+  } else if (conversion_mode == "wider_screen") {
+    //左右黑边，参照屏幕在Y轴方向正好完全覆盖，在X轴方向不能完全覆盖，所以需要右移
+    if (verboselog) log("  换算方法：放缩后跳过左右黑边");
+    actual.x += scr.ref.offset.wider.x;
+  } else if (conversion_mode == "higher_screen") {
+    //最麻烦的方块屏
+    if (verboselog) log("  换算方法：放缩后下移居中和底端控件");
+    if (pos == "top") {
+      //顶端控件无需进一步处理
+      if (verboselog) log("    顶端控件");
+    } else if (pos == "center") {
+      //居中控件，想象一个放大过的16:9的参照屏幕，覆盖在当前这个方块屏的正中央，X轴正好完全覆盖，Y轴只覆盖了中间部分，所以需要下移
+      if (verboselog) log("    居中控件");
+      actual.y += scr.ref.offset.higher.center.y;
+    } else if (pos == "bottom") {
+      //底端控件同理，只是参照屏幕位于底端，需要下移更远
+      if (verboselog) log("    底端控件");
+      actual.y += scr.ref.offset.higher.bottom.y;
+    } else {
+      if (verboselog) log("    未知控件类型");
+      throw "unknown_pos_value";
+    }
+  } else {
+    if (verboselog) log("  未知换算方法");
+    throw "unknown_conversion_mode"
+  }
+  actual.x = parseInt(actual.x);
+  actual.y = parseInt(actual.y);
+  actual.pos = d.pos;
+  if (verboselog) log("换算后的坐标", " x=", actual.x, " y=", actual.y);
+  return actual;
+}
+
+//按换算后的坐标点击屏幕
 function screenutilClick(d) {
-    if (deviceflat) {
-        let gamey = devicey
-        let gamex = devicey * 16 / 9
-        let rate = gamey / inity
-        click((devicex - gamex) / 2 + d.x * rate, d.y * rate)
-    }
-    else {
-        let gamey = devicey
-        let gamex = devicex
-        if (d.pos == "top") {
-            let rate = gamex / initx
-            click(d.x * rate, d.y * rate)
-        } else if (d.pos == "center") {
-            let rate = gamex / initx
-            let realy = gamex * 9 / 16
-
-            click(d.x * rate, (gamey - (realy)) / 2 + d.y * rate)
-        } else {
-            let rate = gamex / initx
-            click(d.x * rate, (gamey - (inity - d.y) * rate))
-        }
-    }
+  var converted = convertCoords(d);
+  log("按换算后的坐标点击屏幕");
+  //用换算后的实际坐标点击屏幕
+  compatClick(converted.x, converted.y);
 }
 
 function detectAP() {
