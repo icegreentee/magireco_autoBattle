@@ -63,7 +63,7 @@ ui.layout(
                 </vertical>
                 <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                     <linear>
-                        <checkbox id="jjcisuse" text="境界是否嗑药" layout_weight="1" />
+                        <checkbox id="jjcisuse" text="镜界是否嗑药" layout_weight="1" />
                     </linear>
                 </vertical>
 
@@ -119,76 +119,76 @@ floatUI.main()
 
 var storage = storages.create("soha");
 var data = storage.get("data");
-const parmasList = ["limitAP", "shuix", "shuiy", "helpx", "helpy"]
-const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "isSkip", "jjcisuse"]
-var parmasMap = {}
+const paramsList = ["limitAP", "shuix", "shuiy", "helpx", "helpy"]
+const paramsNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "isSkip", "jjcisuse"]
+var paramsMap = {}
 
 
 
 //若没有存储信息进行存储初始化
 if (data == undefined) {
-    for (let i = 0; i < parmasList.length; i++) {
+    for (let i = 0; i < paramsList.length; i++) {
         if (i == 0) {
             //特殊初始值
-            parmasMap[parmasList[i]] = "20"
+            paramsMap[paramsList[i]] = "20"
         } else {
-            parmasMap[parmasList[i]] = ""
+            paramsMap[paramsList[i]] = ""
         }
 
     }
-    // log(JSON.stringify(parmasMap))
-    storage.put("data", JSON.stringify(parmasMap))
+    // log(JSON.stringify(paramsMap))
+    storage.put("data", JSON.stringify(paramsMap))
 }
 else {
-    parmasMap = JSON.parse(data)
+    paramsMap = JSON.parse(data)
 }
 //ui界面赋值
-for (let i = 0; i < parmasList.length; i++) {
-    let key = parmasList[i]
-    let value = parmasMap[key]
+for (let i = 0; i < paramsList.length; i++) {
+    let key = paramsList[i]
+    let value = paramsMap[key]
     ui.run(function () {
         ui[key].setText(value)
     })
 }
 
 //无需复制的属性
-for (let i = 0; i < parmasNotInitList.length; i++) {
-    parmasMap[parmasNotInitList[i]] = false;
+for (let i = 0; i < paramsNotInitList.length; i++) {
+    paramsMap[paramsNotInitList[i]] = false;
 }
-parmasMap["version"] = version
+paramsMap["version"] = version
 
-parmasMap["drug1num"] = ""
-parmasMap["drug2num"] = ""
-parmasMap["drug3num"] = ""
+paramsMap["drug1num"] = ""
+paramsMap["drug2num"] = ""
+paramsMap["drug3num"] = ""
 
 //同步值
-floatUI.adjust(parmasMap)
+floatUI.adjust(paramsMap)
 
 ui.start.click(() => {
-    for (let i = 0; i < parmasList.length; i++) {
-        let key = parmasList[i]
+    for (let i = 0; i < paramsList.length; i++) {
+        let key = paramsList[i]
         let value = ui[key].getText() + ""
         // log(value)
         if (value == "") {
-            parmasMap[key] = ""
+            paramsMap[key] = ""
         }
         else {
-            parmasMap[key] = value
+            paramsMap[key] = value
         }
 
     }
-    // log(parmasMap)
-    // log(JSON.stringify(parmasMap))
+    // log(paramsMap)
+    // log(JSON.stringify(paramsMap))
     storage.remove("data")
-    storage.put("data", JSON.stringify(parmasMap))
-    for (let i = 0; i < parmasNotInitList.length; i++) {
-        parmasMap[parmasNotInitList[i]] = ui[parmasNotInitList[i]].isChecked();
+    storage.put("data", JSON.stringify(paramsMap))
+    for (let i = 0; i < paramsNotInitList.length; i++) {
+        paramsMap[paramsNotInitList[i]] = ui[paramsNotInitList[i]].isChecked();
     }
-    parmasMap["version"] = version
-    parmasMap["drug1num"] = ui["drug1num"].getText()+""
-    parmasMap["drug2num"] = ui["drug2num"].getText()+""
-    parmasMap["drug3num"] = ui["drug3num"].getText()+""
-    floatUI.adjust(parmasMap)
+    paramsMap["version"] = version
+    paramsMap["drug1num"] = ui["drug1num"].getText()+""
+    paramsMap["drug2num"] = ui["drug2num"].getText()+""
+    paramsMap["drug3num"] = ui["drug3num"].getText()+""
+    floatUI.adjust(paramsMap)
     toastLog("修改完成")
 });
 

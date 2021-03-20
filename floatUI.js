@@ -215,7 +215,7 @@ floatUI.main = function () {
         动画()
     }
     win.id_0_click.on("click", () => {
-        toastLog("境界启动")
+        toastLog("镜界启动")
         if (task) {
             task.interrupt()
         }
