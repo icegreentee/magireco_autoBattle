@@ -432,12 +432,34 @@ floatUI.main = function () {
     });
 }
 // ------------主要逻辑--------------------
-var language = {
-    zh: ["回复确认", "回复", "开始", "关注", "关注追加"],
-    jp: ["回復確認", "回復する", "開始", "フォロー", "フォロー追加"],
-    tai: ["回復確認", "進行回復", "開始", "關注", "追加關注"]
-}
-var nowlang = language.zh
+var keywords = {
+    confirmRefill: {
+        chs: "回复确认",
+        jp:   "回復確認",
+        cht: "回復確認"
+    },
+    refill: {
+        chs: "回复",
+        jp:   "回復する",
+        cht: "進行回復"
+    },
+    start: {
+        chs: "开始",
+        jp:   "開始",
+        cht: "開始"
+    },
+    follow: {
+        chs: "关注",
+        jp:   "フォロー",
+        cht: "關注"
+    },
+    appendFollow: {
+        chs: "关注追加",
+        jp:   "フォロー追加",
+        cht: "追加關注"
+    }
+};
+var currentLang = "chs";
 var limit = {
     limitAP: '20',
     shuix: '',
@@ -451,7 +473,6 @@ var limit = {
     justNPC: false,
     isSkip: false,
     jjcisuse: false,
-    lang: 'zh',
     version: '2.2.0',
     drug1num: '',
     drug2num: '',
@@ -736,7 +757,7 @@ function refillAP() {
     }
     let apDrugNums = textMatches(/^\d+個$/).find()
 
-    if (limit.lang == "zh") {
+    if (currentLang == "chs") {
         apDrugNums = textMatches(/^\d+个$/).find()
     }
     //获得回复药水数量
@@ -750,15 +771,15 @@ function refillAP() {
         if (druglimit.drug1limit) {
             druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
         }
-        while (!text(nowlang[0]).findOnce()) {
+        while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.ap50)
             sleep(2000)
         }
-        text(nowlang[1]).findOne()
+        text(keywords.refill[currentLang]).findOne()
         sleep(1500)
         log("确认回复")
-        while (text(nowlang[0]).findOnce()) {
+        while (text(keywords.confirmRefill[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.aphui)
             sleep(2000)
@@ -767,15 +788,15 @@ function refillAP() {
         if (druglimit.drug2limit) {
             druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
         }
-        while (!text(nowlang[0]).findOnce()) {
+        while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.apfull)
             sleep(2000)
         }
-        text(nowlang[1]).findOne()
+        text(keywords.refill[currentLang]).findOne()
         sleep(1500)
         log("确认回复")
-        while (text(nowlang[0]).findOnce()) {
+        while (text(keywords.confirmRefill[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.aphui)
             sleep(2000)
@@ -785,15 +806,15 @@ function refillAP() {
         if (druglimit.drug3limit) {
             druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
         }
-        while (!text(nowlang[0]).findOnce()) {
+        while (!text(keywords.confirmRefill[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.apjin)
             sleep(2000)
         }
-        text(nowlang[1]).findOne()
+        text(keywords.refill[currentLang]).findOne()
         sleep(1500)
         log("确认回复")
-        while (text(nowlang[0]).findOnce()) {
+        while (text(keywords.confirmRefill[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.aphui)
             sleep(2000)
@@ -827,7 +848,7 @@ function pickSupportWithTheMostPt() {
             sleep(2000)
         }
     }
-    else if (limit.lang != "zh") {
+    else if (currentLang != "chs") {
         while (id("friendWrap").findOnce()) {
             sleep(1000)
             click(friendWrap.centerX(), friendWrap.top + 100)
@@ -890,9 +911,9 @@ function autoMain() {
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
         //国台服不同
-        text(nowlang[2]).findOne()
+        text(keywords.start[currentLang]).findOne()
         log("进入开始")
-        while (text(nowlang[2]).findOnce()) {
+        while (text(keywords.start[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.start)
             sleep(3000)
@@ -914,13 +935,13 @@ function autoMain() {
 
         while (!id("retryWrap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
-            if (text(nowlang[3]).findOnce()) {
-                while (text(nowlang[3]).findOnce()) {
+            if (text(keywords.follow[currentLang]).findOnce()) {
+                while (text(keywords.follow[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.yesfocus)
                     sleep(3000)
                 }
-                while (text(nowlang[4]).findOnce()) {
+                while (text(keywords.appendFollow[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.focusclose)
                     sleep(3000)
@@ -991,9 +1012,9 @@ function autoMainver2() {
         // -----------开始----------------
         //开始按钮部分手机无法确定位置 需要改
         //国台服不同
-        text(nowlang[2]).findOne()
+        text(keywords.start[currentLang]).findOne()
         log("进入开始")
-        while (text(nowlang[2]).findOnce()) {
+        while (text(keywords.start[currentLang]).findOnce()) {
             sleep(1000)
             screenutilClick(clickSets.start)
             sleep(3000)
@@ -1015,13 +1036,13 @@ function autoMainver2() {
 
         while (id("ResultWrap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
-            if (text(nowlang[3]).findOnce()) {
-                while (text(nowlang[3]).findOnce()) {
+            if (text(keywords.follow[currentLang]).findOnce()) {
+                while (text(keywords.follow[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.yesfocus)
                     sleep(3000)
                 }
-                while (text(nowlang[4]).findOnce()) {
+                while (text(keywords.appendFollow[currentLang]).findOnce()) {
                     sleep(1000)
                     screenutilClick(clickSets.focusclose)
                     sleep(3000)
@@ -1122,7 +1143,6 @@ function getDrugNum(text) {
 floatUI.adjust = function (config) {
     limit = config
     log("参数：", limit)
-    nowlang = language[limit.lang]
 }
 
 module.exports = floatUI;
