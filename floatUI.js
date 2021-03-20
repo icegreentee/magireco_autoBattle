@@ -623,6 +623,94 @@ function detectAP() {
     return apNow;
 }
 
+function refillAP() {
+    //嗑药
+    //打开ap面板
+    log("嗑药面板开启")
+    //确定要嗑药后等3s，打开面板
+    while (!id("popupInfoDetailTitle").findOnce()) {
+        sleep(1000)
+        screenutilClick(clickSets.ap)
+        sleep(2000)
+    }
+    let apDrugNums = textMatches(/^\d+個$/).find()
+
+    if (limit.lang == "zh") {
+        apDrugNums = textMatches(/^\d+个$/).find()
+    }
+    //获得回复药水数量
+    let apDrug50Num = getDrugNum(apDrugNums[0].text())
+    let apDrugFullNum = getDrugNum(apDrugNums[1].text())
+    let apMoneyNum = getDrugNum(apDrugNums[2].text())
+    log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
+    // 根据条件选择药水
+
+    if (apDrug50Num > 0 && limit.drug1 && druglimit.drug1limit != "0") {
+        if (druglimit.drug1limit) {
+            druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
+        }
+        while (!text(nowlang[0]).findOnce()) {
+            sleep(1000)
+            screenutilClick(clickSets.ap50)
+            sleep(2000)
+        }
+        text(nowlang[1]).findOne()
+        sleep(1500)
+        log("确认回复")
+        while (text(nowlang[0]).findOnce()) {
+            sleep(1000)
+            screenutilClick(clickSets.aphui)
+            sleep(2000)
+        }
+    } else if (apDrugFullNum > 0 && limit.drug2 && druglimit.drug2limit != "0") {
+        if (druglimit.drug2limit) {
+            druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
+        }
+        while (!text(nowlang[0]).findOnce()) {
+            sleep(1000)
+            screenutilClick(clickSets.apfull)
+            sleep(2000)
+        }
+        text(nowlang[1]).findOne()
+        sleep(1500)
+        log("确认回复")
+        while (text(nowlang[0]).findOnce()) {
+            sleep(1000)
+            screenutilClick(clickSets.aphui)
+            sleep(2000)
+        }
+    }
+    else if (apMoneyNum > 5 && limit.drug3 && druglimit.drug3limit != "0") {
+        if (druglimit.drug3limit) {
+            druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
+        }
+        while (!text(nowlang[0]).findOnce()) {
+            sleep(1000)
+            screenutilClick(clickSets.apjin)
+            sleep(2000)
+        }
+        text(nowlang[1]).findOne()
+        sleep(1500)
+        log("确认回复")
+        while (text(nowlang[0]).findOnce()) {
+            sleep(1000)
+            screenutilClick(clickSets.aphui)
+            sleep(2000)
+        }
+    } else {
+        //关掉面板继续周回
+        log("none")
+    }
+
+    //关掉ap面板
+    log("关掉面板")
+    while (id("popupInfoDetailTitle").findOnce()) {
+        sleep(1000)
+        screenutilClick(clickSets.apclose)
+        sleep(2000)
+    }
+}
+
 function autoMain() {
     let druglimit = {
         drug1limit: limit.drug1num,
@@ -639,90 +727,7 @@ function autoMain() {
         log("当前体力为" + apNow)
         if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
             //嗑药
-            //打开ap面板
-            log("嗑药面板开启")
-            //确定要嗑药后等3s，打开面板
-            while (!id("popupInfoDetailTitle").findOnce()) {
-                sleep(1000)
-                screenutilClick(clickSets.ap)
-                sleep(2000)
-            }
-            let apDrugNums = textMatches(/^\d+個$/).find()
-
-            if (limit.lang == "zh") {
-                apDrugNums = textMatches(/^\d+个$/).find()
-            }
-            //获得回复药水数量
-            let apDrug50Num = getDrugNum(apDrugNums[0].text())
-            let apDrugFullNum = getDrugNum(apDrugNums[1].text())
-            let apMoneyNum = getDrugNum(apDrugNums[2].text())
-            log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
-            // 根据条件选择药水
-
-            if (apDrug50Num > 0 && limit.drug1 && druglimit.drug1limit != "0") {
-                if (druglimit.drug1limit) {
-                    druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
-                }
-                while (!text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.ap50)
-                    sleep(2000)
-                }
-                text(nowlang[1]).findOne()
-                sleep(1500)
-                log("确认回复")
-                while (text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.aphui)
-                    sleep(2000)
-                }
-            } else if (apDrugFullNum > 0 && limit.drug2 && druglimit.drug2limit != "0") {
-                if (druglimit.drug2limit) {
-                    druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
-                }
-                while (!text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.apfull)
-                    sleep(2000)
-                }
-                text(nowlang[1]).findOne()
-                sleep(1500)
-                log("确认回复")
-                while (text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.aphui)
-                    sleep(2000)
-                }
-            }
-            else if (apMoneyNum > 5 && limit.drug3 && druglimit.drug3limit != "0") {
-                if (druglimit.drug3limit) {
-                    druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
-                }
-                while (!text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.apjin)
-                    sleep(2000)
-                }
-                text(nowlang[1]).findOne()
-                sleep(1500)
-                log("确认回复")
-                while (text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.aphui)
-                    sleep(2000)
-                }
-            } else {
-                //关掉面板继续周回
-                log("none")
-            }
-
-            //关掉ap面板
-            log("关掉面板")
-            while (id("popupInfoDetailTitle").findOnce()) {
-                sleep(1000)
-                screenutilClick(clickSets.apclose)
-                sleep(2000)
-            }
+            refillAP();
         }
         //----------------------------------
         log("选择助战")
@@ -859,89 +864,7 @@ function autoMainver2() {
         log("当前体力为" + apNow)
         if (!(!limit.drug1 && !limit.drug2 && !limit.drug3) && apNow <= parseInt(limit.limitAP)) {
             //嗑药
-            //打开ap面板
-            log("嗑药面板开启")
-            //确定要嗑药后等3s，打开面板
-            while (!id("popupInfoDetailTitle").findOnce()) {
-                sleep(1000)
-                screenutilClick(clickSets.ap)
-                sleep(2000)
-            }
-            let apDrugNums = textMatches(/^\d+個$/).find()
-            if (limit.lang == "zh") {
-                apDrugNums = textMatches(/^\d+个$/).find()
-            }
-            //获得回复药水数量
-            let apDrug50Num = getDrugNum(apDrugNums[0].text())
-            let apDrugFullNum = getDrugNum(apDrugNums[1].text())
-            let apMoneyNum = getDrugNum(apDrugNums[2].text())
-            log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
-            // 根据条件选择药水
-
-            if (apDrug50Num > 0 && limit.drug1 && druglimit.drug1limit != "0") {
-                if (druglimit.drug1limit) {
-                    druglimit.drug1limit = (parseInt(druglimit.drug1limit) - 1) + ""
-                }
-                while (!text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.ap50)
-                    sleep(2000)
-                }
-                text(nowlang[1]).findOne()
-                sleep(1500)
-                log("确认回复")
-                while (text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.aphui)
-                    sleep(2000)
-                }
-            } else if (apDrugFullNum > 0 && limit.drug2 && druglimit.drug2limit != "0") {
-                if (druglimit.drug2limit) {
-                    druglimit.drug2limit = (parseInt(druglimit.drug2limit) - 1) + ""
-                }
-                while (!text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.apfull)
-                    sleep(2000)
-                }
-                text(nowlang[1]).findOne()
-                sleep(1500)
-                log("确认回复")
-                while (text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.aphui)
-                    sleep(2000)
-                }
-            }
-            else if (apMoneyNum > 5 && limit.drug3 && druglimit.drug3limit != "0") {
-                if (druglimit.drug3limit) {
-                    druglimit.drug3limit = (parseInt(druglimit.drug3limit) - 1) + ""
-                }
-                while (!text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.apjin)
-                    sleep(2000)
-                }
-                text(nowlang[1]).findOne()
-                sleep(1500)
-                log("确认回复")
-                while (text(nowlang[0]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.aphui)
-                    sleep(2000)
-                }
-            } else {
-                //关掉面板继续周回
-                log("none")
-            }
-
-            //关掉ap面板
-            log("关掉面板")
-            while (id("popupInfoDetailTitle").findOnce()) {
-                sleep(1000)
-                screenutilClick(clickSets.apclose)
-                sleep(2000)
-            }
+            refillAP();
         }
         //----------------------------------
         log(limit.shuix, limit.shuiy)
