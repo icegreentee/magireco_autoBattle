@@ -758,27 +758,96 @@ function screenutilClick(d) {
   compatClick(converted.x, converted.y);
 }
 
+//检测AP
 function detectAP() {
-    log("开始检测ap")
-    id("ap").findOne()
-    sleep(1000)
-    let apComlikes = textMatches(/^\d+\/\d+$/).find()
-    log(apComlikes)
-    let apCom = apComlikes[0]
-    log(apCom.bounds())
-    for (let i = 1; i < apComlikes.length; i++) {
-        log(apComlikes[i].bounds())
-        if (apCom.bounds().top > apComlikes[i].bounds().top) {
-            apCom = apComlikes[i]
+    while (true) {
+        let detectAttempt = 0;
+        log("开始检测ap");
+        let IDEqualsAP = id("ap").find();
+        if (IDEqualsAP.empty()) {
+            log("没找到resource-id为\"ap\"的控件");
+        } else {
+            log("resource-id为\"ap\"的控件：", IDEqualsAP);
         }
-    }
-    sleep(1000)
-    let aps = apCom.text()
-    log("ap:", aps)
-    // aps  55/122  获得字符串中第一串数字
-    let apNow = parseInt(aps.match(/\d+/)[0])
-    return apNow;
-}
+        
+        let knownApComCoords = {
+            topLeft: {x: 880, y: 0, pos: "top"},
+            bottomRight: {x: 1210, y: 120, pos: "top"}
+        };
+        let convertedApComCoords = {
+            topLeft: convertCoords(knownApComCoords.topLeft),
+            bottomRight: convertCoords(knownApComCoords.bottomRight)
+        };
+        let apComLikes = [];
+        
+        let apComLikesRegExp = [];
+        let apComLikesAltRegExp = [];
+        let apCom = null;
+        let useDesc = {no: false, yes: true};
+        for (let whether in useDesc) {
+            log("useDesc:", whether);
+            if (useDesc[whether]) {
+                apComLikesRegExp = descMatches(/^\d+\/\d+$/).find();
+                apComLikesAltRegExp = descMatches(/((^\/$)|(^\d+$))/).find();
+            } else {
+                apComLikesRegExp = textMatches(/^\d+\/\d+$/).find();
+                apComLikesAltRegExp = textMatches(/((^\/$)|(^\d+$))/).find();
+            }
+            if (apComLikesRegExp.empty()) {
+                log("正则/^\\d+\\/\\d+$/未匹配到AP控件");
+            } else {
+                log("正则/^\\d+\\/\\d+$/匹配到：", apComLikesRegExp);
+            }
+            if (apComLikesAltRegExp.empty()) {
+                log("备用正则/^\\d+$/未匹配到AP控件");
+            } else {
+                log("备用正则/^\\d+$/匹配到：", apComLikesAltRegExp);
+            }
+        
+            let arr = [apComLikesRegExp, apComLikesAltRegExp, IDEqualsAP]
+            for (let arrindex in arr) {
+                thisApComLikes = arr[arrindex];
+                apComLikes = [];
+                let sanity = false;
+                let apMin = Number.MAX_SAFE_INTEGER-1;
+                for (let i=0; i<thisApComLikes.length; i++) {
+                    let apComLikeTop = thisApComLikes[i].bounds().top;
+                    let apComLikeLeft = thisApComLikes[i].bounds().left;
+                    let apComLikeBottom = thisApComLikes[i].bounds().bottom;
+                    let apComLikeRight = thisApComLikes[i].bounds().right;
+                    if (apComLikeTop >= convertedApComCoords.topLeft.y && apComLikeLeft >= convertedApComCoords.topLeft.x &&
+                    apComLikeBottom <= convertedApComCoords.bottomRight.y && apComLikeRight <= convertedApComCoords.bottomRight.x) {
+                        apComLikes.push(thisApComLikes[i]);
+                        let apCom = thisApComLikes[i];
+                        let apStr = "";
+                        if (useDesc[whether]) {
+                            apStr = apCom.desc();
+                        } else {
+                            apStr = apCom.text();
+                        }
+                        if (apStr.includes("/")) sanity = true; //即便AP控件拆开了，也至少应该可以找到一个斜杠
+        
+                        let apNum = Number.MAX_SAFE_INTEGER;
+                        let ap = apStr.match(/\d+/);
+                        if (ap != null) apNum = parseInt(ap[0]);
+                        if (apNum < apMin) apMin = apNum;
+                    } //end if
+                }
+                log("useDesc", whether, "arrindex", arrindex, "在坐标范围内的控件", apComLikes);
+                log("apMin", apMin);
+                if (sanity && apMin < Number.MAX_SAFE_INTEGER - 2) return apMin;
+            }// end for (iteration)
+        }//end for (useDesc)
+        log("检测AP失败，等待1秒后重试...");
+        sleep(1000);
+        detectAttempt++;
+        if (detectAttempt > 300) {
+            log("超过5分钟没有成功检测AP，退出");
+            exit();
+        }
+    } //end while
+    throw "detectAPFailed" //should never reach here
+}//end function
 
 function refillAP() {
     //嗑药
