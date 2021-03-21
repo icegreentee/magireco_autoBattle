@@ -428,6 +428,21 @@ floatUI.main = function () {
     });
 }
 // ------------主要逻辑--------------------
+function detectLanguage()
+{
+    var element=auto.root;
+    if(element)
+    {
+        var name=element.packageName();
+        if(name == "com.bilibili.madoka.bilibili")
+            return "zh"
+        else if(name == "com.aniplex.magireco")
+            return "tai"
+        else if(name == "com.komoe.madokagp")
+            return "jp"
+    }
+    return null;
+}
 var language = {
     zh: ["回复确认", "回复", "开始", "关注", "关注追加"],
     jp: ["回復確認", "回復する", "開始", "フォロー", "フォロー追加"],
@@ -601,6 +616,15 @@ function screenutilClick(d) {
     }
 }
 function autoMain() {
+    var lang=detectLanguage()
+    if(lang)
+    {
+        nowlang=language[lang]
+    }
+    else{
+        toastLog("未检测到游戏，请切换后再试")
+        return
+    }
     let druglimit = {
         drug1limit: limit.drug1num,
         drug2limit: limit.drug2num,
