@@ -30,13 +30,6 @@ importClass(android.widget.TextView)
 
 floatUI.main = function () {
     // 没有悬浮窗权限，提示用户并跳转请求
-    if ($floaty.checkPermission()) {
-        app.startActivity({
-            packageName: "com.android.settings",
-            className: "com.android.settings.Settings$AppDrawOverlaySettingsActivity",
-            data: "package:" + context.getPackageName(),
-        });
-    }
     let task = null;
     let logo_switch = false;//全局: 悬浮窗的开启关闭检测
     let logo_buys = false;//全局: 开启和关闭时占用状态 防止多次点击触发

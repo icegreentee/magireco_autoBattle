@@ -121,11 +121,26 @@ ui.tolog.click(() => {
 ui.emitter.on("resume", () => {
     // 此时根据无障碍服务的开启情况，同步开关的状态
     ui.autoService.checked = auto.service != null;
+    if (!floatIsActive) {
+        floatUI.main()
+    }
 });
 
 //-----------------自定义逻辑-------------------------------------------
 var floatUI = require('floatUI.js');
-floatUI.main()
+var floatIsActive = false;
+// 悬浮窗权限检查
+if (!floaty.checkPermission()) {
+    app.startActivity({
+        packageName: "com.android.settings",
+        className: "com.android.settings.Settings$AppDrawOverlaySettingsActivity",
+        data: "package:" + context.getPackageName(),
+    });
+} else {
+    floatUI.main();
+    floatIsActive = true;
+}
+
 
 var storage = storages.create("soha");
 var data = storage.get("data");
@@ -204,9 +219,9 @@ ui.start.click(() => {
         parmasMap["lang"] = "tai"
     }
     parmasMap["version"] = version
-    parmasMap["drug1num"] = ui["drug1num"].getText()+""
-    parmasMap["drug2num"] = ui["drug2num"].getText()+""
-    parmasMap["drug3num"] = ui["drug3num"].getText()+""
+    parmasMap["drug1num"] = ui["drug1num"].getText() + ""
+    parmasMap["drug2num"] = ui["drug2num"].getText() + ""
+    parmasMap["drug3num"] = ui["drug3num"].getText() + ""
     floatUI.adjust(parmasMap)
     toastLog("修改完成")
 });
