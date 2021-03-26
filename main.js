@@ -184,9 +184,11 @@ else {
 for (let i = 0; i < parmasList.length; i++) {
     let key = parmasList[i]
     let value = parmasMap[key]
-    ui.run(function () {
-        ui[key].setText(value)
-    })
+    if (value != null) {
+        ui.run(function () {
+            ui[key].setText(value)
+        })
+    }
 }
 
 //无需复制的属性
