@@ -7,5 +7,10 @@
     "packageName": "top.momoe.auto",
     "versionName": "2.4.0",
     "versionInfo": "",
-    "versionCode": 1
+    "versionCode": 1,
+    "icon":"./images/icon.png",
+    "launchConfig":{
+        "splashIcon":"./images/start.jpg",
+        "splashText":""
+    }
 }
