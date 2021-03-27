@@ -53,7 +53,7 @@ ui.layout(
                         </linear>
                         {/* <Switch id="isRoot" w="*" checked="false" textColor="#666666" text="android7以下适配(需要root)" /> */}
                     </vertical>
-                    <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
+                    {/* <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                         <linear>
                             <text text="踩水活动 x，y坐标自定义：" />
                             <input maxLength="4" id="shuix" text="" inputType="number|none" />
@@ -62,7 +62,7 @@ ui.layout(
                         <linear>
                             <checkbox id="isSkip" text="是否会进行跳过剧情" layout_weight="1" />
                         </linear>
-                    </vertical>
+                    </vertical> */}
                     <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
                         <linear>
                             <checkbox id="jjcisuse" text="境界是否嗑药" layout_weight="1" />
@@ -144,7 +144,7 @@ if (!floaty.checkPermission()) {
 
 var storage = storages.create("soha");
 var data = storage.get("data");
-const parmasList = ["limitAP", "shuix", "shuiy", "helpx", "helpy"]
+const parmasList = ["limitAP", "helpx", "helpy"]
 const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "isSkip", "jjcisuse"]
 var parmasMap = {}
 
@@ -178,7 +178,7 @@ for (let i = 0; i < parmasList.length; i++) {
     }
 }
 
-//无需复制的属性
+//无需赋值的属性
 for (let i = 0; i < parmasNotInitList.length; i++) {
     parmasMap[parmasNotInitList[i]] = false;
 }
@@ -211,7 +211,7 @@ ui.start.click(() => {
     for (let i = 0; i < parmasNotInitList.length; i++) {
         parmasMap[parmasNotInitList[i]] = ui[parmasNotInitList[i]].isChecked();
     }
-    
+
 
     parmasMap["drug1num"] = ui["drug1num"].getText() + ""
     parmasMap["drug2num"] = ui["drug2num"].getText() + ""
