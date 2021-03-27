@@ -922,7 +922,20 @@ function ApsFunction(druglimit) {
         return;
     }
     log("开始检测ap")
-    let apCom = textMatches(/^\d+\/\d+$/).findOne()
+    let statusRect = id("status").findOne().bounds()
+    let apComList = descMatches(/^\d+\/\d+$/).find()
+    if (apComList.length == 0) {
+        apComList = textMatches(/^\d+\/\d+$/).find()
+    }
+    let apCom = apComList[0];
+    if (apComList.length > 1) {
+        for (let i = 1; i < apComList.length; i++) {
+            if (apComList[i].bounds().centerX() < statusRect.bottom) {
+                apCom = apComList[i];
+            }
+        }
+    }
+
     sleep(1000)
     let aps = apCom.text()
     log("ap:", aps)
@@ -1054,17 +1067,16 @@ function FriendHelpFunction() {
                     }
                 }
                 ptComCanClick.push(ptCom[i])
-                log(ptCom[i].bounds())
             }
         }
-        log("候选列表", ptComCanClick)
+        log("候选列表", ptComCanClick.length)
         log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
         // 是单纯选npc还是，优先助战
         let finalPt = ptComCanClick[0]
         if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
             finalPt = ptComCanClick[ptComCanClick.length - 1]
         }
-        log("选择", finalPt)
+        log("选择", finalPt.bounds())
         while (id("friendWrap").findOnce()) {
             sleep(1000)
             click(finalPt.bounds().centerX(), finalPt.bounds().centerY())

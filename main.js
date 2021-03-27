@@ -145,7 +145,7 @@ if (!floaty.checkPermission()) {
 var storage = storages.create("soha");
 var data = storage.get("data");
 const parmasList = ["limitAP", "helpx", "helpy"]
-const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "isSkip", "jjcisuse"]
+const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC",  "jjcisuse"]
 var parmasMap = {}
 
 
