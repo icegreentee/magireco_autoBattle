@@ -925,9 +925,9 @@ function ApsFunction(druglimit) {
     }
     log("开始检测ap")
     let statusRect = id("status").findOne().bounds()
-    let apComList = descMatches(/^\d+\/\d+$/).find()
+    let apComList = textMatches(/^\d+\/\d+$/).find()
     if (apComList.length == 0) {
-        apComList = textMatches(/^\d+\/\d+$/).find()
+        apComList = descMatches(/^\d+\/\d+$/).find()
     }
     let apCom = apComList[0];
     if (apComList.length > 1) {

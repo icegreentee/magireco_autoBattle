@@ -231,9 +231,9 @@ try {
         })
     } else {
         let resJson = res.body.json();
-        if (parseInt(resJson.versionName.split(".").join("")) == parseInt(version.split(".").join(""))) {
+        if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
             ui.run(function () {
-                ui.versionMsg.setText("当前为最新版本")
+                ui.versionMsg.setText("当前无需更新")
             });
         } else {
             ui.run(function () {
@@ -256,8 +256,8 @@ function toUpdate() {
             toastLog("请求超时")
         } else {
             let resJson = res.body.json();
-            if (parseInt(resJson.versionName.split(".").join("")) == parseInt(version.split(".").join(""))) {
-                toastLog("为最新版本，无需更新")
+            if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
+                toastLog("无需更新")
             } else {
                 let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/main.js");
                 let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/floatUI.js");
