@@ -31,7 +31,6 @@ importClass(android.widget.TextView)
 floatUI.main = function () {
     // 没有悬浮窗权限，提示用户并跳转请求
     let task = null;
-    let stableTask = null;
     let logo_switch = false;//全局: 悬浮窗的开启关闭检测
     let logo_buys = false;//全局: 开启和关闭时占用状态 防止多次点击触发
     let logo_fx = true//全局: 悬浮按钮所在的方向 真左 假右
@@ -210,10 +209,6 @@ floatUI.main = function () {
         if (task != null) {
             task.interrupt()
             task = null;
-        }
-        if (stableTask != null) {
-            stableTask.interrupt()
-            stableTask = null;
         }
     }
 
@@ -586,14 +581,9 @@ function autoMain() {
         BeginFunction();
         //---------战斗------------------
         log("进入战斗")
-
         //------------开始结算-------------------
         id("ResultWrap").findOne()
         //稳定模式点击结束
-        if (stableTask) {
-            stableTask.interrupt()
-            stableTask = null;
-        }
         sleep(3000)
         while (!id("retryWrap").findOnce()) {
             //-----------如果有升级弹窗点击----------------------
@@ -1090,19 +1080,12 @@ function BeginFunction() {
     }
     //稳定模式点击
     if (limit.isStable) {
-        if (stableTask) {
-            stableTask.interrupt()
-            stableTask = null;
+        while (!id("ResultWrap").findOnce()) {
+            sleep(3000)
+            // 循环点击的位置为短线重连确定点
+            screenutilClick(clickSets.reconection)
+            sleep(2000)
         }
-        stableTask = threads.start(function () {
-            while (true) {
-                sleep(3000)
-                // 循环点击的位置为短线重连确定点
-                screenutilClick(clickSets.reconection)
-                sleep(2000)
-            }
-        })
-
     }
 }
 
