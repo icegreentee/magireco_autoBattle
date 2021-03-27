@@ -177,13 +177,14 @@ floatUI.main = function () {
         动画()
     }
     win.id_0_click.on("click", () => {
+        toastLog("镜界启动")
         taskInit()
         task = threads.start(jingMain)
         img_down()
     })
 
     win.id_1_click.on("click", () => {
-        log("暂无")
+        toastLog("暂无")
         img_down();
     })
 
@@ -201,7 +202,7 @@ floatUI.main = function () {
     })
 
     win.id_4_click.on("click", () => {
-        log("暂无")
+        toastLog("暂无")
         img_down();
     })
 
@@ -524,7 +525,7 @@ var clickSets = {
 }
 var devicex = device.width;
 var devicey = device.height;
-
+var spdevicey = 0;
 //x>y
 if (devicex < devicey) {
     let z = devicex;
@@ -536,29 +537,30 @@ var deviceflat = false;
 if (devicex / devicey >= 16 / 9) {
     deviceflat = true;
 }
-var initx = 1920
-var inity = 1080
+
 function screenutilClick(d) {
+    let initx = 1920
+    let inity = 1080
     if (deviceflat) {
         let gamey = devicey
         let gamex = devicey * 16 / 9
         let rate = gamey / inity
-        click((devicex - gamex) / 2 + d.x * rate, d.y * rate)
+        click((devicex - gamex) / 2 + d.x * rate, d.y * rate + spdevicey)
     }
     else {
         let gamey = devicey
         let gamex = devicex
         if (d.pos == "top") {
             let rate = gamex / initx
-            click(d.x * rate, d.y * rate)
+            click(d.x * rate, d.y * rate + spdevicey)
         } else if (d.pos == "center") {
             let rate = gamex / initx
             let realy = gamex * 9 / 16
 
-            click(d.x * rate, (gamey - (realy)) / 2 + d.y * rate)
+            click(d.x * rate, (gamey - (realy)) / 2 + d.y * rate + spdevicey)
         } else {
             let rate = gamex / initx
-            click(d.x * rate, (gamey - (inity - d.y) * rate))
+            click(d.x * rate, (gamey - (inity - d.y) * rate) + spdevicey)
         }
     }
 }
@@ -1123,6 +1125,9 @@ function waitForGameForeground() {
         currentLang = language[langNow];
         if (isGameFg) {
             log("游戏在前台");
+            let gameBounds = className("android.widget.FrameLayout").depth(4).findOne().bounds()
+            spdevicey = gameBounds.top;
+            log("y偏移："+spdevicey)
             break;
         } else {
             toastLog("请务必先把魔纪切换到前台");
