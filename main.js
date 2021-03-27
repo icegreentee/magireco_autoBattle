@@ -114,6 +114,7 @@ ui.emitter.on("resume", () => {
     ui.autoService.checked = auto.service != null;
     if (!floatIsActive) {
         floatUI.main()
+        floatIsActive = true;
     }
 });
 // //设置颜色
