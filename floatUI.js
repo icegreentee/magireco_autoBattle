@@ -184,7 +184,9 @@ floatUI.main = function () {
     })
 
     win.id_1_click.on("click", () => {
-        toastLog("暂无")
+        toastLog("兼容")
+        taskInit()
+        task = threads.start(tasks.default)
         img_down();
     })
 
@@ -392,25 +394,7 @@ floatUI.main = function () {
     });
 }
 // ------------主要逻辑--------------------
-<<<<<<< HEAD
-function detectLanguage()
-{
-    var element=auto.root;
-    if(element)
-    {
-        var name=element.packageName();
-        if(name == "com.bilibili.madoka.bilibili")
-            return "zh"
-        else if(name == "com.aniplex.magireco")
-            return "tai"
-        else if(name == "com.komoe.madokagp")
-            return "jp"
-    }
-    return null;
-}
-=======
 var langNow = "zh"
->>>>>>> 66a1a9e9c775bc57e2ed8e6bc0ac8683025207f4
 var language = {
     zh: ["回复确认", "回复", "开始", "关注", "关注追加"],
     jp: ["回復確認", "回復する", "開始", "フォロー", "フォロー追加"],
@@ -575,20 +559,8 @@ function screenutilClick(d) {
     }
 }
 function autoMain() {
-<<<<<<< HEAD
-    var lang=detectLanguage()
-    if(lang)
-    {
-        nowlang=language[lang]
-    }
-    else{
-        toastLog("未检测到游戏，请切换后再试")
-        return
-    }
-=======
     waitForGameForeground();
     // 初始化嗑药数量
->>>>>>> 66a1a9e9c775bc57e2ed8e6bc0ac8683025207f4
     let druglimit = {
         drug1limit: limit.drug1num,
         drug2limit: limit.drug2num,
@@ -1178,5 +1150,517 @@ floatUI.adjust = function (config) {
     limit = config
     log("参数：", limit)
 }
+
+// compatible action closure
+var tasks = (function() {
+    // click with root permission
+    function clickRoot(x, y) {
+        var result = shell("su\ninput tap " + x + " " + y + "\nexit\n")
+        // detect reason when click did not succeed
+        if (result.code != 0) {
+            result = shell("which su")
+            if (result.code == 0) {
+                // device already rooted, but permission not granted
+                toastLog("root权限获取失败")
+            } else {
+                // device not rooted
+                toastLog("Android 7 以下设备运行脚本需要root")
+            }
+            // terminate when click cannot be successfully performed
+            threads.currentThread().interrupt()
+        }
+    }
+
+    function click(x, y) {
+        // limit range
+        if (x >= device.width) {
+            x = device.width - 1
+        }
+        if (y >= device.height) {
+            y = device.height - 1
+        }
+        // system version higher than Android 7.0
+        if (device.sdkInt >= 24) {
+            // now accessibility gesture APIs are available
+            press(x, y, 50)
+        } else {
+            clickRoot(x, y)
+        }
+    }
+
+    // find first element using regex
+    function match(reg, wait) {
+        var startTime = new Date().getTime()
+        var result
+        do {
+            result = textMatches(reg).findOnce()
+            if (result) return result
+            result = descMatches(reg).findOnce()
+            if (result) return result
+            sleep(100)
+        } while (wait === true || new Date().getTime() < startTime + wait)
+    }
+
+    // find all element using regex
+    function matchAll(reg, wait) {
+        var startTime = new Date().getTime()
+        var result
+        do {
+            result = textMatches(reg).find()
+            if (result.length >= 1) return result
+            result = descMatches(reg).find()
+            if (result.length >= 1) return result
+            sleep(100)
+        } while (wait === true || new Date().getTime() < startTime + wait)
+        return []
+    }
+
+    // find first element using plain text
+    function find(txt, wait) {
+        var startTime = new Date().getTime()
+        var result
+        do {
+            result = text(txt).findOnce()
+            if (result) return result
+            result = desc(txt).findOnce()
+            if (result) return result
+            sleep(100)
+        } while (wait === true || new Date().getTime() < startTime + wait)
+    }
+
+    // find all element using plain text
+    function findAll(txt, wait) {
+        var startTime = new Date().getTime()
+        var result
+        do {
+            result = text(txt).find()
+            if (result.length >= 1) return result
+            result = desc(txt).find()
+            if (result.length >= 1) return result
+            sleep(100)
+        } while (wait === true || new Date().getTime() < startTime + wait)
+        return []
+    }
+
+    function findID(name, wait) {
+        var startTime = new Date().getTime()
+        var result
+        do {
+            result = id(name).findOnce()
+            if (result) return result
+            sleep(100)
+        } while (wait === true || new Date().getTime() < startTime + wait)
+    }
+
+    function waitElement(element, wait) {
+        var startTime = new Date().getTime()
+        var result
+        do {
+            if (!element.refresh())
+                return
+            sleep(100)
+        } while (wait === true || new Date().getTime() < startTime + wait)
+    }
+
+    function getContent(element) {
+        if (element) {
+            return element.text() === "" ? element.desc() : element.text()
+        }
+    }
+
+    function checkNumber(content) {
+        return (!isNaN(Number(content))) && (!isNaN(parseInt(content)))
+    }
+
+    function getAP() {
+        if (id("baseContainer").findOnce()) {
+            // values and seperator are together
+            let element = match(/^\d+\/\d+$/, true)
+            let content = getContent(element)
+            return {
+                "value": parseInt(content.match(/\d+/)[0]),
+                "bounds": element.bounds(),
+            }
+        } else {
+            // ... are seperate
+            while (true) {
+                let element = find("/", true);
+                for (var i = 1; i < element.parent().childCount() - 1; i++) {
+                    var current = element.parent().child(i);
+                    if (getContent(current) === "/") {
+                        var previous = element.parent().child(i - 1)
+                        var next = element.parent().child(i + 1)
+                        if (checkNumber(getContent(previous)) &&
+                            checkNumber(getContent(next))) {
+                            return {
+                                "value": Number(getContent(previous)),
+                                "bounds": element.bounds(),
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function getPTList() {
+        let elements = matchAll(/^\+\d*$/)
+        let results = []
+        let left = 0
+        log("PT匹配结果数量" + elements.length)
+        for (var element of elements) {
+            var content = getContent(element)
+            // pt value and "+" are seperate
+            if (content == "+") {
+                for (var i = 0; i < element.parent().childCount() - 1; i++) {
+                    var current = element.parent().child(i);
+                    if (getContent(current) == "+") {
+                        var next = element.parent().child(i + 1)
+                        if (checkNumber(getContent(next))) {
+                            results.push({
+                                "value": Number(getContent(next)),
+                                "bounds": element.bounds(),
+                            })
+                            if (element.bounds().left > left)
+                                left = element.bounds().left
+                        }
+                    }
+                }
+            }
+            // ... are together
+            else {
+                if (checkNumber(content.slice(1))) {
+                    results.push({
+                        "value": Number(content.slice(1)),
+                        "bounds": element.bounds(),
+                    })
+                    if (element.bounds().left > left)
+                        left = element.bounds().left
+                }
+            }
+        }
+
+        return results.filter(result => result.bounds.left == left)
+    }
+
+    const STATE_LOGIN = 0
+    const STATE_HOME = 1
+    const STATE_MENU = 2
+    const STATE_SUPPORT = 3
+    const STATE_TEAM = 4
+    const STATE_BATTLE = 5
+    const STATE_REWARD_CHARACTER = 6
+    const STATE_REWARD_MATERIAL = 7
+    const STATE_REWARD_POST = 8
+
+    // strings constants
+    const strings = {
+        name: ["support", "revive_button", "revive_popup", "revive_confirm", "out_of_ap", "start", "follow", "follow_append", "confirm", "regex_drug", "regex_lastlogin", "regex_bonus"],
+        zh_Hans: ["请选择支援角色", "回复", "回复确认", "回复", "AP不足", "开始", "关注", "关注追加", "确定", /^\d+个$/, /^最终登录.+/, /＋\d+个$/],
+        zh_Hant: ["請選擇支援角色", "回復", "回復確認", "進行回復", "AP不足", "開始", "關注", "追加關注", "确定", /^\d+個$/, /^最終登入.+/, /＋\d+個$/],
+        ja: ["サポートキャラを選んでください", "回復", "回復確認", "回復する", "AP不足", "開始", "フォロー", "フォロー追加", "はい", /^\d+個$/, /^最終ログイン.+/, /＋\d+個$/],
+    }
+
+    var string = {}
+    var druglimit = [NaN, NaN, NaN]
+    var usedrug = false
+    var currentname = ""
+
+    function initialize() {
+        var element = auto.root
+        if (element) {
+            currentname = element.packageName()
+            var current = []
+            if (currentname == "com.bilibili.madoka.bilibili") {
+                log("检测为国服")
+                current = strings.zh_Hans
+            } else if (currentname == "com.komoe.madokagp") {
+                log("检测为台服")
+                current = strings.zh_Hant
+            } else if (currentname == "com.aniplex.magireco") {
+                log("检测为日服")
+                current = strings.ja
+            }
+            for (let i = 0; i < strings.name.length; i++) {
+                string[strings.name[i]] = current[i]
+            }
+            usedrug = false
+            for (let i = 0; i < 3; i++) {
+                druglimit[i] = limit["drug" + (i + 1)] ? parseInt(limit["drug" + (i + 1) + "num"]) : 0
+                if (druglimit[i] !== 0) {
+                    usedrug = true
+                }
+            }
+        } else {
+            toastLog("未在前台检测到魔法纪录")
+            threads.currentThread().interrupt()
+        }
+    }
+
+    // isolate logic for future adaption
+    function ifUseDrug(index, count) {
+        // when drug is valid
+        if ((index < 2 && count > 0) || count > 4) {
+            // unlimited
+            if (isNaN(druglimit[index]))
+                return true
+            else if (druglimit[index]-- > 0)
+                return true
+        }
+    }
+
+    function refillAP() {
+        log("尝试使用回复药")
+        var usedrug = false
+        var numbers = matchAll(string.regex_drug, true)
+        var buttons = findAll(string.revive_button)
+        // when things seems to be correct
+        if (numbers.length == 3 && buttons.length == 3) {
+            for (let i = 0; i < 3; i++) {
+                if (ifUseDrug(i, parseInt(getContent(numbers[i]).slice(0, -1)))) {
+                    log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次")
+                    var bound = buttons[i].bounds()
+                    click(bound.centerX(), bound.centerY())
+                    // wait for confirmation popup
+                    find(string.revive_popup, true)
+                    log("点击确认回复")
+                    bound = find(string.revive_confirm, true).bounds()
+                    click(bound.centerX(), bound.centerY())
+                    usedrug = true
+                    break
+                }
+            }
+        }
+        if(!usedrug && find(string.out_of_ap)){
+            log("AP不足且未嗑药，退出")
+            threads.currentThread().interrupt()
+        }
+        // wait for refill window to be back
+        var element=id("popupInfoDetailTitle").findOne()
+        // now close the window
+        while (element.refresh()) {
+            log("关闭回复窗口")
+            bound=element.parent().bounds()
+            click(bound.right, bound.top)
+            waitElement(element, 5000)
+        }
+        return usedrug
+    }
+
+    function selectBattle() {
+
+    }
+
+    function taskDefault() {
+        initialize()
+        var state = STATE_MENU
+        var battlename = ""
+        var charabound = null
+        var tryusedrug = true
+        while (true) {
+            switch (state) {
+                case STATE_MENU: {
+                    // exit condition
+                    if (find(string.support)) {
+                        state = STATE_SUPPORT
+                        log("进入助战选择")
+                        break
+                    }
+                    // if AP is not enough
+                    if (id("popupInfoDetailTitle").findOnce()) {
+                        // try use drug
+                        tryusedrug = refillAP()
+                    }
+                    // if need to click to enter battle
+                    let button = find(string.confirm)
+                    if (!button) {
+                        button = find("OK")
+                    }
+                    if (button) {
+                        let bound = button.bounds()
+                        click(bound.centerX(), bound.centerY())
+                        // wait for support screen for 5 seconds
+                        find(string.support, 5000)
+                    }
+                    // click battle if available
+                    if (battlename) {
+                        let battle = find(battlename)
+                        if (battle) {
+                            let bound = battle.bounds()
+                            click(bound.centerX(), bound.centerY())
+                            // wait for support screen for 5 seconds
+                            find(string.support, 5000)
+                        }
+                    }
+                    break
+                }
+
+                case STATE_SUPPORT: {
+                    // exit condition
+                    if (find(string.start)) {
+                        state = STATE_TEAM
+                        log("进入队伍调整")
+                        break
+                    }
+                    // if we need to refill AP
+                    let apinfo = getAP()
+                    if (apinfo.value < parseInt(limit.limitAP) && usedrug && tryusedrug) {
+                        // open revive window
+                        let revive_window
+                        do {
+                            click(apinfo.bounds.centerX(), apinfo.bounds.centerY())
+                            revive_window = findID("popupInfoDetailTitle", 5000)
+                        } while (!revive_window)
+                        // try use drug
+                        tryusedrug = refillAP()
+                    }
+                    // save battle name if needed
+                    let battle = match(/^BATTLE.+/)
+                    if (battle) {
+                        battlename = getContent(battle)
+                    }
+                    // if unexpectedly treated as long touch
+                    if (id("detailTab").findOnce()) {
+                        let element=className("EditText").findOnce()
+                        if(element){
+                            let bound=element.bounds()
+                            click(bound.left, bound.top)
+                        }
+                        find(string.support, 5000)
+                    }
+                    // pick support
+                    let ptlist = getPTList()
+                    let playercount = matchAll(string.regex_lastlogin).length
+                    log("候选数量" + ptlist.length + ",玩家数量" + playercount)
+                    if (ptlist.length) {
+                        let bound
+                        if (ptlist.length > playercount && (limit.justNPC || 
+                            ptlist[ptlist.length - 1].value > ptlist[0].value)) {
+                            log("选择NPC助战")
+                            // NPC comes in the end of list if available
+                            bound = ptlist[ptlist.length - 1].bounds
+                        } else {
+                            log("选择玩家助战")
+                            // higher PT bonus goes ahead
+                            bound = ptlist[0].bounds
+                        }
+                        click(bound.centerX(), bound.centerY())
+                        // wait for start button for 5 seconds
+                        let element = find(string.start, 5000)
+                        // speed up by skip two unneccesary loops
+                        if (element) {
+                            state = STATE_TEAM
+                            log("进入队伍调整")
+                            bound = element.bounds()
+                            click(bound.centerX(), bound.centerY())
+                            waitElement(element, 5000)
+                        }
+                    }
+                    break
+                }
+
+                case STATE_TEAM: {
+                    var element = find(string.start)
+                    // exit condition
+                    if (id("android:id/content").findOnce() && !element) {
+                        state = STATE_BATTLE
+                        log("进入战斗")
+                        break
+                    }
+                    // click start
+                    if(element){
+                        let bound = element.bounds()
+                        click(bound.centerX(), bound.centerY())
+                        waitElement(element, 5000)
+                    }
+                    break
+                }
+
+                case STATE_BATTLE: {
+                    // exit condition
+                    if (id("charaWrap").findOnce()) {
+                        state = STATE_REWARD_CHARACTER
+                        log("进入角色结算")
+                        break
+                    }
+                    break
+                }
+
+                case STATE_REWARD_CHARACTER: {
+                    // exit condition
+                    if (id("hasTotalRiche").findOnce()) {
+                        state = STATE_REWARD_MATERIAL
+                        log("进入掉落结算")
+                        break
+                    }
+                    let element = id("charaWrap").findOnce()
+                    if (element && element.bounds().height()>0) {
+                        charabound = element.bounds()
+                        let targetX = charabound.right
+                        let targetY = charabound.bottom
+                        // click if upgrade
+                        element = find("OK")
+                        if (element) {
+                            log("点击玩家升级确认")
+                            let bound = element.bounds()
+                            targetX = bound.centerX()
+                            targetY = bound.centerY()
+                        }
+                        click(targetX, targetY)
+                    }
+                    sleep(500)
+                    break
+                }
+
+                case STATE_REWARD_MATERIAL: {
+                    // exit condition
+                    let element = id("hasTotalRiche").findOnce()
+                    if (id("android:id/content").findOnce() && !element) {
+                        state = STATE_REWARD_POST
+                        log("结算完成")
+                        break
+                    }
+                    // try click rebattle
+                    element = id("questRetryBtn").findOnce()
+                    if (element) {
+                        let bound = element.bounds()
+                        click(bound.centerX(), bound.centerY())
+                    } else if (charabound) {
+                        log("点击再战区域")
+                        click(charabound.right, charabound.bottom)
+                    }
+                    sleep(1000)
+                    break
+                }
+
+                case STATE_REWARD_POST: {
+                    // wait 5 seconds for transition
+                    match(/\//, 5000)
+                    // exit condition
+                    if (find(string.support)) {
+                        state = STATE_SUPPORT
+                        log("进入助战选择")
+                        break
+                    } else if (match(/\//)) {
+                        state = STATE_MENU
+                        log("进入关卡选择")
+                        break
+                    }
+                    // try to skip
+                    let element=className("EditText").findOnce()
+                    if(element){
+                        let bound=element.bounds()
+                        click(bound.right, bound.top)
+                    }
+                    break
+                }
+            }
+        }
+    }
+
+    return {
+        "default": taskDefault
+    }
+})()
 
 module.exports = floatUI;
