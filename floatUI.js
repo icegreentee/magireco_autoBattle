@@ -36,30 +36,86 @@ floatUI.main = function() {
     var logo_factor=7.0/11
     // button size in dp
     var button_size=44
+    // current running thread
+    var currentTask=null
 
     // submenu definition
     var menu_list = [
         {
             logo: "@drawable/ic_camera_enhance_black_48dp",
             color: "#009687",
-            fn: ()=>{}
+            fn: snapshotWrap
         },
         {
             logo: "@drawable/ic_play_arrow_black_48dp",
             color: "#40a5f3",
-            fn: ()=>{}
+            fn: taskWrap
         },
         {
             logo: "@drawable/ic_clear_black_48dp",
             color: "#fbd834",
-            fn: ()=>{}
+            fn: cancelWrap
         },
         {
             logo: "@drawable/ic_settings_black_48dp",
             color: "#bfc1c0",
-            fn: ()=>{}
+            fn: settingsWrap
         },
     ]
+
+    function snapshotWrap(){
+        toastLog("开始快照")
+        var text=recordElement(auto.root, 0, "");
+
+        var d = new Date();
+        var timestamp = ""+d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()+"_"+d.getHours()+"-"+d.getMinutes()+"-"+d.getSeconds();
+        var path=files.getSdcardPath()
+        path=files.join(path, "auto_magireco")
+        path=files.join(path, timestamp + ".xml")
+        files.ensureDir(path)
+        files.write(path, text);
+        toastLog("快照保存至"+path);
+    }
+
+    function taskWrap() {
+        toastLog("执行标准脚本")
+        currentTask = threads.start(tasks.default)
+    }
+
+    function cancelWrap() {
+        toastLog("停止脚本")
+        if(currentTask && currentTask.isAlive())
+            currentTask.interrupt()
+    }
+
+    function settingsWrap() {
+        app.startActivity({
+            packageName: context.getPackageName(),
+            className:"com.stardust.autojs.execution.ScriptExecuteActivity"
+        })
+    }
+
+    function recordElement(item, depth, text){
+        if(item){
+            text+="\t".repeat(depth);
+            text+="<"+item.className();
+            if(item.id())text+=" id=\""+item.id()+"\"";
+            if(item.text() && item.text()!="")text+=" text=\""+item.text()+"\"";
+            if(item.desc() && item.desc()!="")text+=" desc=\""+item.desc()+"\"";
+            text+=" bounds=\""+item.bounds()+"\"";
+            if(item.childCount()<1)
+                text+="/>\n";
+            else{
+                text+=">\n";
+                item.children().forEach((child)=>{
+                    text=recordElement(child, depth+1, text)
+                });
+                text+="\t".repeat(depth);
+                text+="</"+item.className()+">\n";
+            }
+        }
+        return text;
+    }
 
     // popup submenu, this is E4X grammar
     var submenuXML=<frame id="container" w={""+parseInt(button_size*(space_factor+1.5))} h={""+parseInt(button_size*(2*space_factor+2))}></frame>
