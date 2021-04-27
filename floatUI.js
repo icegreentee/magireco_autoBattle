@@ -39,6 +39,30 @@ floatUI.main = function() {
     // current running thread
     var currentTask=null
 
+    // available tasks list
+    var task_list = [
+        {
+            name: "标准周回（控件定位）",
+            fn: tasks.default
+        },
+        {
+            name: "标准周回（原坐标定位）",
+            fn: autoMain
+        },
+        {
+            name: "活动周回（原坐标定位）",
+            fn: autoMainver2
+        },
+        {
+            name: "自动镜层",
+            fn: jingMain
+        },
+        {
+            name: "取消",
+            fn: null
+        }
+    ]
+
     // submenu definition
     var menu_list = [
         {
@@ -77,9 +101,34 @@ floatUI.main = function() {
         toastLog("快照保存至"+path);
     }
 
+    var task_popup = floaty.rawWindow(
+        <vertical id="container" w="*" h="*" bg="#f8f8f8">
+            <vertical bg="#4fb3ff">
+                <text text="选择需要执行的脚本" padding="4 2" textColor="#ffffff"/>
+            </vertical>
+            <list id="list">
+                <text id="name" text="{{name}}" h="45" gravity="center" margin="4 1" w="*" bg="#ffffff"/>
+            </list>
+        </vertical>
+    )
+
+    task_popup.setSize(device.width/2, device.height/2)
+    task_popup.setPosition(device.width/4, device.height/4)
+    task_popup.container.setVisibility(View.INVISIBLE)
+    task_popup.setTouchable(false)
+    task_popup.list.setDataSource(task_list)
+    task_popup.list.on("item_click", function(item, i, itemView, listView){
+        task_popup.container.setVisibility(View.INVISIBLE)
+        task_popup.setTouchable(false)
+        if(item.fn){
+            toastLog("执行 "+item.name+" 脚本")
+            currentTask = threads.start(item.fn)
+        }
+    })
+
     function taskWrap() {
-        toastLog("执行标准脚本")
-        currentTask = threads.start(tasks.default)
+        task_popup.container.setVisibility(View.VISIBLE)
+        task_popup.setTouchable(true)
     }
 
     function cancelWrap() {
