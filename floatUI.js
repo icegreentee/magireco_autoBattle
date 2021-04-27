@@ -29,289 +29,332 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
-floatUI.main = function() {
+floatUI.main = function () {
     // space between buttons compare to button size
-    var space_factor=1.5
+    var space_factor = 1.5;
     // size for icon compare to button size
-    var logo_factor=7.0/11
+    var logo_factor = 7.0 / 11;
     // button size in dp
-    var button_size=44
+    var button_size = 44;
     // current running thread
-    var currentTask=null
+    var currentTask = null;
 
     // available tasks list
     var task_list = [
         {
             name: "标准周回（控件定位）",
-            fn: tasks.default
+            fn: tasks.default,
         },
         {
             name: "标准周回（原坐标定位）",
-            fn: autoMain
+            fn: autoMain,
         },
         {
             name: "活动周回（原坐标定位）",
-            fn: autoMainver2
+            fn: autoMainver2,
         },
         {
             name: "自动镜层",
-            fn: jingMain
+            fn: jingMain,
         },
         {
             name: "取消",
-            fn: null
-        }
-    ]
+            fn: null,
+        },
+    ];
 
     // submenu definition
     var menu_list = [
         {
             logo: "@drawable/ic_camera_enhance_black_48dp",
             color: "#009687",
-            fn: snapshotWrap
+            fn: snapshotWrap,
         },
         {
             logo: "@drawable/ic_play_arrow_black_48dp",
             color: "#40a5f3",
-            fn: taskWrap
+            fn: taskWrap,
         },
         {
             logo: "@drawable/ic_clear_black_48dp",
             color: "#fbd834",
-            fn: cancelWrap
+            fn: cancelWrap,
         },
         {
             logo: "@drawable/ic_settings_black_48dp",
             color: "#bfc1c0",
-            fn: settingsWrap
+            fn: settingsWrap,
         },
-    ]
+    ];
 
-    function snapshotWrap(){
-        toastLog("开始快照")
-        var text=recordElement(auto.root, 0, "");
+    function snapshotWrap() {
+        toastLog("开始快照");
+        var text = recordElement(auto.root, 0, "");
 
         var d = new Date();
-        var timestamp = ""+d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()+"_"+d.getHours()+"-"+d.getMinutes()+"-"+d.getSeconds();
-        var path=files.getSdcardPath()
-        path=files.join(path, "auto_magireco")
-        path=files.join(path, timestamp + ".xml")
-        files.ensureDir(path)
+        var timestamp = "" + d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate() +
+            "_" + d.getHours() + "-" + d.getMinutes() + "-" + d.getSeconds();
+        var path = files.getSdcardPath();
+        path = files.join(path, "auto_magireco");
+        path = files.join(path, timestamp + ".xml");
+        files.ensureDir(path);
         files.write(path, text);
-        toastLog("快照保存至"+path);
+        toastLog("快照保存至" + path);
+    }
+
+    function taskWrap() {
+        task_popup.container.setVisibility(View.VISIBLE);
+        task_popup.setTouchable(true);
+    }
+
+    function cancelWrap() {
+        toastLog("停止脚本");
+        if (currentTask && currentTask.isAlive()) currentTask.interrupt();
+    }
+
+    // get to main activity
+    function settingsWrap() {
+        app.startActivity({
+            packageName: context.getPackageName(),
+            className: "com.stardust.autojs.execution.ScriptExecuteActivity",
+        });
     }
 
     var task_popup = floaty.rawWindow(
         <vertical id="container" w="*" h="*" bg="#f8f8f8">
             <vertical bg="#4fb3ff">
-                <text text="选择需要执行的脚本" padding="4 2" textColor="#ffffff"/>
+                <text text="选择需要执行的脚本" padding="4 2" textColor="#ffffff" />
             </vertical>
             <list id="list">
-                <text id="name" text="{{name}}" h="45" gravity="center" margin="4 1" w="*" bg="#ffffff"/>
+                <text id="name" text="{{name}}" h="45" gravity="center" margin="4 1" w="*" bg="#ffffff" />
             </list>
         </vertical>
-    )
+    );
 
-    task_popup.setSize(device.width/2, device.height/2)
-    task_popup.setPosition(device.width/4, device.height/4)
-    task_popup.container.setVisibility(View.INVISIBLE)
-    task_popup.setTouchable(false)
-    task_popup.list.setDataSource(task_list)
-    task_popup.list.on("item_click", function(item, i, itemView, listView){
-        task_popup.container.setVisibility(View.INVISIBLE)
-        task_popup.setTouchable(false)
-        if(item.fn){
-            toastLog("执行 "+item.name+" 脚本")
-            currentTask = threads.start(item.fn)
+    task_popup.setSize(device.width / 2, device.height / 2);
+    task_popup.setPosition(device.width / 4, device.height / 4);
+    task_popup.container.setVisibility(View.INVISIBLE);
+    task_popup.setTouchable(false);
+    task_popup.list.setDataSource(task_list);
+    task_popup.list.on("item_click", function (item, i, itemView, listView) {
+        task_popup.container.setVisibility(View.INVISIBLE);
+        task_popup.setTouchable(false);
+        if (item.fn) {
+            toastLog("执行 " + item.name + " 脚本");
+            currentTask = threads.start(item.fn);
         }
-    })
+    });
 
-    function taskWrap() {
-        task_popup.container.setVisibility(View.VISIBLE)
-        task_popup.setTouchable(true)
-    }
-
-    function cancelWrap() {
-        toastLog("停止脚本")
-        if(currentTask && currentTask.isAlive())
-            currentTask.interrupt()
-    }
-
-    function settingsWrap() {
-        app.startActivity({
-            packageName: context.getPackageName(),
-            className:"com.stardust.autojs.execution.ScriptExecuteActivity"
-        })
-    }
-
-    function recordElement(item, depth, text){
-        if(item){
-            text+="\t".repeat(depth);
-            text+="<"+item.className();
-            if(item.id())text+=" id=\""+item.id()+"\"";
-            if(item.text() && item.text()!="")text+=" text=\""+item.text()+"\"";
-            if(item.desc() && item.desc()!="")text+=" desc=\""+item.desc()+"\"";
-            text+=" bounds=\""+item.bounds()+"\"";
-            if(item.childCount()<1)
-                text+="/>\n";
-            else{
-                text+=">\n";
-                item.children().forEach((child)=>{
-                    text=recordElement(child, depth+1, text)
+    // record control info into xml
+    function recordElement(item, depth, text) {
+        if (item) {
+            text += "\t".repeat(depth);
+            text += "<" + item.className();
+            if (item.id()) text += ' id="' + item.id() + '"';
+            if (item.text() && item.text() != "") text += ' text="' + item.text() + '"';
+            if (item.desc() && item.desc() != "") text += ' desc="' + item.desc() + '"';
+            text += ' bounds="' + item.bounds() + '"';
+            if (item.childCount() < 1) text += "/>\n";
+            else {
+                text += ">\n";
+                item.children().forEach((child) => {
+                    text = recordElement(child, depth + 1, text);
                 });
-                text+="\t".repeat(depth);
-                text+="</"+item.className()+">\n";
+                text += "\t".repeat(depth);
+                text += "</" + item.className() + ">\n";
             }
         }
         return text;
     }
 
     // popup submenu, this is E4X grammar
-    var submenuXML=<frame id="container" w={""+parseInt(button_size*(space_factor+1.5))} h={""+parseInt(button_size*(2*space_factor+2))}></frame>
-    for(let i=0; i<menu_list.length; i++){
-        submenuXML.frame += <frame id={"entry"+i} w={""+button_size} h={""+button_size}>
-                <img w={""+button_size} h={""+button_size} src={menu_list[i].color} circle="true" />
-                <img w={""+parseInt(button_size*logo_factor)} h={""+parseInt(button_size*logo_factor)} src={menu_list[i].logo} tint="#ffffff" layout_gravity="center" />
+    var submenuXML = (
+        <frame
+            id="container"
+            w={"" + parseInt(button_size * (space_factor + 1.5))}
+            h={"" + parseInt(button_size * (2 * space_factor + 2))}
+        ></frame>
+    );
+    for (let i = 0; i < menu_list.length; i++) {
+        submenuXML.frame += (
+            <frame id={"entry" + i} w={"" + button_size} h={"" + button_size}>
+                <img w={"" + button_size} h={"" + button_size} src={menu_list[i].color} circle="true" />
+                <img
+                    w={"" + parseInt(button_size * logo_factor)}
+                    h={"" + parseInt(button_size * logo_factor)}
+                    src={menu_list[i].logo}
+                    tint="#ffffff"
+                    layout_gravity="center"
+                />
             </frame>
+        );
     }
-    var submenu = floaty.rawWindow(submenuXML)
+    var submenu = floaty.rawWindow(submenuXML);
 
-    submenu.container.setVisibility(View.INVISIBLE)
-    submenu.setTouchable(false)
+    submenu.container.setVisibility(View.INVISIBLE);
+    submenu.setTouchable(false);
 
     // mount onclick handler
-    for(var i=0; i<menu_list.length; i++){
+    for (var i = 0; i < menu_list.length; i++) {
         // hack way to capture i with closure
-        submenu["entry"+i].click(((id)=>()=>{
-            menu_list[id].fn()
-            hideMenu(true)
-        })(i))
+        submenu["entry" + i].click(
+            ((id) => () => {
+                menu_list[id].fn();
+                hideMenu(true);
+            })(i)
+        );
     }
 
     // layout menu and play animation
     // will show menu when hide==false
-    function hideMenu(hide){
-        menu.setTouchable(false)
-        menu.logo.attr("alpha", "1")
-        submenu.setTouchable(false)
+    function hideMenu(hide) {
+        menu.setTouchable(false);
+        menu.logo.attr("alpha", "1");
+        submenu.setTouchable(false);
 
-        var angle_base=Math.PI/menu_list.length/2
-        var size_base=menu.getWidth()
-        var isleft=menu.getX()<=0
-        
-        if(menu.getX()<=0)
-            submenu.setPosition(0, parseInt(menu.getY()-(submenu.getHeight()-menu.getHeight())/2))
+        var angle_base = Math.PI / menu_list.length / 2;
+        var size_base = menu.getWidth();
+        var isleft = menu.getX() <= 0;
+
+        if (menu.getX() <= 0)
+            submenu.setPosition(0, parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2));
         else
-            submenu.setPosition(device.width-submenu.getWidth(), parseInt(menu.getY()-(submenu.getHeight()-menu.getHeight())/2))
-        
-        for(var i=0; i<menu_list.length; i++){
-            var params=submenu["entry"+i].getLayoutParams()
-            var horizontal_margin=parseInt(size_base*(space_factor+0.5)*Math.sin(angle_base*(2*i+1)))
-            var vertical_margin=parseInt(size_base*(space_factor+0.5)*(1-Math.cos(angle_base*(2*i+1))))
-            if(isleft){
-                params.gravity=Gravity.TOP|Gravity.LEFT
-                params.leftMargin=horizontal_margin
-                params.rightMargin=0
+            submenu.setPosition(
+                device.width - submenu.getWidth(),
+                parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+            );
+
+        for (var i = 0; i < menu_list.length; i++) {
+            var params = submenu["entry" + i].getLayoutParams();
+            var horizontal_margin = parseInt(size_base * (space_factor + 0.5) * Math.sin(angle_base * (2 * i + 1)));
+            var vertical_margin = parseInt(size_base * (space_factor + 0.5) * (1 - Math.cos(angle_base * (2 * i + 1))));
+            if (isleft) {
+                params.gravity = Gravity.TOP | Gravity.LEFT;
+                params.leftMargin = horizontal_margin;
+                params.rightMargin = 0;
             } else {
-                params.gravity=Gravity.TOP|Gravity.RIGHT
-                params.rightMargin=horizontal_margin
-                params.leftMargin=0
+                params.gravity = Gravity.TOP | Gravity.RIGHT;
+                params.rightMargin = horizontal_margin;
+                params.leftMargin = 0;
             }
-            params.topMargin=vertical_margin
-            submenu["entry"+i].setLayoutParams(params)
+            params.topMargin = vertical_margin;
+            submenu["entry" + i].setLayoutParams(params);
         }
 
-        submenu.container.setVisibility(View.VISIBLE)
+        submenu.container.setVisibility(View.VISIBLE);
 
-        var animators=[]
-        for(var i=0; i<menu_list.length; i++){
-            animators.push(ObjectAnimator.ofFloat(submenu["entry"+i], "translationX", 0, (isleft?-1:1)*size_base*(space_factor+0.5)*Math.sin(angle_base*(2*i+1))))
-            animators.push(ObjectAnimator.ofFloat(submenu["entry"+i], "translationY", 0, size_base*(space_factor+0.5)*Math.cos(angle_base*(2*i+1))))
-            animators.push(ObjectAnimator.ofFloat(submenu["entry"+i], "scaleX", 1, 0))
-            animators.push(ObjectAnimator.ofFloat(submenu["entry"+i], "scaleY", 1, 0))
+        var animators = [];
+        for (var i = 0; i < menu_list.length; i++) {
+            animators.push(
+                ObjectAnimator.ofFloat(
+                    submenu["entry" + i],
+                    "translationX",
+                    0,
+                    (isleft ? -1 : 1) * size_base * (space_factor + 0.5) * Math.sin(angle_base * (2 * i + 1))
+                )
+            );
+            animators.push(
+                ObjectAnimator.ofFloat(
+                    submenu["entry" + i],
+                    "translationY",
+                    0,
+                    size_base * (space_factor + 0.5) * Math.cos(angle_base * (2 * i + 1))
+                )
+            );
+            animators.push(ObjectAnimator.ofFloat(submenu["entry" + i], "scaleX", 1, 0));
+            animators.push(ObjectAnimator.ofFloat(submenu["entry" + i], "scaleY", 1, 0));
         }
 
-        var set=new AnimatorSet()
-        set.playTogether.apply(set, animators)
-        set.setDuration(200)
-        if(!hide)set.setInterpolator({getInterpolation:f=>1-f})
+        var set = new AnimatorSet();
+        set.playTogether.apply(set, animators);
+        set.setDuration(200);
+        if (!hide) set.setInterpolator({ getInterpolation: (f) => 1 - f });
         set.addListener({
-            onAnimationEnd:(anim)=>{
-                menu.setTouchable(true)
-                if(hide){
-                    submenu.container.setVisibility(View.INVISIBLE)
-                    menu.logo.attr("alpha", "0.4")
+            onAnimationEnd: (anim) => {
+                menu.setTouchable(true);
+                if (hide) {
+                    submenu.container.setVisibility(View.INVISIBLE);
+                    menu.logo.attr("alpha", "0.4");
                 } else {
-                    submenu.setTouchable(true)
+                    submenu.setTouchable(true);
                 }
-            }
-        })
-        set.start()
+            },
+        });
+        set.start();
     }
 
     // float button
     var menu = floaty.rawWindow(
-        <frame id="logo" w="44" h="44" alpha="0.4" >
+        <frame id="logo" w="44" h="44" alpha="0.4">
             <img w="44" h="44" src="#ffffff" circle="true" />
-            <img id="img_logo" w="32" h="32" src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png" layout_gravity="center" />
+            <img
+                id="img_logo"
+                w="32"
+                h="32"
+                src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png"
+                layout_gravity="center"
+            />
         </frame>
-    )
+    );
 
-    menu.setPosition(0, parseInt(device.height/4))
+    menu.setPosition(0, parseInt(device.height / 4));
 
-    var touch_x=0, touch_y=0, touch_move=false
-    var win_x=0, win_y=0
-    menu.logo.setOnTouchListener(function(self, event){
-        switch(event.getAction()){
+    var touch_x = 0,
+        touch_y = 0,
+        touch_move = false;
+    var win_x = 0,
+        win_y = 0;
+    menu.logo.setOnTouchListener(function (self, event) {
+        switch (event.getAction()) {
             case event.ACTION_DOWN:
-                touch_move=false
-                touch_x = event.getRawX()
-                touch_y = event.getRawY()
-                win_x = menu.getX()
-                win_y = menu.getY()
-                break
+                touch_move = false;
+                touch_x = event.getRawX();
+                touch_y = event.getRawY();
+                win_x = menu.getX();
+                win_y = menu.getY();
+                break;
             case event.ACTION_MOVE:
                 {
-                    let dx=event.getRawX()-touch_x
-                    let dy=event.getRawY()-touch_y
-                    if(!touch_move && submenu.container.getVisibility()==View.INVISIBLE)
-                    {
-                        if(Math.abs(dx)>20||Math.abs(dy)>20){
-                            touch_move=true
-                            menu.logo.attr("alpha", "1")
+                    let dx = event.getRawX() - touch_x;
+                    let dy = event.getRawY() - touch_y;
+                    if (!touch_move && submenu.container.getVisibility() == View.INVISIBLE) {
+                        if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+                            touch_move = true;
+                            menu.logo.attr("alpha", "1");
                         }
-                            
                     }
-                    if(touch_move)
-                        menu.setPosition(win_x+dx, win_y+dy)
+                    if (touch_move) menu.setPosition(win_x + dx, win_y + dy);
                 }
-                break
+                break;
             case event.ACTION_UP:
-                if(touch_move) {
-                    menu.setTouchable(false)
-                    let current=menu.getX()
-                    let animator=ValueAnimator.ofInt(current, current<device.width/2 ? 0 : device.width-menu.getWidth())
+                if (touch_move) {
+                    menu.setTouchable(false);
+                    let current = menu.getX();
+                    let animator = ValueAnimator.ofInt(
+                        current,
+                        current < device.width / 2 ? 0 : device.width - menu.getWidth()
+                    );
                     animator.addUpdateListener({
-                        onAnimationUpdate:(animation)=>{
-                            menu.setPosition(parseInt(animation.getAnimatedValue()), menu.getY())
-                        }
-                    })
+                        onAnimationUpdate: (animation) => {
+                            menu.setPosition(parseInt(animation.getAnimatedValue()), menu.getY());
+                        },
+                    });
                     animator.addListener({
-                        onAnimationEnd:(anim)=>{
-                            menu.logo.attr("alpha", "0.4")
-                            menu.setTouchable(true)
-                        }
-                    })
-                    animator.setInterpolator(new BounceInterpolator())
-                    animator.setDuration(300)
-                    animator.start()
+                        onAnimationEnd: (anim) => {
+                            menu.logo.attr("alpha", "0.4");
+                            menu.setTouchable(true);
+                        },
+                    });
+                    animator.setInterpolator(new BounceInterpolator());
+                    animator.setDuration(300);
+                    animator.start();
                 } else {
-                    hideMenu(submenu.container.getVisibility()==View.VISIBLE)
+                    hideMenu(submenu.container.getVisibility() == View.VISIBLE);
                 }
         }
-        return true
-    })
-}
+        return true;
+    });
+};
 // ------------主要逻辑--------------------
 var langNow = "zh"
 var language = {
@@ -1071,135 +1114,134 @@ floatUI.adjust = function (config) {
 }
 
 // compatible action closure
-var tasks = (function() {
+var tasks = (function () {
     // click with root permission
     function clickRoot(x, y) {
-        var result = shell("su\ninput tap " + x + " " + y + "\nexit\n")
+        var result = shell("su\ninput tap " + x + " " + y + "\nexit\n");
         // detect reason when click did not succeed
         if (result.code != 0) {
-            result = shell("which su")
+            result = shell("which su");
             if (result.code == 0) {
                 // device already rooted, but permission not granted
-                toastLog("root权限获取失败")
+                toastLog("root权限获取失败");
             } else {
                 // device not rooted
-                toastLog("Android 7 以下设备运行脚本需要root")
+                toastLog("Android 7 以下设备运行脚本需要root");
             }
             // terminate when click cannot be successfully performed
-            threads.currentThread().interrupt()
+            threads.currentThread().interrupt();
         }
     }
 
     function click(x, y) {
         // limit range
         if (x >= device.width) {
-            x = device.width - 1
+            x = device.width - 1;
         }
         if (y >= device.height) {
-            y = device.height - 1
+            y = device.height - 1;
         }
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             // now accessibility gesture APIs are available
-            press(x, y, 50)
+            press(x, y, 50);
         } else {
-            clickRoot(x, y)
+            clickRoot(x, y);
         }
     }
 
     // find first element using regex
     function match(reg, wait) {
-        var startTime = new Date().getTime()
-        var result
+        var startTime = new Date().getTime();
+        var result;
         do {
-            result = textMatches(reg).findOnce()
-            if (result) return result
-            result = descMatches(reg).findOnce()
-            if (result) return result
-            sleep(100)
-        } while (wait === true || new Date().getTime() < startTime + wait)
+            result = textMatches(reg).findOnce();
+            if (result) return result;
+            result = descMatches(reg).findOnce();
+            if (result) return result;
+            sleep(100);
+        } while (wait === true || new Date().getTime() < startTime + wait);
     }
 
     // find all element using regex
     function matchAll(reg, wait) {
-        var startTime = new Date().getTime()
-        var result
+        var startTime = new Date().getTime();
+        var result;
         do {
-            result = textMatches(reg).find()
-            if (result.length >= 1) return result
-            result = descMatches(reg).find()
-            if (result.length >= 1) return result
-            sleep(100)
-        } while (wait === true || new Date().getTime() < startTime + wait)
-        return []
+            result = textMatches(reg).find();
+            if (result.length >= 1) return result;
+            result = descMatches(reg).find();
+            if (result.length >= 1) return result;
+            sleep(100);
+        } while (wait === true || new Date().getTime() < startTime + wait);
+        return [];
     }
 
     // find first element using plain text
     function find(txt, wait) {
-        var startTime = new Date().getTime()
-        var result
+        var startTime = new Date().getTime();
+        var result;
         do {
-            result = text(txt).findOnce()
-            if (result) return result
-            result = desc(txt).findOnce()
-            if (result) return result
-            sleep(100)
-        } while (wait === true || new Date().getTime() < startTime + wait)
+            result = text(txt).findOnce();
+            if (result) return result;
+            result = desc(txt).findOnce();
+            if (result) return result;
+            sleep(100);
+        } while (wait === true || new Date().getTime() < startTime + wait);
     }
 
     // find all element using plain text
     function findAll(txt, wait) {
-        var startTime = new Date().getTime()
-        var result
+        var startTime = new Date().getTime();
+        var result;
         do {
-            result = text(txt).find()
-            if (result.length >= 1) return result
-            result = desc(txt).find()
-            if (result.length >= 1) return result
-            sleep(100)
-        } while (wait === true || new Date().getTime() < startTime + wait)
-        return []
+            result = text(txt).find();
+            if (result.length >= 1) return result;
+            result = desc(txt).find();
+            if (result.length >= 1) return result;
+            sleep(100);
+        } while (wait === true || new Date().getTime() < startTime + wait);
+        return [];
     }
 
     function findID(name, wait) {
-        var startTime = new Date().getTime()
-        var result
+        var startTime = new Date().getTime();
+        var result;
         do {
-            result = id(name).findOnce()
-            if (result) return result
-            sleep(100)
-        } while (wait === true || new Date().getTime() < startTime + wait)
+            result = id(name).findOnce();
+            if (result) return result;
+            sleep(100);
+        } while (wait === true || new Date().getTime() < startTime + wait);
     }
 
     function waitElement(element, wait) {
-        var startTime = new Date().getTime()
-        var result
+        var startTime = new Date().getTime();
+        var result;
         do {
-            if (!element.refresh())
-                return
-            sleep(100)
-        } while (wait === true || new Date().getTime() < startTime + wait)
+            if (!element.refresh()) return;
+            sleep(100);
+        } while (wait === true || new Date().getTime() < startTime + wait);
     }
 
     function getContent(element) {
         if (element) {
-            return element.text() === "" ? element.desc() : element.text()
+            return element.text() === "" ? element.desc() : element.text();
         }
     }
 
     function checkNumber(content) {
-        return (!isNaN(Number(content))) && (!isNaN(parseInt(content)))
+        return !isNaN(Number(content)) && !isNaN(parseInt(content));
     }
 
     function getAP() {
         if (id("baseContainer").findOnce()) {
             // values and seperator are together
-            let element = match(/^\d+\/\d+$/, true)
-            let content = getContent(element)
+            let element = match(/^\d+\/\d+$/, true);
+            let content = getContent(element);
             return {
-                "value": parseInt(content.match(/\d+/)[0]),
-                "bounds": element.bounds(),
-            }
+                value: parseInt(content.match(/\d+/)[0]),
+                bounds: element.bounds(),
+            };
         } else {
             // ... are seperate
             while (true) {
@@ -1207,14 +1249,13 @@ var tasks = (function() {
                 for (var i = 1; i < element.parent().childCount() - 1; i++) {
                     var current = element.parent().child(i);
                     if (getContent(current) === "/") {
-                        var previous = element.parent().child(i - 1)
-                        var next = element.parent().child(i + 1)
-                        if (checkNumber(getContent(previous)) &&
-                            checkNumber(getContent(next))) {
+                        var previous = element.parent().child(i - 1);
+                        var next = element.parent().child(i + 1);
+                        if (checkNumber(getContent(previous)) && checkNumber(getContent(next))) {
                             return {
-                                "value": Number(getContent(previous)),
-                                "bounds": element.bounds(),
-                            }
+                                value: Number(getContent(previous)),
+                                bounds: element.bounds(),
+                            };
                         }
                     }
                 }
@@ -1223,25 +1264,24 @@ var tasks = (function() {
     }
 
     function getPTList() {
-        let elements = matchAll(/^\+\d*$/)
-        let results = []
-        let left = 0
-        log("PT匹配结果数量" + elements.length)
+        let elements = matchAll(/^\+\d*$/);
+        let results = [];
+        let left = 0;
+        log("PT匹配结果数量" + elements.length);
         for (var element of elements) {
-            var content = getContent(element)
+            var content = getContent(element);
             // pt value and "+" are seperate
             if (content == "+") {
                 for (var i = 0; i < element.parent().childCount() - 1; i++) {
                     var current = element.parent().child(i);
                     if (getContent(current) == "+") {
-                        var next = element.parent().child(i + 1)
+                        var next = element.parent().child(i + 1);
                         if (checkNumber(getContent(next))) {
                             results.push({
-                                "value": Number(getContent(next)),
-                                "bounds": element.bounds(),
-                            })
-                            if (element.bounds().left > left)
-                                left = element.bounds().left
+                                value: Number(getContent(next)),
+                                bounds: element.bounds(),
+                            });
+                            if (element.bounds().left > left) left = element.bounds().left;
                         }
                     }
                 }
@@ -1250,69 +1290,120 @@ var tasks = (function() {
             else {
                 if (checkNumber(content.slice(1))) {
                     results.push({
-                        "value": Number(content.slice(1)),
-                        "bounds": element.bounds(),
-                    })
-                    if (element.bounds().left > left)
-                        left = element.bounds().left
+                        value: Number(content.slice(1)),
+                        bounds: element.bounds(),
+                    });
+                    if (element.bounds().left > left) left = element.bounds().left;
                 }
             }
         }
 
-        return results.filter(result => result.bounds.left == left)
+        return results.filter((result) => result.bounds.left == left);
     }
 
-    const STATE_LOGIN = 0
-    const STATE_HOME = 1
-    const STATE_MENU = 2
-    const STATE_SUPPORT = 3
-    const STATE_TEAM = 4
-    const STATE_BATTLE = 5
-    const STATE_REWARD_CHARACTER = 6
-    const STATE_REWARD_MATERIAL = 7
-    const STATE_REWARD_POST = 8
+    const STATE_LOGIN = 0;
+    const STATE_HOME = 1;
+    const STATE_MENU = 2;
+    const STATE_SUPPORT = 3;
+    const STATE_TEAM = 4;
+    const STATE_BATTLE = 5;
+    const STATE_REWARD_CHARACTER = 6;
+    const STATE_REWARD_MATERIAL = 7;
+    const STATE_REWARD_POST = 8;
 
     // strings constants
     const strings = {
-        name: ["support", "revive_button", "revive_popup", "revive_confirm", "out_of_ap", "start", "follow", "follow_append", "confirm", "regex_drug", "regex_lastlogin", "regex_bonus"],
-        zh_Hans: ["请选择支援角色", "回复", "回复确认", "回复", "AP不足", "开始", "关注", "关注追加", "确定", /^\d+个$/, /^最终登录.+/, /＋\d+个$/],
-        zh_Hant: ["請選擇支援角色", "回復", "回復確認", "進行回復", "AP不足", "開始", "關注", "追加關注", "确定", /^\d+個$/, /^最終登入.+/, /＋\d+個$/],
-        ja: ["サポートキャラを選んでください", "回復", "回復確認", "回復する", "AP不足", "開始", "フォロー", "フォロー追加", "はい", /^\d+個$/, /^最終ログイン.+/, /＋\d+個$/],
-    }
+        name: [
+            "support",
+            "revive_button",
+            "revive_popup",
+            "revive_confirm",
+            "out_of_ap",
+            "start",
+            "follow",
+            "follow_append",
+            "confirm",
+            "regex_drug",
+            "regex_lastlogin",
+            "regex_bonus",
+        ],
+        zh_Hans: [
+            "请选择支援角色",
+            "回复",
+            "回复确认",
+            "回复",
+            "AP不足",
+            "开始",
+            "关注",
+            "关注追加",
+            "确定",
+            /^\d+个$/,
+            /^最终登录.+/,
+            /＋\d+个$/,
+        ],
+        zh_Hant: [
+            "請選擇支援角色",
+            "回復",
+            "回復確認",
+            "進行回復",
+            "AP不足",
+            "開始",
+            "關注",
+            "追加關注",
+            "确定",
+            /^\d+個$/,
+            /^最終登入.+/,
+            /＋\d+個$/,
+        ],
+        ja: [
+            "サポートキャラを選んでください",
+            "回復",
+            "回復確認",
+            "回復する",
+            "AP不足",
+            "開始",
+            "フォロー",
+            "フォロー追加",
+            "はい",
+            /^\d+個$/,
+            /^最終ログイン.+/,
+            /＋\d+個$/,
+        ],
+    };
 
-    var string = {}
-    var druglimit = [NaN, NaN, NaN]
-    var usedrug = false
-    var currentname = ""
+    var string = {};
+    var druglimit = [NaN, NaN, NaN];
+    var usedrug = false;
+    var currentname = "";
 
     function initialize() {
-        var element = auto.root
+        var element = auto.root;
         if (element) {
-            currentname = element.packageName()
-            var current = []
+            currentname = element.packageName();
+            var current = [];
             if (currentname == "com.bilibili.madoka.bilibili") {
-                log("检测为国服")
-                current = strings.zh_Hans
+                log("检测为国服");
+                current = strings.zh_Hans;
             } else if (currentname == "com.komoe.madokagp") {
-                log("检测为台服")
-                current = strings.zh_Hant
+                log("检测为台服");
+                current = strings.zh_Hant;
             } else if (currentname == "com.aniplex.magireco") {
-                log("检测为日服")
-                current = strings.ja
+                log("检测为日服");
+                current = strings.ja;
             }
             for (let i = 0; i < strings.name.length; i++) {
-                string[strings.name[i]] = current[i]
+                string[strings.name[i]] = current[i];
             }
-            usedrug = false
+            usedrug = false;
             for (let i = 0; i < 3; i++) {
-                druglimit[i] = limit["drug" + (i + 1)] ? parseInt(limit["drug" + (i + 1) + "num"]) : 0
+                druglimit[i] = limit["drug" + (i + 1)] ? parseInt(limit["drug" + (i + 1) + "num"]) : 0;
                 if (druglimit[i] !== 0) {
-                    usedrug = true
+                    usedrug = true;
                 }
             }
         } else {
-            toastLog("未在前台检测到魔法纪录")
-            threads.currentThread().interrupt()
+            toastLog("未在前台检测到魔法纪录");
+            threads.currentThread().interrupt();
         }
     }
 
@@ -1321,265 +1412,263 @@ var tasks = (function() {
         // when drug is valid
         if ((index < 2 && count > 0) || count > 4) {
             // unlimited
-            if (isNaN(druglimit[index]))
-                return true
-            else if (druglimit[index]-- > 0)
-                return true
+            if (isNaN(druglimit[index])) return true;
+            else if (druglimit[index]-- > 0) return true;
         }
     }
 
     function refillAP() {
-        log("尝试使用回复药")
-        var usedrug = false
-        var numbers = matchAll(string.regex_drug, true)
-        var buttons = findAll(string.revive_button)
+        log("尝试使用回复药");
+        var usedrug = false;
+        var numbers = matchAll(string.regex_drug, true);
+        var buttons = findAll(string.revive_button);
         // when things seems to be correct
         if (numbers.length == 3 && buttons.length == 3) {
             for (let i = 0; i < 3; i++) {
                 if (ifUseDrug(i, parseInt(getContent(numbers[i]).slice(0, -1)))) {
-                    log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次")
-                    var bound = buttons[i].bounds()
-                    click(bound.centerX(), bound.centerY())
+                    log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次");
+                    var bound = buttons[i].bounds();
+                    click(bound.centerX(), bound.centerY());
                     // wait for confirmation popup
-                    find(string.revive_popup, true)
-                    log("点击确认回复")
-                    bound = find(string.revive_confirm, true).bounds()
-                    click(bound.centerX(), bound.centerY())
-                    usedrug = true
-                    break
+                    find(string.revive_popup, true);
+                    log("点击确认回复");
+                    bound = find(string.revive_confirm, true).bounds();
+                    click(bound.centerX(), bound.centerY());
+                    usedrug = true;
+                    break;
                 }
             }
         }
-        if(!usedrug && find(string.out_of_ap)){
-            log("AP不足且未嗑药，退出")
-            threads.currentThread().interrupt()
+        if (!usedrug && find(string.out_of_ap)) {
+            log("AP不足且未嗑药，退出");
+            threads.currentThread().interrupt();
         }
         // wait for refill window to be back
-        var element=id("popupInfoDetailTitle").findOne()
+        var element = id("popupInfoDetailTitle").findOne();
         // now close the window
         while (element.refresh()) {
-            log("关闭回复窗口")
-            bound=element.parent().bounds()
-            click(bound.right, bound.top)
-            waitElement(element, 5000)
+            log("关闭回复窗口");
+            bound = element.parent().bounds();
+            click(bound.right, bound.top);
+            waitElement(element, 5000);
         }
-        return usedrug
+        return usedrug;
     }
 
-    function selectBattle() {
-
-    }
+    function selectBattle() {}
 
     function taskDefault() {
-        initialize()
-        var state = STATE_MENU
-        var battlename = ""
-        var charabound = null
-        var tryusedrug = true
+        initialize();
+        var state = STATE_MENU;
+        var battlename = "";
+        var charabound = null;
+        var tryusedrug = true;
         while (true) {
             switch (state) {
                 case STATE_MENU: {
                     // exit condition
                     if (find(string.support)) {
-                        state = STATE_SUPPORT
-                        log("进入助战选择")
-                        break
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
                     }
                     // if AP is not enough
                     if (id("popupInfoDetailTitle").findOnce()) {
                         // try use drug
-                        tryusedrug = refillAP()
+                        tryusedrug = refillAP();
                     }
                     // if need to click to enter battle
-                    let button = find(string.confirm)
+                    let button = find(string.confirm);
                     if (!button) {
-                        button = find("OK")
+                        button = find("OK");
                     }
                     if (button) {
-                        let bound = button.bounds()
-                        click(bound.centerX(), bound.centerY())
+                        let bound = button.bounds();
+                        click(bound.centerX(), bound.centerY());
                         // wait for support screen for 5 seconds
-                        find(string.support, 5000)
+                        find(string.support, 5000);
                     }
                     // click battle if available
                     if (battlename) {
-                        let battle = find(battlename)
+                        let battle = find(battlename);
                         if (battle) {
-                            let bound = battle.bounds()
-                            click(bound.centerX(), bound.centerY())
+                            let bound = battle.bounds();
+                            click(bound.centerX(), bound.centerY());
                             // wait for support screen for 5 seconds
-                            find(string.support, 5000)
+                            find(string.support, 5000);
                         }
                     }
-                    break
+                    break;
                 }
 
                 case STATE_SUPPORT: {
                     // exit condition
                     if (find(string.start)) {
-                        state = STATE_TEAM
-                        log("进入队伍调整")
-                        break
+                        state = STATE_TEAM;
+                        log("进入队伍调整");
+                        break;
                     }
                     // if we need to refill AP
-                    let apinfo = getAP()
+                    let apinfo = getAP();
                     if (apinfo.value < parseInt(limit.limitAP) && usedrug && tryusedrug) {
                         // open revive window
-                        let revive_window
+                        let revive_window;
                         do {
-                            click(apinfo.bounds.centerX(), apinfo.bounds.centerY())
-                            revive_window = findID("popupInfoDetailTitle", 5000)
-                        } while (!revive_window)
+                            click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
+                            revive_window = findID("popupInfoDetailTitle", 5000);
+                        } while (!revive_window);
                         // try use drug
-                        tryusedrug = refillAP()
+                        tryusedrug = refillAP();
                     }
                     // save battle name if needed
-                    let battle = match(/^BATTLE.+/)
+                    let battle = match(/^BATTLE.+/);
                     if (battle) {
-                        battlename = getContent(battle)
+                        battlename = getContent(battle);
                     }
                     // if unexpectedly treated as long touch
                     if (id("detailTab").findOnce()) {
-                        let element=className("EditText").findOnce()
-                        if(element){
-                            let bound=element.bounds()
-                            click(bound.left, bound.top)
+                        let element = className("EditText").findOnce();
+                        if (element) {
+                            let bound = element.bounds();
+                            click(bound.left, bound.top);
                         }
-                        find(string.support, 5000)
+                        find(string.support, 5000);
                     }
                     // pick support
-                    let ptlist = getPTList()
-                    let playercount = matchAll(string.regex_lastlogin).length
-                    log("候选数量" + ptlist.length + ",玩家数量" + playercount)
+                    let ptlist = getPTList();
+                    let playercount = matchAll(string.regex_lastlogin).length;
+                    log("候选数量" + ptlist.length + ",玩家数量" + playercount);
                     if (ptlist.length) {
-                        let bound
-                        if (ptlist.length > playercount && (limit.justNPC || 
-                            ptlist[ptlist.length - 1].value > ptlist[0].value)) {
-                            log("选择NPC助战")
+                        let bound;
+                        if (
+                            ptlist.length > playercount &&
+                            (limit.justNPC || ptlist[ptlist.length - 1].value > ptlist[0].value)
+                        ) {
+                            log("选择NPC助战");
                             // NPC comes in the end of list if available
-                            bound = ptlist[ptlist.length - 1].bounds
+                            bound = ptlist[ptlist.length - 1].bounds;
                         } else {
-                            log("选择玩家助战")
+                            log("选择玩家助战");
                             // higher PT bonus goes ahead
-                            bound = ptlist[0].bounds
+                            bound = ptlist[0].bounds;
                         }
-                        click(bound.centerX(), bound.centerY())
+                        click(bound.centerX(), bound.centerY());
                         // wait for start button for 5 seconds
-                        let element = find(string.start, 5000)
+                        let element = find(string.start, 5000);
                         // speed up by skip two unneccesary loops
                         if (element) {
-                            state = STATE_TEAM
-                            log("进入队伍调整")
-                            bound = element.bounds()
-                            click(bound.centerX(), bound.centerY())
-                            waitElement(element, 5000)
+                            state = STATE_TEAM;
+                            log("进入队伍调整");
+                            bound = element.bounds();
+                            click(bound.centerX(), bound.centerY());
+                            waitElement(element, 5000);
                         }
                     }
-                    break
+                    break;
                 }
 
                 case STATE_TEAM: {
-                    var element = find(string.start)
+                    var element = find(string.start);
                     // exit condition
                     if (id("android:id/content").findOnce() && !element) {
-                        state = STATE_BATTLE
-                        log("进入战斗")
-                        break
+                        state = STATE_BATTLE;
+                        log("进入战斗");
+                        break;
                     }
                     // click start
-                    if(element){
-                        let bound = element.bounds()
-                        click(bound.centerX(), bound.centerY())
-                        waitElement(element, 5000)
+                    if (element) {
+                        let bound = element.bounds();
+                        click(bound.centerX(), bound.centerY());
+                        waitElement(element, 5000);
                     }
-                    break
+                    break;
                 }
 
                 case STATE_BATTLE: {
                     // exit condition
                     if (id("charaWrap").findOnce()) {
-                        state = STATE_REWARD_CHARACTER
-                        log("进入角色结算")
-                        break
+                        state = STATE_REWARD_CHARACTER;
+                        log("进入角色结算");
+                        break;
                     }
-                    break
+                    break;
                 }
 
                 case STATE_REWARD_CHARACTER: {
                     // exit condition
                     if (id("hasTotalRiche").findOnce()) {
-                        state = STATE_REWARD_MATERIAL
-                        log("进入掉落结算")
-                        break
+                        state = STATE_REWARD_MATERIAL;
+                        log("进入掉落结算");
+                        break;
                     }
-                    let element = id("charaWrap").findOnce()
-                    if (element && element.bounds().height()>0) {
-                        charabound = element.bounds()
-                        let targetX = charabound.right
-                        let targetY = charabound.bottom
+                    let element = id("charaWrap").findOnce();
+                    if (element && element.bounds().height() > 0) {
+                        charabound = element.bounds();
+                        let targetX = charabound.right;
+                        let targetY = charabound.bottom;
                         // click if upgrade
-                        element = find("OK")
+                        element = find("OK");
                         if (element) {
-                            log("点击玩家升级确认")
-                            let bound = element.bounds()
-                            targetX = bound.centerX()
-                            targetY = bound.centerY()
+                            log("点击玩家升级确认");
+                            let bound = element.bounds();
+                            targetX = bound.centerX();
+                            targetY = bound.centerY();
                         }
-                        click(targetX, targetY)
+                        click(targetX, targetY);
                     }
-                    sleep(500)
-                    break
+                    sleep(500);
+                    break;
                 }
 
                 case STATE_REWARD_MATERIAL: {
                     // exit condition
-                    let element = id("hasTotalRiche").findOnce()
+                    let element = id("hasTotalRiche").findOnce();
                     if (id("android:id/content").findOnce() && !element) {
-                        state = STATE_REWARD_POST
-                        log("结算完成")
-                        break
+                        state = STATE_REWARD_POST;
+                        log("结算完成");
+                        break;
                     }
                     // try click rebattle
-                    element = id("questRetryBtn").findOnce()
+                    element = id("questRetryBtn").findOnce();
                     if (element) {
-                        let bound = element.bounds()
-                        click(bound.centerX(), bound.centerY())
+                        let bound = element.bounds();
+                        click(bound.centerX(), bound.centerY());
                     } else if (charabound) {
-                        log("点击再战区域")
-                        click(charabound.right, charabound.bottom)
+                        log("点击再战区域");
+                        click(charabound.right, charabound.bottom);
                     }
-                    sleep(1000)
-                    break
+                    sleep(1000);
+                    break;
                 }
 
                 case STATE_REWARD_POST: {
                     // wait 5 seconds for transition
-                    match(/\//, 5000)
+                    match(/\//, 5000);
                     // exit condition
                     if (find(string.support)) {
-                        state = STATE_SUPPORT
-                        log("进入助战选择")
-                        break
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
                     } else if (match(/\//)) {
-                        state = STATE_MENU
-                        log("进入关卡选择")
-                        break
+                        state = STATE_MENU;
+                        log("进入关卡选择");
+                        break;
                     }
                     // try to skip
-                    let element=className("EditText").findOnce()
-                    if(element){
-                        let bound=element.bounds()
-                        click(bound.right, bound.top)
+                    let element = className("EditText").findOnce();
+                    if (element) {
+                        let bound = element.bounds();
+                        click(bound.right, bound.top);
                     }
-                    break
+                    break;
                 }
             }
         }
     }
 
     return {
-        "default": taskDefault
-    }
-})()
+        default: taskDefault,
+    };
+})();
 
 module.exports = floatUI;
