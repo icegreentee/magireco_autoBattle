@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "2.5.0"
+var version = "2.6.0"
 var appName = Name + " v" + version;
 
 importClass(android.graphics.Color);
@@ -42,8 +42,17 @@ ui.layout(
                             <checkbox id="drug3" text="魔法石" layout_weight="1" />
                             <input maxLength="3" id="drug3num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
                         </linear>
+                        <View h="5" />
+                        <linear>
+                            <checkbox id="jjcisuse" text="境界是否嗑药" layout_weight="1" />
+                        </linear>
                     </vertical>
                     <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
+                        <linear>
+                            <text text="活动周回关卡位置 x，y坐标自定义：" />
+                            <input maxLength="4" id="battlex" text="" inputType="number|none" />
+                            <input maxLength="4" id="battley" text="" inputType="number|none" />
+                        </linear>
                         <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
                         <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用npc（不设置此项，默认优先 互关好友-npc）" />
                         <linear>
@@ -53,22 +62,6 @@ ui.layout(
                         </linear>
                         {/* <Switch id="isRoot" w="*" checked="false" textColor="#666666" text="android7以下适配(需要root)" /> */}
                     </vertical>
-                    {/* <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
-                        <linear>
-                            <text text="踩水活动 x，y坐标自定义：" />
-                            <input maxLength="4" id="shuix" text="" inputType="number|none" />
-                            <input maxLength="4" id="shuiy" text="" inputType="number|none" />
-                        </linear>
-                        <linear>
-                            <checkbox id="isSkip" text="是否会进行跳过剧情" layout_weight="1" />
-                        </linear>
-                    </vertical> */}
-                    <vertical margin="0 0 0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
-                        <linear>
-                            <checkbox id="jjcisuse" text="境界是否嗑药" layout_weight="1" />
-                        </linear>
-                    </vertical>
-
                     <linear>
                         <text layout_weight="1" size="19" color="#222222" text="日志" />
                         <button id="tolog" h="40" text="全部日志" style="Widget.AppCompat.Button.Borderless.Colored" />
@@ -143,10 +136,10 @@ if (!floaty.checkPermission()) {
 }
 
 
-var storage = storages.create("soha");
+var storage = storages.create("soha2");
 var data = storage.get("data");
-const parmasList = ["limitAP", "helpx", "helpy"]
-const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC",  "jjcisuse"]
+const parmasList = ["limitAP", "helpx", "helpy","battlex","battley"]
+const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "jjcisuse"]
 var parmasMap = {}
 
 

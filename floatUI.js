@@ -184,7 +184,9 @@ floatUI.main = function () {
     })
 
     win.id_1_click.on("click", () => {
-        toastLog("暂无")
+        toastLog("活动周回启动")
+        taskInit()
+        task = threads.start(autoMainver1)
         img_down();
     })
 
@@ -401,16 +403,15 @@ var language = {
 var currentLang = language.zh
 var limit = {
     limitAP: '20',
-    shuix: '',
-    shuiy: '',
     helpx: '',
     helpy: '',
+    battlex: '',
+    battley: '',
     drug1: false,
     drug2: false,
     drug3: false,
     isStable: false,
     justNPC: false,
-    isSkip: false,
     jjcisuse: false,
     drug1num: '',
     drug2num: '',
@@ -522,6 +523,11 @@ var clickSets = {
         y: 950,
         pos: "bottom"
     },
+    battleinit:{
+        x: 1200,
+        y: 960,
+        pos: "top"
+    }
 }
 
 var gamex = 0;
@@ -615,10 +621,76 @@ function autoMain() {
             screenutilClick(clickSets.restart)
             sleep(2500)
         }
-
     }
 }
-
+function autoMainver1() {
+    waitForGameForeground();
+    // 初始化嗑药数量
+    let druglimit = {
+        drug1limit: limit.drug1num,
+        drug2limit: limit.drug2num,
+        drug3limit: limit.drug3num
+    }
+    while (true) {
+        //开始
+        //---------嗑药模块------------------
+        //不嗑药直接跳过ap操作
+        ApsFunction(druglimit)
+        // -----------选援助----------------
+        FriendHelpFunction();
+        // -----------开始----------------
+        BeginFunction();
+        //---------战斗------------------
+        log("进入战斗")
+        //------------开始结算-------------------
+        id("ResultWrap").findOne()
+        //稳定模式点击结束
+        sleep(3000)
+        while (!id("ap").findOnce()) {
+            //-----------如果有升级弹窗点击----------------------
+            if (text(currentLang[3]).findOnce()) {
+                while (text(currentLang[3]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.yesfocus)
+                    sleep(3000)
+                }
+                while (text(currentLang[4]).findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.focusclose)
+                    sleep(3000)
+                }
+            }
+            if (id("rankUpWrap").findOnce()) {
+                while (id("rankUpWrap").findOnce()) {
+                    sleep(1000)
+                    screenutilClick(clickSets.levelup)
+                    sleep(3000)
+                }
+            }
+            if (id("ap").findOnce()) {
+                return;
+            }
+            sleep(1000)
+            // 循环点击的位置为短线重连确定点
+            screenutilClick(clickSets.reconection)
+            // 点击完毕后 再战不会马上出来，需要等待
+            sleep(2000)
+        }
+        //--------------再战--------------------------
+        log("选择battle")
+        id("questLinkList").findOne()
+        while (!id("friendWrap").findOnce()) {
+            sleep(1000)
+            if(limit.battlex==""&&limit.battley==""){
+                screenutilClick(clickSets.battleinit)
+            }
+            else{
+                click(parseInt(limit.battlex), parseInt(limit.battley))
+            }
+            sleep(3000)
+        }
+    }
+}
 function autoMainver2() {
     waitForGameForeground();
     let druglimit = {
@@ -1041,15 +1113,10 @@ function FriendHelpFunction() {
             sleep(2000)
         }
     }
-    else if (langNow != "zh") {
-        while (id("friendWrap").findOnce()) {
-            sleep(1000)
-            click(friendWrap.centerX(), friendWrap.top + 100)
-            sleep(2000)
-        }
-    } else {
-        let ptCom = textMatches(/^\+\d+$/).find()
-        //可点击的助战列表
+    else {
+        let ptCom = textMatches(/^\d0$/).boundsInside(friendWrap.left + friendWrap.width() / 2, friendWrap.top, friendWrap.right, friendWrap.bottom).find();
+        // let ptCom = textMatches(/^\d+$/).find()
+        // 可点击的助战列表
         let ptComCanClick = []
         for (let i = 0; i < ptCom.length; i++) {
             //在可见范围内
