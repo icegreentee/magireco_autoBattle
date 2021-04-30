@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "2.6.0"
+var version = "2.7.0"
 var appName = Name + " v" + version;
 
 importClass(android.graphics.Color);
@@ -19,11 +19,6 @@ ui.layout(
                     </vertical>
 
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
-                        <linear>
-                            <text text="药使用时的AP(大于等于副本ap*2)：" />
-                            <input maxLength="3" id="limitAP" text="" inputType="number|none" />
-                        </linear>
-                        <View h="5" />
                         <linear>
                             <text text="恢复药使用选择：" />
                         </linear>
@@ -136,9 +131,9 @@ if (!floaty.checkPermission()) {
 }
 
 
-var storage = storages.create("soha2");
+var storage = storages.create("soha3");
 var data = storage.get("data");
-const parmasList = ["limitAP", "helpx", "helpy","battlex","battley"]
+const parmasList = ["helpx", "helpy", "battlex", "battley"]
 const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "jjcisuse"]
 var parmasMap = {}
 
@@ -147,13 +142,7 @@ var parmasMap = {}
 //若没有存储信息进行存储初始化
 if (data == undefined) {
     for (let i = 0; i < parmasList.length; i++) {
-        if (i == 0) {
-            //特殊初始值
-            parmasMap[parmasList[i]] = "20"
-        } else {
-            parmasMap[parmasList[i]] = ""
-        }
-
+        parmasMap[parmasList[i]] = ""
     }
     // log(JSON.stringify(parmasMap))
     storage.put("data", JSON.stringify(parmasMap))
