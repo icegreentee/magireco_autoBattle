@@ -14,6 +14,9 @@ importClass(android.os.Bundle)
 importClass(android.view.View)
 importClass(android.view.Window)
 importClass(android.view.Gravity)
+importClass(android.graphics.Point)
+importClass(android.content.IntentFilter)
+importClass(android.content.Intent)
 
 importClass(android.view.animation.AccelerateDecelerateInterpolator)
 importClass(android.view.animation.AccelerateInterpolator)
@@ -42,10 +45,6 @@ floatUI.main = function () {
     // available tasks list
     var task_list = [
         {
-            name: "标准周回（控件定位）",
-            fn: tasks.default,
-        },
-        {
             name: "标准周回（原坐标定位）",
             fn: autoMain,
         },
@@ -71,9 +70,14 @@ floatUI.main = function () {
             fn: snapshotWrap,
         },
         {
+            logo: "@drawable/ic_more_horiz_black_48dp",
+            color: "#ee534f",
+            fn: taskWrap,
+        },
+        {
             logo: "@drawable/ic_play_arrow_black_48dp",
             color: "#40a5f3",
-            fn: taskWrap,
+            fn: defaultWrap,
         },
         {
             logo: "@drawable/ic_clear_black_48dp",
@@ -100,9 +104,15 @@ floatUI.main = function () {
         files.ensureDir(path);
         files.write(path, text);
         toastLog("快照保存至" + path);
+    }    
+    
+    function defaultWrap() {
+        toastLog("执行 控件定位 脚本");
+        currentTask = threads.start(tasks.default);
     }
 
     function taskWrap() {
+        layoutTaskPopup()
         task_popup.container.setVisibility(View.VISIBLE);
         task_popup.setTouchable(true);
     }
@@ -114,10 +124,14 @@ floatUI.main = function () {
 
     // get to main activity
     function settingsWrap() {
-        app.startActivity({
-            packageName: context.getPackageName(),
-            className: "com.stardust.autojs.execution.ScriptExecuteActivity",
-        });
+        var it = new Intent();
+        var name = context.getPackageName()
+        if(name != "org.autojs.autojspro")
+            it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
+        else
+            it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        app.startActivity(it);
     }
 
     var task_popup = floaty.rawWindow(
@@ -131,10 +145,14 @@ floatUI.main = function () {
         </vertical>
     );
 
-    task_popup.setSize(device.width / 2, device.height / 2);
-    task_popup.setPosition(device.width / 4, device.height / 4);
+    function layoutTaskPopup() {
+        var sz = getWindowSize();
+        task_popup.setSize(sz.x / 2, sz.y / 2);
+        task_popup.setPosition(sz.x / 4, sz.y / 4);
+    }
+
     task_popup.container.setVisibility(View.INVISIBLE);
-    task_popup.setTouchable(false);
+    ui.post(()=>{task_popup.setTouchable(false);})
     task_popup.list.setDataSource(task_list);
     task_popup.list.on("item_click", function (item, i, itemView, listView) {
         task_popup.container.setVisibility(View.INVISIBLE);
@@ -192,7 +210,7 @@ floatUI.main = function () {
     var submenu = floaty.rawWindow(submenuXML);
 
     submenu.container.setVisibility(View.INVISIBLE);
-    submenu.setTouchable(false);
+    ui.post(()=>{submenu.setTouchable(false);})
 
     // mount onclick handler
     for (var i = 0; i < menu_list.length; i++) {
@@ -218,11 +236,13 @@ floatUI.main = function () {
 
         if (menu.getX() <= 0)
             submenu.setPosition(0, parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2));
-        else
+        else{
+            let sz = getWindowSize();
             submenu.setPosition(
-                device.width - submenu.getWidth(),
+                sz.x - submenu.getWidth(),
                 parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
             );
+        }
 
         for (var i = 0; i < menu_list.length; i++) {
             var params = submenu["entry" + i].getLayoutParams();
@@ -297,7 +317,20 @@ floatUI.main = function () {
         </frame>
     );
 
-    menu.setPosition(0, parseInt(device.height / 4));
+    ui.post(()=>{menu.setPosition(0, parseInt(getWindowSize().y / 4))})
+
+    function calcMenuY()
+    {
+        var sz=getWindowSize()
+        var minMargin=parseInt((submenu.getHeight()-menu.getHeight())/2)
+        var y=menu.getY()
+        if(y<minMargin)
+            return minMargin
+        else if(y>sz.y-minMargin-menu.getHeight())
+            return sz.y-minMargin-menu.getHeight()
+        else
+            return y
+    }
 
     var touch_x = 0,
         touch_y = 0,
@@ -329,14 +362,16 @@ floatUI.main = function () {
             case event.ACTION_UP:
                 if (touch_move) {
                     menu.setTouchable(false);
+                    let sz=getWindowSize()
                     let current = menu.getX();
                     let animator = ValueAnimator.ofInt(
                         current,
-                        current < device.width / 2 ? 0 : device.width - menu.getWidth()
+                        current < sz.x / 2 ? 0 : sz.x - menu.getWidth()
                     );
+                    let menu_y=calcMenuY()
                     animator.addUpdateListener({
                         onAnimationUpdate: (animation) => {
-                            menu.setPosition(parseInt(animation.getAnimatedValue()), menu.getY());
+                            menu.setPosition(parseInt(animation.getAnimatedValue()), menu_y);
                         },
                     });
                     animator.addListener({
@@ -354,6 +389,27 @@ floatUI.main = function () {
         }
         return true;
     });
+
+    var receiver=new BroadcastReceiver({
+        onReceive:function(ctx, it){
+            if(menu && menu.logo) {
+                var sz=getWindowSize()
+                var x=menu.getX()
+                if(x<=0){
+                    menu.setPosition(0, calcMenuY())
+                    submenu.setPosition(0, parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2))
+                } else {
+                    menu.setPosition(sz.x-menu.getWidth(), calcMenuY())
+                    submenu.setPosition(sz.x-submenu.getWidth(), parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2))
+                }
+            } else {
+                context.unregisterReceiver(receiver)
+            }
+        }
+    })
+
+    context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED))
+            
 };
 // ------------主要逻辑--------------------
 var langNow = "zh"
@@ -1135,11 +1191,12 @@ var tasks = (function () {
 
     function click(x, y) {
         // limit range
-        if (x >= device.width) {
-            x = device.width - 1;
+        var sz=getWindowSize()
+        if (x >= sz.x) {
+            x = sz.x - 1;
         }
-        if (y >= device.height) {
-            y = device.height - 1;
+        if (y >= sz.y) {
+            y = sz.y - 1;
         }
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
@@ -1236,12 +1293,25 @@ var tasks = (function () {
     function getAP() {
         if (id("baseContainer").findOnce()) {
             // values and seperator are together
-            let element = match(/^\d+\/\d+$/, true);
-            let content = getContent(element);
-            return {
-                value: parseInt(content.match(/\d+/)[0]),
-                bounds: element.bounds(),
-            };
+            while (true) {
+                let elements = matchAll(/^\d+\/\d+$/, true);
+                if(elements.length > 0){
+                    let element = elements[0];
+                    let h = getWindowSize().y;
+                    for(let item of elements) {
+                        if(item.bounds().top < h) {
+                            h = item.bounds().top
+                            element = item
+                        }
+                    }
+                    let content = getContent(element);
+                    return {
+                        value: parseInt(content.match(/\d+/)[0]),
+                        bounds: element.bounds(),
+                    };
+                }
+                sleep(500)
+            }
         } else {
             // ... are seperate
             while (true) {
@@ -1259,6 +1329,7 @@ var tasks = (function () {
                         }
                     }
                 }
+                sleep(500)
             }
         }
     }
@@ -1643,13 +1714,13 @@ var tasks = (function () {
 
                 case STATE_REWARD_POST: {
                     // wait 5 seconds for transition
-                    match(/\//, 5000);
+                    match(/.*\/.*/, 5000);
                     // exit condition
                     if (find(string.support)) {
                         state = STATE_SUPPORT;
                         log("进入助战选择");
                         break;
-                    } else if (match(/\//)) {
+                    } else if (match(/.*\/.*/)) {
                         state = STATE_MENU;
                         log("进入关卡选择");
                         break;
@@ -1670,5 +1741,14 @@ var tasks = (function () {
         default: taskDefault,
     };
 })();
+
+//global utility functions
+
+function getWindowSize() {
+    var wm = context.getSystemService(context.WINDOW_SERVICE);
+    var pt = new Point()
+    wm.getDefaultDisplay().getSize(pt)
+    return pt
+}
 
 module.exports = floatUI;
