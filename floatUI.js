@@ -32,6 +32,31 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
+var tasks = algo_init()
+// available script list
+floatUI.scripts = [
+    {
+        name: "控件定位周回",
+        fn: tasks.default,
+    },
+    {
+        name: "标准周回（坐标定位）",
+        fn: autoMain,
+    },
+    {
+        name: "活动周回（坐标定位）",
+        fn: autoMainver1,
+    },
+    {
+        name: "Auto周回（坐标定位）",
+        fn: autoMainver3,
+    },
+    {
+        name: "自动镜层（坐标定位）",
+        fn: jingMain,
+    },
+];
+
 floatUI.main = function () {
     // space between buttons compare to button size
     var space_factor = 1.5;
@@ -41,26 +66,6 @@ floatUI.main = function () {
     var button_size = 44;
     // current running thread
     var currentTask = null;
-
-    // available tasks list
-    var task_list = [
-        {
-            name: "标准周回（原坐标定位）",
-            fn: autoMain,
-        },
-        {
-            name: "活动周回（原坐标定位）",
-            fn: autoMainver2,
-        },
-        {
-            name: "自动镜层",
-            fn: jingMain,
-        },
-        {
-            name: "取消",
-            fn: null,
-        },
-    ];
 
     // submenu definition
     var menu_list = [
@@ -107,8 +112,8 @@ floatUI.main = function () {
     }    
     
     function defaultWrap() {
-        toastLog("执行 控件定位 脚本");
-        currentTask = threads.start(tasks.default);
+        toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
+        currentTask = threads.start(floatUI.scripts[limit.default].fn);
     }
 
     function taskWrap() {
@@ -135,14 +140,20 @@ floatUI.main = function () {
     }
 
     var task_popup = floaty.rawWindow(
-        <vertical id="container" w="*" h="*" bg="#f8f8f8">
-            <vertical bg="#4fb3ff">
-                <text text="选择需要执行的脚本" padding="4 2" textColor="#ffffff" />
+        <frame id="container" w="*" h="*">
+            <vertical w="*" h="*" bg="#f8f8f8" margin="0 15 15 0">
+                <vertical bg="#4fb3ff">
+                    <text text="选择需要执行的脚本" padding="4 2" textColor="#ffffff" />
+                </vertical>
+                <list id="list">
+                    <text id="name" text="{{name}}" h="45" gravity="center" margin="4 1" w="*" bg="#ffffff" />
+                </list>
             </vertical>
-            <list id="list">
-                <text id="name" text="{{name}}" h="45" gravity="center" margin="4 1" w="*" bg="#ffffff" />
-            </list>
-        </vertical>
+            <frame id="close_button" w="30" h="30" layout_gravity="top|right">
+                <img w="30" h="30" src="#881798" circle="true" />
+                <img w="21" h="21" src="@drawable/ic_close_black_48dp" tint="#ffffff" layout_gravity="center"/>
+            </frame>
+        </frame>
     );
 
     function layoutTaskPopup() {
@@ -153,7 +164,7 @@ floatUI.main = function () {
 
     task_popup.container.setVisibility(View.INVISIBLE);
     ui.post(()=>{task_popup.setTouchable(false);})
-    task_popup.list.setDataSource(task_list);
+    task_popup.list.setDataSource(floatUI.scripts);
     task_popup.list.on("item_click", function (item, i, itemView, listView) {
         task_popup.container.setVisibility(View.INVISIBLE);
         task_popup.setTouchable(false);
@@ -162,6 +173,10 @@ floatUI.main = function () {
             currentTask = threads.start(item.fn);
         }
     });
+    task_popup.close_button.click(()=>{
+        task_popup.container.setVisibility(View.INVISIBLE);
+        task_popup.setTouchable(false);
+    })
 
     // record control info into xml
     function recordElement(item, depth, text) {
@@ -189,17 +204,17 @@ floatUI.main = function () {
     var submenuXML = (
         <frame
             id="container"
-            w={"" + parseInt(button_size * (space_factor + 1.5))}
-            h={"" + parseInt(button_size * (2 * space_factor + 2))}
+            w={parseInt(button_size * (space_factor + 1.5))}
+            h={parseInt(button_size * (2 * space_factor + 2))}
         ></frame>
     );
     for (let i = 0; i < menu_list.length; i++) {
         submenuXML.frame += (
-            <frame id={"entry" + i} w={"" + button_size} h={"" + button_size}>
-                <img w={"" + button_size} h={"" + button_size} src={menu_list[i].color} circle="true" />
+            <frame id={"entry" + i} w={button_size} h={button_size}>
+                <img w={button_size} h={button_size} src={menu_list[i].color} circle="true" />
                 <img
-                    w={"" + parseInt(button_size * logo_factor)}
-                    h={"" + parseInt(button_size * logo_factor)}
+                    w={parseInt(button_size * logo_factor)}
+                    h={parseInt(button_size * logo_factor)}
                     src={menu_list[i].logo}
                     tint="#ffffff"
                     layout_gravity="center"
@@ -432,7 +447,10 @@ var limit = {
     jjcisuse: false,
     drug1num: '',
     drug2num: '',
-    drug3num: ''
+    drug3num: '',
+    jjcnum: '',
+    default: 0,
+    useAuto: false,
 }
 var clickSets = {
     ap: {
@@ -1024,7 +1042,8 @@ function jingMain() {
             click(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                if (limit.jjcisuse) {
+                let count=parseInt(limit.jjcnum);
+                if (limit.jjcisuse && (isNaN(count)||count>0)) {
                     while (!id("BpCureWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)
@@ -1037,6 +1056,7 @@ function jingMain() {
                         screenutilClick(clickSets.bphuiok)
                         sleep(1500)
                     }
+                    limit.jjcnum=''+(count-1);
                 } else {
                     screenutilClick(clickSets.bpclose)
                     log("jjc结束")
@@ -1320,13 +1340,15 @@ function getDrugNum(text) {
     return parseInt(text.slice(0, text.length - 1))
 }
 
-floatUI.adjust = function (config) {
-    limit = config
-    log("参数：", limit)
+floatUI.adjust = function (key, value) {
+    if(value!==undefined) {
+        limit[key]=value
+        log("更新参数：", key, value)
+    }
 }
 
 // compatible action closure
-var tasks = (function () {
+function algo_init() {
     // click with root permission
     function clickRoot(x, y) {
         var result = shell("su\ninput tap " + x + " " + y + "\nexit\n");
@@ -1463,6 +1485,7 @@ var tasks = (function () {
                     let content = getContent(element);
                     return {
                         value: parseInt(content.match(/\d+/)[0]),
+                        total: parseInt(content.match(/\d+/)[1]),
                         bounds: element.bounds(),
                     };
                 }
@@ -1480,6 +1503,7 @@ var tasks = (function () {
                         if (checkNumber(getContent(previous)) && checkNumber(getContent(next))) {
                             return {
                                 value: Number(getContent(previous)),
+                                total: Number(getContent(next)),
                                 bounds: element.bounds(),
                             };
                         }
@@ -1528,6 +1552,21 @@ var tasks = (function () {
         return results.filter((result) => result.bounds.left == left);
     }
 
+    function getCostAP() {
+        let element = find(string.cost_ap);
+        if(element) {
+            for (var i = 0; i < element.parent().childCount() - 1; i++) {
+                var current = element.parent().child(i);
+                if (getContent(current) == string.cost_ap) {
+                    var next = element.parent().child(i + 1);
+                    if (checkNumber(getContent(next))) {
+                        return Number(getContent(next));
+                    }
+                }
+            }
+        }
+    }
+
     const STATE_LOGIN = 0;
     const STATE_HOME = 1;
     const STATE_MENU = 2;
@@ -1542,6 +1581,7 @@ var tasks = (function () {
     const strings = {
         name: [
             "support",
+            "revive_title",
             "revive_button",
             "revive_popup",
             "revive_confirm",
@@ -1550,12 +1590,15 @@ var tasks = (function () {
             "follow",
             "follow_append",
             "confirm",
+            "cost_ap",
             "regex_drug",
             "regex_lastlogin",
             "regex_bonus",
+            "regex_autobattle",
         ],
         zh_Hans: [
             "请选择支援角色",
+            "AP回复",
             "回复",
             "回复确认",
             "回复",
@@ -1564,12 +1607,15 @@ var tasks = (function () {
             "关注",
             "关注追加",
             "确定",
+            "消耗AP",
             /^\d+个$/,
             /^最终登录.+/,
             /＋\d+个$/,
+            /[\s\S]*续战/,
         ],
         zh_Hant: [
             "請選擇支援角色",
+            "AP回復",
             "回復",
             "回復確認",
             "進行回復",
@@ -1578,12 +1624,15 @@ var tasks = (function () {
             "關注",
             "追加關注",
             "确定",
+            "消費AP",
             /^\d+個$/,
             /^最終登入.+/,
             /＋\d+個$/,
+            /[\s\S]*周回/,
         ],
         ja: [
             "サポートキャラを選んでください",
+            "AP回復",
             "回復",
             "回復確認",
             "回復する",
@@ -1592,9 +1641,11 @@ var tasks = (function () {
             "フォロー",
             "フォロー追加",
             "はい",
+            "消費AP",
             /^\d+個$/,
             /^最終ログイン.+/,
             /＋\d+個$/,
+            /[\s\S]*周回/,
         ],
     };
 
@@ -1646,32 +1697,36 @@ var tasks = (function () {
 
     function refillAP() {
         log("尝试使用回复药");
-        var usedrug = false;
-        var numbers = matchAll(string.regex_drug, true);
-        var buttons = findAll(string.revive_button);
-        // when things seems to be correct
-        if (numbers.length == 3 && buttons.length == 3) {
-            for (let i = 0; i < 3; i++) {
-                if (ifUseDrug(i, parseInt(getContent(numbers[i]).slice(0, -1)))) {
-                    log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次");
-                    var bound = buttons[i].bounds();
-                    click(bound.centerX(), bound.centerY());
-                    // wait for confirmation popup
-                    find(string.revive_popup, true);
-                    log("点击确认回复");
-                    bound = find(string.revive_confirm, true).bounds();
-                    click(bound.centerX(), bound.centerY());
-                    usedrug = true;
-                    break;
+        do {
+            var usedrug = false;
+            var numbers = matchAll(string.regex_drug, true);
+            var buttons = findAll(string.revive_button);
+            // when things seems to be correct
+            if (numbers.length == 3 && buttons.length == 3) {
+                for (let i = 0; i < 3; i++) {
+                    if (ifUseDrug(i, parseInt(getContent(numbers[i]).slice(0, -1)))) {
+                        log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次");
+                        var bound = buttons[i].bounds();
+                        do{
+                            click(bound.centerX(), bound.centerY());
+                            // wait for confirmation popup
+                        } while(!find(string.revive_popup, 2000))
+                        log("点击确认回复");
+                        bound = find(string.revive_confirm, true).bounds();
+                        click(bound.centerX(), bound.centerY());
+                        usedrug = true;
+                        break;
+                    }
                 }
             }
-        }
-        if (!usedrug && find(string.out_of_ap)) {
-            log("AP不足且未嗑药，退出");
-            threads.currentThread().interrupt();
-        }
-        // wait for refill window to be back
-        var element = id("popupInfoDetailTitle").findOne();
+            if (!usedrug && find(string.out_of_ap)) {
+                log("AP不足且未嗑药，退出");
+                threads.currentThread().interrupt();
+            }
+            // wait for refill window to be back
+            var element = find(string.revive_title, true);
+            var apinfo = getAP();
+        } while(usedrug && limit.useAuto && apinfo.value<=apinfo.total*4)
         // now close the window
         while (element.refresh()) {
             log("关闭回复窗口");
@@ -1737,7 +1792,8 @@ var tasks = (function () {
                     }
                     // if we need to refill AP
                     let apinfo = getAP();
-                    if (apinfo.value < parseInt(limit.limitAP) && usedrug && tryusedrug) {
+                    let apcost = getCostAP();
+                    if (apcost && (limit.useAuto && apinfo.value<= apinfo.total*4 || apinfo.value < apcost * 2) && usedrug && tryusedrug) {
                         // open revive window
                         let revive_window;
                         do {
@@ -1781,14 +1837,16 @@ var tasks = (function () {
                         }
                         click(bound.centerX(), bound.centerY());
                         // wait for start button for 5 seconds
-                        let element = find(string.start, 5000);
+                        let element = limit.useAuto?match(string.regex_autobattle, 5000):find(string.start, 5000);
                         // speed up by skip two unneccesary loops
                         if (element) {
                             state = STATE_TEAM;
                             log("进入队伍调整");
+                            // too fast !
+                            sleep(500);
                             bound = element.bounds();
                             click(bound.centerX(), bound.centerY());
-                            waitElement(element, 5000);
+                            waitElement(element, 3000);
                         }
                     }
                     break;
@@ -1806,7 +1864,7 @@ var tasks = (function () {
                     if (element) {
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
-                        waitElement(element, 5000);
+                        waitElement(element, 3000);
                     }
                     break;
                 }
@@ -1829,10 +1887,11 @@ var tasks = (function () {
                         break;
                     }
                     let element = id("charaWrap").findOnce();
-                    if (element && element.bounds().height() > 0) {
-                        charabound = element.bounds();
-                        let targetX = charabound.right;
-                        let targetY = charabound.bottom;
+                    if (element) {
+                        if(element.bounds().height() > 0)
+                            charabound = element.bounds();
+                        let targetX = element.bounds().right;
+                        let targetY = element.bounds().bottom;
                         // click if upgrade
                         element = find("OK");
                         if (element) {
@@ -1896,7 +1955,7 @@ var tasks = (function () {
     return {
         default: taskDefault,
     };
-})();
+}
 
 //global utility functions
 
