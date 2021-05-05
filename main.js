@@ -247,7 +247,7 @@ try {
 //版本更新
 function toUpdate() {
     try {
-        let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
+        let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
         if (res.statusCode != 200) {
             toastLog("请求超时")
         } else {
@@ -255,8 +255,8 @@ function toUpdate() {
             if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
                 toastLog("无需更新")
             } else {
-                let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/main.js");
-                let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/floatUI.js");
+                let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/main.js");
+                let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/floatUI.js");
                 if (main_script.statusCode == 200 && float_script.statusCode == 200) {
                     toastLog("更新加载中");
                     let mainjs = main_script.body.string();
