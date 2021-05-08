@@ -1201,9 +1201,9 @@ function FriendHelpFunction() {
         }
     }
     else {
-        let ptCom = textMatches(/^\d0$/).boundsInside(friendWrap.left + friendWrap.width() / 2, friendWrap.top, friendWrap.right, friendWrap.bottom).find();
+        let ptCom = textMatches(/^\+{0,1}\d0$/).boundsInside(friendWrap.left + friendWrap.width() / 2, friendWrap.top, friendWrap.right, friendWrap.bottom).find();
         if (ptCom.length == 0) {
-            ptCom = descMatches(/^\d0$/).boundsInside(friendWrap.left + friendWrap.width() / 2, friendWrap.top, friendWrap.right, friendWrap.bottom).find();
+            ptCom = descMatches(/^\+{0,1}\d0$/).boundsInside(friendWrap.left + friendWrap.width() / 2, friendWrap.top, friendWrap.right, friendWrap.bottom).find();
         }
         // 可点击的助战列表
         let ptComCanClick = []
@@ -1315,7 +1315,7 @@ function getPt(com) {
     if (txt.length == 0) {
         txt = com.desc()
     }
-    return parseInt(txt)
+    return parseInt(txt.length==3?txt.slice(1):txt)
 }
 function getDrugNum(text) {
     return parseInt(text.slice(0, text.length - 1))
