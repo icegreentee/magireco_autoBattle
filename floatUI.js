@@ -398,16 +398,15 @@ floatUI.main = function () {
 // ------------主要逻辑--------------------
 var langNow = "zh"
 var language = {
-    zh: ["回复确认", "回复", "开始", "关注", "关注追加","消耗AP"],
-    jp: ["回復確認", "回復する", "開始", "フォロー", "フォロー追加","消耗AP"],
-    tai: ["回復確認", "進行回復", "開始", "關注", "追加關注","消耗AP"]
+    zh: ["回复确认", "回复", "开始", "关注", "关注追加", "消耗AP"],
+    jp: ["回復確認", "回復する", "開始", "フォロー", "フォロー追加", "消費AP"],
+    tai: ["回復確認", "進行回復", "開始", "關注", "追加關注", "消費AP"]
 }
 var currentLang = language.zh
 var limit = {
     helpx: '',
     helpy: '',
-    battlex: '',
-    battley: '',
+    battleNo: 'cb3',
     drug1: false,
     drug2: false,
     drug3: false,
@@ -454,7 +453,7 @@ var clickSets = {
         y: 1000,
         pos: "bottom"
     },
-    autostart:{
+    autostart: {
         x: 1800,
         y: 750,
         pos: "bottom"
@@ -529,7 +528,17 @@ var clickSets = {
         y: 950,
         pos: "bottom"
     },
-    battleinit: {
+    battle1: {
+        x: 1200,
+        y: 580,
+        pos: "top"
+    },
+    battle2: {
+        x: 1200,
+        y: 770,
+        pos: "top"
+    },
+    battle3: {
         x: 1200,
         y: 960,
         pos: "top"
@@ -688,11 +697,13 @@ function autoMainver1() {
         id("questLinkList").findOne()
         log("选择battle")
         while (!id("friendWrap").findOnce()) {
-            if (limit.battlex == "" && limit.battley == "") {
-                screenutilClick(clickSets.battleinit)
+            if (limit.battleNo == "cb1") {
+                screenutilClick(clickSets.battle1)
             }
-            else {
-                click(parseInt(limit.battlex), parseInt(limit.battley))
+            else if (limit.battleNo == "cb2") {
+                screenutilClick(clickSets.battle2)
+            } else {
+                screenutilClick(clickSets.battle3)
             }
             sleep(2000)
         }
@@ -710,8 +721,8 @@ function autoMainver3() {
     }
     while (true) {
         //开始
-        let notdrug =!limit.drug1 && !limit.drug2 && !limit.drug3
-        if(!notdrug){
+        let notdrug = !limit.drug1 && !limit.drug2 && !limit.drug3
+        if (!notdrug) {
 
         }
         // -----------选援助----------------
@@ -1054,6 +1065,7 @@ function jingMain() {
 //----------function抽离------------------------
 // 嗑药模块封装
 function ApsFunction(druglimit) {
+    log("开始检测ap")
     if ((!limit.drug1 && !limit.drug2 && !limit.drug3)) {
         log("无需检测ap")
         return;
@@ -1062,8 +1074,7 @@ function ApsFunction(druglimit) {
 
     let apCost = textMatches(/^\d+$/).boundsInside(apCostBounds.left, apCostBounds.top, apCostBounds.right, apCostBounds.bottom).findOne().text();
     apCost = parseInt(apCost)
-    log("副本ap消耗值为",apCost)
-    log("开始检测ap")
+    log("副本ap消耗值为", apCost)
     let statusRect = id("status").findOne().bounds()
     let apComList = textMatches(/^\d+\/\d+$/).find()
     if (apComList.length == 0) {
@@ -1085,9 +1096,9 @@ function ApsFunction(druglimit) {
     let apNow = parseInt(aps.match(/\d+/)[0])
 
     log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
-    
+
     log("当前体力为" + apNow)
-    if (apNow < apCost*2) {
+    if (apNow < apCost * 2) {
         //嗑药
         //打开ap面板
         log("嗑药面板开启")
@@ -1190,7 +1201,10 @@ function FriendHelpFunction() {
         }
     }
     else {
-        let ptCom = textMatches(/^\d0$/).boundsInside(friendWrap.left + friendWrap.width() / 2, friendWrap.top, friendWrap.right, friendWrap.bottom).find();
+        let ptCom = textMatches(/^\+{0,1}\d0$/).boundsInside(friendWrap.left + friendWrap.width() / 2, friendWrap.top, friendWrap.right, friendWrap.bottom).find();
+        if (ptCom.length == 0) {
+            ptCom = descMatches(/^\+{0,1}\d0$/).boundsInside(friendWrap.left + friendWrap.width() / 2, friendWrap.top, friendWrap.right, friendWrap.bottom).find();
+        }
         // 可点击的助战列表
         let ptComCanClick = []
         for (let i = 0; i < ptCom.length; i++) {
@@ -1205,13 +1219,13 @@ function FriendHelpFunction() {
                 ptComCanClick.push(ptCom[i])
             }
         }
-        log("候选列表", ptComCanClick.length)
+        log("候选列表数量：", ptComCanClick.length)
         // 是单纯选npc还是，优先助战
         let finalPt = ptComCanClick[0]
         if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
             finalPt = ptComCanClick[ptComCanClick.length - 1]
         }
-        log("选择", finalPt.bounds())
+        log("选择位置：", finalPt.bounds())
         while (id("friendWrap").findOnce()) {
             sleep(1000)
             click(finalPt.bounds().centerX(), finalPt.bounds().centerY())
@@ -1298,7 +1312,10 @@ function waitForGameForeground() {
 
 function getPt(com) {
     let txt = com.text()
-    return parseInt(txt)
+    if (txt.length == 0) {
+        txt = com.desc()
+    }
+    return parseInt(txt.length==3?txt.slice(1):txt)
 }
 function getDrugNum(text) {
     return parseInt(text.slice(0, text.length - 1))
