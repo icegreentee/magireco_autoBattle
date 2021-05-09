@@ -115,12 +115,24 @@ ui.emitter.on("create_options_menu", menu=>{
     let item = menu.add("查看日志");
     item.setIcon(getTintDrawable("ic_assignment_black_48dp", colors.WHITE));
     item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item = menu.add("魔纪百科");
+    item.setIcon(getTintDrawable("ic_book_black_48dp", colors.WHITE));
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item = menu.add("模拟抽卡");
+    item.setIcon(getTintDrawable("ic_store_black_48dp", colors.WHITE));
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
 });
 
 ui.emitter.on("options_item_selected", (e, item)=>{
     switch(item.getTitle()){
         case "查看日志":
             app.startActivity("console")
+            break;
+        case "魔纪百科":
+            app.openUrl("https://magireco.moe/");
+            break;
+        case "模拟抽卡":
+            app.openUrl("https://rika.ren/~kuro/workspace/playground/");
             break;
     }
     e.consumed = true;
