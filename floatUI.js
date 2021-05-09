@@ -33,6 +33,8 @@ importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
 var tasks = algo_init()
+// touch capture, will be initialized in main
+var capture = ()=>{};
 // available script list
 floatUI.scripts = [
     {
@@ -163,7 +165,7 @@ floatUI.main = function () {
     }
 
     task_popup.container.setVisibility(View.INVISIBLE);
-    ui.post(()=>{task_popup.setTouchable(false);})
+    ui.post(()=>{task_popup.setTouchable(false)})
     task_popup.list.setDataSource(floatUI.scripts);
     task_popup.list.on("item_click", function (item, i, itemView, listView) {
         task_popup.container.setVisibility(View.INVISIBLE);
@@ -225,7 +227,7 @@ floatUI.main = function () {
     var submenu = floaty.rawWindow(submenuXML);
 
     submenu.container.setVisibility(View.INVISIBLE);
-    ui.post(()=>{submenu.setTouchable(false);})
+    ui.post(()=>{submenu.setTouchable(false)})
 
     // mount onclick handler
     for (var i = 0; i < menu_list.length; i++) {
@@ -322,13 +324,9 @@ floatUI.main = function () {
     var menu = floaty.rawWindow(
         <frame id="logo" w="44" h="44" alpha="0.4">
             <img w="44" h="44" src="#ffffff" circle="true" />
-            <img
-                id="img_logo"
-                w="32"
-                h="32"
+            <img id="img_logo" w="32" h="32" 
                 src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png"
-                layout_gravity="center"
-            />
+                layout_gravity="center" />
         </frame>
     );
 
@@ -424,7 +422,45 @@ floatUI.main = function () {
     })
 
     context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED))
-            
+
+    var touch_pos = null;
+    var overlay = floaty.rawWindow(
+        <frame id="container" w="*" h="*">
+            <frame w="*" h="*" bg="#000000" alpha="0.2"></frame>
+            <text w="auto" h="auto" text="请点击需要周回的battle{{'\n'}}(请通关一次后再用，避免错位)" bg="#ffffff" textColor="#FF0000" layout_gravity="center_horizontal|top" textAlignment="center"/>
+        </frame>
+    );
+    overlay.container.setVisibility(View.INVISIBLE);
+    ui.post(()=>{overlay.setTouchable(false)})
+    overlay.container.setOnTouchListener(function (self, event) {
+        if(event.getAction()==event.ACTION_UP) {
+            touch_pos = {
+                x: parseInt(event.getRawX()),
+                y: parseInt(event.getRawY())
+            }
+            log("捕获点击坐标", touch_pos.x, touch_pos.y);
+            overlay.setTouchable(false);
+            overlay.container.setVisibility(View.INVISIBLE);
+        }
+        return true;
+    })
+
+    capture = function() {
+        touch_pos=null;
+        ui.post(()=>{
+            var sz=getWindowSize();
+            overlay.setSize(sz.x, sz.y);
+            overlay.container.setVisibility(View.VISIBLE);
+            overlay.setTouchable(true);
+        })
+        while(overlay.container.getVisibility()==View.INVISIBLE){
+            sleep(200);
+        }
+        while(overlay.container.getVisibility()==View.VISIBLE){
+            sleep(200);
+        }
+        return touch_pos;
+    }
 };
 // ------------主要逻辑--------------------
 var langNow = "zh"
@@ -1349,6 +1385,8 @@ floatUI.adjust = function (key, value) {
 
 // compatible action closure
 function algo_init() {
+    // for debug
+    const AUTO_LIMIT = 2
     // click with root permission
     function clickRoot(x, y) {
         var result = shell("su\ninput tap " + x + " " + y + "\nexit\n");
@@ -1388,65 +1426,90 @@ function algo_init() {
     // find first element using regex
     function match(reg, wait) {
         var startTime = new Date().getTime();
-        var result;
+        var result=null;
+        var it=0;
         do {
+            it++;
+            auto.root.refresh()
             result = textMatches(reg).findOnce();
-            if (result) return result;
+            if (result && result.refresh()) break;
             result = descMatches(reg).findOnce();
-            if (result) return result;
+            if (result && result.refresh()) break;
             sleep(100);
-        } while (wait === true || new Date().getTime() < startTime + wait);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        log("match "+reg+ " for "+(new Date().getTime()-startTime) + " with " + it +" limit "+wait)
+        return result;
     }
 
     // find all element using regex
     function matchAll(reg, wait) {
         var startTime = new Date().getTime();
-        var result;
+        var result=[];
+        var it=0;
         do {
+            it++;
             result = textMatches(reg).find();
-            if (result.length >= 1) return result;
+            result = result.filter(x=>x.refresh());
+            if (result.length >= 1) break;
             result = descMatches(reg).find();
-            if (result.length >= 1) return result;
+            result = result.filter(x=>x.refresh());
+            if (result.length >= 1) break;
             sleep(100);
-        } while (wait === true || new Date().getTime() < startTime + wait);
-        return [];
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        log("match all "+reg+ " for "+(new Date().getTime()-startTime) + " with " + it +" limit "+wait)
+        return result;
     }
 
     // find first element using plain text
     function find(txt, wait) {
         var startTime = new Date().getTime();
-        var result;
+        var result=null;
+        var it=0;
         do {
+            it++;
             result = text(txt).findOnce();
-            if (result) return result;
+            if (result && result.refresh()) break;
             result = desc(txt).findOnce();
-            if (result) return result;
+            if (result && result.refresh()) break;
             sleep(100);
-        } while (wait === true || new Date().getTime() < startTime + wait);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        log("find "+txt+ " for "+(new Date().getTime()-startTime) + " with " + it +" limit "+wait)
+        return result;
     }
 
     // find all element using plain text
     function findAll(txt, wait) {
         var startTime = new Date().getTime();
-        var result;
+        var result=[];
+        var it=0;
         do {
+            it++;
+            auto.root.refresh()
             result = text(txt).find();
-            if (result.length >= 1) return result;
+            result = result.filter(x=>x.refresh());
+            if (result.length >= 1) break;
             result = desc(txt).find();
-            if (result.length >= 1) return result;
+            result = result.filter(x=>x.refresh());
+            if (result.length >= 1) break;
             sleep(100);
-        } while (wait === true || new Date().getTime() < startTime + wait);
-        return [];
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        log("find all "+txt+ " for "+(new Date().getTime()-startTime)+ " with " + it +" limit "+wait)
+        return result;
     }
 
     function findID(name, wait) {
         var startTime = new Date().getTime();
-        var result;
+        var result=null;
+        var it=0;
         do {
+            it++;
+            auto.root.refresh()
             result = id(name).findOnce();
-            if (result) return result;
+            if (result && result.refresh()) break;
             sleep(100);
-        } while (wait === true || new Date().getTime() < startTime + wait);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        log("find id "+name+ " for "+(new Date().getTime()-startTime)+ " with " + it +" limit "+wait)
+        return result;
     }
 
     function waitElement(element, wait) {
@@ -1455,7 +1518,21 @@ function algo_init() {
         do {
             if (!element.refresh()) return;
             sleep(100);
-        } while (wait === true || new Date().getTime() < startTime + wait);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+    }
+
+    function waitAny(fnlist) {
+        var counter=threads.atomic(0);
+        for(var fn of fnlist)
+        {
+            threads.start(((f)=>function(){
+                f();
+                counter.incrementAndGet();
+            })(fn))
+        }
+        while(counter.get()==0){
+            sleep(100);
+        }
     }
 
     function getContent(element) {
@@ -1469,46 +1546,55 @@ function algo_init() {
     }
 
     function getAP() {
-        if (id("baseContainer").findOnce()) {
+        if (findID("baseContainer")) {
             // values and seperator are together
             while (true) {
+                let result = null;
+                let h = getWindowSize().y; 
                 let elements = matchAll(/^\d+\/\d+$/, true);
-                if(elements.length > 0){
-                    let element = elements[0];
-                    let h = getWindowSize().y;
-                    for(let item of elements) {
-                        if(item.bounds().top < h) {
-                            h = item.bounds().top
-                            element = item
+                for(let element of elements) {
+                    if(element.bounds().top<h){
+                        if(element.indexInParent()==element.parent().childCount()-1 || 
+                            !(""+getContent(element.parent().child(element.indexInParent() + 1))).startsWith("Rank")){
+                            let content = getContent(element);
+                            h = element.bounds().top;
+                            result={
+                                value: parseInt(content.split('/')[0]),
+                                total: parseInt(content.split('/')[1]),
+                                bounds: element.bounds(),
+                            };
                         }
+                        
                     }
-                    let content = getContent(element);
-                    return {
-                        value: parseInt(content.match(/\d+/)[0]),
-                        total: parseInt(content.match(/\d+/)[1]),
-                        bounds: element.bounds(),
-                    };
                 }
+                if(result) 
+                    return result;
                 sleep(500)
             }
         } else {
             // ... are seperate
             while (true) {
-                let element = find("/", true);
-                for (var i = 1; i < element.parent().childCount() - 1; i++) {
-                    var current = element.parent().child(i);
-                    if (getContent(current) === "/") {
-                        var previous = element.parent().child(i - 1);
-                        var next = element.parent().child(i + 1);
-                        if (checkNumber(getContent(previous)) && checkNumber(getContent(next))) {
-                            return {
-                                value: Number(getContent(previous)),
-                                total: Number(getContent(next)),
-                                bounds: element.bounds(),
-                            };
+                let result = null;
+                let h = getWindowSize().y; 
+                let elements = findAll("/", true);
+                for(let element of elements) {
+                    if(element.bounds().top<h){
+                        if(element.indexInParent()>1 && element.indexInParent()<element.parent().childCount()-1) {
+                            var previous = element.parent().child(element.indexInParent() - 1);
+                            var next = element.parent().child(element.indexInParent() + 1);
+                            if (checkNumber(getContent(previous)) && checkNumber(getContent(next))) {
+                                h = element.bounds().top;
+                                result = {
+                                    value: Number(getContent(previous)),
+                                    total: Number(getContent(next)),
+                                    bounds: element.bounds(),
+                                };
+                            }
                         }
                     }
                 }
+                if(result) 
+                    return result;
                 sleep(500)
             }
         }
@@ -1523,17 +1609,14 @@ function algo_init() {
             var content = getContent(element);
             // pt value and "+" are seperate
             if (content == "+") {
-                for (var i = 0; i < element.parent().childCount() - 1; i++) {
-                    var current = element.parent().child(i);
-                    if (getContent(current) == "+") {
-                        var next = element.parent().child(i + 1);
-                        if (checkNumber(getContent(next))) {
-                            results.push({
-                                value: Number(getContent(next)),
-                                bounds: element.bounds(),
-                            });
-                            if (element.bounds().left > left) left = element.bounds().left;
-                        }
+                if(element.indexInParent() < element.parent().childCount()-1){
+                    var next = element.parent().child(element.indexInParent() + 1);
+                    if (checkNumber(getContent(next))) {
+                        results.push({
+                            value: Number(getContent(next)),
+                            bounds: element.bounds(),
+                        });
+                        if (element.bounds().left > left) left = element.bounds().left;
                     }
                 }
             }
@@ -1553,15 +1636,12 @@ function algo_init() {
     }
 
     function getCostAP() {
-        let element = find(string.cost_ap);
-        if(element) {
-            for (var i = 0; i < element.parent().childCount() - 1; i++) {
-                var current = element.parent().child(i);
-                if (getContent(current) == string.cost_ap) {
-                    var next = element.parent().child(i + 1);
-                    if (checkNumber(getContent(next))) {
-                        return Number(getContent(next));
-                    }
+        let elements = findAll(string.cost_ap);
+        for(let element of elements) {
+            if(element.indexInParent() < element.parent().childCount()-1){
+                var next = element.parent().child(element.indexInParent() + 1);
+                if (checkNumber(getContent(next))) {
+                    return Number(getContent(next));
                 }
             }
         }
@@ -1589,7 +1669,7 @@ function algo_init() {
             "start",
             "follow",
             "follow_append",
-            "confirm",
+            "battle_confirm",
             "cost_ap",
             "regex_drug",
             "regex_lastlogin",
@@ -1623,7 +1703,7 @@ function algo_init() {
             "開始",
             "關注",
             "追加關注",
-            "确定",
+            "決定",
             "消費AP",
             /^\d+個$/,
             /^最終登入.+/,
@@ -1640,7 +1720,7 @@ function algo_init() {
             "開始",
             "フォロー",
             "フォロー追加",
-            "はい",
+            "決定",
             "消費AP",
             /^\d+個$/,
             /^最終ログイン.+/,
@@ -1691,7 +1771,14 @@ function algo_init() {
         if ((index < 2 && count > 0) || count > 4) {
             // unlimited
             if (isNaN(druglimit[index])) return true;
-            else if (druglimit[index]-- > 0) return true;
+            else if (druglimit[index] > 0) return true;
+        }
+    }
+
+    function updateDrugLimit(index) {
+        if (!isNaN(druglimit[index])) {
+            druglimit[index]--;
+            limit["drug" + (index + 1) + "num"]=""+druglimit[index];
         }
     }
 
@@ -1715,6 +1802,7 @@ function algo_init() {
                         bound = find(string.revive_confirm, true).bounds();
                         click(bound.centerX(), bound.centerY());
                         usedrug = true;
+                        updateDrugLimit(i);
                         break;
                     }
                 }
@@ -1726,7 +1814,8 @@ function algo_init() {
             // wait for refill window to be back
             var element = find(string.revive_title, true);
             var apinfo = getAP();
-        } while(usedrug && limit.useAuto && apinfo.value<=apinfo.total*4)
+            log("当前AP:"+apinfo.value+"/"+apinfo.total)
+        } while(usedrug && limit.useAuto && apinfo.value <= apinfo.total*AUTO_LIMIT)
         // now close the window
         while (element.refresh()) {
             log("关闭回复窗口");
@@ -1737,6 +1826,13 @@ function algo_init() {
         return usedrug;
     }
 
+    var overlay = floaty.rawWindow(
+        <frame id="container" w="*" h="*">
+            <text w="auto" h="auto" layout_gravity="center_horizontal|top" bg="#ffffff" color="#ff0000"/>
+            <frame id="curtain" w="*" h="*" bg="#000000" alpha="0.2"></frame>
+        </frame>
+    );
+
     function selectBattle() {}
 
     function taskDefault() {
@@ -1745,6 +1841,7 @@ function algo_init() {
         var battlename = "";
         var charabound = null;
         var tryusedrug = true;
+        var battlepos = null;
         while (true) {
             switch (state) {
                 case STATE_MENU: {
@@ -1755,30 +1852,45 @@ function algo_init() {
                         break;
                     }
                     // if AP is not enough
-                    if (id("popupInfoDetailTitle").findOnce()) {
+                    if (findID("popupInfoDetailTitle")) {
                         // try use drug
                         tryusedrug = refillAP();
                     }
                     // if need to click to enter battle
-                    let button = find(string.confirm);
-                    if (!button) {
-                        button = find("OK");
-                    }
+                    let button = find(string.battle_confirm);
                     if (button) {
+                        log("点击确认进入battle")
                         let bound = button.bounds();
                         click(bound.centerX(), bound.centerY());
                         // wait for support screen for 5 seconds
                         find(string.support, 5000);
                     }
+                    else if (battlepos) {
+                        log("尝试点击关卡坐标")
+                        click(battlepos.x, battlepos.y);
+                        waitAny([
+                            ()=>{find(string.battle_confirm, 5000)},
+                            ()=>{find(string.support, 5000)}
+                        ])
+                        
+                    }
                     // click battle if available
-                    if (battlename) {
+                    else if (battlename) {
                         let battle = find(battlename);
                         if (battle) {
+                            log("尝试点击关卡名称")
                             let bound = battle.bounds();
                             click(bound.centerX(), bound.centerY());
                             // wait for support screen for 5 seconds
-                            find(string.support, 5000);
+                            waitAny([
+                                ()=>{find(string.battle_confirm, 5000)},
+                                ()=>{find(string.support, 5000)}
+                            ])
                         }
+                    }
+                    else {
+                        log("等待捕获关卡坐标")
+                        battlepos=capture();
                     }
                     break;
                 }
@@ -1793,7 +1905,8 @@ function algo_init() {
                     // if we need to refill AP
                     let apinfo = getAP();
                     let apcost = getCostAP();
-                    if (apcost && (limit.useAuto && apinfo.value<= apinfo.total*4 || apinfo.value < apcost * 2) && usedrug && tryusedrug) {
+                    log("消费AP", apcost, "用药", usedrug, "当前AP", apinfo.value, "AP上限", apinfo.total)
+                    if (((limit.useAuto && apinfo.value<= apinfo.total*AUTO_LIMIT) || (apcost && apinfo.value < apcost * 2)) && usedrug && tryusedrug) {
                         // open revive window
                         let revive_window;
                         do {
@@ -1809,9 +1922,10 @@ function algo_init() {
                         battlename = getContent(battle);
                     }
                     // if unexpectedly treated as long touch
-                    if (id("detailTab").findOnce()) {
+                    if (findID("detailTab")) {
+                        log("误点击，尝试返回")
                         let element = className("EditText").findOnce();
-                        if (element) {
+                        if (element && element.refresh()) {
                             let bound = element.bounds();
                             click(bound.left, bound.top);
                         }
@@ -1837,25 +1951,19 @@ function algo_init() {
                         }
                         click(bound.centerX(), bound.centerY());
                         // wait for start button for 5 seconds
-                        let element = limit.useAuto?match(string.regex_autobattle, 5000):find(string.start, 5000);
-                        // speed up by skip two unneccesary loops
-                        if (element) {
-                            state = STATE_TEAM;
-                            log("进入队伍调整");
-                            // too fast !
-                            sleep(500);
-                            bound = element.bounds();
-                            click(bound.centerX(), bound.centerY());
-                            waitElement(element, 3000);
-                        }
+                        find(string.start, 5000);
                     }
                     break;
                 }
 
                 case STATE_TEAM: {
-                    var element = find(string.start);
+                    var element = limit.useAuto ? match(string.regex_autobattle):find(string.start);
+                    if(limit.useAuto && !element) {
+                        log("未发现自动续战，改用标准战斗")
+                        element = find(string.start);
+                    }
                     // exit condition
-                    if (id("android:id/content").findOnce() && !element) {
+                    if (findID("android:id/content") && !element) {
                         state = STATE_BATTLE;
                         log("进入战斗");
                         break;
@@ -1864,14 +1972,14 @@ function algo_init() {
                     if (element) {
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
-                        waitElement(element, 3000);
+                        waitElement(element, 500);
                     }
                     break;
                 }
 
                 case STATE_BATTLE: {
                     // exit condition
-                    if (id("charaWrap").findOnce()) {
+                    if (findID("charaWrap")) {
                         state = STATE_REWARD_CHARACTER;
                         log("进入角色结算");
                         break;
@@ -1881,12 +1989,12 @@ function algo_init() {
 
                 case STATE_REWARD_CHARACTER: {
                     // exit condition
-                    if (id("hasTotalRiche").findOnce()) {
+                    if (findID("hasTotalRiche")) {
                         state = STATE_REWARD_MATERIAL;
                         log("进入掉落结算");
                         break;
                     }
-                    let element = id("charaWrap").findOnce();
+                    let element = findID("charaWrap");
                     if (element) {
                         if(element.bounds().height() > 0)
                             charabound = element.bounds();
@@ -1908,41 +2016,43 @@ function algo_init() {
 
                 case STATE_REWARD_MATERIAL: {
                     // exit condition
-                    let element = id("hasTotalRiche").findOnce();
-                    if (id("android:id/content").findOnce() && !element) {
+                    let element = findID("hasTotalRiche");
+                    if (findID("android:id/content") && !element) {
                         state = STATE_REWARD_POST;
                         log("结算完成");
                         break;
                     }
                     // try click rebattle
-                    element = id("questRetryBtn").findOnce();
+                    element = findID("questRetryBtn");
                     if (element) {
+                        log("点击再战按钮");
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
                     } else if (charabound) {
                         log("点击再战区域");
                         click(charabound.right, charabound.bottom);
                     }
-                    sleep(1000);
+                    sleep(500);
                     break;
                 }
 
                 case STATE_REWARD_POST: {
                     // wait 5 seconds for transition
-                    match(/.*\/.*/, 5000);
+                    match(/\d*\/\d*/, 5000);
                     // exit condition
                     if (find(string.support)) {
                         state = STATE_SUPPORT;
                         log("进入助战选择");
                         break;
-                    } else if (match(/.*\/.*/)) {
+                    } else {
                         state = STATE_MENU;
                         log("进入关卡选择");
                         break;
                     }
                     // try to skip
                     let element = className("EditText").findOnce();
-                    if (element) {
+                    if (element && element.refresh()) {
+                        log("尝试跳过剧情")
                         let bound = element.bounds();
                         click(bound.right, bound.top);
                     }

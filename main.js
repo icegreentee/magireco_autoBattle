@@ -1,14 +1,28 @@
 "ui";
+importClass(android.graphics.Color);
+importClass(android.view.MenuItem)
+importClass(com.stardust.autojs.project.ProjectConfig)
+importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
+importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
+
 var Name = "AutoBattle";
-var version = "2.7.0"
+// no need to set version two times any more
+var version = getProjectVersion();
 var appName = Name + " v" + version;
+
+function getProjectVersion() {
+    var name = context.getPackageName()
+    if(name != "org.autojs.autojspro")
+        return app.versionName;
+    else {
+        var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
+        if(conf)
+            return conf.versionName();
+    }
+}
 
 var floatUI = require('floatUI.js');
 
-importClass(android.graphics.Color);
-importClass(android.view.MenuItem)
-importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
-importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 ui.statusBarColor("#FF4FB3FF")
 ui.layout(
     <relative id="container">
@@ -28,8 +42,8 @@ ui.layout(
                         <text text="全局设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <linear margin="0 3">
-                                <text text="默认执行脚本" layout_weight="1" textColor="#666666"/>
-                                <spinner id="default" gravity="right" textSize="14" entries="{{floatUI.scripts.map(x=>x.name).join('|')}}"/>
+                                <text text="默认执行脚本" layout_weight="1" layout_gravity="center_vertical" textColor="#666666"/>
+                                <spinner id="default" h="auto" gravity="right" textSize="14" entries="{{floatUI.scripts.map(x=>x.name).join('|')}}"/>
                             </linear>
                             <text text="恢复药使用选择：" margin="0 5"/>
                             <vertical padding="10 3 0 3" w="*" h="auto">
@@ -59,12 +73,12 @@ ui.layout(
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <Switch id="isStable" w="*" margin="0 3" checked="false" textColor="#666666" text="稳定模式（战斗中不断点击重连弹窗位置）" />
                             <linear margin="0 3">
-                                <text text="活动周回关卡位置 x，y坐标自定义：" />
+                                <text text="活动周回关卡位置 x，y坐标自定义：" layout_gravity="center_vertical"/>
                                 <input maxLength="4" id="battlex" text="" hint="横坐标" textSize="14" inputType="number|none" />
                                 <input maxLength="4" id="battley" text="" hint="纵坐标" textSize="14" inputType="number|none" />
                             </linear>
                             <linear margin="0 3">
-                                <text text="助战x，y坐标自定义：" />
+                                <text text="助战x，y坐标自定义：" layout_gravity="center_vertical"/>
                                 <input maxLength="4" id="helpx" text="" hint="横坐标" textSize="14" inputType="number|none" />
                                 <input maxLength="4" id="helpy" text="" hint="纵坐标" textSize="14" inputType="number|none" />
                             </linear>
@@ -167,7 +181,7 @@ if (!floaty.checkPermission()) {
     floatIsActive = true;
 }
 
-var storage = storages.create("soha4");
+var storage = storages.create("auto_mr");
 const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battlex", "battley", "useAuto"]
 const tempParamList = ["drug1", "drug2", "drug3", "jjcisuse", "drug1num", "drug2num", "drug3num", "jjcnum"]
 
