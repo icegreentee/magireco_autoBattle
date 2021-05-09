@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "2.7.0"
+var version = "2.9.0"
 var appName = Name + " v" + version;
 
 importClass(android.graphics.Color);
@@ -43,10 +43,13 @@ ui.layout(
                         </linear>
                     </vertical>
                     <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
-                        <linear>
-                            <text text="活动周回关卡位置 x，y坐标自定义：" />
-                            <input maxLength="4" id="battlex" text="" inputType="number|none" />
-                            <input maxLength="4" id="battley" text="" inputType="number|none" />
+                        <linear padding="5 5 0 5" bg="#ffffff" margin="0 0 0 5" >
+                            <radiogroup id="cb">
+                                <text color="#222222" text="活动周回关卡选择：" />
+                                <radio id="cb1" text="初级" checked="true" />
+                                <radio id="cb2" text="中级" />
+                                <radio id="cb3" text="高级" />
+                            </radiogroup>
                         </linear>
                         <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
                         <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用npc（不设置此项，默认优先 互关好友-npc）" />
@@ -131,9 +134,9 @@ if (!floaty.checkPermission()) {
 }
 
 
-var storage = storages.create("soha3");
+var storage = storages.create("soha4");
 var data = storage.get("data");
-const parmasList = ["helpx", "helpy", "battlex", "battley"]
+const parmasList = ["helpx", "helpy"]
 const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "jjcisuse"]
 var parmasMap = {}
 
@@ -145,6 +148,7 @@ if (data == undefined) {
         parmasMap[parmasList[i]] = ""
     }
     // log(JSON.stringify(parmasMap))
+    parmasMap["battleNo"] = "cb1"
     storage.put("data", JSON.stringify(parmasMap))
 }
 else {
@@ -160,6 +164,9 @@ for (let i = 0; i < parmasList.length; i++) {
         })
     }
 }
+ui.run(function () {
+    ui[parmasMap["battleNo"]].setChecked(true)
+})
 
 //无需赋值的属性
 for (let i = 0; i < parmasNotInitList.length; i++) {
@@ -187,8 +194,14 @@ ui.start.click(() => {
         }
 
     }
-    // log(parmasMap)
-    // log(JSON.stringify(parmasMap))
+    if (ui.cb1.checked) {
+        parmasMap["battleNo"] = "cb1"
+    } else if (ui.cb2.checked) {
+        parmasMap["battleNo"] = "cb2"
+    }
+    else if (ui.cb3.checked) {
+        parmasMap["battleNo"] = "cb3"
+    }
     storage.remove("data")
     storage.put("data", JSON.stringify(parmasMap))
     for (let i = 0; i < parmasNotInitList.length; i++) {
