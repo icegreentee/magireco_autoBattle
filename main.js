@@ -7,20 +7,12 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "2.9.0";
-// 本来想不再写两遍版本号，但是和下拉刷新冲突了，就这样吧
-//var version = getProjectVersion();
+var version = getProjectVersion();
 var appName = Name + " v" + version;
 
 function getProjectVersion() {
-    var name = context.getPackageName()
-    if(name != "org.autojs.autojspro")
-        return app.versionName;
-    else {
-        var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
-        if(conf)
-            return conf.versionName();
-    }
+    var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
+    if(conf) return conf.versionName();
 }
 
 var floatUI = require('floatUI.js');
@@ -162,6 +154,7 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
 ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('foreground_service', checked);
 });
+ui.foreground.setChecked($settings.isEnabled('foreground_service'));
 
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {
@@ -309,8 +302,10 @@ function toUpdate() {
                     toastLog("更新加载中");
                     let mainjs = main_script.body.string();
                     let floatjs = float_script.body.string();
+                    let prjjson = res.body.string();
                     files.write(engines.myEngine().cwd() + "/main.js", mainjs)
                     files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
+                    files.write(engines.myEngine().cwd() + "/project.json", prjjson)
                     engines.stopAll()
                     events.on("exit", function () {
                         engines.execScriptFile(engines.myEngine().cwd() + "/main.js")

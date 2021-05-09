@@ -1514,6 +1514,25 @@ function algo_init() {
         return result;
     }
 
+    function findMultiple(txt_list, wait) {
+        var startTime = new Date().getTime();
+        var result=null;
+        var it=0;
+        var current=0;
+        do {
+            it++;
+            if(current>=txt_list.length)current=0;
+            result = text(txt_list[current]).findOnce();
+            if (result && result.refresh()) break;
+            result = desc(txt_list[current]).findOnce();
+            if (result && result.refresh()) break;
+            current++;
+            sleep(100);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        log("find "+txt_list.join(',')+ " for "+(new Date().getTime()-startTime) + " with " + it +" limit "+wait)
+        return result;
+    }
+
     function findID(name, wait) {
         var startTime = new Date().getTime();
         var result=null;
@@ -1538,6 +1557,7 @@ function algo_init() {
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
     }
 
+    // do not use, nodes may conflict
     function waitAny(fnlist) {
         var counter=threads.atomic(0);
         for(var fn of fnlist)
@@ -1885,11 +1905,7 @@ function algo_init() {
                     else if (battlepos) {
                         log("尝试点击关卡坐标")
                         click(battlepos.x, battlepos.y);
-                        waitAny([
-                            ()=>{find(string.battle_confirm, 5000)},
-                            ()=>{find(string.support, 5000)}
-                        ])
-                        
+                        findMultiple([string.battle_confirm, string.support], 5000);
                     }
                     // click battle if available
                     else if (battlename) {
@@ -1899,10 +1915,7 @@ function algo_init() {
                             let bound = battle.bounds();
                             click(bound.centerX(), bound.centerY());
                             // wait for support screen for 5 seconds
-                            waitAny([
-                                ()=>{find(string.battle_confirm, 5000)},
-                                ()=>{find(string.support, 5000)}
-                            ])
+                            findMultiple([string.battle_confirm, string.support], 5000);
                         }
                     }
                     else {
