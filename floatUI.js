@@ -797,10 +797,9 @@ function autoMainver3() {
 //             }
 //         }
 //         sleep(1000)
-//         let aps = apCom.text()
-//         log("ap:", aps)
 //         // aps  55/122  获得字符串中第一串数字
-//         let apNow = parseInt(aps.match(/\d+/)[0])
+//         let apNow = uiObjParseInt(apCom)
+//         log("apNow", apNow, "uiObjGetText(apCom)", uiObjGetText(apCom))
 
 //         log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
 //         log("嗑药设置体力：", limit.limitAP)
@@ -816,13 +815,15 @@ function autoMainver3() {
 //                 sleep(2000)
 //             }
 //             let apDrugNums = textMatches(/^\d+個$/).find()
+//             if (apDrugNums.empty()) apDrugNums = descMatches(/^\d+個$/).find()
 //             if (langNow == "zh") {
 //                 apDrugNums = textMatches(/^\d+个$/).find()
+//                 if (apDrugNums.empty()) apDrugNums = descMatches(/^\d+个$/).find()
 //             }
 //             //获得回复药水数量
-//             let apDrug50Num = getDrugNum(apDrugNums[0].text())
-//             let apDrugFullNum = getDrugNum(apDrugNums[1].text())
-//             let apMoneyNum = getDrugNum(apDrugNums[2].text())
+//             let apDrug50Num = uiObjParseInt(apDrugNums[0])
+//             let apDrugFullNum = uiObjParseInt(apDrugNums[1])
+//             let apMoneyNum = uiObjParseInt(apDrugNums[2])
 //             log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
 //             // 根据条件选择药水
 
@@ -918,7 +919,7 @@ function autoMainver3() {
 //             if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
 //                 if (ptComCanClick.length != 0) {
 //                     //新加入的pt若比第一次加入的要小，舍去
-//                     if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
+//                     if (uiObjParseInt(ptComCanClick[0]) > uiObjParseInt(ptCom[i])) {
 //                         continue
 //                     }
 //                 }
@@ -927,10 +928,10 @@ function autoMainver3() {
 //             }
 //         }
 //         log("候选列表", ptComCanClick)
-//         log(getPt(ptComCanClick[0]), getPt(ptComCanClick[ptComCanClick.length - 1]))
+//         log(uiObjParseInt(ptComCanClick[0]), uiObjParseInt(ptComCanClick[ptComCanClick.length - 1]))
 //         // 是单纯选npc还是，优先助战
 //         let finalPt = ptComCanClick[0]
-//         if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
+//         if (limit.justNPC || uiObjParseInt(finalPt) < uiObjParseInt(ptComCanClick[ptComCanClick.length - 1])) {
 //             finalPt = ptComCanClick[ptComCanClick.length - 1]
 //         }
 //         log("选择", finalPt)
@@ -1072,8 +1073,7 @@ function ApsFunction(druglimit) {
     }
     let apCostBounds = text(currentLang[5]).findOne().parent().bounds()
 
-    let apCost = textMatches(/^\d+$/).boundsInside(apCostBounds.left, apCostBounds.top, apCostBounds.right, apCostBounds.bottom).findOne().text();
-    apCost = parseInt(apCost)
+    let apCost = uiObjParseInt(boundsInside(apCostBounds.left, apCostBounds.top, apCostBounds.right, apCostBounds.bottom).findOne());
     log("副本ap消耗值为", apCost)
     let statusRect = id("status").findOne().bounds()
     let apComList = textMatches(/^\d+\/\d+$/).find()
@@ -1090,10 +1090,8 @@ function ApsFunction(druglimit) {
     }
 
     sleep(1000)
-    let aps = apCom.text()
-    log("ap:", aps)
-    // aps  55/122  获得字符串中第一串数字
-    let apNow = parseInt(aps.match(/\d+/)[0])
+    let apNow = uiObjParseInt(apCom)
+    log("apNow", apNow, "uiObjGetText(apCom)", uiObjGetText(apCom))
 
     log("嗑药设置", limit.drug1, limit.drug2, limit.drug3)
 
@@ -1109,14 +1107,16 @@ function ApsFunction(druglimit) {
             sleep(2000)
         }
         let apDrugNums = textMatches(/^\d+個$/).find()
+        if (apDrugNums.empty()) apDrugNums = descMatches(/^\d+個$/).find()
 
         if (langNow == "zh") {
             apDrugNums = textMatches(/^\d+个$/).find()
+            if (apDrugNums.empty()) apDrugNums = descMatches(/^\d+个$/).find()
         }
         //获得回复药水数量
-        let apDrug50Num = getDrugNum(apDrugNums[0].text())
-        let apDrugFullNum = getDrugNum(apDrugNums[1].text())
-        let apMoneyNum = getDrugNum(apDrugNums[2].text())
+        let apDrug50Num = uiObjParseInt(apDrugNums[0])
+        let apDrugFullNum = uiObjParseInt(apDrugNums[1])
+        let apMoneyNum = uiObjParseInt(apDrugNums[2])
         log("药数量分别为", apDrug50Num, apDrugFullNum, apMoneyNum)
         // 根据条件选择药水
 
@@ -1212,7 +1212,7 @@ function FriendHelpFunction() {
             if (ptCom[i].bounds().centerY() < friendWrap.bottom && ptCom[i].bounds().centerY() > friendWrap.top) {
                 if (ptComCanClick.length != 0) {
                     //新加入的pt若比第一次加入的要小，舍去
-                    if (getPt(ptComCanClick[0]) > getPt(ptCom[i])) {
+                    if (uiObjParseInt(ptComCanClick[0]) > uiObjParseInt(ptCom[i])) {
                         continue
                     }
                 }
@@ -1222,7 +1222,7 @@ function FriendHelpFunction() {
         log("候选列表数量：", ptComCanClick.length)
         // 是单纯选npc还是，优先助战
         let finalPt = ptComCanClick[0]
-        if (limit.justNPC || getPt(finalPt) < getPt(ptComCanClick[ptComCanClick.length - 1])) {
+        if (limit.justNPC || uiObjParseInt(finalPt) < uiObjParseInt(ptComCanClick[ptComCanClick.length - 1])) {
             finalPt = ptComCanClick[ptComCanClick.length - 1]
         }
         log("选择位置：", finalPt.bounds())
@@ -1310,15 +1310,26 @@ function waitForGameForeground() {
     }
 }
 
-function getPt(com) {
-    let txt = com.text()
-    if (txt.length == 0) {
-        txt = com.desc()
+function uiObjGetText(uiObj) {
+    let uiText = "";
+    try {
+        uiText = uiObj.text();
+    } catch (e) {
+        return "";
     }
-    return parseInt(txt.length==3?txt.slice(1):txt)
+    if (uiText == null || uiText == "") uiText = uiObj.desc();
+    if (uiText == null) uiText = "";
+    return uiText;
 }
-function getDrugNum(text) {
-    return parseInt(text.slice(0, text.length - 1))
+
+function uiObjParseInt(uiObj) {
+    let uiText = uiObjGetText(uiObj);
+
+    let matched = uiText.match(/\d+/);
+    if (matched == null) return null;
+
+    let num = parseInt(matched[0]);
+    return num;
 }
 
 floatUI.adjust = function (config) {
