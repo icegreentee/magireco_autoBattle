@@ -1,6 +1,6 @@
 "ui";
 var Name = "AutoBattle";
-var version = "2.9.0"
+var version = "3.0.0"
 var appName = Name + " v" + version;
 
 importClass(android.graphics.Color);
