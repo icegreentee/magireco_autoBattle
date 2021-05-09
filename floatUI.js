@@ -1083,8 +1083,9 @@ function ApsFunction(druglimit) {
     let apCom = apComList[0];
     if (apComList.length > 1) {
         for (let i = 1; i < apComList.length; i++) {
-            if (apComList[i].bounds().centerX() < statusRect.bottom) {
+            if (apComList[i].bounds().centerX() < statusRect.right && apComList[i].bounds().centerY() < statusRect.bottom) {
                 apCom = apComList[i];
+                log("apCom = apComList[i];", apCom, i);
             }
         }
     }
