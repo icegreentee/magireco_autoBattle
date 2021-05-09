@@ -696,19 +696,22 @@ function autoMainver1() {
         sleep(2000)
         id("questLinkList").findOne()
         log("选择battle")
-        while (id("questLinkList").findOnce()) {//这里检测questLinkList而不是friendWrap，可以避免在误点到助战时死循环
+        for (let i=0; id("questLinkList").findOnce(); i++) {
+            //这里检测questLinkList而不是friendWrap，可以避免在误点到助战时死循环
             //可能会芝麻掉针鼻子里：
             //一瞬间前，检测完questLinkList还存在；
             //一瞬间过去，questLinkList实际上就不存在了（上一次选择battle点击生效了），然后点击就会落在助战身上
-            if (limit.battleNo == "cb1") {
-                screenutilClick(clickSets.battle1)
+            if (i % 4 == 0) {
+                if (limit.battleNo == "cb1") {
+                    screenutilClick(clickSets.battle1)
+                }
+                else if (limit.battleNo == "cb2") {
+                    screenutilClick(clickSets.battle2)
+                } else {
+                    screenutilClick(clickSets.battle3)
+                }
             }
-            else if (limit.battleNo == "cb2") {
-                screenutilClick(clickSets.battle2)
-            } else {
-                screenutilClick(clickSets.battle3)
-            }
-            sleep(2000)
+            sleep(500)
         }
         log("一轮结束")
         sleep(1000)
