@@ -723,7 +723,10 @@ function autoMainver1() {
         sleep(2000)
         id("questLinkList").findOne()
         log("选择battle")
-        while (!id("friendWrap").findOnce()) {
+        while (id("questLinkList").findOnce()) {//这里检测questLinkList而不是friendWrap，可以避免在误点到助战时死循环
+            //可能会芝麻掉针鼻子里：
+            //一瞬间前，检测完questLinkList还存在；
+            //一瞬间过去，questLinkList实际上就不存在了（上一次选择battle点击生效了），然后点击就会落在助战身上
             if (limit.battleNo == "cb1") {
                 screenutilClick(clickSets.battle1)
             }
@@ -1097,6 +1100,13 @@ function ApsFunction(druglimit) {
         log("无需检测ap")
         return;
     }
+
+    if (!id("friendWrap").findOnce() && (text(keywords["start"][currentLang]).findOnce() || desc(keywords["start"][currentLang]).findOnce())) {
+        //应该是上一轮选关点了不止一次，后面几次误点到助战了，所以现在已经到了组队开始界面
+        log("ApsFunction", keywords["start"][currentLang]);
+        return;
+    }
+
     let apCostBounds = text(keywords["apCostText"][currentLang]).findOne().parent().bounds()
 
     let apCost = textMatches(/^\d+$/).boundsInside(apCostBounds.left, apCostBounds.top, apCostBounds.right, apCostBounds.bottom).findOne().text();
@@ -1216,6 +1226,13 @@ function ApsFunction(druglimit) {
 // 助战选择封装
 function FriendHelpFunction() {
     log("选择助战")
+
+    if (!id("friendWrap").findOnce() && (text(keywords["start"][currentLang]).findOnce() || desc(keywords["start"][currentLang]).findOnce())) {
+        //应该是上一轮选关点了不止一次，后面几次误点到助战了，所以现在已经到了组队开始界面
+        log("FriendHelpFunction", keywords["start"][currentLang]);
+        return;
+    }
+
     // 15为npc助战  0~14为玩家助战
     //确定在选人阶段
     let friendWrap = id("friendWrap").findOne().bounds()
