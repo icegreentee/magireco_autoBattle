@@ -2,12 +2,14 @@
 importClass(android.graphics.Color);
 importClass(android.view.MenuItem)
 importClass(com.stardust.autojs.project.ProjectConfig)
+importClass(com.stardust.autojs.core.ui.inflater.util.Ids)
 importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-// no need to set version two times any more
-var version = getProjectVersion();
+var version = "2.9.0";
+// 本来想不再写两遍版本号，但是和下拉刷新冲突了，就这样吧
+//var version = getProjectVersion();
 var appName = Name + " v" + version;
 
 function getProjectVersion() {
@@ -72,11 +74,12 @@ ui.layout(
                         <text text="坐标定位脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <Switch id="isStable" w="*" margin="0 3" checked="false" textColor="#666666" text="稳定模式（战斗中不断点击重连弹窗位置）" />
-                            <linear margin="0 3">
-                                <text text="活动周回关卡位置 x，y坐标自定义：" layout_gravity="center_vertical"/>
-                                <input maxLength="4" id="battlex" text="" hint="横坐标" textSize="14" inputType="number|none" />
-                                <input maxLength="4" id="battley" text="" hint="纵坐标" textSize="14" inputType="number|none" />
-                            </linear>
+                            <text text="活动周回关卡选择：" margin="0 5"/>
+                            <radiogroup id="battleNo" padding="10 3 0 3">
+                                <radio id="cb1" text="初级" />
+                                <radio id="cb2" text="中级" />
+                                <radio id="cb3" text="高级" checked="true" />
+                            </radiogroup>
                             <linear margin="0 3">
                                 <text text="助战x，y坐标自定义：" layout_gravity="center_vertical"/>
                                 <input maxLength="4" id="helpx" text="" hint="横坐标" textSize="14" inputType="number|none" />
@@ -182,8 +185,17 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battlex", "battley", "useAuto"]
+const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto"]
 const tempParamList = ["drug1", "drug2", "drug3", "jjcisuse", "drug1num", "drug2num", "drug3num", "jjcnum"]
+
+var idmap={};
+var field=(new Ids()).getClass().getDeclaredField("ids");
+field.setAccessible(true);
+var iter=field.get(null).keySet().iterator();
+while(iter.hasNext()){
+    let item=iter.next();
+    idmap[Ids.getId(item)]=item;
+}
 
 function syncValue(key, value)
 {
@@ -202,6 +214,16 @@ function syncValue(key, value)
             if(value!==undefined && ui[key].getCount()>value)
                 ui[key].setSelection(value, true)
             return ui[key].getSelectedItemPosition()
+        case "RadioGroup": {
+            if(value!==undefined && ui[value])
+                ui[value].setChecked(true)
+            let name="";
+            let id=ui[key].getCheckedRadioButtonId();
+            if(id>=0)
+                name = idmap[ui[key].getCheckedRadioButtonId()]
+            return name
+        }
+            
     }
 }
 
