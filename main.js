@@ -12,7 +12,7 @@ var appName = Name + " v" + version;
 
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
-    if(conf) return conf.versionName();
+    if(conf) return conf.versionName;
 }
 
 var floatUI = require('floatUI.js');

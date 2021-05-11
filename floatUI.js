@@ -38,6 +38,10 @@ var capture = ()=>{};
 // available script list
 floatUI.scripts = [
     {
+        name: "测试",
+        fn: tasks.mark,
+    },
+    {
         name: "控件定位周回",
         fn: tasks.default,
     },
@@ -1225,7 +1229,6 @@ function algo_init() {
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        log("match "+reg+ " for "+(new Date().getTime()-startTime) + " with " + it +" limit "+wait)
         return result;
     }
 
@@ -1244,7 +1247,6 @@ function algo_init() {
             if (result.length >= 1) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        log("match all "+reg+ " for "+(new Date().getTime()-startTime) + " with " + it +" limit "+wait)
         return result;
     }
 
@@ -1255,13 +1257,13 @@ function algo_init() {
         var it=0;
         do {
             it++;
+            auto.root.refresh()
             result = text(txt).findOnce();
             if (result && result.refresh()) break;
             result = desc(txt).findOnce();
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        log("find "+txt+ " for "+(new Date().getTime()-startTime) + " with " + it +" limit "+wait)
         return result;
     }
 
@@ -1281,26 +1283,6 @@ function algo_init() {
             if (result.length >= 1) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        log("find all "+txt+ " for "+(new Date().getTime()-startTime)+ " with " + it +" limit "+wait)
-        return result;
-    }
-
-    function findMultiple(txt_list, wait) {
-        var startTime = new Date().getTime();
-        var result=null;
-        var it=0;
-        var current=0;
-        do {
-            it++;
-            if(current>=txt_list.length)current=0;
-            result = text(txt_list[current]).findOnce();
-            if (result && result.refresh()) break;
-            result = desc(txt_list[current]).findOnce();
-            if (result && result.refresh()) break;
-            current++;
-            sleep(100);
-        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        log("find "+txt_list.join(',')+ " for "+(new Date().getTime()-startTime) + " with " + it +" limit "+wait)
         return result;
     }
 
@@ -1315,7 +1297,6 @@ function algo_init() {
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        log("find id "+name+ " for "+(new Date().getTime()-startTime)+ " with " + it +" limit "+wait)
         return result;
     }
 
@@ -1328,19 +1309,21 @@ function algo_init() {
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
     }
 
-    // do not use, nodes may conflict
-    function waitAny(fnlist) {
-        var counter=threads.atomic(0);
-        for(var fn of fnlist)
-        {
-            threads.start(((f)=>function(){
-                f();
-                counter.incrementAndGet();
-            })(fn))
-        }
-        while(counter.get()==0){
+    function waitAny(fnlist, wait) {
+        var startTime = new Date().getTime();
+        var result=null;
+        var it=0;
+        var current=0;
+        do {
+            it++;
+            if(current>=fnlist.length)current=0;
+            result = fnlist[current]();
+            if (result && result.refresh()) break;
+            current++;
             sleep(100);
-        }
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        if(wait)
+            log("find "+fnlist.length+ " items for "+(new Date().getTime()-startTime) + " with " + it +" limit "+wait)
     }
 
     function getContent(element) {
@@ -1634,13 +1617,6 @@ function algo_init() {
         return usedrug;
     }
 
-    var overlay = floaty.rawWindow(
-        <frame id="container" w="*" h="*">
-            <text w="auto" h="auto" layout_gravity="center_horizontal|top" bg="#ffffff" color="#ff0000"/>
-            <frame id="curtain" w="*" h="*" bg="#000000" alpha="0.2"></frame>
-        </frame>
-    );
-
     function selectBattle() {}
 
     function taskDefault() {
@@ -1650,9 +1626,11 @@ function algo_init() {
         var charabound = null;
         var tryusedrug = true;
         var battlepos = null;
+        var inautobattle = false;
         while (true) {
             switch (state) {
                 case STATE_MENU: {
+                    waitAny([()=>find(string.support), ()=>findID("helpBtn"), ()=>match(/^BATTLE.+/)], 3000);
                     // exit condition
                     if (find(string.support)) {
                         state = STATE_SUPPORT;
@@ -1676,7 +1654,7 @@ function algo_init() {
                     else if (battlepos) {
                         log("尝试点击关卡坐标")
                         click(battlepos.x, battlepos.y);
-                        findMultiple([string.battle_confirm, string.support], 5000);
+                        waitAny([()=>find(string.battle_confirm), ()=>find(string.support)], 5000);
                     }
                     // click battle if available
                     else if (battlename) {
@@ -1685,8 +1663,7 @@ function algo_init() {
                             log("尝试点击关卡名称")
                             let bound = battle.bounds();
                             click(bound.centerX(), bound.centerY());
-                            // wait for support screen for 5 seconds
-                            findMultiple([string.battle_confirm, string.support], 5000);
+                            waitAny([()=>find(string.battle_confirm), ()=>find(string.support)], 5000);
                         }
                     }
                     else {
@@ -1722,16 +1699,6 @@ function algo_init() {
                     if (battle) {
                         battlename = getContent(battle);
                     }
-                    // if unexpectedly treated as long touch
-                    if (findID("detailTab")) {
-                        log("误点击，尝试返回")
-                        let element = className("EditText").findOnce();
-                        if (element && element.refresh()) {
-                            let bound = element.bounds();
-                            click(bound.left, bound.top);
-                        }
-                        find(string.support, 5000);
-                    }
                     // pick support
                     let ptlist = getPTList();
                     let playercount = matchAll(string.regex_lastlogin).length;
@@ -1753,15 +1720,34 @@ function algo_init() {
                         click(bound.centerX(), bound.centerY());
                         // wait for start button for 5 seconds
                         find(string.start, 5000);
+                        break;
+                    }
+                    // if unexpectedly treated as long touch
+                    if (findID("detailTab")) {
+                        log("误点击，尝试返回")
+                        let element = className("EditText").findOnce();
+                        if (element && element.refresh()) {
+                            let bound = element.bounds();
+                            click(bound.left, bound.top);
+                        }
+                        find(string.support, 5000);
                     }
                     break;
                 }
 
                 case STATE_TEAM: {
                     var element = limit.useAuto ? match(string.regex_autobattle):find(string.start);
-                    if(limit.useAuto && !element) {
-                        log("未发现自动续战，改用标准战斗")
-                        element = find(string.start);
+                    if(limit.useAuto) {
+                        if(element){
+                            inautobattle = true;
+                        }
+                        else{
+                            element = find(string.start);
+                            if(element){
+                                inautobattle = false;
+                                log("未发现自动续战，改用标准战斗")
+                            }
+                        }
                     }
                     // exit condition
                     if (findID("android:id/content") && !element) {
@@ -1845,9 +1831,12 @@ function algo_init() {
                         state = STATE_SUPPORT;
                         log("进入助战选择");
                         break;
-                    } else {
+                    } else if(match(/\d*\/\d*/)) {
                         state = STATE_MENU;
                         log("进入关卡选择");
+                        break;
+                    } else if(inautobattle) {
+                        state = STATE_BATTLE;
                         break;
                     }
                     // try to skip
