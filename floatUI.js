@@ -1231,7 +1231,7 @@ floatUI.adjust = function (key, value) {
 // compatible action closure
 function algo_init() {
     // for debug
-    const AUTO_LIMIT = 2;
+    const AUTO_LIMIT = 4;
     // click with root permission
     function clickRoot(x, y) {
         var result = shell("su\ninput tap " + x + " " + y + "\nexit\n");
