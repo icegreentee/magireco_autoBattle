@@ -1,5 +1,5 @@
 "ui";
-importClass(android.graphics.Color);
+importClass(android.graphics.Color)
 importClass(android.view.MenuItem)
 importClass(com.stardust.autojs.project.ProjectConfig)
 importClass(com.stardust.autojs.core.ui.inflater.util.Ids)

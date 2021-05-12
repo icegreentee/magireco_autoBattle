@@ -32,15 +32,11 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
-var tasks = algo_init()
+var tasks = algo_init();
 // touch capture, will be initialized in main
-var capture = ()=>{};
+var capture = () => {};
 // available script list
 floatUI.scripts = [
-    {
-        name: "测试",
-        fn: tasks.mark,
-    },
     {
         name: "控件定位周回",
         fn: tasks.default,
@@ -107,23 +103,34 @@ floatUI.main = function () {
         var text = recordElement(auto.root, 0, "");
 
         var d = new Date();
-        var timestamp = "" + d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate() +
-            "_" + d.getHours() + "-" + d.getMinutes() + "-" + d.getSeconds();
+        var timestamp =
+            "" +
+            d.getFullYear() +
+            "-" +
+            (d.getMonth() + 1) +
+            "-" +
+            d.getDate() +
+            "_" +
+            d.getHours() +
+            "-" +
+            d.getMinutes() +
+            "-" +
+            d.getSeconds();
         var path = files.getSdcardPath();
         path = files.join(path, "auto_magireco");
         path = files.join(path, timestamp + ".xml");
         files.ensureDir(path);
         files.write(path, text);
         toastLog("快照保存至" + path);
-    }    
-    
+    }
+
     function defaultWrap() {
         toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
         currentTask = threads.start(floatUI.scripts[limit.default].fn);
     }
 
     function taskWrap() {
-        layoutTaskPopup()
+        layoutTaskPopup();
         task_popup.container.setVisibility(View.VISIBLE);
         task_popup.setTouchable(true);
     }
@@ -136,11 +143,10 @@ floatUI.main = function () {
     // get to main activity
     function settingsWrap() {
         var it = new Intent();
-        var name = context.getPackageName()
-        if(name != "org.autojs.autojspro")
+        var name = context.getPackageName();
+        if (name != "org.autojs.autojspro")
             it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
-        else
-            it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+        else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
         it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         app.startActivity(it);
     }
@@ -152,12 +158,26 @@ floatUI.main = function () {
                     <text text="选择需要执行的脚本" padding="4 2" textColor="#ffffff" />
                 </vertical>
                 <list id="list">
-                    <text id="name" text="{{name}}" h="45" gravity="center" margin="4 1" w="*" bg="#ffffff" />
+                    <text
+                        id="name"
+                        text="{{name}}"
+                        h="45"
+                        gravity="center"
+                        margin="4 1"
+                        w="*"
+                        bg="#ffffff"
+                    />
                 </list>
             </vertical>
             <frame id="close_button" w="30" h="30" layout_gravity="top|right">
                 <img w="30" h="30" src="#881798" circle="true" />
-                <img w="21" h="21" src="@drawable/ic_close_black_48dp" tint="#ffffff" layout_gravity="center"/>
+                <img
+                    w="21"
+                    h="21"
+                    src="@drawable/ic_close_black_48dp"
+                    tint="#ffffff"
+                    layout_gravity="center"
+                />
             </frame>
         </frame>
     );
@@ -169,7 +189,9 @@ floatUI.main = function () {
     }
 
     task_popup.container.setVisibility(View.INVISIBLE);
-    ui.post(()=>{task_popup.setTouchable(false)})
+    ui.post(() => {
+        task_popup.setTouchable(false);
+    });
     task_popup.list.setDataSource(floatUI.scripts);
     task_popup.list.on("item_click", function (item, i, itemView, listView) {
         task_popup.container.setVisibility(View.INVISIBLE);
@@ -179,10 +201,10 @@ floatUI.main = function () {
             currentTask = threads.start(item.fn);
         }
     });
-    task_popup.close_button.click(()=>{
+    task_popup.close_button.click(() => {
         task_popup.container.setVisibility(View.INVISIBLE);
         task_popup.setTouchable(false);
-    })
+    });
 
     // record control info into xml
     function recordElement(item, depth, text) {
@@ -231,7 +253,9 @@ floatUI.main = function () {
     var submenu = floaty.rawWindow(submenuXML);
 
     submenu.container.setVisibility(View.INVISIBLE);
-    ui.post(()=>{submenu.setTouchable(false)})
+    ui.post(() => {
+        submenu.setTouchable(false);
+    });
 
     // mount onclick handler
     for (var i = 0; i < menu_list.length; i++) {
@@ -256,8 +280,11 @@ floatUI.main = function () {
         var isleft = menu.getX() <= 0;
 
         if (menu.getX() <= 0)
-            submenu.setPosition(0, parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2));
-        else{
+            submenu.setPosition(
+                0,
+                parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+            );
+        else {
             let sz = getWindowSize();
             submenu.setPosition(
                 sz.x - submenu.getWidth(),
@@ -267,8 +294,12 @@ floatUI.main = function () {
 
         for (var i = 0; i < menu_list.length; i++) {
             var params = submenu["entry" + i].getLayoutParams();
-            var horizontal_margin = parseInt(size_base * (space_factor + 0.5) * Math.sin(angle_base * (2 * i + 1)));
-            var vertical_margin = parseInt(size_base * (space_factor + 0.5) * (1 - Math.cos(angle_base * (2 * i + 1))));
+            var horizontal_margin = parseInt(
+                size_base * (space_factor + 0.5) * Math.sin(angle_base * (2 * i + 1))
+            );
+            var vertical_margin = parseInt(
+                size_base * (space_factor + 0.5) * (1 - Math.cos(angle_base * (2 * i + 1)))
+            );
             if (isleft) {
                 params.gravity = Gravity.TOP | Gravity.LEFT;
                 params.leftMargin = horizontal_margin;
@@ -291,7 +322,10 @@ floatUI.main = function () {
                     submenu["entry" + i],
                     "translationX",
                     0,
-                    (isleft ? -1 : 1) * size_base * (space_factor + 0.5) * Math.sin(angle_base * (2 * i + 1))
+                    (isleft ? -1 : 1) *
+                        size_base *
+                        (space_factor + 0.5) *
+                        Math.sin(angle_base * (2 * i + 1))
                 )
             );
             animators.push(
@@ -328,25 +362,28 @@ floatUI.main = function () {
     var menu = floaty.rawWindow(
         <frame id="logo" w="44" h="44" alpha="0.4">
             <img w="44" h="44" src="#ffffff" circle="true" />
-            <img id="img_logo" w="32" h="32" 
+            <img
+                id="img_logo"
+                w="32"
+                h="32"
                 src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png"
-                layout_gravity="center" />
+                layout_gravity="center"
+            />
         </frame>
     );
 
-    ui.post(()=>{menu.setPosition(0, parseInt(getWindowSize().y / 4))})
+    ui.post(() => {
+        menu.setPosition(0, parseInt(getWindowSize().y / 4));
+    });
 
-    function calcMenuY()
-    {
-        var sz=getWindowSize()
-        var minMargin=parseInt((submenu.getHeight()-menu.getHeight())/2)
-        var y=menu.getY()
-        if(y<minMargin)
-            return minMargin
-        else if(y>sz.y-minMargin-menu.getHeight())
-            return sz.y-minMargin-menu.getHeight()
-        else
-            return y
+    function calcMenuY() {
+        var sz = getWindowSize();
+        var minMargin = parseInt((submenu.getHeight() - menu.getHeight()) / 2);
+        var y = menu.getY();
+        if (y < minMargin) return minMargin;
+        else if (y > sz.y - minMargin - menu.getHeight())
+            return sz.y - minMargin - menu.getHeight();
+        else return y;
     }
 
     var touch_x = 0,
@@ -379,13 +416,13 @@ floatUI.main = function () {
             case event.ACTION_UP:
                 if (touch_move) {
                     menu.setTouchable(false);
-                    let sz=getWindowSize()
+                    let sz = getWindowSize();
                     let current = menu.getX();
                     let animator = ValueAnimator.ofInt(
                         current,
                         current < sz.x / 2 ? 0 : sz.x - menu.getWidth()
                     );
-                    let menu_y=calcMenuY()
+                    let menu_y = calcMenuY();
                     animator.addUpdateListener({
                         onAnimationUpdate: (animation) => {
                             menu.setPosition(parseInt(animation.getAnimatedValue()), menu_y);
@@ -407,64 +444,80 @@ floatUI.main = function () {
         return true;
     });
 
-    var receiver=new BroadcastReceiver({
-        onReceive:function(ctx, it){
-            if(menu && menu.logo) {
-                var sz=getWindowSize()
-                var x=menu.getX()
-                if(x<=0){
-                    menu.setPosition(0, calcMenuY())
-                    submenu.setPosition(0, parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2))
+    var receiver = new BroadcastReceiver({
+        onReceive: function (ctx, it) {
+            if (menu && menu.logo) {
+                var sz = getWindowSize();
+                var x = menu.getX();
+                if (x <= 0) {
+                    menu.setPosition(0, calcMenuY());
+                    submenu.setPosition(
+                        0,
+                        parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+                    );
                 } else {
-                    menu.setPosition(sz.x-menu.getWidth(), calcMenuY())
-                    submenu.setPosition(sz.x-submenu.getWidth(), parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2))
+                    menu.setPosition(sz.x - menu.getWidth(), calcMenuY());
+                    submenu.setPosition(
+                        sz.x - submenu.getWidth(),
+                        parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+                    );
                 }
             } else {
-                context.unregisterReceiver(receiver)
+                context.unregisterReceiver(receiver);
             }
-        }
-    })
+        },
+    });
 
-    context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED))
+    context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED));
 
     var touch_pos = null;
     var overlay = floaty.rawWindow(
         <frame id="container" w="*" h="*">
             <frame w="*" h="*" bg="#000000" alpha="0.2"></frame>
-            <text w="auto" h="auto" text="请点击需要周回的battle{{'\n'}}(请通关一次后再用，避免错位)" bg="#ffffff" textColor="#FF0000" layout_gravity="center_horizontal|top" textAlignment="center"/>
+            <text
+                w="auto"
+                h="auto"
+                text="请点击需要周回的battle{{'\n'}}(请通关一次后再用，避免错位)"
+                bg="#ffffff"
+                textColor="#FF0000"
+                layout_gravity="center_horizontal|top"
+                textAlignment="center"
+            />
         </frame>
     );
     overlay.container.setVisibility(View.INVISIBLE);
-    ui.post(()=>{overlay.setTouchable(false)})
+    ui.post(() => {
+        overlay.setTouchable(false);
+    });
     overlay.container.setOnTouchListener(function (self, event) {
-        if(event.getAction()==event.ACTION_UP) {
+        if (event.getAction() == event.ACTION_UP) {
             touch_pos = {
                 x: parseInt(event.getRawX()),
-                y: parseInt(event.getRawY())
-            }
+                y: parseInt(event.getRawY()),
+            };
             log("捕获点击坐标", touch_pos.x, touch_pos.y);
             overlay.setTouchable(false);
             overlay.container.setVisibility(View.INVISIBLE);
         }
         return true;
-    })
+    });
 
-    capture = function() {
-        touch_pos=null;
-        ui.post(()=>{
-            var sz=getWindowSize();
+    capture = function () {
+        touch_pos = null;
+        ui.post(() => {
+            var sz = getWindowSize();
             overlay.setSize(sz.x, sz.y);
             overlay.container.setVisibility(View.VISIBLE);
             overlay.setTouchable(true);
-        })
-        while(overlay.container.getVisibility()==View.INVISIBLE){
+        });
+        while (overlay.container.getVisibility() == View.INVISIBLE) {
             sleep(200);
         }
-        while(overlay.container.getVisibility()==View.VISIBLE){
+        while (overlay.container.getVisibility() == View.VISIBLE) {
             sleep(200);
         }
         return touch_pos;
-    }
+    };
 };
 // ------------主要逻辑--------------------
 var langNow = "zh"
@@ -1178,7 +1231,7 @@ floatUI.adjust = function (key, value) {
 // compatible action closure
 function algo_init() {
     // for debug
-    const AUTO_LIMIT = 2
+    const AUTO_LIMIT = 2;
     // click with root permission
     function clickRoot(x, y) {
         var result = shell("su\ninput tap " + x + " " + y + "\nexit\n");
@@ -1199,7 +1252,7 @@ function algo_init() {
 
     function click(x, y) {
         // limit range
-        var sz=getWindowSize()
+        var sz = getWindowSize();
         if (x >= sz.x) {
             x = sz.x - 1;
         }
@@ -1218,11 +1271,11 @@ function algo_init() {
     // find first element using regex
     function match(reg, wait) {
         var startTime = new Date().getTime();
-        var result=null;
-        var it=0;
+        var result = null;
+        var it = 0;
         do {
             it++;
-            auto.root.refresh()
+            auto.root.refresh();
             result = textMatches(reg).findOnce();
             if (result && result.refresh()) break;
             result = descMatches(reg).findOnce();
@@ -1235,15 +1288,15 @@ function algo_init() {
     // find all element using regex
     function matchAll(reg, wait) {
         var startTime = new Date().getTime();
-        var result=[];
-        var it=0;
+        var result = [];
+        var it = 0;
         do {
             it++;
             result = textMatches(reg).find();
-            result = result.filter(x=>x.refresh());
+            result = result.filter((x) => x.refresh());
             if (result.length >= 1) break;
             result = descMatches(reg).find();
-            result = result.filter(x=>x.refresh());
+            result = result.filter((x) => x.refresh());
             if (result.length >= 1) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
@@ -1253,11 +1306,11 @@ function algo_init() {
     // find first element using plain text
     function find(txt, wait) {
         var startTime = new Date().getTime();
-        var result=null;
-        var it=0;
+        var result = null;
+        var it = 0;
         do {
             it++;
-            auto.root.refresh()
+            auto.root.refresh();
             result = text(txt).findOnce();
             if (result && result.refresh()) break;
             result = desc(txt).findOnce();
@@ -1270,16 +1323,16 @@ function algo_init() {
     // find all element using plain text
     function findAll(txt, wait) {
         var startTime = new Date().getTime();
-        var result=[];
-        var it=0;
+        var result = [];
+        var it = 0;
         do {
             it++;
-            auto.root.refresh()
+            auto.root.refresh();
             result = text(txt).find();
-            result = result.filter(x=>x.refresh());
+            result = result.filter((x) => x.refresh());
             if (result.length >= 1) break;
             result = desc(txt).find();
-            result = result.filter(x=>x.refresh());
+            result = result.filter((x) => x.refresh());
             if (result.length >= 1) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
@@ -1288,11 +1341,11 @@ function algo_init() {
 
     function findID(name, wait) {
         var startTime = new Date().getTime();
-        var result=null;
-        var it=0;
+        var result = null;
+        var it = 0;
         do {
             it++;
-            auto.root.refresh()
+            auto.root.refresh();
             result = id(name).findOnce();
             if (result && result.refresh()) break;
             sleep(100);
@@ -1311,19 +1364,28 @@ function algo_init() {
 
     function waitAny(fnlist, wait) {
         var startTime = new Date().getTime();
-        var result=null;
-        var it=0;
-        var current=0;
+        var result = null;
+        var it = 0;
+        var current = 0;
         do {
             it++;
-            if(current>=fnlist.length)current=0;
+            if (current >= fnlist.length) current = 0;
             result = fnlist[current]();
             if (result && result.refresh()) break;
             current++;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        if(wait)
-            log("find "+fnlist.length+ " items for "+(new Date().getTime()-startTime) + " with " + it +" limit "+wait)
+        if (wait)
+            log(
+                "find " +
+                    fnlist.length +
+                    " items for " +
+                    (new Date().getTime() - startTime) +
+                    " with " +
+                    it +
+                    " limit " +
+                    wait
+            );
     }
 
     function getContent(element) {
@@ -1341,39 +1403,47 @@ function algo_init() {
             // values and seperator are together
             while (true) {
                 let result = null;
-                let h = getWindowSize().y; 
+                let h = getWindowSize().y;
                 let elements = matchAll(/^\d+\/\d+$/, true);
-                for(let element of elements) {
-                    if(element.bounds().top<h){
-                        if(element.indexInParent()==element.parent().childCount()-1 || 
-                            !(""+getContent(element.parent().child(element.indexInParent() + 1))).startsWith("Rank")){
+                for (let element of elements) {
+                    if (element.bounds().top < h) {
+                        if (
+                            element.indexInParent() == element.parent().childCount() - 1 ||
+                            !(
+                                "" + getContent(element.parent().child(element.indexInParent() + 1))
+                            ).startsWith("Rank")
+                        ) {
                             let content = getContent(element);
                             h = element.bounds().top;
-                            result={
-                                value: parseInt(content.split('/')[0]),
-                                total: parseInt(content.split('/')[1]),
+                            result = {
+                                value: parseInt(content.split("/")[0]),
+                                total: parseInt(content.split("/")[1]),
                                 bounds: element.bounds(),
                             };
                         }
-                        
                     }
                 }
-                if(result) 
-                    return result;
-                sleep(500)
+                if (result) return result;
+                sleep(500);
             }
         } else {
             // ... are seperate
             while (true) {
                 let result = null;
-                let h = getWindowSize().y; 
+                let h = getWindowSize().y;
                 let elements = findAll("/", true);
-                for(let element of elements) {
-                    if(element.bounds().top<h){
-                        if(element.indexInParent()>1 && element.indexInParent()<element.parent().childCount()-1) {
+                for (let element of elements) {
+                    if (element.bounds().top < h) {
+                        if (
+                            element.indexInParent() > 1 &&
+                            element.indexInParent() < element.parent().childCount() - 1
+                        ) {
                             var previous = element.parent().child(element.indexInParent() - 1);
                             var next = element.parent().child(element.indexInParent() + 1);
-                            if (checkNumber(getContent(previous)) && checkNumber(getContent(next))) {
+                            if (
+                                checkNumber(getContent(previous)) &&
+                                checkNumber(getContent(next))
+                            ) {
                                 h = element.bounds().top;
                                 result = {
                                     value: Number(getContent(previous)),
@@ -1384,9 +1454,8 @@ function algo_init() {
                         }
                     }
                 }
-                if(result) 
-                    return result;
-                sleep(500)
+                if (result) return result;
+                sleep(500);
             }
         }
     }
@@ -1400,7 +1469,7 @@ function algo_init() {
             var content = getContent(element);
             // pt value and "+" are seperate
             if (content == "+") {
-                if(element.indexInParent() < element.parent().childCount()-1){
+                if (element.indexInParent() < element.parent().childCount() - 1) {
                     var next = element.parent().child(element.indexInParent() + 1);
                     if (checkNumber(getContent(next))) {
                         results.push({
@@ -1428,8 +1497,8 @@ function algo_init() {
 
     function getCostAP() {
         let elements = findAll(string.cost_ap);
-        for(let element of elements) {
-            if(element.indexInParent() < element.parent().childCount()-1){
+        for (let element of elements) {
+            if (element.indexInParent() < element.parent().childCount() - 1) {
                 var next = element.parent().child(element.indexInParent() + 1);
                 if (checkNumber(getContent(next))) {
                     return Number(getContent(next));
@@ -1545,7 +1614,9 @@ function algo_init() {
             }
             usedrug = false;
             for (let i = 0; i < 3; i++) {
-                druglimit[i] = limit["drug" + (i + 1)] ? parseInt(limit["drug" + (i + 1) + "num"]) : 0;
+                druglimit[i] = limit["drug" + (i + 1)]
+                    ? parseInt(limit["drug" + (i + 1) + "num"])
+                    : 0;
                 if (druglimit[i] !== 0) {
                     usedrug = true;
                 }
@@ -1569,7 +1640,7 @@ function algo_init() {
     function updateDrugLimit(index) {
         if (!isNaN(druglimit[index])) {
             druglimit[index]--;
-            limit["drug" + (index + 1) + "num"]=""+druglimit[index];
+            limit["drug" + (index + 1) + "num"] = "" + druglimit[index];
         }
     }
 
@@ -1585,10 +1656,10 @@ function algo_init() {
                     if (ifUseDrug(i, parseInt(getContent(numbers[i]).slice(0, -1)))) {
                         log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次");
                         var bound = buttons[i].bounds();
-                        do{
+                        do {
                             click(bound.centerX(), bound.centerY());
                             // wait for confirmation popup
-                        } while(!find(string.revive_popup, 2000))
+                        } while (!find(string.revive_popup, 2000));
                         log("点击确认回复");
                         bound = find(string.revive_confirm, true).bounds();
                         click(bound.centerX(), bound.centerY());
@@ -1605,8 +1676,8 @@ function algo_init() {
             // wait for refill window to be back
             var element = find(string.revive_title, true);
             var apinfo = getAP();
-            log("当前AP:"+apinfo.value+"/"+apinfo.total)
-        } while(usedrug && limit.useAuto && apinfo.value <= apinfo.total*AUTO_LIMIT)
+            log("当前AP:" + apinfo.value + "/" + apinfo.total);
+        } while (usedrug && limit.useAuto && apinfo.value <= apinfo.total * AUTO_LIMIT);
         // now close the window
         while (element.refresh()) {
             log("关闭回复窗口");
@@ -1630,7 +1701,14 @@ function algo_init() {
         while (true) {
             switch (state) {
                 case STATE_MENU: {
-                    waitAny([()=>find(string.support), ()=>findID("helpBtn"), ()=>match(/^BATTLE.+/)], 3000);
+                    waitAny(
+                        [
+                            () => find(string.support),
+                            () => findID("helpBtn"),
+                            () => match(/^BATTLE.+/),
+                        ],
+                        3000
+                    );
                     // exit condition
                     if (find(string.support)) {
                         state = STATE_SUPPORT;
@@ -1645,37 +1723,41 @@ function algo_init() {
                     // if need to click to enter battle
                     let button = find(string.battle_confirm);
                     if (button) {
-                        log("点击确认进入battle")
+                        log("点击确认进入battle");
                         let bound = button.bounds();
                         click(bound.centerX(), bound.centerY());
                         // wait for support screen for 5 seconds
                         find(string.support, 5000);
-                    }
-                    else if (battlepos) {
-                        log("尝试点击关卡坐标")
+                    } else if (battlepos) {
+                        log("尝试点击关卡坐标");
                         click(battlepos.x, battlepos.y);
-                        waitAny([()=>find(string.battle_confirm), ()=>find(string.support)], 5000);
+                        waitAny(
+                            [() => find(string.battle_confirm), () => find(string.support)],
+                            5000
+                        );
                     }
                     // click battle if available
                     else if (battlename) {
                         let battle = find(battlename);
                         if (battle) {
-                            log("尝试点击关卡名称")
+                            log("尝试点击关卡名称");
                             let bound = battle.bounds();
                             click(bound.centerX(), bound.centerY());
-                            waitAny([()=>find(string.battle_confirm), ()=>find(string.support)], 5000);
+                            waitAny(
+                                [() => find(string.battle_confirm), () => find(string.support)],
+                                5000
+                            );
                         }
-                    }
-                    else {
-                        log("等待捕获关卡坐标")
-                        battlepos=capture();
+                    } else {
+                        log("等待捕获关卡坐标");
+                        battlepos = capture();
                     }
                     break;
                 }
 
                 case STATE_SUPPORT: {
                     // exit condition
-                    if (find(string.start)) {
+                    if (findID("nextPageBtn")) {
                         state = STATE_TEAM;
                         log("进入队伍调整");
                         break;
@@ -1683,8 +1765,22 @@ function algo_init() {
                     // if we need to refill AP
                     let apinfo = getAP();
                     let apcost = getCostAP();
-                    log("消费AP", apcost, "用药", usedrug, "当前AP", apinfo.value, "AP上限", apinfo.total)
-                    if (((limit.useAuto && apinfo.value<= apinfo.total*AUTO_LIMIT) || (apcost && apinfo.value < apcost * 2)) && usedrug && tryusedrug) {
+                    log(
+                        "消费AP",
+                        apcost,
+                        "用药",
+                        usedrug,
+                        "当前AP",
+                        apinfo.value,
+                        "AP上限",
+                        apinfo.total
+                    );
+                    if (
+                        ((limit.useAuto && apinfo.value <= apinfo.total * AUTO_LIMIT) ||
+                            (apcost && apinfo.value < apcost * 2)) &&
+                        usedrug &&
+                        tryusedrug
+                    ) {
                         // open revive window
                         let revive_window;
                         do {
@@ -1719,12 +1815,12 @@ function algo_init() {
                         }
                         click(bound.centerX(), bound.centerY());
                         // wait for start button for 5 seconds
-                        find(string.start, 5000);
+                        findID("nextPageBtn", 5000);
                         break;
                     }
                     // if unexpectedly treated as long touch
                     if (findID("detailTab")) {
-                        log("误点击，尝试返回")
+                        log("误点击，尝试返回");
                         let element = className("EditText").findOnce();
                         if (element && element.refresh()) {
                             let bound = element.bounds();
@@ -1736,16 +1832,15 @@ function algo_init() {
                 }
 
                 case STATE_TEAM: {
-                    var element = limit.useAuto ? match(string.regex_autobattle):find(string.start);
-                    if(limit.useAuto) {
-                        if(element){
+                    var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
+                    if (limit.useAuto) {
+                        if (element) {
                             inautobattle = true;
-                        }
-                        else{
-                            element = find(string.start);
-                            if(element){
+                        } else {
+                            element = findID("nextPageBtn");
+                            if (element) {
                                 inautobattle = false;
-                                log("未发现自动续战，改用标准战斗")
+                                log("未发现自动续战，改用标准战斗");
                             }
                         }
                     }
@@ -1783,8 +1878,7 @@ function algo_init() {
                     }
                     let element = findID("charaWrap");
                     if (element) {
-                        if(element.bounds().height() > 0)
-                            charabound = element.bounds();
+                        if (element.bounds().height() > 0) charabound = element.bounds();
                         let targetX = element.bounds().right;
                         let targetY = element.bounds().bottom;
                         // click if upgrade
@@ -1827,22 +1921,22 @@ function algo_init() {
                     // wait 5 seconds for transition
                     match(/\d*\/\d*/, 5000);
                     // exit condition
-                    if (find(string.support)) {
+                    if (findID("nextPageBtn")) {
                         state = STATE_SUPPORT;
                         log("进入助战选择");
                         break;
-                    } else if(match(/\d*\/\d*/)) {
+                    } else if (match(/\d*\/\d*/)) {
                         state = STATE_MENU;
                         log("进入关卡选择");
                         break;
-                    } else if(inautobattle) {
+                    } else if (inautobattle) {
                         state = STATE_BATTLE;
                         break;
                     }
                     // try to skip
                     let element = className("EditText").findOnce();
                     if (element && element.refresh()) {
-                        log("尝试跳过剧情")
+                        log("尝试跳过剧情");
                         let bound = element.bounds();
                         click(bound.right, bound.top);
                     }
@@ -1858,12 +1952,11 @@ function algo_init() {
 }
 
 //global utility functions
-
 function getWindowSize() {
     var wm = context.getSystemService(context.WINDOW_SERVICE);
-    var pt = new Point()
-    wm.getDefaultDisplay().getSize(pt)
-    return pt
+    var pt = new Point();
+    wm.getDefaultDisplay().getSize(pt);
+    return pt;
 }
 
 module.exports = floatUI;
