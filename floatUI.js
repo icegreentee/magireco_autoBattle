@@ -13,6 +13,10 @@ importClass(android.animation.TimeInterpolator)
 importClass(android.os.Bundle)
 importClass(android.view.View)
 importClass(android.view.Window)
+importClass(android.view.Gravity)
+importClass(android.graphics.Point)
+importClass(android.content.IntentFilter)
+importClass(android.content.Intent)
 
 importClass(android.view.animation.AccelerateDecelerateInterpolator)
 importClass(android.view.animation.AccelerateInterpolator)
@@ -28,373 +32,493 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
+var tasks = algo_init();
+// touch capture, will be initialized in main
+var capture = () => {};
+// available script list
+floatUI.scripts = [
+    {
+        name: "控件定位周回",
+        fn: tasks.default,
+    },
+    {
+        name: "标准周回（坐标定位）",
+        fn: autoMain,
+    },
+    {
+        name: "活动周回（坐标定位）",
+        fn: autoMainver1,
+    },
+    {
+        name: "Auto周回（坐标定位）",
+        fn: autoMainver3,
+    },
+    {
+        name: "自动镜层（坐标定位）",
+        fn: jingMain,
+    },
+];
+
 floatUI.main = function () {
-    // 没有悬浮窗权限，提示用户并跳转请求
-    let task = null;
-    let logo_switch = false;//全局: 悬浮窗的开启关闭检测
-    let logo_buys = false;//全局: 开启和关闭时占用状态 防止多次点击触发
-    let logo_fx = true//全局: 悬浮按钮所在的方向 真左 假右
-    let time_0, time_1, time_3//全局: 定时器 点击退出悬浮窗时定时器关闭
-    //可修改参数
-    let logo_ms = 200//全局:  动画播放时间
-    let DHK_ms = 200//全局:  对话框动画播放时间
-    let tint_color = "#00000"//全局:  对话框图片颜色
-    /**
-     * 需要三个悬浮窗一起协作达到Auto.js悬浮窗效果
-     * win  子菜单悬浮窗 处理子菜单选项点击事件
-     * win_1  主悬浮按钮 
-     * win_2  悬浮按钮动画替身,只有在手指移动主按钮的时候才会被触发 
-     * 触发时,替身Y值会跟主按钮Y值绑定一起,手指弹起时代替主按钮显示跳动的小球动画
-     */
-    let win = floaty.rawWindow(
-        <frame >//子菜单悬浮窗
-        <frame id="id_logo" w="150" h="210" alpha="0"  >
-                <frame id="id_0" w="44" h="44" margin="33 0 0 0" alpha="1">
-                    <img w="44" h="44" src="#009687" circle="true" />
-                    <img w="28" h="28" src="@drawable/ic_play_arrow_black_48dp" tint="#ffffff" gravity="center" layout_gravity="center" />
-                    <img id="id_0_click" w="*" h="*" src="#ffffff" circle="true" alpha="0" />
-                </frame>
-                <frame id="id_1" w="44" h="44" margin="86 28 0 0" alpha="1">
-                    <img w="44" h="44" src="#ee534f" circle="true" />
-                    <img w="28" h="28" src="@drawable/ic_play_arrow_black_48dp" tint="#ffffff" gravity="center" layout_gravity="center" />
-                    <img id="id_1_click" w="*" h="*" src="#ffffff" circle="true" alpha="0" />
-                </frame>
-                <frame id="id_2" w="44" h="44" margin="0 83 0 0" alpha="1" gravity="right" layout_gravity="right">
-                    <img w="44" h="44" src="#40a5f3" circle="true" />
-                    <img w="28" h="28" src="@drawable/ic_play_arrow_black_48dp" tint="#ffffff" margin="8" />
-                    <img id="id_2_click" w="*" h="*" src="#ffffff" circle="true" alpha="0" />
-                </frame>
-                <frame id="id_3" w="44" h="44" margin="86 0 0 28" alpha="1" gravity="bottom" layout_gravity="bottom">
-                    <img w="44" h="44" src="#fbd834" circle="true" />
-                    <img w="28" h="28" src="@drawable/ic_clear_black_48dp" tint="#ffffff" margin="8" />
-                    <img id="id_3_click" w="*" h="*" src="#ffffff" circle="true" alpha="0" />
-                </frame>
-                <frame id="id_4" w="44" h="44" margin="33 0 0 0" alpha="1" gravity="bottom" layout_gravity="bottom">
-                    <img w="44" h="44" src="#bfc1c0" circle="true" />
-                    <img w="28" h="28" src="@drawable/ic_play_arrow_black_48dp" tint="#ffffff" margin="8" />
-                    <img id="id_4_click" w="*" h="*" src="#ffffff" circle="true" alpha="0" />
-                </frame>
+    // space between buttons compare to button size
+    var space_factor = 1.5;
+    // size for icon compare to button size
+    var logo_factor = 7.0 / 11;
+    // button size in dp
+    var button_size = 44;
+    // current running thread
+    var currentTask = null;
+
+    // submenu definition
+    var menu_list = [
+        {
+            logo: "@drawable/ic_camera_enhance_black_48dp",
+            color: "#009687",
+            fn: snapshotWrap,
+        },
+        {
+            logo: "@drawable/ic_more_horiz_black_48dp",
+            color: "#ee534f",
+            fn: taskWrap,
+        },
+        {
+            logo: "@drawable/ic_play_arrow_black_48dp",
+            color: "#40a5f3",
+            fn: defaultWrap,
+        },
+        {
+            logo: "@drawable/ic_clear_black_48dp",
+            color: "#fbd834",
+            fn: cancelWrap,
+        },
+        {
+            logo: "@drawable/ic_settings_black_48dp",
+            color: "#bfc1c0",
+            fn: settingsWrap,
+        },
+    ];
+
+    function snapshotWrap() {
+        toastLog("开始快照");
+        var text = recordElement(auto.root, 0, "");
+
+        var d = new Date();
+        var timestamp =
+            "" +
+            d.getFullYear() +
+            "-" +
+            (d.getMonth() + 1) +
+            "-" +
+            d.getDate() +
+            "_" +
+            d.getHours() +
+            "-" +
+            d.getMinutes() +
+            "-" +
+            d.getSeconds();
+        var path = files.getSdcardPath();
+        path = files.join(path, "auto_magireco");
+        path = files.join(path, timestamp + ".xml");
+        files.ensureDir(path);
+        files.write(path, text);
+        toastLog("快照保存至" + path);
+    }
+
+    function defaultWrap() {
+        toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
+        currentTask = threads.start(floatUI.scripts[limit.default].fn);
+    }
+
+    function taskWrap() {
+        layoutTaskPopup();
+        task_popup.container.setVisibility(View.VISIBLE);
+        task_popup.setTouchable(true);
+    }
+
+    function cancelWrap() {
+        toastLog("停止脚本");
+        if (currentTask && currentTask.isAlive()) currentTask.interrupt();
+    }
+
+    // get to main activity
+    function settingsWrap() {
+        var it = new Intent();
+        var name = context.getPackageName();
+        if (name != "org.autojs.autojspro")
+            it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
+        else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        app.startActivity(it);
+    }
+
+    var task_popup = floaty.rawWindow(
+        <frame id="container" w="*" h="*">
+            <vertical w="*" h="*" bg="#f8f8f8" margin="0 15 15 0">
+                <vertical bg="#4fb3ff">
+                    <text text="选择需要执行的脚本" padding="4 2" textColor="#ffffff" />
+                </vertical>
+                <list id="list">
+                    <text
+                        id="name"
+                        text="{{name}}"
+                        h="45"
+                        gravity="center"
+                        margin="4 1"
+                        w="*"
+                        bg="#ffffff"
+                    />
+                </list>
+            </vertical>
+            <frame id="close_button" w="30" h="30" layout_gravity="top|right">
+                <img w="30" h="30" src="#881798" circle="true" />
+                <img
+                    w="21"
+                    h="21"
+                    src="@drawable/ic_close_black_48dp"
+                    tint="#ffffff"
+                    layout_gravity="center"
+                />
             </frame>
-            <frame id="logo" w="44" h="44" marginTop="83" alpha="1" />
-            <frame id="logo_1" w="44" h="44" margin="0 83 22 0" alpha="1" layout_gravity="right" />
         </frame>
-    )
-    // win.setTouchable(false);//设置子菜单不接收触摸消息
+    );
 
-    let win_1 = floaty.rawWindow(
-        <frame id="logo" w="44" h="44" alpha="0.4" >//悬浮按钮
-        <img w="44" h="44" src="#ffffff" circle="true" alpha="0.8" />
-            <img id="img_logo" w="32" h="32" src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png" gravity="center" layout_gravity="center" />
-            <img id="logo_click" w="*" h="*" src="#ffffff" alpha="0" />
-        </frame>
-    )
-    // win_1.setPosition(-30, device.height / 4)//悬浮按钮定位
-
-    let win_2 = floaty.rawWindow(
-        <frame id="logo" w="{{device.width}}px" h="44" alpha="0" >//悬浮按钮 弹性替身
-        <img w="44" h="44" src="#ffffff" circle="true" alpha="0.8" />
-            <img id="img_logo" w="32" h="32" src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png" margin="6 6" />
-        </frame>
-    )
-    // win_2.setTouchable(false);//设置弹性替身不接收触摸消息
-
-    /**
-     * 脚本广播事件
-     */
-    let XY = [], XY1 = [], TT = [], TT1 = [], img_dp = {}, dpZ = 0, logo_right = 0, dpB = 0, dp_H = 0
-    events.broadcast.on("定时器关闭", function (X) { clearInterval(X) })
-    events.broadcast.on("悬浮开关", function (X) {
-        ui.run(function () {
-            switch (X) {
-                case true:
-                    win.id_logo.setVisibility(0)
-                    win.setTouchable(true);
-                    logo_switch = true
-                    break;
-                case false:
-                    win.id_logo.setVisibility(4)
-                    win.setTouchable(false);
-                    logo_switch = false
-            }
-        })
-
-    });
-
-    events.broadcast.on("悬浮显示", function (X1) {
-        ui.run(function () {
-            win_2.logo.attr("alpha", "0");
-            win_1.logo.attr("alpha", "0.4");
-        })
-    });
-
-    /**
-     * 等待悬浮窗初始化
-     */
-    let terid = setInterval(() => {
-        // log("13")
-        if (TT.length == 0 && win.logo.getY() > 0) {// 不知道界面初始化的事件  只能放到这里将就下了
-            ui.run(function () {
-                TT = [win.logo.getX(), win.logo.getY()], TT1 = [win.logo_1.getLeft(), win.logo_1.getTop()], anX = [], anY = []// 获取logo 绝对坐标
-                XY = [
-                    [win.id_0, TT[0] - win.id_0.getX(), TT[1] - win.id_0.getY()],//  获取子菜单 视图和子菜单与logo绝对坐标差值
-                    [win.id_1, TT[0] - win.id_1.getX(), TT[1] - win.id_1.getY()],
-                    [win.id_2, TT[0] - win.id_2.getX(), 0],
-                    [win.id_3, TT[0] - win.id_3.getX(), TT[1] - win.id_3.getY()],
-                    [win.id_4, TT[0] - win.id_4.getX(), TT[1] - win.id_4.getY()]]
-                // log("上下Y值差值:" + XY[0][2] + "DP值:" + (XY[0][2] / 83))
-                dpZ = XY[0][2] / 83
-                dpB = dpZ * 22
-                XY1 = [
-                    [parseInt(dpZ * 41), TT1[0] - win.id_0.getLeft(), TT1[1] - win.id_0.getTop()],
-                    [parseInt(dpZ * -65), TT1[0] - win.id_1.getLeft(), TT1[1] - win.id_1.getTop()],
-                    [parseInt(dpZ * -106), TT1[0] - win.id_2.getLeft(), TT1[1] - win.id_2.getTop()],
-                    [parseInt(dpZ * -65), TT1[0] - win.id_3.getLeft(), TT1[1] - win.id_3.getTop()],
-                    [parseInt(dpZ * 41), TT1[0] - win.id_4.getLeft(), TT1[1] - win.id_4.getTop()]]
-                img_dp.h_b = XY[0][2]//两个悬浮窗Y差值
-                img_dp.w = parseInt(dpZ * 9)//计算logo左边隐藏时 X值
-                img_dp.ww = parseInt(dpZ * (44 - 9))//计算logo右边隐藏时 X值
-                logo_right = win.id_2.getX() - parseInt(dpZ * 22)
-                win.setTouchable(false);
-                win_1.setPosition(0 - img_dp.w, device.height / 4)
-                win_2.setTouchable(false);
-                win.id_logo.setVisibility(4)
-                win.id_logo.attr("alpha", "1")
-                events.broadcast.emit("定时器关闭", terid)
-            })
-        }
-    }, 100)
-
-    time_0 = setInterval(() => {
-        //log("11")
-    }, 1000)
-
-    /**
-     * 子菜单点击事件
-     */
-    function img_down() {
-        win_1.logo.attr("alpha", "0.4")
-        logo_switch = false
-        动画()
-    }
-    win.id_0_click.on("click", () => {
-        toastLog("镜界启动")
-        taskInit()
-        task = threads.start(jingMain)
-        img_down()
-    })
-
-    win.id_1_click.on("click", () => {
-        toastLog("活动周回启动")
-        taskInit()
-        task = threads.start(autoMainver1)
-        img_down();
-    })
-
-    win.id_2_click.on("click", () => {
-        toastLog("启动")
-        taskInit()
-        task = threads.start(autoMain)
-        img_down()
-    })
-
-    win.id_3_click.on("click", () => {
-        toastLog("结束")
-        taskInit()
-        img_down()
-    })
-
-    win.id_4_click.on("click", () => {
-        toastLog("暂无")
-        // taskInit()
-        // task = threads.start(autoMainver3)
-        img_down();
-    })
-
-    function taskInit() {
-        if (task != null) {
-            task.interrupt()
-            task = null;
-        }
+    function layoutTaskPopup() {
+        var sz = getWindowSize();
+        task_popup.setSize(sz.x / 2, sz.y / 2);
+        task_popup.setPosition(sz.x / 4, sz.y / 4);
     }
 
+    task_popup.container.setVisibility(View.INVISIBLE);
+    ui.post(() => {
+        task_popup.setTouchable(false);
+    });
+    task_popup.list.setDataSource(floatUI.scripts);
+    task_popup.list.on("item_click", function (item, i, itemView, listView) {
+        task_popup.container.setVisibility(View.INVISIBLE);
+        task_popup.setTouchable(false);
+        if (item.fn) {
+            toastLog("执行 " + item.name + " 脚本");
+            currentTask = threads.start(item.fn);
+        }
+    });
+    task_popup.close_button.click(() => {
+        task_popup.container.setVisibility(View.INVISIBLE);
+        task_popup.setTouchable(false);
+    });
 
-    /**
-     * 补间动画
-     */
-    function 动画() {
-        let anX = [], anY = [], slX = [], slY = []
-        if (logo_switch) {
-            if (logo_fx) {
-                for (let i = 0; i < XY.length; i++) {
-                    anX[i] = ObjectAnimator.ofFloat(XY[i][0], "translationX", parseInt(XY[i][1]), 0);
-                    anY[i] = ObjectAnimator.ofFloat(XY[i][0], "translationY", parseInt(XY[i][2]), 0);
-                    slX[i] = ObjectAnimator.ofFloat(XY[i][0], "scaleX", 0, 1)
-                    slY[i] = ObjectAnimator.ofFloat(XY[i][0], "scaleY", 0, 1)
-                }
-            } else {
-                for (let i = 0; i < XY.length; i++) {
-                    anX[i] = ObjectAnimator.ofFloat(XY[i][0], "translationX", XY1[i][1], XY1[i][0]);
-                    anY[i] = ObjectAnimator.ofFloat(XY[i][0], "translationY", XY1[i][2], 0);
-                    slX[i] = ObjectAnimator.ofFloat(XY[i][0], "scaleX", 0, 1)
-                    slY[i] = ObjectAnimator.ofFloat(XY[i][0], "scaleY", 0, 1)
-                }
-            }
-        } else {
-            if (logo_fx) {
-                for (let i = 0; i < XY.length; i++) {
-                    anX[i] = ObjectAnimator.ofFloat(XY[i][0], "translationX", 0, parseInt(XY[i][1]));
-                    anY[i] = ObjectAnimator.ofFloat(XY[i][0], "translationY", 0, parseInt(XY[i][2]));
-                    slX[i] = ObjectAnimator.ofFloat(XY[i][0], "scaleX", 1, 0)
-                    slY[i] = ObjectAnimator.ofFloat(XY[i][0], "scaleY", 1, 0)
-                }
-            } else {
-                for (let i = 0; i < XY.length; i++) {
-                    anX[i] = ObjectAnimator.ofFloat(XY[i][0], "translationX", XY1[i][0], XY1[i][1]);
-                    anY[i] = ObjectAnimator.ofFloat(XY[i][0], "translationY", 0, XY1[i][2]);
-                    slX[i] = ObjectAnimator.ofFloat(XY[i][0], "scaleX", 1, 0)
-                    slY[i] = ObjectAnimator.ofFloat(XY[i][0], "scaleY", 1, 0)
-                }
+    // record control info into xml
+    function recordElement(item, depth, text) {
+        if (item) {
+            text += "\t".repeat(depth);
+            text += "<" + item.className();
+            if (item.id()) text += ' id="' + item.id() + '"';
+            if (item.text() && item.text() != "") text += ' text="' + item.text() + '"';
+            if (item.desc() && item.desc() != "") text += ' desc="' + item.desc() + '"';
+            text += ' bounds="' + item.bounds() + '"';
+            if (item.childCount() < 1) text += "/>\n";
+            else {
+                text += ">\n";
+                item.children().forEach((child) => {
+                    text = recordElement(child, depth + 1, text);
+                });
+                text += "\t".repeat(depth);
+                text += "</" + item.className() + ">\n";
             }
         }
-        set = new AnimatorSet();
-        set.playTogether(
-            anX[0], anX[1], anX[2], anX[3], anX[4],
-            anY[0], anY[1], anY[2], anY[3], anY[4],
-            slX[0], slX[1], slX[2], slX[3], slX[4],
-            slY[0], slY[1], slY[2], slY[3], slY[4]);
-        set.setDuration(logo_ms);
-        threads.start(function () {//动画的结束事件一直没有明白 只能拿线程代替了
-            logo_buys = true
-            if (logo_switch) {
-                //log("开启")
-                events.broadcast.emit("悬浮开关", true)
-                sleep(logo_ms)
+        return text;
+    }
+
+    // popup submenu, this is E4X grammar
+    var submenuXML = (
+        <frame
+            id="container"
+            w={parseInt(button_size * (space_factor + 1.5))}
+            h={parseInt(button_size * (2 * space_factor + 2))}
+        ></frame>
+    );
+    for (let i = 0; i < menu_list.length; i++) {
+        submenuXML.frame += (
+            <frame id={"entry" + i} w={button_size} h={button_size}>
+                <img w={button_size} h={button_size} src={menu_list[i].color} circle="true" />
+                <img
+                    w={parseInt(button_size * logo_factor)}
+                    h={parseInt(button_size * logo_factor)}
+                    src={menu_list[i].logo}
+                    tint="#ffffff"
+                    layout_gravity="center"
+                />
+            </frame>
+        );
+    }
+    var submenu = floaty.rawWindow(submenuXML);
+
+    submenu.container.setVisibility(View.INVISIBLE);
+    ui.post(() => {
+        submenu.setTouchable(false);
+    });
+
+    // mount onclick handler
+    for (var i = 0; i < menu_list.length; i++) {
+        // hack way to capture i with closure
+        submenu["entry" + i].click(
+            ((id) => () => {
+                menu_list[id].fn();
+                hideMenu(true);
+            })(i)
+        );
+    }
+
+    // layout menu and play animation
+    // will show menu when hide==false
+    function hideMenu(hide) {
+        menu.setTouchable(false);
+        menu.logo.attr("alpha", "1");
+        submenu.setTouchable(false);
+
+        var angle_base = Math.PI / menu_list.length / 2;
+        var size_base = menu.getWidth();
+        var isleft = menu.getX() <= 0;
+
+        if (menu.getX() <= 0)
+            submenu.setPosition(
+                0,
+                parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+            );
+        else {
+            let sz = getWindowSize();
+            submenu.setPosition(
+                sz.x - submenu.getWidth(),
+                parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+            );
+        }
+
+        for (var i = 0; i < menu_list.length; i++) {
+            var params = submenu["entry" + i].getLayoutParams();
+            var horizontal_margin = parseInt(
+                size_base * (space_factor + 0.5) * Math.sin(angle_base * (2 * i + 1))
+            );
+            var vertical_margin = parseInt(
+                size_base * (space_factor + 0.5) * (1 - Math.cos(angle_base * (2 * i + 1)))
+            );
+            if (isleft) {
+                params.gravity = Gravity.TOP | Gravity.LEFT;
+                params.leftMargin = horizontal_margin;
+                params.rightMargin = 0;
             } else {
-                //log("关闭")
-                sleep(logo_ms + 100)
-                events.broadcast.emit("悬浮开关", false)
+                params.gravity = Gravity.TOP | Gravity.RIGHT;
+                params.rightMargin = horizontal_margin;
+                params.leftMargin = 0;
             }
-            logo_buys = false
+            params.topMargin = vertical_margin;
+            submenu["entry" + i].setLayoutParams(params);
+        }
+
+        submenu.container.setVisibility(View.VISIBLE);
+
+        var animators = [];
+        for (var i = 0; i < menu_list.length; i++) {
+            animators.push(
+                ObjectAnimator.ofFloat(
+                    submenu["entry" + i],
+                    "translationX",
+                    0,
+                    (isleft ? -1 : 1) *
+                        size_base *
+                        (space_factor + 0.5) *
+                        Math.sin(angle_base * (2 * i + 1))
+                )
+            );
+            animators.push(
+                ObjectAnimator.ofFloat(
+                    submenu["entry" + i],
+                    "translationY",
+                    0,
+                    size_base * (space_factor + 0.5) * Math.cos(angle_base * (2 * i + 1))
+                )
+            );
+            animators.push(ObjectAnimator.ofFloat(submenu["entry" + i], "scaleX", 1, 0));
+            animators.push(ObjectAnimator.ofFloat(submenu["entry" + i], "scaleY", 1, 0));
+        }
+
+        var set = new AnimatorSet();
+        set.playTogether.apply(set, animators);
+        set.setDuration(200);
+        if (!hide) set.setInterpolator({ getInterpolation: (f) => 1 - f });
+        set.addListener({
+            onAnimationEnd: (anim) => {
+                menu.setTouchable(true);
+                if (hide) {
+                    submenu.container.setVisibility(View.INVISIBLE);
+                    menu.logo.attr("alpha", "0.4");
+                } else {
+                    submenu.setTouchable(true);
+                }
+            },
         });
         set.start();
     }
-    function 对话框动画(X, Y, Z) {//X布尔值 标识显示还是隐藏 Y背景的视图 Z对话框的视图
-        let anX = [], anY = [], slX = [], slY = []
-        if (X) {
-            anX = ObjectAnimator.ofFloat(Z, "translationX", win_1.getX() - (Z.getRight() / 2) + dpB - Z.getLeft(), 0);
-            anY = ObjectAnimator.ofFloat(Z, "translationY", win_1.getY() - (Z.getBottom() / 2) + img_dp.h_b - Z.getTop(), 0);
-            slX = ObjectAnimator.ofFloat(Z, "scaleX", 0, 1)
-            slY = ObjectAnimator.ofFloat(Z, "scaleY", 0, 1)
-            animator = ObjectAnimator.ofFloat(Y, "alpha", 0, 0.5)
-            animator1 = ObjectAnimator.ofFloat(Z, "alpha", 1, 1)
-        } else {
-            anX = ObjectAnimator.ofFloat(Z, "translationX", 0, win_1.getX() - (Z.getRight() / 2) + dpB - Z.getLeft());
-            anY = ObjectAnimator.ofFloat(Z, "translationY", 0, win_1.getY() - (Z.getBottom() / 2) + img_dp.h_b - Z.getTop());
-            slX = ObjectAnimator.ofFloat(Z, "scaleX", 1, 0)
-            slY = ObjectAnimator.ofFloat(Z, "scaleY", 1, 0)
-            animator = ObjectAnimator.ofFloat(Y, "alpha", 0.5, 0)
-            animator1 = ObjectAnimator.ofFloat(Z, "alpha", 1, 0)
-        }
-        set = new AnimatorSet()
-        set.playTogether(
-            anX, anY, slX, slY, animator, animator1);
-        set.setDuration(DHK_ms);
-        set.start();
+
+    // float button
+    var menu = floaty.rawWindow(
+        <frame id="logo" w="44" h="44" alpha="0.4">
+            <img w="44" h="44" src="#ffffff" circle="true" />
+            <img
+                id="img_logo"
+                w="32"
+                h="32"
+                src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png"
+                layout_gravity="center"
+            />
+        </frame>
+    );
+
+    ui.post(() => {
+        menu.setPosition(0, parseInt(getWindowSize().y / 4));
+    });
+
+    function calcMenuY() {
+        var sz = getWindowSize();
+        var minMargin = parseInt((submenu.getHeight() - menu.getHeight()) / 2);
+        var y = menu.getY();
+        if (y < minMargin) return minMargin;
+        else if (y > sz.y - minMargin - menu.getHeight())
+            return sz.y - minMargin - menu.getHeight();
+        else return y;
     }
 
-    //记录按键被按下时的触摸坐标
-    let x = 0,
-        y = 0;
-    //记录按键被按下时的悬浮窗位置
-    let windowX, windowY; G_Y = 0
-    //记录按键被按下的时间以便判断长按等动作
-    let downTime; yd = false;
-    win_1.logo.setOnTouchListener(function (view, event) {
-        if (logo_buys) { return false }
-        // log(event.getAction())
+    var touch_x = 0,
+        touch_y = 0,
+        touch_move = false;
+    var win_x = 0,
+        win_y = 0;
+    menu.logo.setOnTouchListener(function (self, event) {
         switch (event.getAction()) {
             case event.ACTION_DOWN:
-                x = event.getRawX();
-                y = event.getRawY();
-                windowX = win_1.getX();
-                windowY = win_1.getY();
-                downTime = new Date().getTime();
-                return true;
+                touch_move = false;
+                touch_x = event.getRawX();
+                touch_y = event.getRawY();
+                win_x = menu.getX();
+                win_y = menu.getY();
+                break;
             case event.ACTION_MOVE:
-                if (logo_switch) { return true; }
-                if (!yd) {//如果移动的距离大于h值 则判断为移动 yd为真
-                    if (Math.abs(event.getRawY() - y) > 30 || Math.abs(event.getRawX() - x) > 30) { win_1.logo.attr("alpha", "1"); yd = true }
-                } else {//移动手指时调整两个悬浮窗位置
-                    win_1.setPosition(windowX + (event.getRawX() - x),//悬浮按钮定位
-                        windowY + (event.getRawY() - y));
-                    win_2.setPosition(0, windowY + (event.getRawY() - y));//弹性 替身定位(隐藏看不到的,松开手指才会出现)
+                {
+                    let dx = event.getRawX() - touch_x;
+                    let dy = event.getRawY() - touch_y;
+                    if (!touch_move && submenu.container.getVisibility() == View.INVISIBLE) {
+                        if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+                            touch_move = true;
+                            menu.logo.attr("alpha", "1");
+                        }
+                    }
+                    if (touch_move) menu.setPosition(win_x + dx, win_y + dy);
                 }
-                return true;
-            case event.ACTION_UP:                //手指弹起
-                //触摸时间小于 200毫秒 并且移动距离小于30 则判断为 点击
-                if (logo_buys) { return }//如果在动画正在播放中则退出事件 无操作
-                if (Math.abs(event.getRawY() - y) < 30 && Math.abs(event.getRawX() - x) < 30) {
-                    //toastLog("点击弹起")
-                    if (logo_switch) {
-                        logo_switch = false
-                        win_1.logo.attr("alpha", "0.4")
-                    } else if (logo_fx) {
-                        // log("左边")
-                        win.setPosition(windowX + (event.getRawX() - x),
-                            windowY + (event.getRawY() - y) - img_dp.h_b);
-                        win.id_logo.setVisibility(0)
-                        logo_switch = true
-                        win_1.logo.attr("alpha", "0.9")
-                    } else {
-                        win.setPosition(win_1.getX() + (event.getRawX() - x) - logo_right,
-                            win_1.getY() + (event.getRawY() - y) - img_dp.h_b);
-                        win.id_logo.setVisibility(0)
-                        logo_switch = true
-                        win_1.logo.attr("alpha", "0.9")
-                    }
-                    动画()
-                } else if (!logo_switch) {
-                    //toastLog("移动弹起")
-                    G_Y = windowY + (event.getRawY() - y)
-                    win_1.logo.attr("alpha", "0.4")
-
-                    if (windowX + (event.getRawX() - x) < device.width / 2) {
-                        //toastLog("左边")
-                        logo_fx = true
-                        animator = ObjectAnimator.ofFloat(win_2.logo, "translationX", windowX + (event.getRawX() - x), 0 - img_dp.w);
-                        mTimeInterpolator = new BounceInterpolator();
-                        animator.setInterpolator(mTimeInterpolator);
-                        animator.setDuration(300);
-                        win_2.logo.attr("alpha", "0.4")//动画 替身上场
-                        win_1.logo.attr("alpha", "0");//悬浮按钮隐藏
-                        win_1.setPosition(0 - img_dp.w, G_Y)//悬浮按钮移动到终点位置等待替身动画结束
-                        animator.start();
-                    } else {
-                        //toastLog("右边")
-                        logo_fx = false
-                        animator = ObjectAnimator.ofFloat(win_2.logo, "translationX", windowX + (event.getRawX() - x), device.width - img_dp.ww);
-                        mTimeInterpolator = new BounceInterpolator();
-                        animator.setInterpolator(mTimeInterpolator);
-                        animator.setDuration(300);
-                        win_2.logo.attr("alpha", "0.4")//动画替身上场
-                        win_1.logo.attr("alpha", "0");//悬浮按钮隐藏
-                        win_1.setPosition(device.width - img_dp.ww, G_Y)//悬浮按钮移动到终点位置等待替身动画结束
-                        animator.start();
-                    }
-                    threads.start(function () {//动画的结束事件一直没有明白 只能拿线程代替了
-                        logo_buys = true
-                        sleep(logo_ms + 100)
-                        events.broadcast.emit("悬浮显示", 0)
-
-                        logo_buys = false
+                break;
+            case event.ACTION_UP:
+                if (touch_move) {
+                    menu.setTouchable(false);
+                    let sz = getWindowSize();
+                    let current = menu.getX();
+                    let animator = ValueAnimator.ofInt(
+                        current,
+                        current < sz.x / 2 ? 0 : sz.x - menu.getWidth()
+                    );
+                    let menu_y = calcMenuY();
+                    animator.addUpdateListener({
+                        onAnimationUpdate: (animation) => {
+                            menu.setPosition(parseInt(animation.getAnimatedValue()), menu_y);
+                        },
                     });
+                    animator.addListener({
+                        onAnimationEnd: (anim) => {
+                            menu.logo.attr("alpha", "0.4");
+                            menu.setTouchable(true);
+                        },
+                    });
+                    animator.setInterpolator(new BounceInterpolator());
+                    animator.setDuration(300);
+                    animator.start();
+                } else {
+                    hideMenu(submenu.container.getVisibility() == View.VISIBLE);
                 }
-                yd = false
-                return true;
         }
         return true;
     });
-}
+
+    var receiver = new BroadcastReceiver({
+        onReceive: function (ctx, it) {
+            if (menu && menu.logo) {
+                var sz = getWindowSize();
+                var x = menu.getX();
+                if (x <= 0) {
+                    menu.setPosition(0, calcMenuY());
+                    submenu.setPosition(
+                        0,
+                        parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+                    );
+                } else {
+                    menu.setPosition(sz.x - menu.getWidth(), calcMenuY());
+                    submenu.setPosition(
+                        sz.x - submenu.getWidth(),
+                        parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+                    );
+                }
+            } else {
+                context.unregisterReceiver(receiver);
+            }
+        },
+    });
+
+    context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED));
+
+    var touch_pos = null;
+    var overlay = floaty.rawWindow(
+        <frame id="container" w="*" h="*">
+            <frame w="*" h="*" bg="#000000" alpha="0.2"></frame>
+            <text
+                w="auto"
+                h="auto"
+                text="请点击需要周回的battle{{'\n'}}(请通关一次后再用，避免错位)"
+                bg="#ffffff"
+                textColor="#FF0000"
+                layout_gravity="center_horizontal|top"
+                textAlignment="center"
+            />
+        </frame>
+    );
+    overlay.container.setVisibility(View.INVISIBLE);
+    ui.post(() => {
+        overlay.setTouchable(false);
+    });
+    overlay.container.setOnTouchListener(function (self, event) {
+        if (event.getAction() == event.ACTION_UP) {
+            touch_pos = {
+                x: parseInt(event.getRawX()),
+                y: parseInt(event.getRawY()),
+            };
+            log("捕获点击坐标", touch_pos.x, touch_pos.y);
+            overlay.setTouchable(false);
+            overlay.container.setVisibility(View.INVISIBLE);
+        }
+        return true;
+    });
+
+    capture = function () {
+        touch_pos = null;
+        ui.post(() => {
+            var sz = getWindowSize();
+            overlay.setSize(sz.x, sz.y);
+            overlay.container.setVisibility(View.VISIBLE);
+            overlay.setTouchable(true);
+        });
+        while (overlay.container.getVisibility() == View.INVISIBLE) {
+            sleep(200);
+        }
+        while (overlay.container.getVisibility() == View.VISIBLE) {
+            sleep(200);
+        }
+        return touch_pos;
+    };
+};
 // ------------主要逻辑--------------------
 var langNow = "zh"
 var language = {
@@ -415,7 +539,10 @@ var limit = {
     jjcisuse: false,
     drug1num: '',
     drug2num: '',
-    drug3num: ''
+    drug3num: '',
+    jjcnum: '',
+    default: 0,
+    useAuto: false,
 }
 var clickSets = {
     ap: {
@@ -791,7 +918,8 @@ function jingMain() {
             click(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                if (limit.jjcisuse) {
+                let count=parseInt(limit.jjcnum);
+                if (limit.jjcisuse && (isNaN(count)||count>0)) {
                     while (!id("BpCureWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)
@@ -804,6 +932,7 @@ function jingMain() {
                         screenutilClick(clickSets.bphuiok)
                         sleep(1500)
                     }
+                    limit.jjcnum=''+(count-1);
                 } else {
                     screenutilClick(clickSets.bpclose)
                     log("jjc结束")
@@ -1092,9 +1221,742 @@ function getDrugNum(text) {
     return parseInt(text.slice(0, text.length - 1))
 }
 
-floatUI.adjust = function (config) {
-    limit = config
-    log("参数：", limit)
+floatUI.adjust = function (key, value) {
+    if(value!==undefined) {
+        limit[key]=value
+        log("更新参数：", key, value)
+    }
+}
+
+// compatible action closure
+function algo_init() {
+    // for debug
+    const AUTO_LIMIT = 4;
+    // click with root permission
+    function clickRoot(x, y) {
+        var result = shell("su\ninput tap " + x + " " + y + "\nexit\n");
+        // detect reason when click did not succeed
+        if (result.code != 0) {
+            result = shell("which su");
+            if (result.code == 0) {
+                // device already rooted, but permission not granted
+                toastLog("root权限获取失败");
+            } else {
+                // device not rooted
+                toastLog("Android 7 以下设备运行脚本需要root");
+            }
+            // terminate when click cannot be successfully performed
+            threads.currentThread().interrupt();
+        }
+    }
+
+    function click(x, y) {
+        // limit range
+        var sz = getWindowSize();
+        if (x >= sz.x) {
+            x = sz.x - 1;
+        }
+        if (y >= sz.y) {
+            y = sz.y - 1;
+        }
+        // system version higher than Android 7.0
+        if (device.sdkInt >= 24) {
+            // now accessibility gesture APIs are available
+            press(x, y, 50);
+        } else {
+            clickRoot(x, y);
+        }
+    }
+
+    // find first element using regex
+    function match(reg, wait) {
+        var startTime = new Date().getTime();
+        var result = null;
+        var it = 0;
+        do {
+            it++;
+            auto.root.refresh();
+            result = textMatches(reg).findOnce();
+            if (result && result.refresh()) break;
+            result = descMatches(reg).findOnce();
+            if (result && result.refresh()) break;
+            sleep(100);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        return result;
+    }
+
+    // find all element using regex
+    function matchAll(reg, wait) {
+        var startTime = new Date().getTime();
+        var result = [];
+        var it = 0;
+        do {
+            it++;
+            result = textMatches(reg).find();
+            result = result.filter((x) => x.refresh());
+            if (result.length >= 1) break;
+            result = descMatches(reg).find();
+            result = result.filter((x) => x.refresh());
+            if (result.length >= 1) break;
+            sleep(100);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        return result;
+    }
+
+    // find first element using plain text
+    function find(txt, wait) {
+        var startTime = new Date().getTime();
+        var result = null;
+        var it = 0;
+        do {
+            it++;
+            auto.root.refresh();
+            result = text(txt).findOnce();
+            if (result && result.refresh()) break;
+            result = desc(txt).findOnce();
+            if (result && result.refresh()) break;
+            sleep(100);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        return result;
+    }
+
+    // find all element using plain text
+    function findAll(txt, wait) {
+        var startTime = new Date().getTime();
+        var result = [];
+        var it = 0;
+        do {
+            it++;
+            auto.root.refresh();
+            result = text(txt).find();
+            result = result.filter((x) => x.refresh());
+            if (result.length >= 1) break;
+            result = desc(txt).find();
+            result = result.filter((x) => x.refresh());
+            if (result.length >= 1) break;
+            sleep(100);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        return result;
+    }
+
+    function findID(name, wait) {
+        var startTime = new Date().getTime();
+        var result = null;
+        var it = 0;
+        do {
+            it++;
+            auto.root.refresh();
+            result = id(name).findOnce();
+            if (result && result.refresh()) break;
+            sleep(100);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        return result;
+    }
+
+    function waitElement(element, wait) {
+        var startTime = new Date().getTime();
+        var result;
+        do {
+            if (!element.refresh()) return;
+            sleep(100);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+    }
+
+    function waitAny(fnlist, wait) {
+        var startTime = new Date().getTime();
+        var result = null;
+        var it = 0;
+        var current = 0;
+        do {
+            it++;
+            if (current >= fnlist.length) current = 0;
+            result = fnlist[current]();
+            if (result && result.refresh()) break;
+            current++;
+            sleep(100);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        if (wait)
+            log(
+                "find " +
+                    fnlist.length +
+                    " items for " +
+                    (new Date().getTime() - startTime) +
+                    " with " +
+                    it +
+                    " limit " +
+                    wait
+            );
+    }
+
+    function getContent(element) {
+        if (element) {
+            return element.text() === "" ? element.desc() : element.text();
+        }
+    }
+
+    function checkNumber(content) {
+        return !isNaN(Number(content)) && !isNaN(parseInt(content));
+    }
+
+    function getAP() {
+        if (findID("baseContainer")) {
+            // values and seperator are together
+            while (true) {
+                let result = null;
+                let h = getWindowSize().y;
+                let elements = matchAll(/^\d+\/\d+$/, true);
+                for (let element of elements) {
+                    if (element.bounds().top < h) {
+                        if (
+                            element.indexInParent() == element.parent().childCount() - 1 ||
+                            !(
+                                "" + getContent(element.parent().child(element.indexInParent() + 1))
+                            ).startsWith("Rank")
+                        ) {
+                            let content = getContent(element);
+                            h = element.bounds().top;
+                            result = {
+                                value: parseInt(content.split("/")[0]),
+                                total: parseInt(content.split("/")[1]),
+                                bounds: element.bounds(),
+                            };
+                        }
+                    }
+                }
+                if (result) return result;
+                sleep(500);
+            }
+        } else {
+            // ... are seperate
+            while (true) {
+                let result = null;
+                let h = getWindowSize().y;
+                let elements = findAll("/", true);
+                for (let element of elements) {
+                    if (element.bounds().top < h) {
+                        if (
+                            element.indexInParent() > 1 &&
+                            element.indexInParent() < element.parent().childCount() - 1
+                        ) {
+                            var previous = element.parent().child(element.indexInParent() - 1);
+                            var next = element.parent().child(element.indexInParent() + 1);
+                            if (
+                                checkNumber(getContent(previous)) &&
+                                checkNumber(getContent(next))
+                            ) {
+                                h = element.bounds().top;
+                                result = {
+                                    value: Number(getContent(previous)),
+                                    total: Number(getContent(next)),
+                                    bounds: element.bounds(),
+                                };
+                            }
+                        }
+                    }
+                }
+                if (result) return result;
+                sleep(500);
+            }
+        }
+    }
+
+    function getPTList() {
+        let elements = matchAll(/^\+\d*$/);
+        let results = [];
+        let left = 0;
+        log("PT匹配结果数量" + elements.length);
+        for (var element of elements) {
+            var content = getContent(element);
+            // pt value and "+" are seperate
+            if (content == "+") {
+                if (element.indexInParent() < element.parent().childCount() - 1) {
+                    var next = element.parent().child(element.indexInParent() + 1);
+                    if (checkNumber(getContent(next))) {
+                        results.push({
+                            value: Number(getContent(next)),
+                            bounds: element.bounds(),
+                        });
+                        if (element.bounds().left > left) left = element.bounds().left;
+                    }
+                }
+            }
+            // ... are together
+            else {
+                if (checkNumber(content.slice(1))) {
+                    results.push({
+                        value: Number(content.slice(1)),
+                        bounds: element.bounds(),
+                    });
+                    if (element.bounds().left > left) left = element.bounds().left;
+                }
+            }
+        }
+
+        return results.filter((result) => result.bounds.left == left);
+    }
+
+    function getCostAP() {
+        let elements = findAll(string.cost_ap);
+        for (let element of elements) {
+            if (element.indexInParent() < element.parent().childCount() - 1) {
+                var next = element.parent().child(element.indexInParent() + 1);
+                if (checkNumber(getContent(next))) {
+                    return Number(getContent(next));
+                }
+            }
+        }
+    }
+
+    const STATE_LOGIN = 0;
+    const STATE_HOME = 1;
+    const STATE_MENU = 2;
+    const STATE_SUPPORT = 3;
+    const STATE_TEAM = 4;
+    const STATE_BATTLE = 5;
+    const STATE_REWARD_CHARACTER = 6;
+    const STATE_REWARD_MATERIAL = 7;
+    const STATE_REWARD_POST = 8;
+
+    // strings constants
+    const strings = {
+        name: [
+            "support",
+            "revive_title",
+            "revive_button",
+            "revive_popup",
+            "revive_confirm",
+            "out_of_ap",
+            "start",
+            "follow",
+            "follow_append",
+            "battle_confirm",
+            "cost_ap",
+            "regex_drug",
+            "regex_lastlogin",
+            "regex_bonus",
+            "regex_autobattle",
+        ],
+        zh_Hans: [
+            "请选择支援角色",
+            "AP回复",
+            "回复",
+            "回复确认",
+            "回复",
+            "AP不足",
+            "开始",
+            "关注",
+            "关注追加",
+            "确定",
+            "消耗AP",
+            /^\d+个$/,
+            /^最终登录.+/,
+            /＋\d+个$/,
+            /[\s\S]*续战/,
+        ],
+        zh_Hant: [
+            "請選擇支援角色",
+            "AP回復",
+            "回復",
+            "回復確認",
+            "進行回復",
+            "AP不足",
+            "開始",
+            "關注",
+            "追加關注",
+            "決定",
+            "消費AP",
+            /^\d+個$/,
+            /^最終登入.+/,
+            /＋\d+個$/,
+            /[\s\S]*周回/,
+        ],
+        ja: [
+            "サポートキャラを選んでください",
+            "AP回復",
+            "回復",
+            "回復確認",
+            "回復する",
+            "AP不足",
+            "開始",
+            "フォロー",
+            "フォロー追加",
+            "決定",
+            "消費AP",
+            /^\d+個$/,
+            /^最終ログイン.+/,
+            /＋\d+個$/,
+            /[\s\S]*周回/,
+        ],
+    };
+
+    var string = {};
+    var druglimit = [NaN, NaN, NaN];
+    var usedrug = false;
+    var currentname = "";
+
+    function initialize() {
+        var element = auto.root;
+        if (element) {
+            currentname = element.packageName();
+            var current = [];
+            if (currentname == "com.bilibili.madoka.bilibili") {
+                log("检测为国服");
+                current = strings.zh_Hans;
+            } else if (currentname == "com.komoe.madokagp") {
+                log("检测为台服");
+                current = strings.zh_Hant;
+            } else if (currentname == "com.aniplex.magireco") {
+                log("检测为日服");
+                current = strings.ja;
+            }
+            for (let i = 0; i < strings.name.length; i++) {
+                string[strings.name[i]] = current[i];
+            }
+            usedrug = false;
+            for (let i = 0; i < 3; i++) {
+                druglimit[i] = limit["drug" + (i + 1)]
+                    ? parseInt(limit["drug" + (i + 1) + "num"])
+                    : 0;
+                if (druglimit[i] !== 0) {
+                    usedrug = true;
+                }
+            }
+        } else {
+            toastLog("未在前台检测到魔法纪录");
+            threads.currentThread().interrupt();
+        }
+    }
+
+    // isolate logic for future adaption
+    function ifUseDrug(index, count) {
+        // when drug is valid
+        if ((index < 2 && count > 0) || count > 4) {
+            // unlimited
+            if (isNaN(druglimit[index])) return true;
+            else if (druglimit[index] > 0) return true;
+        }
+    }
+
+    function updateDrugLimit(index) {
+        if (!isNaN(druglimit[index])) {
+            druglimit[index]--;
+            limit["drug" + (index + 1) + "num"] = "" + druglimit[index];
+        }
+    }
+
+    function refillAP() {
+        log("尝试使用回复药");
+        do {
+            var usedrug = false;
+            var numbers = matchAll(string.regex_drug, true);
+            var buttons = findAll(string.revive_button);
+            // when things seems to be correct
+            if (numbers.length == 3 && buttons.length == 3) {
+                for (let i = 0; i < 3; i++) {
+                    if (ifUseDrug(i, parseInt(getContent(numbers[i]).slice(0, -1)))) {
+                        log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次");
+                        var bound = buttons[i].bounds();
+                        do {
+                            click(bound.centerX(), bound.centerY());
+                            // wait for confirmation popup
+                        } while (!find(string.revive_popup, 2000));
+                        log("点击确认回复");
+                        bound = find(string.revive_confirm, true).bounds();
+                        click(bound.centerX(), bound.centerY());
+                        usedrug = true;
+                        updateDrugLimit(i);
+                        break;
+                    }
+                }
+            }
+            if (!usedrug && find(string.out_of_ap)) {
+                log("AP不足且未嗑药，退出");
+                threads.currentThread().interrupt();
+            }
+            // wait for refill window to be back
+            var element = find(string.revive_title, true);
+            var apinfo = getAP();
+            log("当前AP:" + apinfo.value + "/" + apinfo.total);
+        } while (usedrug && limit.useAuto && apinfo.value <= apinfo.total * AUTO_LIMIT);
+        // now close the window
+        while (element.refresh()) {
+            log("关闭回复窗口");
+            bound = element.parent().bounds();
+            click(bound.right, bound.top);
+            waitElement(element, 5000);
+        }
+        return usedrug;
+    }
+
+    function selectBattle() {}
+
+    function taskDefault() {
+        initialize();
+        var state = STATE_MENU;
+        var battlename = "";
+        var charabound = null;
+        var tryusedrug = true;
+        var battlepos = null;
+        var inautobattle = false;
+        while (true) {
+            switch (state) {
+                case STATE_MENU: {
+                    waitAny(
+                        [
+                            () => find(string.support),
+                            () => findID("helpBtn"),
+                            () => match(/^BATTLE.+/),
+                        ],
+                        3000
+                    );
+                    // exit condition
+                    if (find(string.support)) {
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
+                    }
+                    // if AP is not enough
+                    if (findID("popupInfoDetailTitle")) {
+                        // try use drug
+                        tryusedrug = refillAP();
+                    }
+                    // if need to click to enter battle
+                    let button = find(string.battle_confirm);
+                    if (button) {
+                        log("点击确认进入battle");
+                        let bound = button.bounds();
+                        click(bound.centerX(), bound.centerY());
+                        // wait for support screen for 5 seconds
+                        find(string.support, 5000);
+                    } else if (battlepos) {
+                        log("尝试点击关卡坐标");
+                        click(battlepos.x, battlepos.y);
+                        waitAny(
+                            [() => find(string.battle_confirm), () => find(string.support)],
+                            5000
+                        );
+                    }
+                    // click battle if available
+                    else if (battlename) {
+                        let battle = find(battlename);
+                        if (battle) {
+                            log("尝试点击关卡名称");
+                            let bound = battle.bounds();
+                            click(bound.centerX(), bound.centerY());
+                            waitAny(
+                                [() => find(string.battle_confirm), () => find(string.support)],
+                                5000
+                            );
+                        }
+                    } else {
+                        log("等待捕获关卡坐标");
+                        battlepos = capture();
+                    }
+                    break;
+                }
+
+                case STATE_SUPPORT: {
+                    // exit condition
+                    if (findID("nextPageBtn")) {
+                        state = STATE_TEAM;
+                        log("进入队伍调整");
+                        break;
+                    }
+                    // if we need to refill AP
+                    let apinfo = getAP();
+                    let apcost = getCostAP();
+                    log(
+                        "消费AP",
+                        apcost,
+                        "用药",
+                        usedrug,
+                        "当前AP",
+                        apinfo.value,
+                        "AP上限",
+                        apinfo.total
+                    );
+                    if (
+                        ((limit.useAuto && apinfo.value <= apinfo.total * AUTO_LIMIT) ||
+                            (apcost && apinfo.value < apcost * 2)) &&
+                        usedrug &&
+                        tryusedrug
+                    ) {
+                        // open revive window
+                        let revive_window;
+                        do {
+                            click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
+                            revive_window = findID("popupInfoDetailTitle", 5000);
+                        } while (!revive_window);
+                        // try use drug
+                        tryusedrug = refillAP();
+                    }
+                    // save battle name if needed
+                    let battle = match(/^BATTLE.+/);
+                    if (battle) {
+                        battlename = getContent(battle);
+                    }
+                    // pick support
+                    let ptlist = getPTList();
+                    let playercount = matchAll(string.regex_lastlogin).length;
+                    log("候选数量" + ptlist.length + ",玩家数量" + playercount);
+                    if (ptlist.length) {
+                        let bound;
+                        if (
+                            ptlist.length > playercount &&
+                            (limit.justNPC || ptlist[ptlist.length - 1].value > ptlist[0].value)
+                        ) {
+                            log("选择NPC助战");
+                            // NPC comes in the end of list if available
+                            bound = ptlist[ptlist.length - 1].bounds;
+                        } else {
+                            log("选择玩家助战");
+                            // higher PT bonus goes ahead
+                            bound = ptlist[0].bounds;
+                        }
+                        click(bound.centerX(), bound.centerY());
+                        // wait for start button for 5 seconds
+                        findID("nextPageBtn", 5000);
+                        break;
+                    }
+                    // if unexpectedly treated as long touch
+                    if (findID("detailTab")) {
+                        log("误点击，尝试返回");
+                        let element = className("EditText").findOnce();
+                        if (element && element.refresh()) {
+                            let bound = element.bounds();
+                            click(bound.left, bound.top);
+                        }
+                        find(string.support, 5000);
+                    }
+                    break;
+                }
+
+                case STATE_TEAM: {
+                    var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
+                    if (limit.useAuto) {
+                        if (element) {
+                            inautobattle = true;
+                        } else {
+                            element = findID("nextPageBtn");
+                            if (element) {
+                                inautobattle = false;
+                                log("未发现自动续战，改用标准战斗");
+                            }
+                        }
+                    }
+                    // exit condition
+                    if (findID("android:id/content") && !element) {
+                        state = STATE_BATTLE;
+                        log("进入战斗");
+                        break;
+                    }
+                    // click start
+                    if (element) {
+                        let bound = element.bounds();
+                        click(bound.centerX(), bound.centerY());
+                        waitElement(element, 500);
+                    }
+                    break;
+                }
+
+                case STATE_BATTLE: {
+                    // exit condition
+                    if (findID("charaWrap")) {
+                        state = STATE_REWARD_CHARACTER;
+                        log("进入角色结算");
+                        break;
+                    }
+                    break;
+                }
+
+                case STATE_REWARD_CHARACTER: {
+                    // exit condition
+                    if (findID("hasTotalRiche")) {
+                        state = STATE_REWARD_MATERIAL;
+                        log("进入掉落结算");
+                        break;
+                    }
+                    let element = findID("charaWrap");
+                    if (element) {
+                        if (element.bounds().height() > 0) charabound = element.bounds();
+                        let targetX = element.bounds().right;
+                        let targetY = element.bounds().bottom;
+                        // click if upgrade
+                        element = find("OK");
+                        if (element) {
+                            log("点击玩家升级确认");
+                            let bound = element.bounds();
+                            targetX = bound.centerX();
+                            targetY = bound.centerY();
+                        }
+                        click(targetX, targetY);
+                    }
+                    sleep(500);
+                    break;
+                }
+
+                case STATE_REWARD_MATERIAL: {
+                    // exit condition
+                    let element = findID("hasTotalRiche");
+                    if (findID("android:id/content") && !element) {
+                        state = STATE_REWARD_POST;
+                        log("结算完成");
+                        break;
+                    }
+                    // try click rebattle
+                    element = findID("questRetryBtn");
+                    if (element) {
+                        log("点击再战按钮");
+                        let bound = element.bounds();
+                        click(bound.centerX(), bound.centerY());
+                    } else if (charabound) {
+                        log("点击再战区域");
+                        click(charabound.right, charabound.bottom);
+                    }
+                    sleep(500);
+                    break;
+                }
+
+                case STATE_REWARD_POST: {
+                    // wait 5 seconds for transition
+                    match(/\d*\/\d*/, 5000);
+                    // exit condition
+                    if (findID("nextPageBtn")) {
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
+                    } else if (match(/\d*\/\d*/)) {
+                        state = STATE_MENU;
+                        log("进入关卡选择");
+                        break;
+                    } else if (inautobattle) {
+                        state = STATE_BATTLE;
+                        break;
+                    }
+                    // try to skip
+                    let element = className("EditText").findOnce();
+                    if (element && element.refresh()) {
+                        log("尝试跳过剧情");
+                        let bound = element.bounds();
+                        click(bound.right, bound.top);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    return {
+        default: taskDefault,
+    };
+}
+
+//global utility functions
+function getWindowSize() {
+    var wm = context.getSystemService(context.WINDOW_SERVICE);
+    var pt = new Point();
+    wm.getDefaultDisplay().getSize(pt);
+    return pt;
 }
 
 module.exports = floatUI;

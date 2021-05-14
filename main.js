@@ -1,87 +1,144 @@
 "ui";
+importClass(android.graphics.Color)
+importClass(android.view.MenuItem)
+importClass(com.stardust.autojs.project.ProjectConfig)
+importClass(com.stardust.autojs.core.ui.inflater.util.Ids)
+importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
+importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
+
 var Name = "AutoBattle";
-var version = "3.0.0"
+var version = getProjectVersion();
 var appName = Name + " v" + version;
 
-importClass(android.graphics.Color);
+function getProjectVersion() {
+    var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
+    if(conf) return conf.versionName;
+}
+
+var floatUI = require('floatUI.js');
+
 ui.statusBarColor("#FF4FB3FF")
 ui.layout(
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout id="swipe">
-        <ScrollView id="drawer">
-            <vertical>
-                <appbar>
-                    <toolbar id="toolbar" bg="#ff4fb3ff" title="{{appName}}" />
-                </appbar>
+    <relative id="container">
+        <appbar id="appbar" w="*">
+            <toolbar id="toolbar" bg="#ff4fb3ff" title="{{appName}}" />
+        </appbar>
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout id="swipe" layout_below="appbar" layout_above="start">
+            <ScrollView id="content">
                 <vertical gravity="center" layout_weight="1">
 
-                    <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 5" elevation="1dp">
-                        <Switch id="autoService" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
+                    <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
+                        <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
+                        <Switch id="foreground" margin="0 3" w="*" textColor="#666666" text="前台服务（防止系统清理）" />
                     </vertical>
 
-                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" padding="5 5 10 5" w="*" h="auto">
-                        <linear>
-                            <text text="恢复药使用选择：" />
-                        </linear>
-                        <View h="5" />
-                        <linear>
-                            <checkbox id="drug1" text="ap恢复药50" layout_weight="1" />
-                            <input maxLength="3" id="drug1num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
-                        </linear>
-                        <View h="5" />
-                        <linear>
-                            <checkbox id="drug2" text="ap恢复药全" layout_weight="1" />
-                            <input maxLength="3" id="drug2num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
-                        </linear>
-                        <View h="5" />
-                        <linear>
-                            <checkbox id="drug3" text="魔法石" layout_weight="1" />
-                            <input maxLength="3" id="drug3num" hint="可设置次数" text="" textSize="12" inputType="number|none" />
-                        </linear>
-                        <View h="5" />
-                        <linear>
-                            <checkbox id="jjcisuse" text="境界是否嗑药" layout_weight="1" />
-                        </linear>
+                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
+                        <text text="全局设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
+                        <vertical padding="10 6 0 6" w="*" h="auto">
+                            <linear margin="0 3">
+                                <text text="默认执行脚本" layout_weight="1" layout_gravity="center_vertical" textColor="#666666"/>
+                                <spinner id="default" h="auto" gravity="right" textSize="14" entries="{{floatUI.scripts.map(x=>x.name).join('|')}}"/>
+                            </linear>
+                            <text text="恢复药使用选择：" margin="0 5"/>
+                            <vertical padding="10 3 0 3" w="*" h="auto">
+                                <linear>
+                                    <checkbox id="drug1" text="ap恢复药50" layout_weight="1" textColor="#666666"/>
+                                    <input maxLength="3" id="drug1num" hint="可设置次数" text="" textSize="14" inputType="number|none" />
+                                </linear>
+                                <linear>
+                                    <checkbox id="drug2" text="ap恢复药全" layout_weight="1" textColor="#666666"/>
+                                    <input maxLength="3" id="drug2num" hint="可设置次数" text="" textSize="14" inputType="number|none" />
+                                </linear>
+                                <linear>
+                                    <checkbox id="drug3" text="魔法石" layout_weight="1" textColor="#666666"/>
+                                    <input maxLength="3" id="drug3num" hint="可设置次数" text="" textSize="14" inputType="number|none" />
+                                </linear>
+                                <linear>
+                                    <checkbox id="jjcisuse" text="bp恢复药（镜层）" layout_weight="1" textColor="#666666"/>
+                                    <input maxLength="3" id="jjcnum" hint="可设置次数" text="" textSize="14" inputType="number|none" />
+                                </linear>
+                            </vertical>
+                            <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#666666" text="只使用NPC（不选则先互关好友，后NPC）" />
+                        </vertical>
                     </vertical>
-                    <vertical padding="10 6 0 6" bg="#ffffff" w="*" h="auto" margin="0 0 0 5" elevation="1dp">
-                        <linear padding="5 5 0 5" bg="#ffffff" margin="0 0 0 5" >
-                            <radiogroup id="cb">
-                                <text color="#222222" text="活动周回关卡选择：" />
-                                <radio id="cb1" text="初级" checked="true" />
+
+                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
+                        <text text="坐标定位脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
+                        <vertical padding="10 6 0 6" w="*" h="auto">
+                            <Switch id="isStable" w="*" margin="0 3" checked="false" textColor="#666666" text="稳定模式（战斗中不断点击重连弹窗位置）" />
+                            <text text="活动周回关卡选择：" margin="0 5"/>
+                            <radiogroup id="battleNo" padding="10 3 0 3">
+                                <radio id="cb1" text="初级" />
                                 <radio id="cb2" text="中级" />
-                                <radio id="cb3" text="高级" />
+                                <radio id="cb3" text="高级" checked="true" />
                             </radiogroup>
-                        </linear>
-                        <Switch id="isStable" w="*" checked="false" textColor="#666666" text="稳定模式（战斗中会不断点击，去除网络连接失败弹窗,经常有连接失败弹窗情况下开启）" />
-                        <Switch id="justNPC" w="*" checked="false" textColor="#666666" text="只使用npc（不设置此项，默认优先 互关好友-npc）" />
-                        <linear>
-                            <text text="助战x，y坐标自定义：" />
-                            <input maxLength="4" id="helpx" text="" inputType="number|none" />
-                            <input maxLength="4" id="helpy" text="" inputType="number|none" />
-                        </linear>
-                        {/* <Switch id="isRoot" w="*" checked="false" textColor="#666666" text="android7以下适配(需要root)" /> */}
+                            <linear margin="0 3">
+                                <text text="助战x，y坐标自定义：" layout_gravity="center_vertical"/>
+                                <input maxLength="4" id="helpx" text="" hint="横坐标" textSize="14" inputType="number|none" />
+                                <input maxLength="4" id="helpy" text="" hint="纵坐标" textSize="14" inputType="number|none" />
+                            </linear>
+                        </vertical>
                     </vertical>
-                    <linear>
-                        <text layout_weight="1" size="19" color="#222222" text="日志" />
-                        <button id="tolog" h="40" text="全部日志" style="Widget.AppCompat.Button.Borderless.Colored" />
-                    </linear>
-                    <linear padding="10 6 0 6" bg="#ffffff">
-                        <text id="versionMsg" layout_weight="1" color="#666666" text="尝试获取最新版本信息" />
-                        <text id="versionMsg2" layout_weight="1" color="#ff0000" text="" />
-                    </linear>
-                    <linear padding="10 6 0 6" bg="#ffffff">
-                        <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，且永久免费，不可进行出售盈利。作者bilibili 虹之宝玉  群号：453053507" />
-                    </linear>
-                    <list bg="#ffffff" elevation="1dp" h="*" id="logList">
-                    </list>
-                </vertical>
-                <View h="5" />
-                <button id="start" text="修改配置" tag="ScriptTag" color="#ffffff" bg="#FF4FB3FF" foreground="?selectableItemBackground" />
-            </vertical>
-        </ScrollView>
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
+                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
+                        <text text="控件定位脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
+                        <vertical padding="10 6 0 6" w="*" h="auto">
+                            <Switch id="useAuto" w="*" margin="0 3" checked="false" textColor="#666666" text="使用自动续战（如设置用药则回复到4倍上限）" />
+                        </vertical>
+                    </vertical>
+                    
+                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
+                        <text text="关于" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
+                        <linear padding="10 6" bg="#ffffff">
+                            <text id="versionMsg" layout_weight="1" w="*" gravity="center" color="#666666" text="尝试获取最新版本信息" />
+                        </linear>
+                        <linear padding="10 6" bg="#ffffff">
+                            <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，且永久免费，不可进行出售盈利。作者bilibili 虹之宝玉  群号：453053507" />
+                        </linear>
+                    </vertical>
+                </vertical>
+            </ScrollView>
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+        <button id="start" layout_alignParentBottom="true" w="*" text="修改配置" tag="ScriptTag" color="#ffffff" bg="#FF4FB3FF" foreground="?selectableItemBackground" />
+    </relative>
 );
 
+ui.emitter.on("create_options_menu", menu=>{
+    let item = menu.add("查看日志");
+    item.setIcon(getTintDrawable("ic_assignment_black_48dp", colors.WHITE));
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item = menu.add("魔纪百科");
+    item.setIcon(getTintDrawable("ic_book_black_48dp", colors.WHITE));
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item = menu.add("模拟抽卡");
+    item.setIcon(getTintDrawable("ic_store_black_48dp", colors.WHITE));
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+});
+
+ui.emitter.on("options_item_selected", (e, item)=>{
+    switch(item.getTitle()){
+        case "查看日志":
+            app.startActivity("console")
+            break;
+        case "魔纪百科":
+            app.openUrl("https://magireco.moe/");
+            break;
+        case "模拟抽卡":
+            app.openUrl("https://rika.ren/~kuro/workspace/playground/");
+            break;
+    }
+    e.consumed = true;
+});
+
+activity.setSupportActionBar(ui.toolbar);
+
+function getTintDrawable(name, tint) {
+    var id = context.getResources().getIdentifier(name, "drawable", context.getPackageName());
+    var raw = AppCompatResources.getDrawable(context, id);
+    var wrapped = DrawableCompat.wrap(raw);
+    DrawableCompat.setTint(wrapped, tint);
+    return wrapped
+}
 
 //无障碍开关监控
 ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
@@ -93,11 +150,11 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
     if (!checked && auto.service) auto.service.disableSelf()
     ui.autoService.setChecked(auto.service != null)
 });
-// 打开日志
-ui.tolog.click(() => {
-    app.startActivity("console")
-})
 
+ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
+    $settings.setEnabled('foreground_service', checked);
+});
+ui.foreground.setChecked($settings.isEnabled('foreground_service'));
 
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {
@@ -108,8 +165,7 @@ ui.emitter.on("resume", () => {
         floatIsActive = true;
     }
 });
-// //设置颜色
-// ui.swipe.setColorSchemeColors(Color.RED, Color.BLUE, Color.GREEN);
+
 //监听刷新事件
 ui.swipe.setOnRefreshListener({
     onRefresh: function () {
@@ -119,7 +175,7 @@ ui.swipe.setOnRefreshListener({
     },
 });
 //-----------------自定义逻辑-------------------------------------------
-var floatUI = require('floatUI.js');
+
 var floatIsActive = false;
 // 悬浮窗权限检查
 if (!floaty.checkPermission()) {
@@ -133,86 +189,68 @@ if (!floaty.checkPermission()) {
     floatIsActive = true;
 }
 
+var storage = storages.create("auto_mr");
+const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto"]
+const tempParamList = ["drug1", "drug2", "drug3", "jjcisuse", "drug1num", "drug2num", "drug3num", "jjcnum"]
 
-var storage = storages.create("soha4");
-var data = storage.get("data");
-const parmasList = ["helpx", "helpy"]
-const parmasNotInitList = ["drug1", "drug2", "drug3", "isStable", "justNPC", "jjcisuse"]
-var parmasMap = {}
+var idmap={};
+var field=(new Ids()).getClass().getDeclaredField("ids");
+field.setAccessible(true);
+var iter=field.get(null).keySet().iterator();
+while(iter.hasNext()){
+    let item=iter.next();
+    idmap[Ids.getId(item)]=item;
+}
 
-
-
-//若没有存储信息进行存储初始化
-if (data == undefined) {
-    for (let i = 0; i < parmasList.length; i++) {
-        parmasMap[parmasList[i]] = ""
+function syncValue(key, value)
+{
+    switch(ui[key].getClass().getSimpleName()) {
+        // input
+        case "JsEditText":
+            if(value!==undefined)
+                ui[key].setText(value)
+            return ui[key].getText() + ""
+        case "Switch":
+        case "CheckBox":
+            if(value!==undefined)
+                ui[key].setChecked(value)
+            return ui[key].isChecked()
+        case "JsSpinner":
+            if(value!==undefined && ui[key].getCount()>value)
+                ui[key].setSelection(value, true)
+            return ui[key].getSelectedItemPosition()
+        case "RadioGroup": {
+            if(value!==undefined && ui[value])
+                ui[value].setChecked(true)
+            let name="";
+            let id=ui[key].getCheckedRadioButtonId();
+            if(id>=0)
+                name = idmap[ui[key].getCheckedRadioButtonId()]
+            return name
+        }
+            
     }
-    // log(JSON.stringify(parmasMap))
-    parmasMap["battleNo"] = "cb1"
-    storage.put("data", JSON.stringify(parmasMap))
 }
-else {
-    parmasMap = JSON.parse(data)
-}
-//ui界面赋值
-for (let i = 0; i < parmasList.length; i++) {
-    let key = parmasList[i]
-    let value = parmasMap[key]
-    if (value != null) {
-        ui.run(function () {
-            ui[key].setText(value)
-        })
-    }
-}
-ui.run(function () {
-    ui[parmasMap["battleNo"]].setChecked(true)
-})
 
-//无需赋值的属性
-for (let i = 0; i < parmasNotInitList.length; i++) {
-    parmasMap[parmasNotInitList[i]] = false;
+for(let key of persistParamList) {
+    let value = storage.get(key)
+    syncValue(key, value)
+    floatUI.adjust(key, value)
 }
-//特殊
-
-parmasMap["drug1num"] = ""
-parmasMap["drug2num"] = ""
-parmasMap["drug3num"] = ""
-
-//同步值
-floatUI.adjust(parmasMap)
 
 ui.start.click(() => {
-    for (let i = 0; i < parmasList.length; i++) {
-        let key = parmasList[i]
-        let value = ui[key].getText() + ""
-        // log(value)
-        if (value == "") {
-            parmasMap[key] = ""
-        }
-        else {
-            parmasMap[key] = value
-        }
-
-    }
-    if (ui.cb1.checked) {
-        parmasMap["battleNo"] = "cb1"
-    } else if (ui.cb2.checked) {
-        parmasMap["battleNo"] = "cb2"
-    }
-    else if (ui.cb3.checked) {
-        parmasMap["battleNo"] = "cb3"
-    }
-    storage.remove("data")
-    storage.put("data", JSON.stringify(parmasMap))
-    for (let i = 0; i < parmasNotInitList.length; i++) {
-        parmasMap[parmasNotInitList[i]] = ui[parmasNotInitList[i]].isChecked();
+    for(let key of persistParamList) {
+        let value = syncValue(key)
+        log("保存参数：", key, value)
+        storage.put(key, value)
+        floatUI.adjust(key, value)
     }
 
+    for(let key of tempParamList) {
+        let value = syncValue(key)
+        floatUI.adjust(key, value)
+    }
 
-    parmasMap["drug1num"] = ui["drug1num"].getText() + ""
-    parmasMap["drug2num"] = ui["drug2num"].getText() + ""
-    parmasMap["drug3num"] = ui["drug3num"].getText() + ""
-    floatUI.adjust(parmasMap)
     toastLog("修改完成")
 });
 
@@ -224,23 +262,26 @@ try {
         log("请求失败: " + res.statusCode + " " + res.statusMessage);
         ui.run(function () {
             ui.versionMsg.setText("获取失败")
+            ui.versionMsg.setTextColor(colors.parseColor("#666666"))
         })
     } else {
         let resJson = res.body.json();
         if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
             ui.run(function () {
                 ui.versionMsg.setText("当前无需更新")
+                ui.versionMsg.setTextColor(colors.parseColor("#666666"))
             });
         } else {
             ui.run(function () {
-                ui.versionMsg.setText("")
-                ui.versionMsg2.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
+                ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
+                ui.versionMsg.setTextColor(colors.RED)
             });
         }
     }
 } catch (e) {
     ui.run(function () {
         ui.versionMsg.setText("请求超时")
+        ui.versionMsg.setTextColor(colors.parseColor("#666666"))
     })
 }
 
@@ -261,8 +302,10 @@ function toUpdate() {
                     toastLog("更新加载中");
                     let mainjs = main_script.body.string();
                     let floatjs = float_script.body.string();
+                    let prjjson = res.body.string();
                     files.write(engines.myEngine().cwd() + "/main.js", mainjs)
                     files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
+                    files.write(engines.myEngine().cwd() + "/project.json", prjjson)
                     engines.stopAll()
                     events.on("exit", function () {
                         engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
