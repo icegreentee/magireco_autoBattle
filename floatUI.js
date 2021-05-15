@@ -34,28 +34,24 @@ importClass(android.widget.TextView)
 
 var tasks = algo_init();
 // touch capture, will be initialized in main
-var capture = () => {};
+var capture = () => { };
 // available script list
 floatUI.scripts = [
     {
-        name: "控件定位周回",
+        name: "副本周回（剧情，活动通用）",
         fn: tasks.default,
     },
     {
-        name: "标准周回（坐标定位）",
+        name: "镜层周回",
+        fn: jingMain,
+    },
+    {
+        name: "副本周回2（备用可选）",
         fn: autoMain,
     },
     {
-        name: "活动周回（坐标定位）",
+        name: "活动周回2（备用可选）",
         fn: autoMainver1,
-    },
-    {
-        name: "Auto周回（坐标定位）",
-        fn: autoMainver3,
-    },
-    {
-        name: "自动镜层（坐标定位）",
-        fn: jingMain,
     },
 ];
 
@@ -323,9 +319,9 @@ floatUI.main = function () {
                     "translationX",
                     0,
                     (isleft ? -1 : 1) *
-                        size_base *
-                        (space_factor + 0.5) *
-                        Math.sin(angle_base * (2 * i + 1))
+                    size_base *
+                    (space_factor + 0.5) *
+                    Math.sin(angle_base * (2 * i + 1))
                 )
             );
             animators.push(
@@ -841,68 +837,7 @@ function autoMainver1() {
         sleep(1000)
     }
 }
-function autoMainver3() {
-    waitForGameForeground();
-    // 初始化嗑药数量
-    let druglimit = {
-        drug1limit: limit.drug1num,
-        drug2limit: limit.drug2num,
-        drug3limit: limit.drug3num
-    }
-    while (true) {
-        //开始
-        let notdrug = !limit.drug1 && !limit.drug2 && !limit.drug3
-        if (!notdrug) {
 
-        }
-        // -----------选援助----------------
-        FriendHelpFunction();
-        // -----------开始----------------
-        autoBeginFunction();
-        //---------战斗------------------
-        log("进入战斗")
-        //------------开始结算-------------------
-        id("ResultWrap").findOne()
-        //稳定模式点击结束
-        sleep(3000)
-        while (!id("retryWrap").findOnce()) {
-            //-----------如果有升级弹窗点击----------------------
-            if (text(currentLang[3]).findOnce()) {
-                while (text(currentLang[3]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.yesfocus)
-                    sleep(3000)
-                }
-                while (text(currentLang[4]).findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.focusclose)
-                    sleep(3000)
-                }
-            }
-            if (id("rankUpWrap").findOnce()) {
-                while (id("rankUpWrap").findOnce()) {
-                    sleep(1000)
-                    screenutilClick(clickSets.levelup)
-                    sleep(3000)
-                }
-            }
-            if (id("ap").findOnce()) {
-                return;
-            }
-            sleep(1000)
-            // 循环点击的位置为短线重连确定点
-            screenutilClick(clickSets.reconection)
-            // 点击完毕后 再战不会马上出来，需要等待
-            sleep(2000)
-        }
-        //--------------再战--------------------------
-        while (id("retryWrap").findOnce()) {
-            sleep(1000)
-            screenutilClick(clickSets.restart)
-            sleep(2500)
-        }
-    }
-}
 function jingMain() {
     waitForGameForeground();
     while (true) {
@@ -918,8 +853,8 @@ function jingMain() {
             click(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                let count=parseInt(limit.jjcnum);
-                if (limit.jjcisuse && (isNaN(count)||count>0)) {
+                let count = parseInt(limit.jjcnum);
+                if (limit.jjcisuse && (isNaN(count) || count > 0)) {
                     while (!id("BpCureWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)
@@ -932,7 +867,7 @@ function jingMain() {
                         screenutilClick(clickSets.bphuiok)
                         sleep(1500)
                     }
-                    limit.jjcnum=''+(count-1);
+                    limit.jjcnum = '' + (count - 1);
                 } else {
                     screenutilClick(clickSets.bpclose)
                     log("jjc结束")
@@ -1222,8 +1157,8 @@ function getDrugNum(text) {
 }
 
 floatUI.adjust = function (key, value) {
-    if(value!==undefined) {
-        limit[key]=value
+    if (value !== undefined) {
+        limit[key] = value
         log("更新参数：", key, value)
     }
 }
@@ -1378,13 +1313,13 @@ function algo_init() {
         if (wait)
             log(
                 "find " +
-                    fnlist.length +
-                    " items for " +
-                    (new Date().getTime() - startTime) +
-                    " with " +
-                    it +
-                    " limit " +
-                    wait
+                fnlist.length +
+                " items for " +
+                (new Date().getTime() - startTime) +
+                " with " +
+                it +
+                " limit " +
+                wait
             );
     }
 
@@ -1688,7 +1623,7 @@ function algo_init() {
         return usedrug;
     }
 
-    function selectBattle() {}
+    function selectBattle() { }
 
     function taskDefault() {
         initialize();
