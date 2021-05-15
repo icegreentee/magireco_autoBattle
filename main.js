@@ -7,7 +7,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = getProjectVersion();
+var version = "3.3.0";
 var appName = Name + " v" + version;
 
 function getProjectVersion() {
@@ -301,10 +301,8 @@ function toUpdate() {
                     toastLog("更新加载中");
                     let mainjs = main_script.body.string();
                     let floatjs = float_script.body.string();
-                    let prjjson = res.body.string();
                     files.write(engines.myEngine().cwd() + "/main.js", mainjs)
                     files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
-                    files.write(engines.myEngine().cwd() + "/project.json", prjjson)
                     engines.stopAll()
                     events.on("exit", function () {
                         engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
