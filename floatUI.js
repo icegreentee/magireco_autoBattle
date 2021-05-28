@@ -557,7 +557,7 @@ var limit = {
     drug3num: '0',
     drug4num: '0',
     default: 0,
-    useAuto: true,
+    useAuto: false,
     apmul: "",
     timeout: "5000"
 }
