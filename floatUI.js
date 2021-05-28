@@ -1595,9 +1595,11 @@ function algo_init() {
                             click(bound.centerX(), bound.centerY());
                             // wait for confirmation popup
                         } while (!find(string.revive_popup, 2000));
-                        log("点击确认回复");
                         bound = find(string.revive_confirm, true).bounds();
-                        click(bound.centerX(), bound.centerY());
+                        do {
+                            log("点击确认回复");
+                            click(bound.centerX(), bound.centerY());
+                        } while (find(string.revive_popup, 2000));
                         usedrug = true;
                         updateDrugLimit(i);
                         break;
