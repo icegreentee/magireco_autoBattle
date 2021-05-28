@@ -539,6 +539,7 @@ var limit = {
     jjcnum: '',
     default: 0,
     useAuto: true,
+    refillMax: true,
 }
 var clickSets = {
     ap: {
@@ -1612,7 +1613,7 @@ function algo_init() {
             var element = find(string.revive_title, true);
             var apinfo = getAP();
             log("当前AP:" + apinfo.value + "/" + apinfo.total);
-        } while (usedrug && limit.useAuto && apinfo.value <= apinfo.total * AUTO_LIMIT);
+        } while (usedrug && (limit.useAuto && limit.refillMax) && apinfo.value <= apinfo.total * AUTO_LIMIT);
         // now close the window
         while (element.refresh()) {
             log("关闭回复窗口");
@@ -1711,7 +1712,7 @@ function algo_init() {
                         apinfo.total
                     );
                     if (
-                        ((limit.useAuto && apinfo.value <= apinfo.total * AUTO_LIMIT) ||
+                        (((limit.useAuto && limit.refillMax) && apinfo.value <= apinfo.total * AUTO_LIMIT) ||
                             (apcost && apinfo.value < apcost * 2)) &&
                         usedrug &&
                         tryusedrug

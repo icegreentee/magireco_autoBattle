@@ -1,4 +1,5 @@
 "ui";
+importClass(android.view.View)
 importClass(android.graphics.Color)
 importClass(android.view.MenuItem)
 importClass(com.stardust.autojs.project.ProjectConfig)
@@ -64,7 +65,8 @@ ui.layout(
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee"/>
                         <vertical padding="10 6 0 6" w="*" h="auto">
-                            <Switch id="useAuto" w="*" margin="0 3" checked="true" textColor="#666666" text="优先使用官方auto（如设置用药则回复到4倍上限）" />
+                            <Switch id="useAuto" w="*" margin="0 3" checked="true" textColor="#666666" text="优先使用官方auto" />
+                            <Switch id="refillMax" w="*" margin="0 3" checked="true" textColor="#666666" visibility="visible" text="嗑药到4倍上限（不开则每次嗑一瓶）" />
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -150,10 +152,14 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
     ui.autoService.setChecked(auto.service != null)
 });
 //前台服务
+ui.foreground.setChecked($settings.isEnabled('foreground_service'));
 ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('foreground_service', checked);
 });
-ui.foreground.setChecked($settings.isEnabled('foreground_service'));
+
+ui.useAuto.setOnCheckedChangeListener(function (widget, checked) {
+    ui.refillMax.setVisibility(checked ? View.VISIBLE : View.GONE);
+});
 
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {
@@ -189,7 +195,7 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto"]
+const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "refillMax"]
 const tempParamList = ["drug1", "drug2", "drug3", "jjcisuse", "drug1num", "drug2num", "drug3num", "jjcnum"]
 
 var idmap={};
