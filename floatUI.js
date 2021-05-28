@@ -1599,6 +1599,7 @@ function algo_init() {
                         do {
                             log("点击确认回复");
                             click(bound.centerX(), bound.centerY());
+                            sleep(1000);
                         } while (find(string.revive_popup, 2000));
                         usedrug = true;
                         updateDrugLimit(i);
