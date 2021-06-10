@@ -1686,6 +1686,7 @@ function algo_init() {
                     if (findID("popupInfoDetailTitle")) {
                         // try use drug
                         tryusedrug = refillAP();
+                        break; //下一轮循环后会切换到助战选择状态，从而避免捕获关卡坐标后，错把助战当做关卡来误点击
                     }
                     // if need to click to enter battle
                     let button = find(string.battle_confirm);
