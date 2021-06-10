@@ -1581,7 +1581,35 @@ function algo_init() {
 
     function refillAP() {
         log("尝试使用回复药");
+        var revive_title_element = null;
+        var apinfo = null;
+
         do {
+            let revive_title_attempt_max = 1500;
+            for (let attempt=0; attempt<revive_title_attempt_max; attempt++) {
+                log("等待AP药选择窗口出现...");
+                revive_title_element = find(string.revive_title, false);
+                if (revive_title_element != null) {
+                    log("AP药选择窗口已经出现");
+                    break;
+                }
+                if (attempt == revive_title_attempt_max-1) {
+                    log("长时间等待后，AP药选择窗口仍然没有出现，退出");
+                    threads.currentThread().interrupt();
+                }
+                if (attempt % 5 == 0) {
+                    apinfo = getAP();
+                    if (apinfo) {
+                        log("当前AP:" + apinfo.value + "/" + apinfo.total);
+                        log("点击AP按钮");
+                        click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
+                    } else {
+                        log("检测AP失败");
+                    }
+                }
+                sleep(200);
+            }
+
             var usedrug = false;
             var numbers = matchAll(string.regex_drug, true);
             var buttons = findAll(string.revive_button);
@@ -1594,13 +1622,15 @@ function algo_init() {
                         do {
                             click(bound.centerX(), bound.centerY());
                             // wait for confirmation popup
-                        } while (!find(string.revive_popup, 2000));
+                            var revive_popup_element = find(string.revive_popup, 2000);
+                        } while (revive_popup_element == null);
                         bound = find(string.revive_confirm, true).bounds();
-                        do {
-                            log("点击确认回复");
+                        while (revive_popup_element.refresh()) {
+                            log("找到确认回复窗口，点击确认回复");
                             click(bound.centerX(), bound.centerY());
-                            sleep(1000);
-                        } while (find(string.revive_popup, 2000));
+                            waitElement(revive_popup_element, 5000);
+                        }
+                        log("确认回复窗口已消失");
                         usedrug = true;
                         updateDrugLimit(i);
                         break;
@@ -1611,17 +1641,15 @@ function algo_init() {
                 log("AP不足且未嗑药，退出");
                 threads.currentThread().interrupt();
             }
-            // wait for refill window to be back
-            var element = find(string.revive_title, true);
-            var apinfo = getAP();
+            apinfo = getAP();
             log("当前AP:" + apinfo.value + "/" + apinfo.total);
         } while (usedrug && limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul));
         // now close the window
-        while (element.refresh()) {
+        while (revive_title_element.refresh()) {
             log("关闭回复窗口");
-            bound = element.parent().bounds();
+            bound = revive_title_element.parent().bounds();
             click(bound.right, bound.top);
-            waitElement(element, 5000);
+            waitElement(revive_title_element, 5000);
         }
         return usedrug;
     }
