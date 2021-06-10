@@ -1645,7 +1645,8 @@ function algo_init() {
             log("当前AP:" + apinfo.value + "/" + apinfo.total);
         } while (usedrug && limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul));
         // now close the window
-        while (revive_title_element.refresh()) {
+        revive_title_element = find(string.revive_title, 2000); //不加这一行的时候，会出现卡在AP药选择窗口的问题（国服MuMu模拟器主线214上出现）
+        while (revive_title_element != null && revive_title_element.refresh()) {
             log("关闭回复窗口");
             bound = revive_title_element.parent().bounds();
             click(bound.right, bound.top);
