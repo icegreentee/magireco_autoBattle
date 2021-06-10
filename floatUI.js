@@ -121,6 +121,10 @@ floatUI.main = function () {
     }
 
     function defaultWrap() {
+        if (currentTask && currentTask.isAlive()) {
+            toastLog("停止之前的脚本");
+            currentTask.interrupt();
+        }
         toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
         currentTask = threads.start(floatUI.scripts[limit.default].fn);
     }
@@ -193,6 +197,10 @@ floatUI.main = function () {
         task_popup.container.setVisibility(View.INVISIBLE);
         task_popup.setTouchable(false);
         if (item.fn) {
+            if (currentTask && currentTask.isAlive()) {
+                toastLog("停止之前的脚本");
+                currentTask.interrupt();
+            }
             toastLog("执行 " + item.name + " 脚本");
             currentTask = threads.start(item.fn);
         }
