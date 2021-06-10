@@ -1528,38 +1528,37 @@ function algo_init() {
     var string = {};
     var druglimit = [NaN, NaN, NaN];
     var usedrug = false;
-    var currentname = "";
 
     function initialize() {
-        var element = auto.root;
-        if (element) {
-            currentname = element.packageName();
-            var current = [];
-            if (currentname == "com.bilibili.madoka.bilibili") {
-                log("检测为国服");
-                current = strings.zh_Hans;
-            } else if (currentname == "com.komoe.madokagp") {
-                log("检测为台服");
-                current = strings.zh_Hant;
-            } else if (currentname == "com.aniplex.magireco") {
-                log("检测为日服");
-                current = strings.ja;
-            }
-            for (let i = 0; i < strings.name.length; i++) {
-                string[strings.name[i]] = current[i];
-            }
-            usedrug = false;
-            for (let i = 0; i < 3; i++) {
-                druglimit[i] = limit["drug" + (i + 1)]
-                    ? parseInt(limit["drug" + (i + 1) + "num"])
-                    : 0;
-                if (druglimit[i] !== 0) {
-                    usedrug = true;
-                }
-            }
+        if (auto.root == null) {
+            toastLog("未开启无障碍服务");
+            //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
+        }
+        var current = [];
+        if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
+            log("检测为国服");
+            current = strings.zh_Hans;
+        } else if (packageName("com.komoe.madokagp").findOnce()) {
+            log("检测为台服");
+            current = strings.zh_Hant;
+        } else if (packageName("com.aniplex.magireco").findOnce()) {
+            log("检测为日服");
+            current = strings.ja;
         } else {
             toastLog("未在前台检测到魔法纪录");
             threads.currentThread().interrupt();
+        }
+        for (let i = 0; i < strings.name.length; i++) {
+            string[strings.name[i]] = current[i];
+        }
+        usedrug = false;
+        for (let i = 0; i < 3; i++) {
+            druglimit[i] = limit["drug" + (i + 1)]
+                ? parseInt(limit["drug" + (i + 1) + "num"])
+                : 0;
+            if (druglimit[i] !== 0) {
+                usedrug = true;
+            }
         }
     }
 
