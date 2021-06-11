@@ -1618,7 +1618,7 @@ function algo_init() {
                 ui.run(() => {
                     //注意,这里会受到main.js里注册的listener影响
                     ui["drug"+(index+1)+"num"].setText(limit["drug"+(index+1)+"num"]);
-                    let drugcheckbox = limit["drug"+(index+1)];
+                    let drugcheckbox = ui["drug"+(index+1)];
                     let newvalue = limit["drug"+(index+1)];
                     if (drugcheckbox.isChecked() != newvalue) drugcheckbox.setChecked(newvalue);
                 });
