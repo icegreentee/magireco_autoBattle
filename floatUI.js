@@ -546,10 +546,10 @@ var limit = {
     isStable: false,
     justNPC: false,
     drug4: false,
-    drug1num: '',
-    drug2num: '',
-    drug3num: '',
-    drug4num: '',
+    drug1num: '0',
+    drug2num: '0',
+    drug3num: '0',
+    drug4num: '0',
     default: 0,
     useAuto: true,
     apmul: ""
@@ -1610,11 +1610,11 @@ function algo_init() {
                     limit["drug"+(index+1)] = false;
                 }
                 ui.run(() => {
-                    for (let i=1; i<=3; i++) {
-                        //注意,这里会受到main.js里注册的listener影响
-                        ui["drug"+i+"num"].setText(limit["drug"+i+"num"]);
-                        ui["drug"+i].setChecked(limit["drug"+i]);
-                    }
+                    //注意,这里会受到main.js里注册的listener影响
+                    ui["drug"+(index+1)+"num"].setText(limit["drug"+(index+1)+"num"]);
+                    let drugcheckbox = limit["drug"+(index+1)];
+                    let newvalue = limit["drug"+(index+1)];
+                    if (drugcheckbox.isChecked() != newvalue) drugcheckbox.setChecked(newvalue);
                 });
             } else {
                 //正常情况下应该首先是药的数量还够，才会继续嗑药，然后才会更新嗑药个数限制，所以不应该走到这里
