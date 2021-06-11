@@ -1399,7 +1399,7 @@ function algo_init() {
     function getPTList() {
         let elements = matchAll(/^\+\d*$/);
         let results = [];
-        let left = 0;
+        let left = find(string.support).bounds().left;
         log("PT匹配结果数量" + elements.length);
         for (var element of elements) {
             var content = getContent(element);
@@ -1412,7 +1412,6 @@ function algo_init() {
                             value: Number(getContent(next)),
                             bounds: element.bounds(),
                         });
-                        if (element.bounds().left > left) left = element.bounds().left;
                     }
                 }
             }
@@ -1423,12 +1422,11 @@ function algo_init() {
                         value: Number(content.slice(1)),
                         bounds: element.bounds(),
                     });
-                    if (element.bounds().left > left) left = element.bounds().left;
                 }
             }
         }
 
-        return results.filter((result) => result.bounds.left == left);
+        return results.filter((result) => result.bounds.left >= left);
     }
 
     function getCostAP() {
