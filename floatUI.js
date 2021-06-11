@@ -1589,11 +1589,17 @@ function algo_init() {
     const drugCosts = [1, 1, 5];
 
     function isDrugEnough(index, count) {
-        //从游戏界面上读取剩余回复药个数后，作为count传入进来
         if (index < 0 || index > 2) throw new Error("index out of range");
+
+        //从游戏界面上读取剩余回复药个数后，作为count传入进来
+        let remainingnum = parseInt(count);
+        let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
+        log("第"+(index+1)+"种回复药还剩"+remainingnum+"个");
+        log("根据嗑药个数限制,还可以继续磕"+limitnum+"个");
+
         //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
-        if (parseInt(limit["drug"+(index+1)+"num"]) < drugCosts[index]) return false;
-        if (parseInt(count) < drugCosts[index]) return false;
+        if (limitnum < drugCosts[index]) return false;
+        if (remainingnum < drugCosts[index]) return false;
         return true;
     }
 
@@ -1701,7 +1707,6 @@ function algo_init() {
                 for (let i = 0; i < 3; i++) {
                     //检查还剩余多少个药
                     let remainingDrugCount = parseInt(getContent(numbers[i]).slice(0, -1));
-                    log("第"+(i+1)+"种回复药还剩"+remainingDrugCount+"个;根据嗑药个数限制,还可以继续磕"+limit["drug"+(i+1)+"num"]+"个");
                     if (isDrugEnough(i, remainingDrugCount)) {
                         var bound = buttons[i].bounds();
                         do {

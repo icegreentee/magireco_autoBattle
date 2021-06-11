@@ -73,7 +73,7 @@ ui.layout(
                             <Switch id="useAuto" w="*" margin="0 3" checked="true" textColor="#000000" text="优先使用官方自动续战" />
                             <linear padding="0 0 0 0" w="*" h="auto">
                                 <text text="嗑药至AP上限" textColor="#666666" />
-                                <input maxLength="3" margin="5 0 0 0" id="apmul" hint="可选值0-4,留空视为0" text="" textSize="14" inputType="number|none" />
+                                <input maxLength="1" margin="5 0 0 0" id="apmul" hint="可选值0-4,留空视为0" text="" textSize="14" inputType="number|none" />
                                 <text text="倍以上" textColor="#666666" />
                             </linear>
                             <text text="注意:嗑药至AP上限倍数不会永久保存,脚本完全退出后会被重置!" textColor="#666666" />
@@ -252,8 +252,8 @@ function setOnChangeListener(key) {
     switch (ui[key].getClass().getSimpleName()) {
         case "JsEditText":
             ui[key].addTextChangedListener(
-            new android.text.TextWatcher({afterTextChanged:
-            function (s) {
+            new android.text.TextWatcher({
+            afterTextChanged: function (s) {
                 let value = ""+s;
                 saveParamIfPersist(key, value); //直接用s作为参数会崩溃
                 floatUI.adjust(key, value);
@@ -272,8 +272,8 @@ function setOnChangeListener(key) {
             break;
         case "JsSpinner":
             ui[key].setOnItemSelectedListener(
-            new android.widget.AdapterView.OnItemSelectedListener({onItemSelected:
-            function (spinnerparent, spinnerview, spinnerposition, spinnerid) {
+            new android.widget.AdapterView.OnItemSelectedListener({
+            onItemSelected: function (spinnerparent, spinnerview, spinnerposition, spinnerid) {
                 saveParamIfPersist(key, spinnerposition);
                 floatUI.adjust(key, spinnerposition);
             }
@@ -282,8 +282,8 @@ function setOnChangeListener(key) {
             break;
         case "RadioGroup":
             ui[key].setOnCheckedChangeListener(
-            new android.widget.RadioGroup.OnCheckedChangeListener({onCheckedChanged:
-            function (group, checkedId) {
+            new android.widget.RadioGroup.OnCheckedChangeListener({
+            onCheckedChanged: function (group, checkedId) {
                 let name = idmap[checkedId];
                 if (name) {
                     saveParamIfPersist(key, name);
@@ -308,29 +308,39 @@ for (let key of persistParamList) {
 //魔法石，每次碎5钻
 const drugCosts = [1, 1, 5, 1];
 
-function setDrugNumListener(i) {
-    ui["drug"+i].setOnCheckedChangeListener(function (widget, checked) {
-        saveParamIfPersist("drug"+i, checked);
-        floatUI.adjust("drug"+i, checked);
+function setDrugCheckboxListener(drugname) {
+    ui[drugname].setOnCheckedChangeListener(function (widget, checked) {
+        saveParamIfPersist(drugname, checked);
+        floatUI.adjust(drugname, checked);
         if (checked) {
-            ui["drug"+i+"num"].setEnabled(true);
-            ui["drug"+i+"num"].setText("");
+            ui[drugname+"num"].setEnabled(true);
+            ui[drugname+"num"].setText("");
         } else {
-            ui["drug"+i+"num"].setText("0");
-            ui["drug"+i+"num"].setEnabled(false);
+            ui[drugname+"num"].setText("0");
+            ui[drugname+"num"].setEnabled(false);
         }
     });
 }
 
-for (let i=1; i<=4; i++) {
-    setDrugNumListener(i);
-    ui["drug"+i+"num"].setEnabled(false);
+for (let key of tempParamList) {
+    if (key.match(/^drug\d+$/)) {
+        setDrugCheckboxListener(key);
+        ui[key+"num"].setEnabled(false);
+    } else {
+        setOnChangeListener(key);
+    }
 }
 
-for (let key of tempParamList) {
-    if (key.match(/^drug\d+$/)) continue;
-    setOnChangeListener(key);
+//限制apmul取值
+//digits="01234"貌似不起效，没办法，只能手动实现
+ui["apmul"].setKeyListener(new android.text.method.NumberKeyListener({
+getInputType: function() {
+    return android.text.InputType.TYPE_MASK_VARIATION;
+},
+getAcceptedChars: function () {
+    return ['0', '1', '2', '3', '4'];
 }
+}));
 
 //版本获取
 http.__okhttp__.setTimeout(5000);
