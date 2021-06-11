@@ -1559,7 +1559,6 @@ function algo_init() {
     };
 
     var string = {};
-    var druglimit = [NaN, NaN, NaN];
 
     function initialize() {
         if (auto.root == null) {
@@ -1583,11 +1582,6 @@ function algo_init() {
         for (let i = 0; i < strings.name.length; i++) {
             string[strings.name[i]] = current[i];
         }
-        for (let i = 0; i < 3; i++) {
-            druglimit[i] = limit["drug" + (i + 1)]
-                ? parseInt(limit["drug" + (i + 1) + "num"])
-                : 0;
-        }
     }
 
     //绿药或红药，每次消耗1个
@@ -1598,7 +1592,7 @@ function algo_init() {
         //从游戏界面上读取剩余回复药个数后，作为count传入进来
         if (index < 0 || index > 2) throw new Error("index out of range");
         //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
-        if (parseInt(druglimit[index]) < drugCosts[index]) return false;
+        if (parseInt(limit["drug"+(index+1)+"num"]) < drugCosts[index]) return false;
         if (parseInt(count) < drugCosts[index]) return false;
         return true;
     }
@@ -1606,14 +1600,13 @@ function algo_init() {
     //嗑药后，更新设置中的嗑药个数限制
     function updateDrugLimit(index) {
         if (index < 0 || index > 2) throw new Error("index out of range");
-        //druglimit数组保存的应该是整数或NaN，但这里还是多加了一个parseInt
-        //parseInt(NaN)仍然会是NaN，但如果druglimit混入了null，isNaN(null) == false，所以还是多加一个parseInt比较保险
-        //正常情况下在设置界面的输入框留空，druglimit中就会保存为NaN，这里视为无限大处理（所以不需要更新数值）
-        if (!isNaN(parseInt(druglimit[index]))) {
-            if (druglimit[index] >= drugCosts[index]) {
-                druglimit[index] -= drugCosts[index];
-                limit["drug"+(index+1)+"num"] = ""+druglimit[index];
-                if (druglimit[index] < drugCosts[index]) {
+        let drugnum = parseInt(limit["drug"+(index+1)+"num"]);
+        //parseInt("") == NaN，NaN视为无限大处理（所以不需要更新数值）
+        if (!isNaN(drugnum)) {
+            if (drugnum >= drugCosts[index]) {
+                drugnum -= drugCosts[index];
+                limit["drug"+(index+1)+"num"] = ""+drugnum;
+                if (drugnum < drugCosts[index]) {
                     limit["drug"+(index+1)] = false;
                 }
                 ui.run(() => {
@@ -1625,9 +1618,9 @@ function algo_init() {
                 });
             } else {
                 //正常情况下应该首先是药的数量还够，才会继续嗑药，然后才会更新嗑药个数限制，所以不应该走到这里
-                log("druglimit", druglimit);
+                log("limit.drug"+(index+1)+"num", limit["drug"+(index+1)+"num"]);
                 log("index", index);
-                throw new Error("druglimit cannot cover cost");
+                throw new Error("limit.drug"+(index+1)+"num exhausted");
             }
         }
     }
@@ -1708,7 +1701,7 @@ function algo_init() {
                 for (let i = 0; i < 3; i++) {
                     //检查还剩余多少个药
                     let remainingDrugCount = parseInt(getContent(numbers[i]).slice(0, -1));
-                    log("第"+(i+1)+"种回复药还剩"+remainingDrugCount+"个;根据嗑药个数限制,还可以继续磕"+druglimit[i]+"个");
+                    log("第"+(i+1)+"种回复药还剩"+remainingDrugCount+"个;根据嗑药个数限制,还可以继续磕"+limit["drug"+(i+1)+"num"]+"个");
                     if (isDrugEnough(i, remainingDrugCount)) {
                         var bound = buttons[i].bounds();
                         do {
