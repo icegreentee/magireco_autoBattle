@@ -1166,23 +1166,44 @@ floatUI.adjust = function (key, value) {
 
 // compatible action closure
 function algo_init() {
-    // for debug
-    // const AUTO_LIMIT = 1;
-    // click with root permission
+
+    var useShizuku = true;
+
     function clickRoot(x, y) {
-        var result = shell("su\ninput tap " + x + " " + y + "\nexit\n");
-        // detect reason when click did not succeed
-        if (result.code != 0) {
-            result = shell("which su");
-            if (result.code == 0) {
-                // device already rooted, but permission not granted
-                toastLog("root权限获取失败");
-            } else {
-                // device not rooted
-                toastLog("Android 7 以下设备运行脚本需要root");
+        //第一次会尝试使用Shizuku，如果失败，则不再尝试Shizuku，直到脚本退出
+        if (useShizuku) {
+            log("使用Shizuku模拟点击坐标 "+x+","+y);
+            $shell.setDefaultOptions({adb: true});
+            var result = null;
+            try {
+                result = $shell("input tap "+x+" "+y, false);
+            } catch (e) {
+                useShizuku = false;
+                toastLog("Shizuku未安装/未启动,或者未授权");
+                log(e);
             }
-            // terminate when click cannot be successfully performed
-            threads.currentThread().interrupt();
+
+            //这里useShizuku实际上指示了是否捕获到抛出的异常
+            if (!useShizuku || result == null || result.code != 0) {
+                useShizuku = false;
+                log("使用Shizuku执行模拟点击命令失败,尝试直接使用root权限");
+            } else {
+                log("模拟点击完成");
+                return;//命令成功执行
+            }
+        }
+
+        //第一次尝试Shizuku失败后也会走到这里
+        if (!useShizuku) {
+            log("直接使用root权限模拟点击坐标 "+x+","+y);
+            $shell.setDefaultOptions({adb: false});
+            result = $shell("input tap "+x+" "+y, true);//第二个参数true表示使用root权限
+            if (result == null || result.code != 0) {
+                toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
+                threads.currentThread().interrupt();
+            } else {
+                log("模拟点击完成");
+            }
         }
     }
 
@@ -1198,7 +1219,9 @@ function algo_init() {
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             // now accessibility gesture APIs are available
+            log("使用无障碍服务模拟点击坐标 "+x+","+y);
             press(x, y, 50);
+            log("点击完成");
         } else {
             clickRoot(x, y);
         }
