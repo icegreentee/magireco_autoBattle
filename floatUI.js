@@ -1830,9 +1830,13 @@ function algo_init() {
                         log("尝试点击关卡坐标");
                         click(battlepos.x, battlepos.y);
                         waitAny(
-                            [() => find(string.battle_confirm), () => find(string.support)],
+                            [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
                             5000
                         );
+                        if (find(string.out_of_ap)) {
+                            log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
+                            state = STATE_SUPPORT;
+                        }
                     }
                     // click battle if available
                     else if (battlename) {
@@ -1842,9 +1846,13 @@ function algo_init() {
                             let bound = battle.bounds();
                             click(bound.centerX(), bound.centerY());
                             waitAny(
-                                [() => find(string.battle_confirm), () => find(string.support)],
+                                [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
                                 5000
                             );
+                            if (find(string.out_of_ap)) {
+                                log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
+                                state = STATE_SUPPORT;
+                            }
                         }
                     } else {
                         log("等待捕获关卡坐标");
