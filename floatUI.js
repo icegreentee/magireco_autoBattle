@@ -552,7 +552,8 @@ var limit = {
     drug4num: '0',
     default: 0,
     useAuto: true,
-    apmul: ""
+    apmul: "",
+    timeout: "5000"
 }
 var clickSets = {
     ap: {
@@ -1825,13 +1826,13 @@ function algo_init() {
                         let bound = button.bounds();
                         click(bound.centerX(), bound.centerY());
                         // wait for support screen for 5 seconds
-                        find(string.support, 5000);
+                        find(string.support, parseInt(limit.timeout));
                     } else if (battlepos) {
                         log("尝试点击关卡坐标");
                         click(battlepos.x, battlepos.y);
                         waitAny(
                             [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
-                            5000
+                            parseInt(limit.timeout)
                         );
                         if (find(string.out_of_ap)) {
                             log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
@@ -1847,7 +1848,7 @@ function algo_init() {
                             click(bound.centerX(), bound.centerY());
                             waitAny(
                                 [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
-                                5000
+                                parseInt(limit.timeout)
                             );
                             if (find(string.out_of_ap)) {
                                 log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
@@ -1897,7 +1898,7 @@ function algo_init() {
                         }
                         click(bound.centerX(), bound.centerY());
                         // wait for start button for 5 seconds
-                        findID("nextPageBtn", 5000);
+                        findID("nextPageBtn", parseInt(limit.timeout));
                         break;
                     }
                     // if unexpectedly treated as long touch
@@ -1908,7 +1909,7 @@ function algo_init() {
                             let bound = element.bounds();
                             click(bound.left, bound.top);
                         }
-                        find(string.support, 5000);
+                        find(string.support, parseInt(limit.timeout));
                     }
                     break;
                 }

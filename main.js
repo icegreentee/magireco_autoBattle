@@ -77,6 +77,11 @@ ui.layout(
                                 <text text="倍以上" textColor="#666666" />
                             </linear>
                             <text text="注意:嗑药至AP上限倍数不会永久保存,脚本完全退出后会被重置!" textColor="#666666" />
+                            <linear padding="0 0 0 0" w="*" h="auto">
+                                <text text="等待控件超时" textColor="#000000" />
+                                <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
+                                <text text="毫秒" textColor="#000000" />
+                            </linear>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -198,7 +203,7 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto"]
+const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "timeout"]
 const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
 
 var idmap = {};
@@ -296,12 +301,24 @@ function setOnChangeListener(key) {
     }
 }
 
+//限制timeout的取值
+ui["timeout"].addTextChangedListener(
+new android.text.TextWatcher({
+afterTextChanged: function (s) {
+    let str = ""+s;
+    let value = parseInt(str);
+    if (isNaN(value) || value < 100) {
+        s.replace(0, str.length, "5000");
+    }
+}
+})
+);
+
 for (let key of persistParamList) {
     if (key == "foreground") continue;
     let value = storage.get(key);
-    syncValue(key, value);
-    floatUI.adjust(key, value);
-    setOnChangeListener(key);
+    setOnChangeListener(key); //先设置listener
+    syncValue(key, value);    //如果储存了超出取值范围之外的数据则会被listener重置
 }
 
 //绿药或红药，每次消耗1个
