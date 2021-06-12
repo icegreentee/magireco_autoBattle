@@ -95,6 +95,11 @@ floatUI.main = function () {
     ];
 
     function snapshotWrap() {
+        if (auto.root == null) {
+            log("auto.root == null");
+            toastLog("快照失败,无障碍服务是否开启?");
+            return;
+        }
         toastLog("开始快照");
         var text = recordElement(auto.root, 0, "");
 
@@ -1219,6 +1224,11 @@ function algo_init() {
         var it = 0;
         do {
             it++;
+            if (auto.root == null) {
+                log("auto.root == null");
+                sleep(100);
+                continue;
+            }
             auto.root.refresh();
             result = textMatches(reg).findOnce();
             if (result && result.refresh()) break;
@@ -1254,6 +1264,11 @@ function algo_init() {
         var it = 0;
         do {
             it++;
+            if (auto.root == null) {
+                log("auto.root == null");
+                sleep(100);
+                continue;
+            }
             auto.root.refresh();
             result = text(txt).findOnce();
             if (result && result.refresh()) break;
@@ -1271,6 +1286,11 @@ function algo_init() {
         var it = 0;
         do {
             it++;
+            if (auto.root == null) {
+                log("auto.root == null");
+                sleep(100);
+                continue;
+            }
             auto.root.refresh();
             result = text(txt).find();
             result = result.filter((x) => x.refresh());
@@ -1289,6 +1309,11 @@ function algo_init() {
         var it = 0;
         do {
             it++;
+            if (auto.root == null) {
+                log("auto.root == null");
+                sleep(100);
+                continue;
+            }
             auto.root.refresh();
             result = id(name).findOnce();
             if (result && result.refresh()) break;
