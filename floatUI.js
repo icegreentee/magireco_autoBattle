@@ -1639,8 +1639,7 @@ function algo_init() {
 
         //循环嗑药到设定的AP上限倍数，并且达到关卡消耗的2倍
         var apMultiplier = parseInt(0+limit.apmul);
-        var drugOneshot = false;
-        while (!drugOneshot) {
+        while (true) {
             var apinfo = getAP();
             if (apinfo == null) {
                 log("检测AP失败");
@@ -1653,19 +1652,19 @@ function algo_init() {
 
             if (apinfo.value >= apMax) {
                 log("当前AP已经达到设置的上限倍数");
-                if (apCost != null) {
-                    log("关卡消耗"+apCost+"AP");
-                    if (apinfo.value >= apCost * 2) {
-                        log("当前AP达到关卡消耗量的两倍,即"+(apCost*2)+"AP,停止嗑药");
-                        break;
-                    } else if (apinfo.value >= apCost) {
-                        log("当前AP只满足关卡消耗量的一倍,尚未达到两倍");
-                    } else {
-                        log("当前AP小于关卡消耗量");
-                    }
+                if (apCost == null) {
+                    log("关卡AP消耗未知,视为30");
+                    apCost = 30;
                 } else {
-                    log("关卡AP消耗未知,只嗑药一次");
-                    drugOneshot = true;
+                    log("关卡消耗"+apCost+"AP");
+                }
+                if (apinfo.value >= apCost * 2) {
+                    log("当前AP达到关卡消耗量的两倍,即"+(apCost*2)+"AP,停止嗑药");
+                    break;
+                } else if (apinfo.value >= apCost) {
+                    log("当前AP只满足关卡消耗量的一倍,尚未达到两倍");
+                } else {
+                    log("当前AP小于关卡消耗量");
                 }
             } else {
                 log("当前AP尚未达到设置的上限倍数");
