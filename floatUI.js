@@ -95,6 +95,11 @@ floatUI.main = function () {
     ];
 
     function snapshotWrap() {
+        if (auto.root == null) {
+            log("auto.root == null");
+            toastLog("快照失败,无障碍服务是否开启?");
+            return;
+        }
         toastLog("开始快照");
         var text = recordElement(auto.root, 0, "");
 
@@ -121,6 +126,10 @@ floatUI.main = function () {
     }
 
     function defaultWrap() {
+        if (currentTask && currentTask.isAlive()) {
+            toastLog("停止之前的脚本");
+            currentTask.interrupt();
+        }
         toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
         currentTask = threads.start(floatUI.scripts[limit.default].fn);
     }
@@ -193,6 +202,10 @@ floatUI.main = function () {
         task_popup.container.setVisibility(View.INVISIBLE);
         task_popup.setTouchable(false);
         if (item.fn) {
+            if (currentTask && currentTask.isAlive()) {
+                toastLog("停止之前的脚本");
+                currentTask.interrupt();
+            }
             toastLog("执行 " + item.name + " 脚本");
             currentTask = threads.start(item.fn);
         }
@@ -539,7 +552,7 @@ var limit = {
     jjcnum: '',
     default: 0,
     useAuto: true,
-    refillMax: true,
+    drugmul: 1
 }
 var clickSets = {
     ap: {
@@ -1167,7 +1180,7 @@ floatUI.adjust = function (key, value) {
 // compatible action closure
 function algo_init() {
     // for debug
-    const AUTO_LIMIT = 4;
+    // const AUTO_LIMIT = 1;
     // click with root permission
     function clickRoot(x, y) {
         var result = shell("su\ninput tap " + x + " " + y + "\nexit\n");
@@ -1211,6 +1224,11 @@ function algo_init() {
         var it = 0;
         do {
             it++;
+            if (auto.root == null) {
+                log("auto.root == null");
+                sleep(100);
+                continue;
+            }
             auto.root.refresh();
             result = textMatches(reg).findOnce();
             if (result && result.refresh()) break;
@@ -1246,6 +1264,11 @@ function algo_init() {
         var it = 0;
         do {
             it++;
+            if (auto.root == null) {
+                log("auto.root == null");
+                sleep(100);
+                continue;
+            }
             auto.root.refresh();
             result = text(txt).findOnce();
             if (result && result.refresh()) break;
@@ -1263,6 +1286,11 @@ function algo_init() {
         var it = 0;
         do {
             it++;
+            if (auto.root == null) {
+                log("auto.root == null");
+                sleep(100);
+                continue;
+            }
             auto.root.refresh();
             result = text(txt).find();
             result = result.filter((x) => x.refresh());
@@ -1281,6 +1309,11 @@ function algo_init() {
         var it = 0;
         do {
             it++;
+            if (auto.root == null) {
+                log("auto.root == null");
+                sleep(100);
+                continue;
+            }
             auto.root.refresh();
             result = id(name).findOnce();
             if (result && result.refresh()) break;
@@ -1326,7 +1359,7 @@ function algo_init() {
 
     function getContent(element) {
         if (element) {
-            return element.text() === "" ? element.desc() : element.text();
+            return (element.text() === "" || element.text() == null) ? element.desc() : element.text();
         }
     }
 
@@ -1528,38 +1561,37 @@ function algo_init() {
     var string = {};
     var druglimit = [NaN, NaN, NaN];
     var usedrug = false;
-    var currentname = "";
 
     function initialize() {
-        var element = auto.root;
-        if (element) {
-            currentname = element.packageName();
-            var current = [];
-            if (currentname == "com.bilibili.madoka.bilibili") {
-                log("检测为国服");
-                current = strings.zh_Hans;
-            } else if (currentname == "com.komoe.madokagp") {
-                log("检测为台服");
-                current = strings.zh_Hant;
-            } else if (currentname == "com.aniplex.magireco") {
-                log("检测为日服");
-                current = strings.ja;
-            }
-            for (let i = 0; i < strings.name.length; i++) {
-                string[strings.name[i]] = current[i];
-            }
-            usedrug = false;
-            for (let i = 0; i < 3; i++) {
-                druglimit[i] = limit["drug" + (i + 1)]
-                    ? parseInt(limit["drug" + (i + 1) + "num"])
-                    : 0;
-                if (druglimit[i] !== 0) {
-                    usedrug = true;
-                }
-            }
+        if (auto.root == null) {
+            toastLog("未开启无障碍服务");
+            //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
+        }
+        var current = [];
+        if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
+            log("检测为国服");
+            current = strings.zh_Hans;
+        } else if (packageName("com.komoe.madokagp").findOnce()) {
+            log("检测为台服");
+            current = strings.zh_Hant;
+        } else if (packageName("com.aniplex.magireco").findOnce()) {
+            log("检测为日服");
+            current = strings.ja;
         } else {
             toastLog("未在前台检测到魔法纪录");
             threads.currentThread().interrupt();
+        }
+        for (let i = 0; i < strings.name.length; i++) {
+            string[strings.name[i]] = current[i];
+        }
+        usedrug = false;
+        for (let i = 0; i < 3; i++) {
+            druglimit[i] = limit["drug" + (i + 1)]
+                ? parseInt(limit["drug" + (i + 1) + "num"])
+                : 0;
+            if (druglimit[i] !== 0) {
+                usedrug = true;
+            }
         }
     }
 
@@ -1582,7 +1614,35 @@ function algo_init() {
 
     function refillAP() {
         log("尝试使用回复药");
+        var revive_title_element = null;
+        var apinfo = null;
+
         do {
+            let revive_title_attempt_max = 1500;
+            for (let attempt=0; attempt<revive_title_attempt_max; attempt++) {
+                log("等待AP药选择窗口出现...");
+                revive_title_element = find(string.revive_title, false);
+                if (revive_title_element != null) {
+                    log("AP药选择窗口已经出现");
+                    break;
+                }
+                if (attempt == revive_title_attempt_max-1) {
+                    log("长时间等待后，AP药选择窗口仍然没有出现，退出");
+                    threads.currentThread().interrupt();
+                }
+                if (attempt % 5 == 0) {
+                    apinfo = getAP();
+                    if (apinfo) {
+                        log("当前AP:" + apinfo.value + "/" + apinfo.total);
+                        log("点击AP按钮");
+                        click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
+                    } else {
+                        log("检测AP失败");
+                    }
+                }
+                sleep(200);
+            }
+
             var usedrug = false;
             var numbers = matchAll(string.regex_drug, true);
             var buttons = findAll(string.revive_button);
@@ -1595,10 +1655,15 @@ function algo_init() {
                         do {
                             click(bound.centerX(), bound.centerY());
                             // wait for confirmation popup
-                        } while (!find(string.revive_popup, 2000));
-                        log("点击确认回复");
+                            var revive_popup_element = find(string.revive_popup, 2000);
+                        } while (revive_popup_element == null);
                         bound = find(string.revive_confirm, true).bounds();
-                        click(bound.centerX(), bound.centerY());
+                        while (revive_popup_element.refresh()) {
+                            log("找到确认回复窗口，点击确认回复");
+                            click(bound.centerX(), bound.centerY());
+                            waitElement(revive_popup_element, 5000);
+                        }
+                        log("确认回复窗口已消失");
                         usedrug = true;
                         updateDrugLimit(i);
                         break;
@@ -1609,17 +1674,16 @@ function algo_init() {
                 log("AP不足且未嗑药，退出");
                 threads.currentThread().interrupt();
             }
-            // wait for refill window to be back
-            var element = find(string.revive_title, true);
-            var apinfo = getAP();
+            apinfo = getAP();
             log("当前AP:" + apinfo.value + "/" + apinfo.total);
-        } while (usedrug && (limit.useAuto && limit.refillMax) && apinfo.value <= apinfo.total * AUTO_LIMIT);
+        } while (usedrug && limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul));
         // now close the window
-        while (element.refresh()) {
+        revive_title_element = find(string.revive_title, 2000); //不加这一行的时候，会出现卡在AP药选择窗口的问题（国服MuMu模拟器主线214上出现）
+        while (revive_title_element != null && revive_title_element.refresh()) {
             log("关闭回复窗口");
-            bound = element.parent().bounds();
+            bound = revive_title_element.parent().bounds();
             click(bound.right, bound.top);
-            waitElement(element, 5000);
+            waitElement(revive_title_element, 5000);
         }
         return usedrug;
     }
@@ -1655,6 +1719,7 @@ function algo_init() {
                     if (findID("popupInfoDetailTitle")) {
                         // try use drug
                         tryusedrug = refillAP();
+                        break; //下一轮循环后会切换到助战选择状态，从而避免捕获关卡坐标后，错把助战当做关卡来误点击
                     }
                     // if need to click to enter battle
                     let button = find(string.battle_confirm);
@@ -1712,7 +1777,7 @@ function algo_init() {
                         apinfo.total
                     );
                     if (
-                        (((limit.useAuto && limit.refillMax) && apinfo.value <= apinfo.total * AUTO_LIMIT) ||
+                        ((limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul)) ||
                             (apcost && apinfo.value < apcost * 2)) &&
                         usedrug &&
                         tryusedrug
