@@ -101,7 +101,13 @@ floatUI.main = function () {
             return;
         }
         toastLog("开始快照");
-        var text = recordElement(auto.root, 0, "");
+        try {
+            var text = recordElement(auto.root, 0, "");
+        } catch (e) {
+            toastLog("快照出错");
+            log(e);
+            return;
+        }
 
         var d = new Date();
         var timestamp =
@@ -1248,12 +1254,13 @@ function algo_init() {
         var it = 0;
         do {
             it++;
-            if (auto.root == null) {
-                log("auto.root == null");
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                log(e);
                 sleep(100);
                 continue;
             }
-            auto.root.refresh();
             result = textMatches(reg).findOnce();
             if (result && result.refresh()) break;
             result = descMatches(reg).findOnce();
@@ -1288,12 +1295,13 @@ function algo_init() {
         var it = 0;
         do {
             it++;
-            if (auto.root == null) {
-                log("auto.root == null");
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                log(e);
                 sleep(100);
                 continue;
             }
-            auto.root.refresh();
             result = text(txt).findOnce();
             if (result && result.refresh()) break;
             result = desc(txt).findOnce();
@@ -1310,12 +1318,13 @@ function algo_init() {
         var it = 0;
         do {
             it++;
-            if (auto.root == null) {
-                log("auto.root == null");
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                log(e);
                 sleep(100);
                 continue;
             }
-            auto.root.refresh();
             result = text(txt).find();
             result = result.filter((x) => x.refresh());
             if (result.length >= 1) break;
@@ -1333,12 +1342,13 @@ function algo_init() {
         var it = 0;
         do {
             it++;
-            if (auto.root == null) {
-                log("auto.root == null");
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                log(e);
                 sleep(100);
                 continue;
             }
-            auto.root.refresh();
             result = id(name).findOnce();
             if (result && result.refresh()) break;
             sleep(100);
