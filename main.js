@@ -117,18 +117,30 @@ ui.layout(
 );
 
 ui.emitter.on("create_options_menu", menu => {
+    //在菜单内显示图标
+    let menuClass = menu.getClass();
+    if(menuClass.getSimpleName().equals("MenuBuilder")){
+        try {
+            let m = menuClass.getDeclaredMethod("setOptionalIconsVisible", java.lang.Boolean.TYPE);
+            m.setAccessible(true);
+            m.invoke(menu, true);
+        } catch(e){
+            log(e);
+        }
+    }
+    //SHOW_AS_ACTION_IF_ROOM在竖屏下不会显示文字,所以不设置
     let item = menu.add("报告问题");
     item.setIcon(getTintDrawable("ic_report_black_48dp", colors.WHITE));
-    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
     item = menu.add("查看日志");
     item.setIcon(getTintDrawable("ic_assignment_black_48dp", colors.WHITE));
-    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
     item = menu.add("魔纪百科");
     item.setIcon(getTintDrawable("ic_book_black_48dp", colors.WHITE));
-    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
     item = menu.add("模拟抽卡");
     item.setIcon(getTintDrawable("ic_store_black_48dp", colors.WHITE));
-    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
 });
 
 function setFollowRedirects(value) {
