@@ -53,6 +53,10 @@ floatUI.scripts = [
         name: "活动周回2（备用可选）",
         fn: autoMainver1,
     },
+    {
+        name: "自动重开",
+        fn: tasks.reopen,
+    },
 ];
 
 floatUI.main = function () {
@@ -1690,6 +1694,136 @@ function algo_init() {
 
     function selectBattle() { }
 
+    function enterLoop(){
+        var last=Date.now();
+        for(let i = 0; i < strings.name.length; i++) {
+            string[strings.name[i]] = strings.zh_Hans[i];
+        }
+        var state = STATE_BATTLE;
+        while (true) {
+            switch (state) {
+                case STATE_LOGIN:{
+                    if(find("6/21截止")){
+                        state=STATE_HOME;
+                        break;
+                    }
+                    let window=findID("android:id/content")
+                    if(window){
+                        click(window.bounds().centerX(),window.bounds().centerY())
+                    }
+                    break;
+                }
+                case STATE_HOME:{
+                    if(match(/^BATTLE.+/)){
+                        state=STATE_MENU;
+                        break;
+                    }
+                    let element=find("6/21截止")
+                    if(element){
+                        click(element.bounds().centerX(),element.bounds().centerY())
+                    }
+                    break;
+                }
+
+                case STATE_MENU:{
+                    if (find(string.support)) {
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
+                    }
+                    let element=find("BATTLE 3")
+                    if(element){
+                        if(element.bounds().top<element.bounds().bottom){
+                            click(element.bounds().centerX(),element.bounds().centerY())
+                        }
+                        else{
+                            let sx=element.bounds().centerX()
+                            let syfrom=getWindowSize().y-100
+                            let syto=parseInt(syfrom/2)
+                            log(sx, syfrom, syto)
+                            swipe(sx, syfrom, sx, syto,100)
+                        }
+                    }
+                    break;
+                }
+                
+                case STATE_SUPPORT: {
+                    // exit condition
+                    if (findID("nextPageBtn")) {
+                        state = STATE_TEAM;
+                        log("进入队伍调整");
+                        break;
+                    }
+                    // pick support
+                    let ptlist = getPTList();
+                    let playercount = matchAll(string.regex_lastlogin).length;
+                    log("候选数量" + ptlist.length + ",玩家数量" + playercount);
+                    if (ptlist.length) {
+                        let bound;
+                        if (
+                            ptlist.length > playercount &&
+                            (limit.justNPC || ptlist[ptlist.length - 1].value > ptlist[0].value)
+                        ) {
+                            log("选择NPC助战");
+                            // NPC comes in the end of list if available
+                            bound = ptlist[ptlist.length - 1].bounds;
+                        } else {
+                            log("选择玩家助战");
+                            // higher PT bonus goes ahead
+                            bound = ptlist[0].bounds;
+                        }
+                        click(bound.centerX(), bound.centerY());
+                        // wait for start button for 5 seconds
+                        findID("nextPageBtn", 5000);
+                        break;
+                    }
+                    // if unexpectedly treated as long touch
+                    if (findID("detailTab")) {
+                        log("误点击，尝试返回");
+                        let element = className("EditText").findOnce();
+                        if (element && element.refresh()) {
+                            let bound = element.bounds();
+                            click(bound.left, bound.top);
+                        }
+                        find(string.support, 5000);
+                    }
+                    break;
+                }
+
+                case STATE_TEAM: {
+                    var element = findID("nextPageBtnLoop");
+                    // exit condition
+                    if (findID("android:id/content") && !element) {
+                        state = STATE_BATTLE;
+                        log("进入战斗");
+                        break;
+                    }
+                    // click start
+                    if (element) {
+                        let bound = element.bounds();
+                        click(bound.centerX(), bound.centerY());
+                        waitElement(element, 500);
+                    }
+                    break;
+                }
+
+                case STATE_BATTLE:{
+                    if (!packageName("com.bilibili.madoka.bilibili").findOnce()) {
+                        app.launch("com.bilibili.madoka.bilibili");
+                        sleep(2000);
+                        last=Date.now();
+                        state=STATE_LOGIN;
+                    } else if(findID("charaWrap")){
+                        killPackage("com.bilibili.madoka.bilibili");
+                        sleep(5000)
+                    }
+                    break;
+                }
+            }
+            sleep(1000);
+        }
+    }
+
     function taskDefault() {
         initialize();
         var state = STATE_MENU;
@@ -1949,6 +2083,7 @@ function algo_init() {
 
     return {
         default: taskDefault,
+        reopen: enterLoop
     };
 }
 
@@ -1958,6 +2093,11 @@ function getWindowSize() {
     var pt = new Point();
     wm.getDefaultDisplay().getSize(pt);
     return pt;
+}
+
+function killPackage(packageName) {
+    var am = context.getSystemService(context.ACTIVITY_SERVICE);
+    am.killBackgroundProcesses(packageName);
 }
 
 module.exports = floatUI;
