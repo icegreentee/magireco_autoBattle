@@ -29,60 +29,68 @@ ui.layout(
 
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
-                        <Switch id="foreground" margin="0 3" w="*" textColor="#666666" text="前台服务（常被鲨进程可以开启，按需）" />
+                        <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务（常被鲨进程可以开启，按需）" />
                     </vertical>
 
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="全局设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <linear margin="0 3">
-                                <text text="默认执行脚本" layout_weight="1" layout_gravity="center_vertical" textColor="#666666" />
-                                <spinner id="default" h="auto" gravity="right" textSize="14" entries="{{floatUI.scripts.map(x=>x.name).join('|')}}" />
+                                <text text="默认执行脚本" layout_weight="1" layout_gravity="center_vertical" textColor="#000000" />
+                                <spinner id="default" h="auto" gravity="right" textSize="14" textColor="#000000" entries="{{floatUI.scripts.map(x=>x.name).join('|')}}" />
                             </linear>
-                            <text text="恢复药使用选择：" margin="0 5" />
+                            <text text="回复药使用选择:" margin="0 5" />
                             <vertical padding="10 3 0 3" w="*" h="auto">
                                 <linear>
-                                    <checkbox id="drug1" text="ap恢复药50" layout_weight="1" textColor="#666666" />
-                                    <input maxLength="3" id="drug1num" hint="可设置次数" text="" textSize="14" inputType="number|none" />
+                                    <checkbox id="drug1" text="AP回复药50(绿药)" layout_weight="1" textColor="#666666" />
+                                    <text text="个数限制" textColor="#666666" />
+                                    <input maxLength="3" id="drug1num" hint="留空即无限制" text="0" textSize="14" inputType="number|none" />
                                 </linear>
                                 <linear>
-                                    <checkbox id="drug2" text="ap恢复药全" layout_weight="1" textColor="#666666" />
-                                    <input maxLength="3" id="drug2num" hint="可设置次数" text="" textSize="14" inputType="number|none" />
+                                    <checkbox id="drug2" text="AP回复药全(红药)" layout_weight="1" textColor="#666666" />
+                                    <text text="个数限制" textColor="#666666" />
+                                    <input maxLength="3" id="drug2num" hint="留空即无限制" text="0" textSize="14" inputType="number|none" />
                                 </linear>
                                 <linear>
                                     <checkbox id="drug3" text="魔法石" layout_weight="1" textColor="#666666" />
-                                    <input maxLength="3" id="drug3num" hint="可设置次数" text="" textSize="14" inputType="number|none" />
+                                    <text text="碎钻个数" textColor="#666666" />
+                                    <text text="(不是次数!)" textColor="#ff00ff" />
+                                    <input maxLength="3" id="drug3num" hint="留空即无限制" text="0" textSize="14" inputType="number|none" />
                                 </linear>
                                 <linear>
-                                    <checkbox id="jjcisuse" text="bp恢复药（镜层）" layout_weight="1" textColor="#666666" />
-                                    <input maxLength="3" id="jjcnum" hint="可设置次数" text="" textSize="14" inputType="number|none" />
+                                    <checkbox id="drug4" text="BP回复药(镜层)" layout_weight="1" textColor="#666666" />
+                                    <text text="个数限制" textColor="#666666" />
+                                    <input maxLength="3" id="drug4num" hint="留空即无限制" text="0" textSize="14" inputType="number|none" />
                                 </linear>
+                                <text text="注意:回复药开关状态和个数限制不会永久保存,在脚本完全退出后,这些设置会被重置!" textColor="#666666" />
                             </vertical>
-                            <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#666666" text="只使用NPC（不选则先互关好友，后NPC）" />
+                            <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#000000" text="只使用NPC(不选则先互关好友,后NPC)" />
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="默认脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
-                            <Switch id="useAuto" w="*" margin="0 3" checked="true" textColor="#666666" text="优先使用官方auto（如设置用药则回复到1倍上限）" />
+                            <Switch id="useAuto" w="*" margin="0 3" checked="true" textColor="#000000" text="优先使用官方自动续战" />
                             <linear padding="0 0 0 0" w="*" h="auto">
-                                <text text="用药回复到上限倍数" textColor="#666666"  />
-                                <input maxLength="3" margin="5 0 0 0" id="drugmul" hint="可选值1-4，默认为1" text="" textSize="14" inputType="number|none" />
+                                <text text="嗑药至AP上限" textColor="#666666" />
+                                <input maxLength="1" margin="5 0 0 0" id="apmul" hint="可选值0-4,留空视为0" text="" textSize="14" inputType="number|none" />
+                                <text text="倍以上" textColor="#666666" />
                             </linear>
+                            <text text="注意:嗑药至AP上限倍数不会永久保存,脚本完全退出后会被重置!" textColor="#666666" />
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="备用脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
-                            <Switch id="isStable" w="*" margin="0 3" checked="false" textColor="#666666" text="稳定模式（战斗中不断点击重连弹窗位置）" />
-                            <text text="活动周回关卡选择：" margin="0 5" />
+                            <Switch id="isStable" w="*" margin="0 3" checked="false" textColor="#000000" text="稳定模式（战斗中不断点击重连弹窗位置）" />
+                            <text text="活动周回关卡选择:" textColor="#000000" margin="0 5" />
                             <radiogroup id="battleNo" padding="10 3 0 3">
                                 <radio id="cb1" text="初级" />
                                 <radio id="cb2" text="中级" />
                                 <radio id="cb3" text="高级" checked="true" />
                             </radiogroup>
                             <linear margin="0 3">
-                                <text text="助战x，y坐标自定义：" layout_gravity="center_vertical" />
+                                <text text="助战x，y坐标自定义:" textColor="#000000" layout_gravity="center_vertical" />
                                 <input maxLength="4" id="helpx" text="" hint="横坐标" textSize="14" inputType="number|none" />
                                 <input maxLength="4" id="helpy" text="" hint="纵坐标" textSize="14" inputType="number|none" />
                             </linear>
@@ -100,7 +108,6 @@ ui.layout(
                 </vertical>
             </ScrollView>
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-        <button id="start" layout_alignParentBottom="true" w="*" text="修改配置" tag="ScriptTag" color="#ffffff" bg="#FF4FB3FF" foreground="?selectableItemBackground" />
     </relative>
 );
 
@@ -192,7 +199,7 @@ if (!floaty.checkPermission()) {
 
 var storage = storages.create("auto_mr");
 const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto"]
-const tempParamList = ["drug1", "drug2", "drug3", "jjcisuse", "drug1num", "drug2num", "drug3num", "jjcnum","drugmul"]
+const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
 
 var idmap = {};
 var field = (new Ids()).getClass().getDeclaredField("ids");
@@ -232,27 +239,108 @@ function syncValue(key, value) {
     }
 }
 
-for (let key of persistParamList) {
-    let value = storage.get(key)
-    syncValue(key, value)
-    floatUI.adjust(key, value)
+function saveParamIfPersist(key, value) {
+    for (let paramName of persistParamList) {
+        if (paramName === key) {
+            log("保存参数：", key, value);
+            storage.put(key, value);
+        }
+    }
 }
 
-ui.start.click(() => {
-    for (let key of persistParamList) {
-        let value = syncValue(key)
-        log("保存参数：", key, value)
-        storage.put(key, value)
-        floatUI.adjust(key, value)
+function setOnChangeListener(key) {
+    switch (ui[key].getClass().getSimpleName()) {
+        case "JsEditText":
+            ui[key].addTextChangedListener(
+            new android.text.TextWatcher({
+            afterTextChanged: function (s) {
+                let value = ""+s;
+                saveParamIfPersist(key, value); //直接用s作为参数会崩溃
+                floatUI.adjust(key, value);
+            }
+            })
+            );
+            break;
+        case "Switch":
+        case "CheckBox":
+            ui[key].setOnCheckedChangeListener(
+            function (widget, checked) {
+                saveParamIfPersist(key, checked);
+                floatUI.adjust(key, checked);
+            }
+            );
+            break;
+        case "JsSpinner":
+            ui[key].setOnItemSelectedListener(
+            new android.widget.AdapterView.OnItemSelectedListener({
+            onItemSelected: function (spinnerparent, spinnerview, spinnerposition, spinnerid) {
+                saveParamIfPersist(key, spinnerposition);
+                floatUI.adjust(key, spinnerposition);
+            }
+            })
+            );
+            break;
+        case "RadioGroup":
+            ui[key].setOnCheckedChangeListener(
+            new android.widget.RadioGroup.OnCheckedChangeListener({
+            onCheckedChanged: function (group, checkedId) {
+                let name = idmap[checkedId];
+                if (name) {
+                    saveParamIfPersist(key, name);
+                    floatUI.adjust(key, name);
+                }
+            }
+            })
+            );
+            break;
     }
+}
 
-    for (let key of tempParamList) {
-        let value = syncValue(key)
-        floatUI.adjust(key, value)
+for (let key of persistParamList) {
+    if (key == "foreground") continue;
+    let value = storage.get(key);
+    syncValue(key, value);
+    floatUI.adjust(key, value);
+    setOnChangeListener(key);
+}
+
+//绿药或红药，每次消耗1个
+//魔法石，每次碎5钻
+const drugCosts = [1, 1, 5, 1];
+
+function setDrugCheckboxListener(drugname) {
+    ui[drugname].setOnCheckedChangeListener(function (widget, checked) {
+        saveParamIfPersist(drugname, checked);
+        floatUI.adjust(drugname, checked);
+        if (checked) {
+            ui[drugname+"num"].setEnabled(true);
+            ui[drugname+"num"].setText("");
+        } else {
+            ui[drugname+"num"].setText("0");
+            ui[drugname+"num"].setEnabled(false);
+        }
+    });
+}
+
+for (let key of tempParamList) {
+    if (key.match(/^drug\d+$/)) {
+        setDrugCheckboxListener(key);
+        ui[key+"num"].setEnabled(false);
+    } else {
+        setOnChangeListener(key);
     }
+}
 
-    toastLog("修改完成")
-});
+//限制apmul取值
+//digits="01234"貌似不起效，没办法，只能手动实现
+ui["apmul"].setKeyListener(new android.text.method.NumberKeyListener({
+getInputType: function() {
+    return android.text.InputType.TYPE_MASK_VARIATION;
+},
+getAcceptedChars: function () {
+    return ['0', '1', '2', '3', '4'];
+}
+}));
 
 //版本获取
 http.__okhttp__.setTimeout(5000);
