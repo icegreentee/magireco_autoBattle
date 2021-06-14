@@ -558,7 +558,8 @@ var limit = {
     drug4num: '0',
     default: 0,
     useAuto: true,
-    apmul: ""
+    apmul: "",
+    timeout: "5000"
 }
 var clickSets = {
     ap: {
@@ -1819,12 +1820,15 @@ function algo_init() {
 
                     if (findID("popupInfoDetailTitle")) {
                         //如果已经打开AP药选择窗口，就先尝试嗑药
-                        //走到这里的一种情况是:如果之前是在AP不足的情况下点击进入关卡，就会弹出AP药选择窗口
+                        //在 #31 之前,认为:
+                        /* “走到这里的一种情况是:如果之前是在AP不足的情况下点击进入关卡，就会弹出AP药选择窗口” */
+                        //但在合并 #31 之后，state在那种情况下会直接切换到STATE_SUPPORT，然后应该就不会走到这里了
                         refillAP();
                         //当初 #26 在这里加了break，认为：
                         /* “如果这里不break，在捕获了关卡坐标的情况下，继续往下执行就会错把助战当作关卡来点击
                            break后，下一轮循环state就会切换到STATE_SUPPORT，然后就避免了这个误点击问题” */
                         //但实际上这样并没有完全修正这个问题，貌似如果助战页面出现太慢，还是会出现误点击问题
+                        //然后 #31 再次尝试修正这个问题
                         break;
                     }
 
@@ -1835,13 +1839,15 @@ function algo_init() {
                         let bound = button.bounds();
                         click(bound.centerX(), bound.centerY());
                         // wait for support screen for 5 seconds
-                        find(string.support, 5000);
+                        find(string.support, parseInt(limit.timeout));
                     } else if (battlepos) {
                         log("尝试点击关卡坐标");
                         click(battlepos.x, battlepos.y);
                         waitAny(
                             [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
-                            5000
+
+                            parseInt(limit.timeout)
+
                         );
                         if (find(string.out_of_ap)) {
                             log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
@@ -1857,7 +1863,9 @@ function algo_init() {
                             click(bound.centerX(), bound.centerY());
                             waitAny(
                                 [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
-                                5000
+
+                                parseInt(limit.timeout)
+
                             );
                             if (find(string.out_of_ap)) {
                                 log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
@@ -1907,7 +1915,7 @@ function algo_init() {
                         }
                         click(bound.centerX(), bound.centerY());
                         // wait for start button for 5 seconds
-                        findID("nextPageBtn", 5000);
+                        findID("nextPageBtn", parseInt(limit.timeout));
                         break;
                     }
                     // if unexpectedly treated as long touch
@@ -1918,7 +1926,7 @@ function algo_init() {
                             let bound = element.bounds();
                             click(bound.left, bound.top);
                         }
-                        find(string.support, 5000);
+                        find(string.support, parseInt(limit.timeout));
                     }
                     break;
                 }

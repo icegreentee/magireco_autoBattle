@@ -77,6 +77,11 @@ ui.layout(
                                 <text text="倍以上" textColor="#666666" />
                             </linear>
                             <text text="注意:嗑药至AP上限倍数不会永久保存,脚本完全退出后会被重置!" textColor="#666666" />
+                            <linear padding="0 0 0 0" w="*" h="auto">
+                                <text text="等待控件超时" textColor="#000000" />
+                                <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
+                                <text text="毫秒" textColor="#000000" />
+                            </linear>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -333,7 +338,7 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto"]
+const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "timeout"]
 const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
 
 var idmap = {};
@@ -431,12 +436,24 @@ function setOnChangeListener(key) {
     }
 }
 
+//限制timeout的取值
+ui["timeout"].addTextChangedListener(
+new android.text.TextWatcher({
+afterTextChanged: function (s) {
+    let str = ""+s;
+    let value = parseInt(str);
+    if (isNaN(value) || value < 100) {
+        s.replace(0, str.length, "5000");
+    }
+}
+})
+);
+
 for (let key of persistParamList) {
     if (key == "foreground") continue;
     let value = storage.get(key);
-    syncValue(key, value);
-    floatUI.adjust(key, value);
-    setOnChangeListener(key);
+    setOnChangeListener(key); //先设置listener
+    syncValue(key, value);    //如果储存了超出取值范围之外的数据则会被listener重置
 }
 
 //绿药或红药，每次消耗1个
@@ -480,7 +497,7 @@ getAcceptedChars: function () {
 //版本获取
 http.__okhttp__.setTimeout(5000);
 try {
-    let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
+    let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
     if (res.statusCode != 200) {
         log("请求失败: " + res.statusCode + " " + res.statusMessage);
         ui.run(function () {
@@ -519,19 +536,19 @@ function toUpdate() {
             if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
                 toastLog("无需更新")
             } else {
-                let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/main.js");
-                let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/floatUI.js");
+                let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/main.js");
+                let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/floatUI.js");
                 if (main_script.statusCode == 200 && float_script.statusCode == 200) {
                     toastLog("更新加载中");
                     let mainjs = main_script.body.string();
                     let floatjs = float_script.body.string();
                     files.write(engines.myEngine().cwd() + "/main.js", mainjs)
                     files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
-                    engines.stopAll()
                     events.on("exit", function () {
                         engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
                         toast("更新完毕")
                     })
+                    engines.stopAll()
                 } else {
                     toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessage);
                 }
