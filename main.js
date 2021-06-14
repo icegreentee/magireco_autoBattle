@@ -70,7 +70,9 @@ ui.layout(
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="默认脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
-                            <Switch id="useAuto" w="*" margin="0 3" checked="true" textColor="#000000" text="优先使用官方自动续战" />
+                            <Switch id="useAuto" w="*" margin="0 3" checked="false" textColor="#666666" text="优先使用官方自动续战" />
+                            <text margin="0 3" textColor="#666666" text="官方自动续战循环速度更快，但是因为是锁定了一个人反复循环，所以能照顾到的好友数量会减少许多。不使用官方自动周回，可以多多照顾好友，让更多好友在第二天登录时领到更多Pt，人人为我我为人人" />
+                            <text margin="0 3" textColor="#666666" text="注意:官方自动续战开关状态不会永久保存,在脚本完全退出后,就会被重置!" />
                             <linear padding="0 0 0 0" w="*" h="auto">
                                 <text text="嗑药至AP上限" textColor="#666666" />
                                 <input maxLength="1" margin="5 0 0 0" id="apmul" hint="可选值0-4,留空视为0" text="" textSize="14" inputType="number|none" />
@@ -338,8 +340,8 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "timeout"]
-const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
+const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "timeout"]
+const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul", "useAuto"]
 
 var idmap = {};
 var field = (new Ids()).getClass().getDeclaredField("ids");
