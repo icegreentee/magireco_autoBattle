@@ -6,14 +6,35 @@ importClass(com.stardust.autojs.core.ui.inflater.util.Ids)
 importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
-var Name = "AutoBattle";
-var version = "3.7.0";
-var appName = Name + " v" + version;
-
-function getProjectVersion() {
+function getOrigProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
     if (conf) return conf.versionName;
 }
+
+function getProjectVersion() {
+    //如果在线更新过，会留下project-updated.json，就从这里解析出版本号；否则就用打包时的project.json解析出版本号
+    var updatedVersionName = null;
+    var updatedProjectJsonParsed = null;
+    var updatedProjectJsonPath = files.join(engines.myEngine().cwd(), "project-updated.json");
+    if (files.isFile(updatedProjectJsonPath)) {
+        var updatedProjectJson = files.read(updatedProjectJsonPath);
+        try {
+            updatedProjectJsonParsed = JSON.parse(updatedProjectJson);
+        } catch (e) {
+            log(e);
+            log("解析project-updated.json失败");
+            updatedProjectJsonParsed = null;
+        }
+        if (updatedProjectJsonParsed != null) {
+            updatedVersionName = updatedProjectJsonParsed.versionName;
+        }
+    }
+    return updatedVersionName == null ? getOrigProjectVersion() : updatedVersionName;
+}
+
+var Name = "AutoBattle";
+var version = getProjectVersion();
+var appName = Name + " v" + version;
 
 var floatUI = require('floatUI.js');
 
@@ -533,6 +554,7 @@ function toUpdate() {
             toastLog("请求超时")
         } else {
             let resJson = res.body.json();
+            let resString = res.body.string();
             if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
                 toastLog("无需更新")
             } else {
@@ -542,6 +564,8 @@ function toUpdate() {
                     toastLog("更新加载中");
                     let mainjs = main_script.body.string();
                     let floatjs = float_script.body.string();
+                    //如果覆盖了project.json，脚本完全退出后再重启时AutoJS就会把所有文件回滚，所以不能覆盖
+                    files.write(engines.myEngine().cwd() + "/project-updated.json", resString);
                     files.write(engines.myEngine().cwd() + "/main.js", mainjs)
                     files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
                     events.on("exit", function () {
