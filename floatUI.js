@@ -105,7 +105,13 @@ floatUI.main = function () {
             return;
         }
         toastLog("开始快照");
-        var text = recordElement(auto.root, 0, "");
+        try {
+            var text = recordElement(auto.root, 0, "");
+        } catch (e) {
+            toastLog("快照出错");
+            log(e);
+            return;
+        }
 
         var d = new Date();
         var timestamp =
@@ -549,14 +555,15 @@ var limit = {
     drug3: false,
     isStable: false,
     justNPC: false,
-    jjcisuse: false,
-    drug1num: '',
-    drug2num: '',
-    drug3num: '',
-    jjcnum: '',
+    drug4: false,
+    drug1num: '0',
+    drug2num: '0',
+    drug3num: '0',
+    drug4num: '0',
     default: 0,
     useAuto: true,
-    drugmul: 1
+    apmul: "",
+    timeout: "5000"
 }
 var clickSets = {
     ap: {
@@ -871,8 +878,8 @@ function jingMain() {
             click(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                let count = parseInt(limit.jjcnum);
-                if (limit.jjcisuse && (isNaN(count) || count > 0)) {
+                let count = parseInt(limit.drug4num);
+                if (limit.drug4 && (isNaN(count) || count > 0)) {
                     while (!id("BpCureWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)
@@ -885,7 +892,7 @@ function jingMain() {
                         screenutilClick(clickSets.bphuiok)
                         sleep(1500)
                     }
-                    limit.jjcnum = '' + (count - 1);
+                    limit.drug4num = '' + (count - 1);
                 } else {
                     screenutilClick(clickSets.bpclose)
                     log("jjc结束")
@@ -1183,23 +1190,44 @@ floatUI.adjust = function (key, value) {
 
 // compatible action closure
 function algo_init() {
-    // for debug
-    // const AUTO_LIMIT = 1;
-    // click with root permission
+
+    var useShizuku = true;
+
     function clickRoot(x, y) {
-        var result = shell("su\ninput tap " + x + " " + y + "\nexit\n");
-        // detect reason when click did not succeed
-        if (result.code != 0) {
-            result = shell("which su");
-            if (result.code == 0) {
-                // device already rooted, but permission not granted
-                toastLog("root权限获取失败");
-            } else {
-                // device not rooted
-                toastLog("Android 7 以下设备运行脚本需要root");
+        //第一次会尝试使用Shizuku，如果失败，则不再尝试Shizuku，直到脚本退出
+        if (useShizuku) {
+            log("使用Shizuku模拟点击坐标 "+x+","+y);
+            $shell.setDefaultOptions({adb: true});
+            var result = null;
+            try {
+                result = $shell("input tap "+x+" "+y, false);
+            } catch (e) {
+                useShizuku = false;
+                toastLog("Shizuku未安装/未启动,或者未授权");
+                log(e);
             }
-            // terminate when click cannot be successfully performed
-            threads.currentThread().interrupt();
+
+            //这里useShizuku实际上指示了是否捕获到抛出的异常
+            if (!useShizuku || result == null || result.code != 0) {
+                useShizuku = false;
+                log("使用Shizuku执行模拟点击命令失败,尝试直接使用root权限");
+            } else {
+                log("模拟点击完成");
+                return;//命令成功执行
+            }
+        }
+
+        //第一次尝试Shizuku失败后也会走到这里
+        if (!useShizuku) {
+            log("直接使用root权限模拟点击坐标 "+x+","+y);
+            $shell.setDefaultOptions({adb: false});
+            result = $shell("input tap "+x+" "+y, true);//第二个参数true表示使用root权限
+            if (result == null || result.code != 0) {
+                toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
+                threads.currentThread().interrupt();
+            } else {
+                log("模拟点击完成");
+            }
         }
     }
 
@@ -1215,7 +1243,9 @@ function algo_init() {
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             // now accessibility gesture APIs are available
+            log("使用无障碍服务模拟点击坐标 "+x+","+y);
             press(x, y, 50);
+            log("点击完成");
         } else {
             clickRoot(x, y);
         }
@@ -1228,12 +1258,13 @@ function algo_init() {
         var it = 0;
         do {
             it++;
-            if (auto.root == null) {
-                log("auto.root == null");
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                log(e);
                 sleep(100);
                 continue;
             }
-            auto.root.refresh();
             result = textMatches(reg).findOnce();
             if (result && result.refresh()) break;
             result = descMatches(reg).findOnce();
@@ -1268,12 +1299,13 @@ function algo_init() {
         var it = 0;
         do {
             it++;
-            if (auto.root == null) {
-                log("auto.root == null");
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                log(e);
                 sleep(100);
                 continue;
             }
-            auto.root.refresh();
             result = text(txt).findOnce();
             if (result && result.refresh()) break;
             result = desc(txt).findOnce();
@@ -1290,12 +1322,13 @@ function algo_init() {
         var it = 0;
         do {
             it++;
-            if (auto.root == null) {
-                log("auto.root == null");
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                log(e);
                 sleep(100);
                 continue;
             }
-            auto.root.refresh();
             result = text(txt).find();
             result = result.filter((x) => x.refresh());
             if (result.length >= 1) break;
@@ -1313,12 +1346,13 @@ function algo_init() {
         var it = 0;
         do {
             it++;
-            if (auto.root == null) {
-                log("auto.root == null");
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                log(e);
                 sleep(100);
                 continue;
             }
-            auto.root.refresh();
             result = id(name).findOnce();
             if (result && result.refresh()) break;
             sleep(100);
@@ -1436,7 +1470,7 @@ function algo_init() {
     function getPTList() {
         let elements = matchAll(/^\+\d*$/);
         let results = [];
-        let left = 0;
+        let left = find(string.support).bounds().left;
         log("PT匹配结果数量" + elements.length);
         for (var element of elements) {
             var content = getContent(element);
@@ -1449,7 +1483,6 @@ function algo_init() {
                             value: Number(getContent(next)),
                             bounds: element.bounds(),
                         });
-                        if (element.bounds().left > left) left = element.bounds().left;
                     }
                 }
             }
@@ -1460,12 +1493,11 @@ function algo_init() {
                         value: Number(content.slice(1)),
                         bounds: element.bounds(),
                     });
-                    if (element.bounds().left > left) left = element.bounds().left;
                 }
             }
         }
 
-        return results.filter((result) => result.bounds.left == left);
+        return results.filter((result) => result.bounds.left >= left);
     }
 
     function getCostAP() {
@@ -1494,10 +1526,10 @@ function algo_init() {
     const strings = {
         name: [
             "support",
-            "revive_title",
-            "revive_button",
-            "revive_popup",
-            "revive_confirm",
+            "ap_refill_title",
+            "ap_refill_button",
+            "ap_refill_popup",
+            "ap_refill_confirm",
             "out_of_ap",
             "start",
             "follow",
@@ -1563,8 +1595,6 @@ function algo_init() {
     };
 
     var string = {};
-    var druglimit = [NaN, NaN, NaN];
-    var usedrug = false;
 
     function initialize() {
         if (auto.root == null) {
@@ -1588,108 +1618,181 @@ function algo_init() {
         for (let i = 0; i < strings.name.length; i++) {
             string[strings.name[i]] = current[i];
         }
-        usedrug = false;
-        for (let i = 0; i < 3; i++) {
-            druglimit[i] = limit["drug" + (i + 1)]
-                ? parseInt(limit["drug" + (i + 1) + "num"])
-                : 0;
-            if (druglimit[i] !== 0) {
-                usedrug = true;
-            }
-        }
     }
 
-    // isolate logic for future adaption
-    function ifUseDrug(index, count) {
-        // when drug is valid
-        if ((index < 2 && count > 0) || count > 4) {
-            // unlimited
-            if (isNaN(druglimit[index])) return true;
-            else if (druglimit[index] > 0) return true;
-        }
+    //绿药或红药，每次消耗1个
+    //魔法石，每次碎5钻
+    const drugCosts = [1, 1, 5];
+
+    function isDrugEnough(index, count) {
+        if (index < 0 || index > 2) throw new Error("index out of range");
+
+        //从游戏界面上读取剩余回复药个数后，作为count传入进来
+        let remainingnum = parseInt(count);
+        let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
+        log("第"+(index+1)+"种回复药还剩"+remainingnum+"个");
+        log("根据嗑药个数限制,还可以继续磕"+limitnum+"个");
+
+        //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
+        if (limitnum < drugCosts[index]) return false;
+        if (remainingnum < drugCosts[index]) return false;
+        return true;
     }
 
+    //嗑药后，更新设置中的嗑药个数限制
     function updateDrugLimit(index) {
-        if (!isNaN(druglimit[index])) {
-            druglimit[index]--;
-            limit["drug" + (index + 1) + "num"] = "" + druglimit[index];
+        if (index < 0 || index > 2) throw new Error("index out of range");
+        let drugnum = parseInt(limit["drug"+(index+1)+"num"]);
+        //parseInt("") == NaN，NaN视为无限大处理（所以不需要更新数值）
+        if (!isNaN(drugnum)) {
+            if (drugnum >= drugCosts[index]) {
+                drugnum -= drugCosts[index];
+                limit["drug"+(index+1)+"num"] = ""+drugnum;
+                if (drugnum < drugCosts[index]) {
+                    limit["drug"+(index+1)] = false;
+                }
+                ui.run(() => {
+                    //注意,这里会受到main.js里注册的listener影响
+                    ui["drug"+(index+1)+"num"].setText(limit["drug"+(index+1)+"num"]);
+                    let drugcheckbox = ui["drug"+(index+1)];
+                    let newvalue = limit["drug"+(index+1)];
+                    if (drugcheckbox.isChecked() != newvalue) drugcheckbox.setChecked(newvalue);
+                });
+            } else {
+                //正常情况下应该首先是药的数量还够，才会继续嗑药，然后才会更新嗑药个数限制，所以不应该走到这里
+                log("limit.drug"+(index+1)+"num", limit["drug"+(index+1)+"num"]);
+                log("index", index);
+                throw new Error("limit.drug"+(index+1)+"num exhausted");
+            }
         }
     }
 
     function refillAP() {
-        log("尝试使用回复药");
-        var revive_title_element = null;
-        var apinfo = null;
+        log("根据情况,如果需要,就使用AP回复药");
+        var ap_refill_title_element = null;
 
-        do {
-            let revive_title_attempt_max = 1500;
-            for (let attempt=0; attempt<revive_title_attempt_max; attempt++) {
+        var apCost = getCostAP();
+
+        //循环嗑药到设定的AP上限倍数，并且达到关卡消耗的2倍
+        var apMultiplier = parseInt(0+limit.apmul);
+        while (true) {
+            var apinfo = getAP();
+            if (apinfo == null) {
+                log("检测AP失败");
+                break;
+            }
+            log("当前AP:"+apinfo.value+"/"+apinfo.total);
+
+            var apMax = apinfo.total * apMultiplier;
+            log("要嗑药到"+apMultiplier+"倍AP上限,即"+apMax+"AP");
+
+            if (apinfo.value >= apMax) {
+                log("当前AP已经达到设置的上限倍数");
+                if (apCost == null) {
+                    log("关卡AP消耗未知,视为30");
+                    apCost = 30;
+                } else {
+                    log("关卡消耗"+apCost+"AP");
+                }
+                if (apinfo.value >= apCost * 2) {
+                    log("当前AP达到关卡消耗量的两倍,即"+(apCost*2)+"AP,停止嗑药");
+                    break;
+                } else if (apinfo.value >= apCost) {
+                    log("当前AP只满足关卡消耗量的一倍,尚未达到两倍");
+                } else {
+                    log("当前AP小于关卡消耗量");
+                }
+            } else {
+                log("当前AP尚未达到设置的上限倍数");
+            }
+
+            log("继续嗑药");
+
+            var isDrugUsed = false;
+
+            //确保AP药选择窗口已经打开
+            let ap_refill_title_attempt_max = 1500;
+            for (let attempt=0; attempt<ap_refill_title_attempt_max; attempt++) {
                 log("等待AP药选择窗口出现...");
-                revive_title_element = find(string.revive_title, false);
-                if (revive_title_element != null) {
+                ap_refill_title_element = find(string.ap_refill_title, false);
+                if (ap_refill_title_element != null) {
                     log("AP药选择窗口已经出现");
                     break;
                 }
-                if (attempt == revive_title_attempt_max-1) {
+                if (attempt == ap_refill_title_attempt_max-1) {
                     log("长时间等待后，AP药选择窗口仍然没有出现，退出");
                     threads.currentThread().interrupt();
                 }
                 if (attempt % 5 == 0) {
-                    apinfo = getAP();
-                    if (apinfo) {
-                        log("当前AP:" + apinfo.value + "/" + apinfo.total);
-                        log("点击AP按钮");
-                        click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
-                    } else {
-                        log("检测AP失败");
-                    }
+                    log("点击AP按钮");
+                    click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
                 }
                 sleep(200);
             }
 
-            var usedrug = false;
+            //从游戏界面上读取剩余回复药个数
             var numbers = matchAll(string.regex_drug, true);
-            var buttons = findAll(string.revive_button);
-            // when things seems to be correct
+
+            //找到三种药的回复按钮
+            var buttons = findAll(string.ap_refill_button);
+
+            //如果一切正常，那应该能找到3个匹配的字符串和3个按钮
             if (numbers.length == 3 && buttons.length == 3) {
+                //依次轮流尝试使用3种回复药
                 for (let i = 0; i < 3; i++) {
-                    if (ifUseDrug(i, parseInt(getContent(numbers[i]).slice(0, -1)))) {
-                        log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次");
+                    //检查还剩余多少个药
+                    let remainingDrugCount = parseInt(getContent(numbers[i]).slice(0, -1));
+                    if (isDrugEnough(i, remainingDrugCount)) {
                         var bound = buttons[i].bounds();
                         do {
+                            log("点击使用第"+(i+1)+"种回复药");
                             click(bound.centerX(), bound.centerY());
                             // wait for confirmation popup
-                            var revive_popup_element = find(string.revive_popup, 2000);
-                        } while (revive_popup_element == null);
-                        bound = find(string.revive_confirm, true).bounds();
-                        while (revive_popup_element.refresh()) {
+                            var ap_refill_popup_element = find(string.ap_refill_popup, 2000);
+                        } while (ap_refill_popup_element == null);
+
+                        bound = find(string.ap_refill_confirm, true).bounds();
+                        while (ap_refill_popup_element.refresh()) {
                             log("找到确认回复窗口，点击确认回复");
                             click(bound.centerX(), bound.centerY());
-                            waitElement(revive_popup_element, 5000);
+                            waitElement(ap_refill_popup_element, 5000);
                         }
                         log("确认回复窗口已消失");
-                        usedrug = true;
+                        isDrugUsed = true;
+
+                        //更新嗑药个数限制数值，减去用掉的数量
                         updateDrugLimit(i);
-                        break;
+
+                        break; //防止一次连续磕到三种不同的药
+                    } else {
+                        log("第"+(i+1)+"种回复药剩余数量不足或已经达到嗑药个数限制");
                     }
                 }
             }
-            if (!usedrug && find(string.out_of_ap)) {
-                log("AP不足且未嗑药，退出");
-                threads.currentThread().interrupt();
+
+            if (!isDrugUsed) {
+                if (find(string.out_of_ap)) {
+                    log("AP不足且未嗑药,退出");
+                    threads.currentThread().interrupt();
+                }
+                log("未嗑药");
+                break; //可能AP还够完成一局，所以只结束while循环、继续往下执行关闭嗑药窗口，不退出
             }
-            apinfo = getAP();
-            log("当前AP:" + apinfo.value + "/" + apinfo.total);
-        } while (usedrug && limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul));
-        // now close the window
-        revive_title_element = find(string.revive_title, 2000); //不加这一行的时候，会出现卡在AP药选择窗口的问题（国服MuMu模拟器主线214上出现）
-        while (revive_title_element != null && revive_title_element.refresh()) {
-            log("关闭回复窗口");
-            bound = revive_title_element.parent().bounds();
-            click(bound.right, bound.top);
-            waitElement(revive_title_element, 5000);
         }
-        return usedrug;
+
+        //关闭AP药选择窗口
+        if (ap_refill_title_element == null || !ap_refill_title_element.refresh()) {
+            //AP药选择窗口之前可能被关闭过一次，又重新打开
+            //在这种情况下需要重新寻找控件并赋值，否则会出现卡在AP药窗口的问题
+            ap_refill_title_element = find(string.ap_refill_title, 2000);
+        }
+        while (ap_refill_title_element != null && ap_refill_title_element.refresh()) {
+            log("关闭AP回复窗口");
+            bound = ap_refill_title_element.parent().bounds();
+            click(bound.right, bound.top);
+            waitElement(ap_refill_title_element, 5000);
+        }
+        return isDrugUsed;
     }
 
     function selectBattle() { }
@@ -1829,7 +1932,6 @@ function algo_init() {
         var state = STATE_MENU;
         var battlename = "";
         var charabound = null;
-        var tryusedrug = true;
         var battlepos = null;
         var inautobattle = false;
         while (true) {
@@ -1849,12 +1951,21 @@ function algo_init() {
                         log("进入助战选择");
                         break;
                     }
-                    // if AP is not enough
+
                     if (findID("popupInfoDetailTitle")) {
-                        // try use drug
-                        tryusedrug = refillAP();
-                        break; //下一轮循环后会切换到助战选择状态，从而避免捕获关卡坐标后，错把助战当做关卡来误点击
+                        //如果已经打开AP药选择窗口，就先尝试嗑药
+                        //在 #31 之前,认为:
+                        /* “走到这里的一种情况是:如果之前是在AP不足的情况下点击进入关卡，就会弹出AP药选择窗口” */
+                        //但在合并 #31 之后，state在那种情况下会直接切换到STATE_SUPPORT，然后应该就不会走到这里了
+                        refillAP();
+                        //当初 #26 在这里加了break，认为：
+                        /* “如果这里不break，在捕获了关卡坐标的情况下，继续往下执行就会错把助战当作关卡来点击
+                           break后，下一轮循环state就会切换到STATE_SUPPORT，然后就避免了这个误点击问题” */
+                        //但实际上这样并没有完全修正这个问题，貌似如果助战页面出现太慢，还是会出现误点击问题
+                        //然后 #31 再次尝试修正这个问题
+                        break;
                     }
+
                     // if need to click to enter battle
                     let button = find(string.battle_confirm);
                     if (button) {
@@ -1862,14 +1973,20 @@ function algo_init() {
                         let bound = button.bounds();
                         click(bound.centerX(), bound.centerY());
                         // wait for support screen for 5 seconds
-                        find(string.support, 5000);
+                        find(string.support, parseInt(limit.timeout));
                     } else if (battlepos) {
                         log("尝试点击关卡坐标");
                         click(battlepos.x, battlepos.y);
                         waitAny(
-                            [() => find(string.battle_confirm), () => find(string.support)],
-                            5000
+                            [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
+
+                            parseInt(limit.timeout)
+
                         );
+                        if (find(string.out_of_ap)) {
+                            log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
+                            state = STATE_SUPPORT;
+                        }
                     }
                     // click battle if available
                     else if (battlename) {
@@ -1879,9 +1996,15 @@ function algo_init() {
                             let bound = battle.bounds();
                             click(bound.centerX(), bound.centerY());
                             waitAny(
-                                [() => find(string.battle_confirm), () => find(string.support)],
-                                5000
+                                [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
+
+                                parseInt(limit.timeout)
+
                             );
+                            if (find(string.out_of_ap)) {
+                                log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
+                                state = STATE_SUPPORT;
+                            }
                         }
                     } else {
                         log("等待捕获关卡坐标");
@@ -1897,34 +2020,10 @@ function algo_init() {
                         log("进入队伍调整");
                         break;
                     }
-                    // if we need to refill AP
-                    let apinfo = getAP();
-                    let apcost = getCostAP();
-                    log(
-                        "消费AP",
-                        apcost,
-                        "用药",
-                        usedrug,
-                        "当前AP",
-                        apinfo.value,
-                        "AP上限",
-                        apinfo.total
-                    );
-                    if (
-                        ((limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul)) ||
-                            (apcost && apinfo.value < apcost * 2)) &&
-                        usedrug &&
-                        tryusedrug
-                    ) {
-                        // open revive window
-                        let revive_window;
-                        do {
-                            click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
-                            revive_window = findID("popupInfoDetailTitle", 5000);
-                        } while (!revive_window);
-                        // try use drug
-                        tryusedrug = refillAP();
-                    }
+
+                    //根据情况,如果需要就嗑药
+                    refillAP();
+
                     // save battle name if needed
                     let battle = match(/^BATTLE.+/);
                     if (battle) {
@@ -1950,7 +2049,7 @@ function algo_init() {
                         }
                         click(bound.centerX(), bound.centerY());
                         // wait for start button for 5 seconds
-                        findID("nextPageBtn", 5000);
+                        findID("nextPageBtn", parseInt(limit.timeout));
                         break;
                     }
                     // if unexpectedly treated as long touch
@@ -1961,7 +2060,7 @@ function algo_init() {
                             let bound = element.bounds();
                             click(bound.left, bound.top);
                         }
-                        find(string.support, 5000);
+                        find(string.support, parseInt(limit.timeout));
                     }
                     break;
                 }
