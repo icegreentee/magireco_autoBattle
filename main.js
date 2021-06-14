@@ -112,9 +112,24 @@ ui.layout(
 );
 
 ui.emitter.on("create_options_menu", menu => {
-    let item = menu.add("查看日志");
+    //在菜单内显示图标
+    let menuClass = menu.getClass();
+    if(menuClass.getSimpleName().equals("MenuBuilder")){
+        try {
+            let m = menuClass.getDeclaredMethod("setOptionalIconsVisible", java.lang.Boolean.TYPE);
+            m.setAccessible(true);
+            m.invoke(menu, true);
+        } catch(e){
+            log(e);
+        }
+    }
+    //SHOW_AS_ACTION_IF_ROOM在竖屏下不会显示文字,所以不设置
+    let item = menu.add("报告问题");
+    item.setIcon(getTintDrawable("ic_report_black_48dp", colors.WHITE));
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item = menu.add("查看日志");
     item.setIcon(getTintDrawable("ic_assignment_black_48dp", colors.WHITE));
-    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
     item = menu.add("魔纪百科");
     item.setIcon(getTintDrawable("ic_book_black_48dp", colors.WHITE));
     item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
@@ -123,8 +138,128 @@ ui.emitter.on("create_options_menu", menu => {
     item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
 });
 
+function setFollowRedirects(value) {
+    let newokhttp = new Packages.okhttp3.OkHttpClient.Builder().followRedirects(value);
+    http.__okhttp__.muteClient(newokhttp);
+}
+
+var reportTask = null;
+function reportBug() {
+    toastLog("正在上传日志和最近一次的快照,请耐心等待...");
+
+    log("Android API Level", device.sdkInt);
+    log("屏幕分辨率", device.width, device.height);
+    var str = "";
+    for (let key of ["brand", "device", "model", "product", "hardware"]) {
+        str += "\n"+key+" "+device[key];
+    }
+    log(str);
+
+    var snapshotDir = files.join(files.getSdcardPath(), "auto_magireco");
+    var listedFilenames = files.listDir(snapshotDir, function (filename) {
+        return filename.match(/^\d+-\d+-\d+_\d+-\d+-\d+\.xml$/) && files.isFile(files.join(snapshotDir, filename));
+    });
+    var latest = [0,0,0,0,0,0];
+    if (listedFilenames != null) {
+        for (let i=0; i<listedFilenames.length; i++) {
+            let filename = listedFilenames[i];
+            let timestamp = filename.match(/^\d+-\d+-\d+_\d+-\d+-\d+/)[0];
+            let timevalues = timestamp.split('_').join('-').split('-');
+            let isNewer = true;
+            for (let j=0; j<6; j++) {
+                if (timevalues[j] < latest[j]) {
+                    isNewer = false;
+                    break;
+                }
+            }
+            if (isNewer) for (let j=0; j<6; j++) {
+                latest[j] = timevalues[j];
+            }
+        }
+    }
+    var snapshotContent = null;
+    if (listedFilenames != null && listedFilenames.length > 0) {
+        let latestSnapshotFilename = latest.slice(0, 3).join('-') + "_" + latest.slice(3, 6).join('-') + ".xml";
+        log("要上传的快照文件名", latestSnapshotFilename);
+        snapshotContent = files.read(files.join(snapshotDir, latestSnapshotFilename));
+    }
+
+    var parentDir = files.join(engines.myEngine().cwd(), "..");
+    var logDir = files.join(parentDir, "logs");
+    var logContent = files.read(files.join(logDir, "log.txt"));
+
+    var resultLinks = "";
+
+    var uploadContents = {
+        log: {content: logContent, syntax: "text"},
+        snapshot: {content: snapshotContent, syntax: "xml"}
+    };
+    for (let key in uploadContents) {
+        if (uploadContents[key].content == null) {
+            log("读取"+key+"内容失败");
+            continue;
+        }
+        if (uploadContents[key].content == "") {
+            log(key+"内容为空,无法上传");
+            continue;
+        }
+
+        toastLog("上传"+key+"...");
+
+        http.__okhttp__.setTimeout(60 * 1000);
+        setFollowRedirects(false);
+        let response = null;
+        try {
+            response = http.post("https://pastebin.ubuntu.com/", {
+                poster: "autojs_"+key,
+                syntax: uploadContents[key].syntax,
+                expiration: "week",
+                content: uploadContents[key].content
+            });
+        } catch (e) {
+            toastLog("请求超时,请稍后再试");
+        }
+        setFollowRedirects(true);
+
+        if (response == null) {
+            log(key+"上传失败");
+        } else if (response.statusCode != 302) {
+            log(key+"上传失败", response.statusCode, response.statusMessage);
+        } else {
+            if (resultLinks != "") resultLinks += "\n";
+            let location = response.headers["Location"];
+            resultLinks += key+"已上传至: ";
+            if (location != null) {
+                resultLinks += "https://pastebin.ubuntu.com"+location;
+            } else {
+                log(key+"链接获取失败");
+                resultLinks += "链接获取失败";
+            }
+            toastLog(key+"上传完成!\n等待2秒后继续...");
+            sleep(2000);
+        }
+    }
+
+    if (resultLinks != "") {
+        ui.run(() => {
+            clip = android.content.ClipData.newPlainText("auto_bugreport_result", resultLinks);
+            activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
+            toast("内容已复制到剪贴板");
+        });
+        dialogs.rawInput("上传完成", resultLinks);
+        log("报告问题对话框已关闭");
+    }
+}
+
 ui.emitter.on("options_item_selected", (e, item) => {
     switch (item.getTitle()) {
+        case "报告问题":
+            if (reportTask && reportTask.isAlive()) {
+                toastLog("已经在上传了,请稍后再试");
+            } else {
+                reportTask = threads.start(reportBug);
+            }
+            break;
         case "查看日志":
             app.startActivity("console")
             break;
