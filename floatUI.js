@@ -94,6 +94,20 @@ floatUI.main = function () {
         },
     ];
 
+    function stopThread(thread) {
+        var isSelf = false;
+        if (thread == null) {
+            thread = threads.currentThread();
+            isSelf = true;
+        }
+        //while循环也会阻塞执行，防止继续运行下去产生误操作
+        //为防止 isAlive() 不靠谱（虽然还没有这方面的迹象），停止自己的线程时用 isSelf 短路，直接死循环
+        while (isSelf || (thread != null && thread.isAlive())) {
+            try {thread.interrupt();} catch (e) {}
+            //因为可能在UI线程调用，所以不能sleep
+        }
+    }
+
     function snapshotWrap() {
         if (auto.root == null) {
             log("auto.root == null");
@@ -134,7 +148,7 @@ floatUI.main = function () {
     function defaultWrap() {
         if (currentTask && currentTask.isAlive()) {
             toastLog("停止之前的脚本");
-            currentTask.interrupt();
+            stopThread(currentTask);
         }
         toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
         currentTask = threads.start(floatUI.scripts[limit.default].fn);
@@ -148,7 +162,7 @@ floatUI.main = function () {
 
     function cancelWrap() {
         toastLog("停止脚本");
-        if (currentTask && currentTask.isAlive()) currentTask.interrupt();
+        if (currentTask && currentTask.isAlive()) stopThread(currentTask);
     }
 
     // get to main activity
@@ -210,7 +224,7 @@ floatUI.main = function () {
         if (item.fn) {
             if (currentTask && currentTask.isAlive()) {
                 toastLog("停止之前的脚本");
-                currentTask.interrupt();
+                stopThread(currentTask);
             }
             toastLog("执行 " + item.name + " 脚本");
             currentTask = threads.start(item.fn);
@@ -1220,7 +1234,7 @@ function algo_init() {
             result = $shell("input tap "+x+" "+y, true);//第二个参数true表示使用root权限
             if (result == null || result.code != 0) {
                 toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
-                threads.currentThread().interrupt();
+                stopThread();
             } else {
                 log("模拟点击完成");
             }
@@ -1608,8 +1622,8 @@ function algo_init() {
             log("检测为日服");
             current = strings.ja;
         } else {
-            toastLog("未在前台检测到魔法纪录");
-            threads.currentThread().interrupt();
+            toastLog("未在前台检测到魔法纪录,退出");
+            stopThread();
         }
         for (let i = 0; i < strings.name.length; i++) {
             string[strings.name[i]] = current[i];
@@ -1717,7 +1731,7 @@ function algo_init() {
                 }
                 if (attempt == ap_refill_title_attempt_max-1) {
                     log("长时间等待后，AP药选择窗口仍然没有出现，退出");
-                    threads.currentThread().interrupt();
+                    stopThread();
                 }
                 if (attempt % 5 == 0) {
                     log("点击AP按钮");
@@ -1769,7 +1783,7 @@ function algo_init() {
             if (!isDrugUsed) {
                 if (find(string.out_of_ap)) {
                     log("AP不足且未嗑药,退出");
-                    threads.currentThread().interrupt();
+                    stopThread();
                 }
                 log("未嗑药");
                 break; //可能AP还够完成一局，所以只结束while循环、继续往下执行关闭嗑药窗口，不退出
