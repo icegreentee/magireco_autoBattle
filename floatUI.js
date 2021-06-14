@@ -1188,8 +1188,13 @@ floatUI.adjust = function (key, value) {
 function algo_init() {
 
     var useShizuku = true;
+    var isFirstRootClick = true;
 
     function clickRoot(x, y) {
+        if (isFirstRootClick) {
+            toastLog("Android 7 以下设备运行脚本需要root或Shizuku(adb)权限\n正在尝试Shizuku...");
+            isFirstRootClick = false;
+        }
         //第一次会尝试使用Shizuku，如果失败，则不再尝试Shizuku，直到脚本退出
         if (useShizuku) {
             log("使用Shizuku模拟点击坐标 "+x+","+y);
@@ -1199,7 +1204,7 @@ function algo_init() {
                 result = $shell("input tap "+x+" "+y, false);
             } catch (e) {
                 useShizuku = false;
-                toastLog("Shizuku未安装/未启动,或者未授权");
+                toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
                 log(e);
             }
 
