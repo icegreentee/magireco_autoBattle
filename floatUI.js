@@ -1403,8 +1403,7 @@ function algo_init() {
 
     //检测AP，缺省wait的情况下只检测一次就退出
     function getAP(wait) {
-        var startTime = 0;
-        if (wait != null) startTime = new Date().getTime();
+        var startTime = new Date().getTime();
 
         if (findID("baseContainer")) {
             // values and seperator are together
@@ -1432,7 +1431,7 @@ function algo_init() {
                 }
                 if (result) return result;
                 sleep(100);
-            } while (wait != null && new Date().getTime() < startTime + wait);
+            } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         } else {
             // ... are seperate
             do {
@@ -1463,7 +1462,7 @@ function algo_init() {
                 }
                 if (result) return result;
                 sleep(100);
-            } while (wait != null && new Date().getTime() < startTime + wait);
+            } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         }
     }
 
