@@ -246,12 +246,17 @@ function reportBug() {
     }
 
     if (resultLinks != "") {
+        log(resultLinks);
         ui.run(() => {
             clip = android.content.ClipData.newPlainText("auto_bugreport_result", resultLinks);
             activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
             toast("内容已复制到剪贴板");
         });
-        dialogs.rawInput("上传完成", resultLinks);
+        dialogs.build({
+            title: "上传完成",
+            content: "别忘了全选=>复制，然后粘贴给群里的小伙伴们看看哦~ 不然的话，我们也不知道你上传到哪里了啊！！！",
+            inputPrefill: resultLinks
+        }).show();
         log("报告问题对话框已关闭");
     }
 }
