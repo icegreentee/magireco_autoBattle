@@ -152,6 +152,7 @@ var reportTask = null;
 function reportBug() {
     toastLog("正在上传日志和最近一次的快照,请耐心等待...");
 
+    log(appName);
     log("Android API Level", device.sdkInt);
     log("屏幕分辨率", device.width, device.height);
     var str = "";
