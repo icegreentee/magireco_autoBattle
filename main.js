@@ -83,6 +83,7 @@ ui.layout(
                                 <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
                                 <text text="毫秒" textColor="#000000" />
                             </linear>
+                            <text text="修改“等待控件超时”并不能让脚本变快,数值太小反而可能出错。如果不是机器特别卡(这种情况也要把这个值改得更大,而不是更小)请不要改,退格可自动恢复默认(5000毫秒)" textColor="#000000" />
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
