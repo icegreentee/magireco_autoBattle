@@ -54,7 +54,7 @@ floatUI.scripts = [
         fn: autoMainver1,
     },
     {
-        name: "自动重开",
+        name: "每40分钟自动重开，刷活动剧情1",
         fn: tasks.reopen,
     },
 ];
@@ -157,13 +157,7 @@ floatUI.main = function () {
 
     // get to main activity
     function settingsWrap() {
-        var it = new Intent();
-        var name = context.getPackageName();
-        if (name != "org.autojs.autojspro")
-            it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
-        else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
-        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        app.startActivity(it);
+        backtoMain();
     }
 
     var task_popup = floaty.rawWindow(
@@ -1540,6 +1534,7 @@ function algo_init() {
             "regex_lastlogin",
             "regex_bonus",
             "regex_autobattle",
+            "regex_until",
         ],
         zh_Hans: [
             "请选择支援角色",
@@ -1557,6 +1552,7 @@ function algo_init() {
             /^最终登录.+/,
             /＋\d+个$/,
             /[\s\S]*续战/,
+            /截止$/,
         ],
         zh_Hant: [
             "請選擇支援角色",
@@ -1574,6 +1570,7 @@ function algo_init() {
             /^最終登入.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
+            /為止$/,
         ],
         ja: [
             "サポートキャラを選んでください",
@@ -1591,6 +1588,7 @@ function algo_init() {
             /^最終ログイン.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
+            /まで$/,
         ],
     };
 
@@ -1799,15 +1797,18 @@ function algo_init() {
 
     function enterLoop(){
         var last=Date.now();
-        for(let i = 0; i < strings.name.length; i++) {
-            string[strings.name[i]] = strings.zh_Hans[i];
-        }
+        initialize();
+        var pkgName = auto.root.packageName();
         var state = STATE_BATTLE;
+        if(match(string.regex_until)) state = STATE_HOME;
+        else if(find(string.support)) state = STATE_SUPPORT;
+        else if(findID("nextPageBtn")) state = STATE_TEAM;
         while (true) {
             switch (state) {
                 case STATE_LOGIN:{
-                    if(find("6/21截止")){
+                    if(match(string.regex_until)){
                         state=STATE_HOME;
+                        log("进入主页面");
                         break;
                     }
                     let window=findID("android:id/content")
@@ -1819,9 +1820,10 @@ function algo_init() {
                 case STATE_HOME:{
                     if(match(/^BATTLE.+/)){
                         state=STATE_MENU;
+                        log("进入关卡选择");
                         break;
                     }
-                    let element=find("6/21截止")
+                    let element=match(string.regex_until)
                     if(element){
                         click(element.bounds().centerX(),element.bounds().centerY())
                     }
@@ -1834,7 +1836,7 @@ function algo_init() {
                         log("进入助战选择");
                         break;
                     }
-                    let element=find("BATTLE 3")
+                    let element=find("BATTLE 1")
                     if(element){
                         if(element.bounds().top<element.bounds().bottom){
                             click(element.bounds().centerX(),element.bounds().centerY())
@@ -1843,8 +1845,7 @@ function algo_init() {
                             let sx=element.bounds().centerX()
                             let syfrom=getWindowSize().y-100
                             let syto=parseInt(syfrom/2)
-                            log(sx, syfrom, syto)
-                            swipe(sx, syfrom, sx, syto,100)
+                            swipe(sx, syfrom, sx, syto, 100)
                         }
                     }
                     break;
@@ -1862,19 +1863,8 @@ function algo_init() {
                     let playercount = matchAll(string.regex_lastlogin).length;
                     log("候选数量" + ptlist.length + ",玩家数量" + playercount);
                     if (ptlist.length) {
-                        let bound;
-                        if (
-                            ptlist.length > playercount &&
-                            (limit.justNPC || ptlist[ptlist.length - 1].value > ptlist[0].value)
-                        ) {
-                            log("选择NPC助战");
-                            // NPC comes in the end of list if available
-                            bound = ptlist[ptlist.length - 1].bounds;
-                        } else {
-                            log("选择玩家助战");
-                            // higher PT bonus goes ahead
-                            bound = ptlist[0].bounds;
-                        }
+                        // front with more pt
+                        let bound = ptlist[0].bounds;
                         click(bound.centerX(), bound.centerY());
                         // wait for start button for 5 seconds
                         findID("nextPageBtn", 5000);
@@ -1911,14 +1901,18 @@ function algo_init() {
                 }
 
                 case STATE_BATTLE:{
-                    if (!packageName("com.bilibili.madoka.bilibili").findOnce()) {
-                        app.launch("com.bilibili.madoka.bilibili");
+                    if (!packageName(pkgName).findOnce()) {
+                        app.launch(pkgName);
                         sleep(2000);
                         last=Date.now();
                         state=STATE_LOGIN;
-                    } else if(findID("charaWrap")){
-                        killPackage("com.bilibili.madoka.bilibili");
+                        log("重启游戏进程，进入登录页面");
+                    } else if((Date.now()>last+1000*60*40) && findID("charaWrap")){
+                        log("尝试关闭游戏进程");
+                        backtoMain();
                         sleep(5000)
+                        killBackground(pkgName);
+                        sleep(10000)
                     }
                     break;
                 }
@@ -2194,9 +2188,19 @@ function getWindowSize() {
     return pt;
 }
 
-function killPackage(packageName) {
+function killBackground(packageName) {
     var am = context.getSystemService(context.ACTIVITY_SERVICE);
     am.killBackgroundProcesses(packageName);
+}
+
+function backtoMain() {
+    var it = new Intent();
+    var name = context.getPackageName();
+    if (name != "org.autojs.autojspro")
+        it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
+    else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+    it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+    app.startActivity(it);
 }
 
 module.exports = floatUI;
