@@ -1221,6 +1221,10 @@ floatUI.adjust = function (key, value) {
     }
 }
 
+floatUI.logParams = function () {
+    log("\n参数:\n", limit);
+}
+
 // compatible action closure
 function algo_init() {
 
