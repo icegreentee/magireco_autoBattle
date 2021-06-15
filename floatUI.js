@@ -2486,6 +2486,87 @@ function algo_init() {
         }
     }
 
+    function reLaunchGame(package_name) {
+        toastLog("重新启动游戏...");
+        var it = new Intent();
+        var name = package_name == null ? string.package_name : package_name;
+        if (name == null) {
+            toastLog("不知道要启动哪个区服");
+            return false;
+        }
+        it.setClassName(name, "jp.f4samurai.appactivity");
+        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        app.startActivity(it);
+        log("重启游戏完成");
+        return true;
+    }
+
+    function reLogin() {
+        //循环点击继续战斗按钮位置（和放弃断线重连按钮位置重合），直到能检测到AP
+        toastLog("重新登录...");
+        while (true) {
+            let apinfo = getAP(limit.timeout);
+            if (apinfo != null) {
+                log("当前AP:"+apinfo.value+"/"+apinfo.total);
+                toastLog("重新登录完成");
+                return true;
+            }
+            click(convertCoords({x: 1230, y: 730, pos: "center"}));
+        }
+    }
+
+    function replayOperations(opList) {
+        var operations = opList == null ? recordedOperations : opList;
+        if (opList == null) {
+            toastLog("不知道要重放什么动作,退出");
+            return false;
+        }
+        log("重放录制的操作...");
+        for (let i in opList) {
+            let op = opList.steps[i];
+            log("第"+(i+1)+"步", op);
+            switch (op.action) {
+                case "click":
+                    click(convertCoords(op.points[0]));
+                    break;
+                case "swipe":
+                    let points = op.points.map((point) => convertCoords(point));
+                    compatSwipe(points[0].x, points[0].y, points[1].x, points[1].y);
+                    break;
+                case "sleep":
+                    sleep(op.sleepTime);
+                    break;
+                case "checkText":
+                    let nextAction = null;
+                    if (find(op.text, limit.timeout) != null) {
+                        nextAction = op.found.nextAction;
+                    } else {
+                        nextAction = op.notFound.nextAction;
+                    }
+                    switch (nextAction) {
+                        case "success":
+                            log("重放成功结束");
+                            return true;
+                        case "fail":
+                            log("重放终止");
+                            if (limit.killOnReplayFail) {
+                                log("强行停止游戏", opList.package_name);
+                                rootShell("am force-stop "+opList.package_name);
+                                log("强行停止完成");
+                            }
+                            return false;
+                        case "ignore":
+                            log("继续重放");
+                    }
+                    break;
+                default:
+                    log("未知操作");
+            }
+        }
+        log("所有动作重放完成");
+        return true;
+    }
+
     return {
         default: taskDefault,
         reopen: enterLoop
