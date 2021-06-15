@@ -1526,7 +1526,7 @@ function algo_init() {
     function getPTList() {
         let elements = matchAll(/^\+\d*$/);
         let results = [];
-        let left = find(string.support).bounds().left;
+        let left = find(string.support, limit.timeout).bounds().left;
         log("PT匹配结果数量" + elements.length);
         for (var element of elements) {
             var content = getContent(element);
@@ -2116,6 +2116,9 @@ function algo_init() {
 
                     //根据情况,如果需要就嗑药
                     refillAP();
+
+                    //等待“请选择支援角色”出现
+                    if (find(string.support, limit.timeout) == null) break;
 
                     // save battle name if needed
                     let battle = match(/^BATTLE.+/);
