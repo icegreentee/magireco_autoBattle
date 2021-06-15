@@ -1783,7 +1783,7 @@ function algo_init() {
     function initialize() {
         if (auto.root == null) {
             toastLog("未开启无障碍服务");
-            //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
+            selector().depth(0).findOnce();//弹出申请开启无障碍服务的弹窗
         }
 
         //检测区服
