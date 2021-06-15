@@ -1539,9 +1539,12 @@ function algo_init() {
     }
 
     function getPTList() {
-        let elements = matchAll(/^\+\d*$/);
         let results = [];
-        let left = find(string.support, limit.timeout).bounds().left;
+        //在收集可能是Pt的控件之前，应该先找到“请选择支援角色”
+        //如果找不到，那应该是出现意料之外的情况了，这里也不好应对处理
+        let string_support_element = find(string.support, limit.timeout);
+        let left = string_support_element.bounds().left;
+        let elements = matchAll(/^\+\d*$/);
         log("PT匹配结果数量" + elements.length);
         for (var element of elements) {
             var content = getContent(element);
