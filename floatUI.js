@@ -1822,7 +1822,11 @@ function algo_init() {
 
     function refillAP() {
         log("根据情况,如果需要,就使用AP回复药");
-        var ap_refill_title_element = null;
+
+        //检测AP药选择窗口在最开始是不是打开的状态
+        var ap_refill_title_appeared = false;
+        var ap_refill_title_element = find(string.ap_refill_title, 200);
+        if (ap_refill_popup_element != null) ap_refill_title_appeared = true;
 
         var apCost = getCostAP();
 
@@ -1870,6 +1874,7 @@ function algo_init() {
                 ap_refill_title_element = find(string.ap_refill_title, false);
                 if (ap_refill_title_element != null) {
                     log("AP药选择窗口已经出现");
+                    ap_refill_title_appeared = true;
                     break;
                 }
                 if (attempt == ap_refill_title_attempt_max-1) {
@@ -1937,7 +1942,11 @@ function algo_init() {
         if (ap_refill_title_element == null || !ap_refill_title_element.refresh()) {
             //AP药选择窗口之前可能被关闭过一次，又重新打开
             //在这种情况下需要重新寻找控件并赋值，否则会出现卡在AP药窗口的问题
-            ap_refill_title_element = find(string.ap_refill_title, 2000);
+
+            //不过，如果AP药选择窗口在最开始的时候就没出现过，后来也没故意要打开它，
+            //现在就认为它自从自始至终就从来没出现过，所以就不需要寻找它并等待它出现
+
+            if (ap_refill_title_appeared) ap_refill_title_element = find(string.ap_refill_title, 2000);
         }
         while (ap_refill_title_element != null && ap_refill_title_element.refresh()) {
             log("关闭AP回复窗口");
