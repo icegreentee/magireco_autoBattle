@@ -1641,35 +1641,33 @@ function algo_init() {
     };
 
     var string = {};
+    var lang = null;
+
+    function detectGameLang() {
+        let detectedLang = null;
+        for (detectedLang in strings) {
+            if (detectedLang == "name") continue;
+            if (findPackageName(strings[detectedLang][strings.name.findIndex((e) => e == "package_name")], 1000)) {
+                log("区服", detectedLang);
+                break;
+            }
+            detectedLang = null;
+        }
+        if (detectedLang != null) {
+            lang = detectedLang;
+            for (let i = 0; i < strings.name.length; i++) {
+                string[strings.name[i]] = strings[lang][i];
+            }
+            return detectedLang;
+        }
+        return null;
+    }
 
     var screen = {width: 0, height: 0, type: "normal"};
     var gamebounds = null;
     var gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
 
-    function initialize() {
-        if (auto.root == null) {
-            toastLog("未开启无障碍服务");
-            //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
-        }
-        let lang = null;
-        for (lang in strings) {
-            if (lang == "name") continue;
-            if (findPackageName(strings[lang][strings.name.findIndex((e) => e == "package_name")], 1000)) {
-                log("区服", lang);
-                break;
-            }
-            lang = null;
-        }
-        if (lang != null) {
-            for (let i = 0; i < strings.name.length; i++) {
-                string[strings.name[i]] = strings[lang][i];
-            }
-        } else {
-            toastLog("未在前台检测到魔法纪录,退出");
-            threads.currentThread().interrupt();
-        }
-
-        //检测屏幕参数
+    function detectScreenParams() {
         //开始脚本前可能转过屏之类的，所以参数需要先重置
         screen = {width: 0, height: 0, type: "normal"};
         gamebounds = null;
@@ -1757,6 +1755,22 @@ function algo_init() {
             gameoffset.y += parseInt(gamebounds.centerY() - (screen.height / 2));
         }
         log("gameoffset", gameoffset);
+    }
+
+    function initialize() {
+        if (auto.root == null) {
+            toastLog("未开启无障碍服务");
+            //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
+        }
+
+        //检测区服
+        if (detectGameLang() == null) {
+            toastLog("未在前台检测到魔法纪录,退出");
+            threads.currentThread().interrupt();
+        }
+
+        //检测屏幕参数
+        detectScreenParams();
     }
 
     //绿药或红药，每次消耗1个
