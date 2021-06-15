@@ -1466,10 +1466,14 @@ function algo_init() {
         return !isNaN(Number(content)) && !isNaN(parseInt(content));
     }
 
-    function getAP() {
+    //检测AP，缺省wait的情况下只检测一次就退出
+    function getAP(wait) {
+        var startTime = 0;
+        if (wait != null) startTime = new Date().getTime();
+
         if (findID("baseContainer")) {
             // values and seperator are together
-            while (true) {
+            do {
                 let result = null;
                 let h = getWindowSize().y;
                 let elements = matchAll(/^\d+\/\d+$/, true);
@@ -1492,11 +1496,11 @@ function algo_init() {
                     }
                 }
                 if (result) return result;
-                sleep(500);
-            }
+                sleep(100);
+            } while (wait != null && new Date().getTime() < startTime + wait);
         } else {
             // ... are seperate
-            while (true) {
+            do {
                 let result = null;
                 let h = getWindowSize().y;
                 let elements = findAll("/", true);
@@ -1523,8 +1527,8 @@ function algo_init() {
                     }
                 }
                 if (result) return result;
-                sleep(500);
-            }
+                sleep(100);
+            } while (wait != null && new Date().getTime() < startTime + wait);
         }
     }
 
@@ -1852,7 +1856,7 @@ function algo_init() {
         //循环嗑药到设定的AP上限倍数，并且达到关卡消耗的2倍
         var apMultiplier = parseInt(0+limit.apmul);
         while (true) {
-            var apinfo = getAP();
+            var apinfo = getAP(limit.timeout);
             if (apinfo == null) {
                 log("检测AP失败");
                 break;
