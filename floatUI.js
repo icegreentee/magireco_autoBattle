@@ -55,6 +55,20 @@ floatUI.scripts = [
     },
 ];
 
+function stopThread(thread) {
+    var isSelf = false;
+    if (thread == null) {
+        thread = threads.currentThread();
+        isSelf = true;
+    }
+    //while循环也会阻塞执行，防止继续运行下去产生误操作
+    //为防止 isAlive() 不靠谱（虽然还没有这方面的迹象），停止自己的线程时用 isSelf 短路，直接死循环
+    while (isSelf || (thread != null && thread.isAlive())) {
+        try {thread.interrupt();} catch (e) {}
+        //因为可能在UI线程调用，所以不能sleep
+    }
+}
+
 floatUI.main = function () {
     // space between buttons compare to button size
     var space_factor = 1.5;
@@ -93,20 +107,6 @@ floatUI.main = function () {
             fn: settingsWrap,
         },
     ];
-
-    function stopThread(thread) {
-        var isSelf = false;
-        if (thread == null) {
-            thread = threads.currentThread();
-            isSelf = true;
-        }
-        //while循环也会阻塞执行，防止继续运行下去产生误操作
-        //为防止 isAlive() 不靠谱（虽然还没有这方面的迹象），停止自己的线程时用 isSelf 短路，直接死循环
-        while (isSelf || (thread != null && thread.isAlive())) {
-            try {thread.interrupt();} catch (e) {}
-            //因为可能在UI线程调用，所以不能sleep
-        }
-    }
 
     function snapshotWrap() {
         if (auto.root == null) {
