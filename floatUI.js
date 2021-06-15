@@ -1313,7 +1313,7 @@ function algo_init() {
             $shell.setDefaultOptions({adb: true});
             var result = null;
             try {
-                result = $shell(shellcmd), false);
+                result = $shell(shellcmd, false);
             } catch (e) {
                 useShizuku = false;
                 toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
