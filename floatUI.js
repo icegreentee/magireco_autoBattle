@@ -1480,7 +1480,7 @@ function algo_init() {
             do {
                 let result = null;
                 let h = getWindowSize().y;
-                let elements = matchAll(/^\d+\/\d+$/, true);
+                let elements = matchAll(/^\d+\/\d+$/, false);
                 for (let element of elements) {
                     if (element.bounds().top < h) {
                         if (
@@ -1507,7 +1507,7 @@ function algo_init() {
             do {
                 let result = null;
                 let h = getWindowSize().y;
-                let elements = findAll("/", true);
+                let elements = findAll("/", false);
                 for (let element of elements) {
                     if (element.bounds().top < h) {
                         if (
