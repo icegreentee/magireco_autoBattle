@@ -1391,6 +1391,26 @@ function algo_init() {
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
     }
 
+    function findPackageName(name, wait) {
+        var startTime = new Date().getTime();
+        var result = null;
+        var it = 0;
+        do {
+            it++;
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                log(e);
+                sleep(100);
+                continue;
+            }
+            result = packageName(name).findOnce();
+            if (result && result.refresh()) break;
+            sleep(100);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        return result;
+    }
+
     function waitAny(fnlist, wait) {
         var startTime = new Date().getTime();
         var result = null;
@@ -1633,7 +1653,8 @@ function algo_init() {
         }
         let lang = null;
         for (lang in strings) {
-            if (packageName(strings[lang][strings.name.findIndex((e) => e == "package_name")]).findOnce()) {
+            if (lang == "name") continue;
+            if (findPackageName(strings[lang][strings.name.findIndex((e) => e == "package_name")], 1000)) {
                 log("区服", lang);
                 break;
             }
