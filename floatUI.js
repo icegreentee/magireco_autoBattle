@@ -1808,8 +1808,15 @@ function algo_init() {
         //从游戏界面上读取剩余回复药个数后，作为count传入进来
         let remainingnum = parseInt(count);
         let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
-        log("第"+(index+1)+"种回复药还剩"+remainingnum+"个");
-        log("根据嗑药个数限制,还可以继续磕"+limitnum+"个");
+        log(
+        "\n第"+(index+1)+"种回复药"
+        +"\n"+(limit["drug"+(index+1)]?"已启用":"已禁用")
+        +"\n剩余:    "+remainingnum+"个"
+        +"\n个数限制:"+limitnum+"个"
+        );
+
+        //如果未启用则直接返回false
+        if (!limit["drug"+(index+1)]) return false;
 
         //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
         if (limitnum < drugCosts[index]) return false;
