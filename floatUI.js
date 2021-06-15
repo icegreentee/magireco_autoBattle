@@ -533,6 +533,27 @@ floatUI.main = function () {
         }
         return touch_pos;
     };
+
+    //检测刘海屏参数
+    function adjustCutoutParams() {
+        if (device.sdkInt >= 28) {
+            //Android 9或以上有原生的刘海屏API
+            let windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();
+            let displayCutout = null;
+            if (windowInsets != null) {
+                displayCutout = windowInsets.getDisplayCutout();
+            }
+            let display = activity.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
+            let cutoutParams = {
+                rotation: display.getRotation(),
+                cutout: displayCutout
+            }
+            limit.cutoutParams = cutoutParams;
+        }
+    }
+    //脚本启动时检测一次
+    adjustCutoutParams();
+
 };
 // ------------主要逻辑--------------------
 var langNow = "zh"
@@ -549,7 +570,7 @@ var limit = {
     drug1: false,
     drug2: false,
     drug3: false,
-    isStable: false,
+    autoReconnect: false,
     justNPC: false,
     drug4: false,
     drug1num: '0',
@@ -1098,7 +1119,7 @@ function BeginFunction() {
         sleep(3000)
     }
     //稳定模式点击
-    if (limit.isStable) {
+    if (limit.autoReconnect) {
         while (!id("ResultWrap").findOnce()) {
             sleep(3000)
             // 循环点击的位置为短线重连确定点
@@ -1117,7 +1138,7 @@ function autoBeginFunction() {
         sleep(3000)
     }
     //稳定模式点击
-    if (limit.isStable) {
+    if (limit.autoReconnect) {
         while (!id("ResultWrap").findOnce()) {
             sleep(3000)
             // 循环点击的位置为短线重连确定点
@@ -1228,6 +1249,11 @@ function algo_init() {
     }
 
     function click(x, y) {
+        if (y == null) {
+            var point = x;
+            x = point.x;
+            y = point.y;
+        }
         // limit range
         var sz = getWindowSize();
         if (x >= sz.x) {
@@ -1536,6 +1562,7 @@ function algo_init() {
             "regex_lastlogin",
             "regex_bonus",
             "regex_autobattle",
+            "package_name",
         ],
         zh_Hans: [
             "请选择支援角色",
@@ -1553,6 +1580,7 @@ function algo_init() {
             /^最终登录.+/,
             /＋\d+个$/,
             /[\s\S]*续战/,
+            "com.bilibili.madoka.bilibili",
         ],
         zh_Hant: [
             "請選擇支援角色",
@@ -1570,6 +1598,7 @@ function algo_init() {
             /^最終登入.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
+            "com.komoe.madokagp",
         ],
         ja: [
             "サポートキャラを選んでください",
@@ -1587,33 +1616,126 @@ function algo_init() {
             /^最終ログイン.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
+            "com.aniplex.magireco",
         ],
     };
 
     var string = {};
+
+    var screen = {width: 0, height: 0, type: "normal"};
+    var gamebounds = null;
+    var gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
 
     function initialize() {
         if (auto.root == null) {
             toastLog("未开启无障碍服务");
             //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
         }
-        var current = [];
-        if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
-            log("检测为国服");
-            current = strings.zh_Hans;
-        } else if (packageName("com.komoe.madokagp").findOnce()) {
-            log("检测为台服");
-            current = strings.zh_Hant;
-        } else if (packageName("com.aniplex.magireco").findOnce()) {
-            log("检测为日服");
-            current = strings.ja;
+        let lang = null;
+        for (lang in strings) {
+            if (packageName(strings[lang][strings.name.findIndex((e) => e == "package_name")]).findOnce()) {
+                log("区服", lang);
+                break;
+            }
+            lang = null;
+        }
+        if (lang != null) {
+            for (let i = 0; i < strings.name.length; i++) {
+                string[strings.name[i]] = strings[lang][i];
+            }
         } else {
-            toastLog("未在前台检测到魔法纪录");
+            toastLog("未在前台检测到魔法纪录,退出");
             threads.currentThread().interrupt();
         }
-        for (let i = 0; i < strings.name.length; i++) {
-            string[strings.name[i]] = current[i];
+
+        //检测屏幕参数
+        //开始脚本前可能转过屏之类的，所以参数需要先重置
+        screen = {width: 0, height: 0, type: "normal"};
+        gamebounds = null;
+        gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
+
+        screen.width = device.width;
+        screen.height = device.height;
+        if (screen.height > screen.width) {
+            //魔纪只能横屏运行
+            let temp = screen.height;
+            screen.height = screen.width;
+            screen.width = temp;
         }
+        if (screen.width * 9 > screen.height * 16) {
+            screen.type = "wider";
+            scalerate = screen.height / 1080;
+            gameoffset.x = parseInt((screen.width - (1920 * scalerate)) / 2);
+        } else {
+            scalerate = screen.width / 1920;
+            if (screen.width * 9 == screen.height * 16) {
+                screen.type = "normal";
+            } else {
+                screen.type = "higher";
+                gameoffset.bottom.y = parseInt(screen.height - (1080 * scalerate));
+                gameoffset.center.y = parseInt((screen.height - (1080 * scalerate)) / 2);
+            }
+        }
+        log("screen", screen, "gameoffset", gameoffset);
+
+        let element = selector().packageName(string.package_name).className("android.widget.EditText").algorithm("BFS").findOnce();
+        log("EditText bounds", element.bounds());
+        element = element.parent();
+        gamebounds = element.bounds();
+        log("gamebounds", gamebounds);
+
+        //刘海屏
+        //(1)假设发生画面裁切时，实际显示画面上下（或左右）被裁切的宽度一样（刘海总宽度的一半），
+        let isGameoffsetAdjusted = false;
+        if (device.sdkInt >= 28) {
+            //Android 9或以上有原生的刘海屏API
+            //处理转屏
+            if (limit.cutoutParams != null) {
+                let initialRotation = limit.cutoutParams.rotation;
+                let display = context.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
+                let currentRotation = display.getRotation();
+                log("currentRotation", currentRotation, "initialRotation", initialRotation);
+
+                if (currentRotation != null && initialRotation != null
+                    && currentRotation >= 0 && currentRotation <= 3
+                    && initialRotation >= 0 && initialRotation <= 3)
+                {
+                    let relativeRotation = (4 + currentRotation - initialRotation) % 4;
+                    log("relativeRotation", relativeRotation);
+
+                    let safeInsets = {};;
+                    for (let key of ["Left", "Top", "Right", "Bottom"]) {
+                        safeInsets[key] = limit.cutoutParams.cutout["getSafeInset"+key]();
+                    }
+                    log("safeInsets before rotation", safeInsets);
+
+                    for (let i=0; i<relativeRotation; i++) {
+                        //顺时针旋转相应的次数
+                        let temp = safeInsets.Left;
+                        safeInsets.Left = safeInsets.Top;
+                        safeInsets.Top = safeInsets.Right;
+                        safeInsets.Right = safeInsets.Bottom;
+                        safeInsets.Bottom = temp;
+                    }
+                    log("safeInsets after rotation", safeInsets);
+
+                    gameoffset.x += (safeInsets.Left - safeInsets.Right) / 2;
+                    gameoffset.y += (safeInsets.Top - safeInsets.Bottom) / 2;
+
+                    isGameoffsetAdjusted = true;
+                }
+            }
+        }
+        log("isGameoffsetAdjusted", isGameoffsetAdjusted);
+        if (!isGameoffsetAdjusted) {
+            //Android 8.1或以下没有刘海屏API；或者因为未知原因虽然是Android 9或以上但没有成功获取刘海屏参数
+            //(2)假设gamebounds就是实际显示的游戏画面(模拟器测试貌似有时候不对)
+            //所以结合(1)考虑，游戏画面中点减去屏幕中点就得到偏移量
+            //（因为刘海宽度未知，所以不能直接用游戏左上角当偏移量）
+            gameoffset.x += parseInt(gamebounds.centerX() - (screen.width / 2));
+            gameoffset.y += parseInt(gamebounds.centerY() - (screen.height / 2));
+        }
+        log("gameoffset", gameoffset);
     }
 
     //绿药或红药，每次消耗1个
@@ -1791,6 +1913,48 @@ function algo_init() {
         return isDrugUsed;
     }
 
+    function convertCoords(point) {
+        let newpoint = {x: point.x, y: point.y, pos: point.pos};
+
+        //先缩放
+        newpoint.x *= scalerate;
+        newpoint.y *= scalerate;
+
+        //刘海屏
+        newpoint.x += gameoffset.x;
+        newpoint.y += gameoffset.y;
+
+        switch (screen.type) {
+        case "normal":
+            break;
+        case "wider":
+            break;
+        case "higher":
+            switch (point.pos) {
+            case "top":
+                break;
+            case "center":
+            case "bottom":
+                newpoint.y += gameoffset[point.pos].y;
+                break;
+            default:
+                throw new Error("incorrect point.pos");
+            }
+            break;
+        default:
+            throw new Error("incorrect screen type");
+        }
+
+        newpoint.x = parseInt(newpoint.x);
+        newpoint.y = parseInt(newpoint.y);
+        return newpoint;
+    }
+
+    function clickReconnect() {
+        log("点击断线重连按钮所在区域");
+        click(convertCoords({x: 700, y: 730, pos: "center"}));
+    }
+
     function selectBattle() { }
 
     function taskDefault() {
@@ -1800,6 +1964,11 @@ function algo_init() {
         var charabound = null;
         var battlepos = null;
         var inautobattle = false;
+        /*
+        //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
+        var stuckatreward = false;
+        var rewardtime = null;
+        */
         while (true) {
             switch (state) {
                 case STATE_MENU: {
@@ -1960,11 +2129,23 @@ function algo_init() {
                 }
 
                 case STATE_BATTLE: {
+                    //点击开始或自动续战按钮，在按钮消失后，就会走到这里
+                    //还在战斗，或者在战斗结束时弹出断线重连窗口，就会继续在这里循环
+                    //直到战斗结束，和服务器成功通信后，进入结算
+
                     // exit condition
-                    if (findID("charaWrap")) {
+                    //这里会等待2秒，对于防断线模式来说就是限制每2秒点击一次重连按钮的所在位置
+                    //另一方面，也可以极大程度上确保防断线模式不会在结算界面误点
+                    if (findID("charaWrap", 2000)) {
                         state = STATE_REWARD_CHARACTER;
                         log("进入角色结算");
                         break;
+                    }
+                    //防断线模式
+                    if (limit.autoReconnect) {
+                        //无法判断断线重连弹窗是否出现，但战斗中点击一般也是无害的
+                        //（不过也有可能因为机器非常非常非常卡，点击变成了长按，导致误操作取消官方自动续战）
+                        clickReconnect();
                     }
                     break;
                 }
@@ -1996,13 +2177,40 @@ function algo_init() {
                 }
 
                 case STATE_REWARD_MATERIAL: {
+                    //走到这里的可能情况：
+                    // (1)点再战按钮，回到助战选择界面
+                    // (2)没有再战按钮时点击，回到关卡选择界面
+
                     // exit condition
-                    let element = findID("hasTotalRiche");
+                    let element = findID("hasTotalRiche", 2000);
                     if (findID("android:id/content") && !element) {
                         state = STATE_REWARD_POST;
+                        /*
+                        //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
+                        stuckatreward = false;
+                        rewardtime = null;
+                        */
                         log("结算完成");
                         break;
                     }
+                    /*
+                    //防断线模式
+                    //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
+                    if (limit.autoReconnect) {
+                        if (!stuckatreward) {
+                            //如果发现在这里停留了30秒以上，就认为已经是断线了
+                            //然后就会尝试点击一次断线重连按钮
+                            if (rewardtime == null) {
+                                rewardtime = new Date().getTime();
+                            } else if (new Date().getTime() - rewardtime > 30 * 1000) stuckatreward = true;
+                        } else {
+                            //尝试点击一次断线重连按钮，为防止误点，只点击一次就不再点，再观察30秒
+                            clickReconnect();
+                            stuckatreward = false;
+                            rewardtime = null;
+                        }
+                    }
+                    */
                     // try click rebattle
                     element = findID("questRetryBtn");
                     if (element) {
@@ -2010,8 +2218,13 @@ function algo_init() {
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
                     } else if (charabound) {
+                        //走到这里的可能情况:
+                        //(1) AP不够再战一局（常见原因是官方自动续战）
+                        //(2) UI控件树残缺，明明有再战按钮却检测不到
                         log("点击再战区域");
-                        click(charabound.right, charabound.bottom);
+                        //    (如果屏幕是宽高比低于16:9的“方块屏”，还会因为再战按钮距离charabound右下角太远而点不到再战按钮，然后就会回到关卡选择)
+                        //click(charabound.right, charabound.bottom);
+                        click(convertCoords({x: 1680, y: 980, pos: "bottom"}));
                     }
                     sleep(500);
                     break;
