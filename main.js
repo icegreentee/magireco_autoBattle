@@ -65,6 +65,7 @@ ui.layout(
                                 <text text="注意:回复药开关状态和个数限制不会永久保存,在脚本完全退出后,这些设置会被重置!" textColor="#666666" />
                             </vertical>
                             <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#000000" text="只使用NPC(不选则先互关好友,后NPC)" />
+                            <Switch id="autoReconnect" w="*" margin="0 3" checked="false" textColor="#000000" text="防断线模式(尽可能自动点击断线重连按钮)" />
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -82,12 +83,12 @@ ui.layout(
                                 <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
                                 <text text="毫秒" textColor="#000000" />
                             </linear>
+                            <text text="修改“等待控件超时”并不能让脚本变快,数值太小反而可能出错。如果不是机器特别卡(这种情况也要把这个值改得更大,而不是更小)请不要改,退格可自动恢复默认(5000毫秒)" textColor="#000000" />
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="备用脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
-                            <Switch id="isStable" w="*" margin="0 3" checked="false" textColor="#000000" text="稳定模式（战斗中不断点击重连弹窗位置）" />
                             <text text="活动周回关卡选择:" textColor="#000000" margin="0 5" />
                             <radiogroup id="battleNo" padding="10 3 0 3">
                                 <radio id="cb1" text="初级" />
@@ -152,6 +153,8 @@ var reportTask = null;
 function reportBug() {
     toastLog("正在上传日志和最近一次的快照,请耐心等待...");
 
+    log(appName);
+    try{floatUI.logParams();} catch (e) {}
     log("Android API Level", device.sdkInt);
     log("屏幕分辨率", device.width, device.height);
     var str = "";
@@ -246,12 +249,17 @@ function reportBug() {
     }
 
     if (resultLinks != "") {
+        log(resultLinks);
         ui.run(() => {
             clip = android.content.ClipData.newPlainText("auto_bugreport_result", resultLinks);
             activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
             toast("内容已复制到剪贴板");
         });
-        dialogs.rawInput("上传完成", resultLinks);
+        dialogs.build({
+            title: "上传完成",
+            content: "别忘了全选=>复制，然后粘贴给群里的小伙伴们看看哦~ 不然的话，我们也不知道你上传到哪里了啊！！！",
+            inputPrefill: resultLinks
+        }).show();
         log("报告问题对话框已关闭");
     }
 }
@@ -338,7 +346,7 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "timeout"]
+const persistParamList = ["foreground", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "timeout"]
 const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
 
 var idmap = {};

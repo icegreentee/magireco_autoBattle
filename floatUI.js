@@ -35,6 +35,8 @@ importClass(android.widget.TextView)
 var tasks = algo_init();
 // touch capture, will be initialized in main
 var capture = () => { };
+// 停止脚本线程，尤其是防止停止自己的时候仍然继续往下执行少许语句（同上，会在main函数中初始化）
+var stopThread = () => { };
 // available script list
 floatUI.scripts = [
     {
@@ -94,6 +96,20 @@ floatUI.main = function () {
         },
     ];
 
+    stopThread = function (thread) {
+        var isSelf = false;
+        if (thread == null) {
+            thread = threads.currentThread();
+            isSelf = true;
+        }
+        //while循环也会阻塞执行，防止继续运行下去产生误操作
+        //为防止 isAlive() 不靠谱（虽然还没有这方面的迹象），停止自己的线程时用 isSelf 短路，直接死循环
+        while (isSelf || (thread != null && thread.isAlive())) {
+            try {thread.interrupt();} catch (e) {}
+            //因为可能在UI线程调用，所以不能sleep
+        }
+    }
+
     function snapshotWrap() {
         if (auto.root == null) {
             log("auto.root == null");
@@ -134,7 +150,7 @@ floatUI.main = function () {
     function defaultWrap() {
         if (currentTask && currentTask.isAlive()) {
             toastLog("停止之前的脚本");
-            currentTask.interrupt();
+            stopThread(currentTask);
         }
         toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
         currentTask = threads.start(floatUI.scripts[limit.default].fn);
@@ -148,7 +164,7 @@ floatUI.main = function () {
 
     function cancelWrap() {
         toastLog("停止脚本");
-        if (currentTask && currentTask.isAlive()) currentTask.interrupt();
+        if (currentTask && currentTask.isAlive()) stopThread(currentTask);
     }
 
     // get to main activity
@@ -210,7 +226,7 @@ floatUI.main = function () {
         if (item.fn) {
             if (currentTask && currentTask.isAlive()) {
                 toastLog("停止之前的脚本");
-                currentTask.interrupt();
+                stopThread(currentTask);
             }
             toastLog("执行 " + item.name + " 脚本");
             currentTask = threads.start(item.fn);
@@ -533,6 +549,27 @@ floatUI.main = function () {
         }
         return touch_pos;
     };
+
+    //检测刘海屏参数
+    function adjustCutoutParams() {
+        if (device.sdkInt >= 28) {
+            //Android 9或以上有原生的刘海屏API
+            let windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();
+            let displayCutout = null;
+            if (windowInsets != null) {
+                displayCutout = windowInsets.getDisplayCutout();
+            }
+            let display = activity.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
+            let cutoutParams = {
+                rotation: display.getRotation(),
+                cutout: displayCutout
+            }
+            limit.cutoutParams = cutoutParams;
+        }
+    }
+    //脚本启动时检测一次
+    adjustCutoutParams();
+
 };
 // ------------主要逻辑--------------------
 var langNow = "zh"
@@ -549,7 +586,7 @@ var limit = {
     drug1: false,
     drug2: false,
     drug3: false,
-    isStable: false,
+    autoReconnect: false,
     justNPC: false,
     drug4: false,
     drug1num: '0',
@@ -1098,7 +1135,7 @@ function BeginFunction() {
         sleep(3000)
     }
     //稳定模式点击
-    if (limit.isStable) {
+    if (limit.autoReconnect) {
         while (!id("ResultWrap").findOnce()) {
             sleep(3000)
             // 循环点击的位置为短线重连确定点
@@ -1117,7 +1154,7 @@ function autoBeginFunction() {
         sleep(3000)
     }
     //稳定模式点击
-    if (limit.isStable) {
+    if (limit.autoReconnect) {
         while (!id("ResultWrap").findOnce()) {
             sleep(3000)
             // 循环点击的位置为短线重连确定点
@@ -1184,12 +1221,21 @@ floatUI.adjust = function (key, value) {
     }
 }
 
+floatUI.logParams = function () {
+    log("\n参数:\n", limit);
+}
+
 // compatible action closure
 function algo_init() {
 
     var useShizuku = true;
+    var isFirstRootClick = true;
 
     function clickRoot(x, y) {
+        if (isFirstRootClick) {
+            toastLog("Android 7 以下设备运行脚本需要root或Shizuku(adb)权限\n正在尝试Shizuku...");
+            isFirstRootClick = false;
+        }
         //第一次会尝试使用Shizuku，如果失败，则不再尝试Shizuku，直到脚本退出
         if (useShizuku) {
             log("使用Shizuku模拟点击坐标 "+x+","+y);
@@ -1199,7 +1245,7 @@ function algo_init() {
                 result = $shell("input tap "+x+" "+y, false);
             } catch (e) {
                 useShizuku = false;
-                toastLog("Shizuku未安装/未启动,或者未授权");
+                toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
                 log(e);
             }
 
@@ -1220,7 +1266,7 @@ function algo_init() {
             result = $shell("input tap "+x+" "+y, true);//第二个参数true表示使用root权限
             if (result == null || result.code != 0) {
                 toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
-                threads.currentThread().interrupt();
+                stopThread();
             } else {
                 log("模拟点击完成");
             }
@@ -1228,6 +1274,11 @@ function algo_init() {
     }
 
     function click(x, y) {
+        if (y == null) {
+            var point = x;
+            x = point.x;
+            y = point.y;
+        }
         // limit range
         var sz = getWindowSize();
         if (x >= sz.x) {
@@ -1365,6 +1416,26 @@ function algo_init() {
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
     }
 
+    function findPackageName(name, wait) {
+        var startTime = new Date().getTime();
+        var result = null;
+        var it = 0;
+        do {
+            it++;
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                log(e);
+                sleep(100);
+                continue;
+            }
+            result = packageName(name).findOnce();
+            if (result && result.refresh()) break;
+            sleep(100);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        return result;
+    }
+
     function waitAny(fnlist, wait) {
         var startTime = new Date().getTime();
         var result = null;
@@ -1401,10 +1472,14 @@ function algo_init() {
         return !isNaN(Number(content)) && !isNaN(parseInt(content));
     }
 
-    function getAP() {
+    //检测AP，缺省wait的情况下只检测一次就退出
+    function getAP(wait) {
+        var startTime = 0;
+        if (wait != null) startTime = new Date().getTime();
+
         if (findID("baseContainer")) {
             // values and seperator are together
-            while (true) {
+            do {
                 let result = null;
                 let h = getWindowSize().y;
                 let elements = matchAll(/^\d+\/\d+$/, true);
@@ -1427,11 +1502,11 @@ function algo_init() {
                     }
                 }
                 if (result) return result;
-                sleep(500);
-            }
+                sleep(100);
+            } while (wait != null && new Date().getTime() < startTime + wait);
         } else {
             // ... are seperate
-            while (true) {
+            do {
                 let result = null;
                 let h = getWindowSize().y;
                 let elements = findAll("/", true);
@@ -1458,15 +1533,18 @@ function algo_init() {
                     }
                 }
                 if (result) return result;
-                sleep(500);
-            }
+                sleep(100);
+            } while (wait != null && new Date().getTime() < startTime + wait);
         }
     }
 
     function getPTList() {
-        let elements = matchAll(/^\+\d*$/);
         let results = [];
-        let left = find(string.support).bounds().left;
+        //在收集可能是Pt的控件之前，应该先找到“请选择支援角色”
+        //如果找不到，那应该是出现意料之外的情况了，这里也不好应对处理
+        let string_support_element = find(string.support, limit.timeout);
+        let left = string_support_element.bounds().left;
+        let elements = matchAll(/^\+\d*$/);
         log("PT匹配结果数量" + elements.length);
         for (var element of elements) {
             var content = getContent(element);
@@ -1536,6 +1614,7 @@ function algo_init() {
             "regex_lastlogin",
             "regex_bonus",
             "regex_autobattle",
+            "package_name",
         ],
         zh_Hans: [
             "请选择支援角色",
@@ -1553,6 +1632,7 @@ function algo_init() {
             /^最终登录.+/,
             /＋\d+个$/,
             /[\s\S]*续战/,
+            "com.bilibili.madoka.bilibili",
         ],
         zh_Hant: [
             "請選擇支援角色",
@@ -1570,6 +1650,7 @@ function algo_init() {
             /^最終登入.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
+            "com.komoe.madokagp",
         ],
         ja: [
             "サポートキャラを選んでください",
@@ -1587,33 +1668,141 @@ function algo_init() {
             /^最終ログイン.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
+            "com.aniplex.magireco",
         ],
     };
 
     var string = {};
+    var lang = null;
+
+    function detectGameLang() {
+        let detectedLang = null;
+        for (detectedLang in strings) {
+            if (detectedLang == "name") continue;
+            if (findPackageName(strings[detectedLang][strings.name.findIndex((e) => e == "package_name")], 1000)) {
+                log("区服", detectedLang);
+                break;
+            }
+            detectedLang = null;
+        }
+        if (detectedLang != null) {
+            lang = detectedLang;
+            for (let i = 0; i < strings.name.length; i++) {
+                string[strings.name[i]] = strings[lang][i];
+            }
+            return detectedLang;
+        }
+        return null;
+    }
+
+    var screen = {width: 0, height: 0, type: "normal"};
+    var gamebounds = null;
+    var gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
+
+    function detectScreenParams() {
+        //开始脚本前可能转过屏之类的，所以参数需要先重置
+        screen = {width: 0, height: 0, type: "normal"};
+        gamebounds = null;
+        gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
+
+        screen.width = device.width;
+        screen.height = device.height;
+        if (screen.height > screen.width) {
+            //魔纪只能横屏运行
+            let temp = screen.height;
+            screen.height = screen.width;
+            screen.width = temp;
+        }
+        if (screen.width * 9 > screen.height * 16) {
+            screen.type = "wider";
+            scalerate = screen.height / 1080;
+            gameoffset.x = parseInt((screen.width - (1920 * scalerate)) / 2);
+        } else {
+            scalerate = screen.width / 1920;
+            if (screen.width * 9 == screen.height * 16) {
+                screen.type = "normal";
+            } else {
+                screen.type = "higher";
+                gameoffset.bottom.y = parseInt(screen.height - (1080 * scalerate));
+                gameoffset.center.y = parseInt((screen.height - (1080 * scalerate)) / 2);
+            }
+        }
+        log("screen", screen, "gameoffset", gameoffset);
+
+        let element = selector().packageName(string.package_name).className("android.widget.EditText").algorithm("BFS").findOnce();
+        log("EditText bounds", element.bounds());
+        element = element.parent();
+        gamebounds = element.bounds();
+        log("gamebounds", gamebounds);
+
+        //刘海屏
+        //(1)假设发生画面裁切时，实际显示画面上下（或左右）被裁切的宽度一样（刘海总宽度的一半），
+        let isGameoffsetAdjusted = false;
+        if (device.sdkInt >= 28) {
+            //Android 9或以上有原生的刘海屏API
+            //处理转屏
+            if (limit.cutoutParams != null) {
+                let initialRotation = limit.cutoutParams.rotation;
+                let display = context.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
+                let currentRotation = display.getRotation();
+                log("currentRotation", currentRotation, "initialRotation", initialRotation);
+
+                if (currentRotation != null && initialRotation != null
+                    && currentRotation >= 0 && currentRotation <= 3
+                    && initialRotation >= 0 && initialRotation <= 3)
+                {
+                    let relativeRotation = (4 + currentRotation - initialRotation) % 4;
+                    log("relativeRotation", relativeRotation);
+
+                    let safeInsets = {};;
+                    for (let key of ["Left", "Top", "Right", "Bottom"]) {
+                        safeInsets[key] = limit.cutoutParams.cutout["getSafeInset"+key]();
+                    }
+                    log("safeInsets before rotation", safeInsets);
+
+                    for (let i=0; i<relativeRotation; i++) {
+                        //顺时针旋转相应的次数
+                        let temp = safeInsets.Left;
+                        safeInsets.Left = safeInsets.Top;
+                        safeInsets.Top = safeInsets.Right;
+                        safeInsets.Right = safeInsets.Bottom;
+                        safeInsets.Bottom = temp;
+                    }
+                    log("safeInsets after rotation", safeInsets);
+
+                    gameoffset.x += (safeInsets.Left - safeInsets.Right) / 2;
+                    gameoffset.y += (safeInsets.Top - safeInsets.Bottom) / 2;
+
+                    isGameoffsetAdjusted = true;
+                }
+            }
+        }
+        log("isGameoffsetAdjusted", isGameoffsetAdjusted);
+        if (!isGameoffsetAdjusted) {
+            //Android 8.1或以下没有刘海屏API；或者因为未知原因虽然是Android 9或以上但没有成功获取刘海屏参数
+            //(2)假设gamebounds就是实际显示的游戏画面(模拟器测试貌似有时候不对)
+            //所以结合(1)考虑，游戏画面中点减去屏幕中点就得到偏移量
+            //（因为刘海宽度未知，所以不能直接用游戏左上角当偏移量）
+            gameoffset.x += parseInt(gamebounds.centerX() - (screen.width / 2));
+            gameoffset.y += parseInt(gamebounds.centerY() - (screen.height / 2));
+        }
+        log("gameoffset", gameoffset);
+    }
 
     function initialize() {
         if (auto.root == null) {
             toastLog("未开启无障碍服务");
-            //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
+            selector().depth(0).findOnce();//弹出申请开启无障碍服务的弹窗
         }
-        var current = [];
-        if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
-            log("检测为国服");
-            current = strings.zh_Hans;
-        } else if (packageName("com.komoe.madokagp").findOnce()) {
-            log("检测为台服");
-            current = strings.zh_Hant;
-        } else if (packageName("com.aniplex.magireco").findOnce()) {
-            log("检测为日服");
-            current = strings.ja;
-        } else {
-            toastLog("未在前台检测到魔法纪录");
-            threads.currentThread().interrupt();
+
+        //检测区服
+        if (detectGameLang() == null) {
+            toastLog("未在前台检测到魔法纪录,退出");
+            stopThread();
         }
-        for (let i = 0; i < strings.name.length; i++) {
-            string[strings.name[i]] = current[i];
-        }
+
+        //检测屏幕参数
+        detectScreenParams();
     }
 
     //绿药或红药，每次消耗1个
@@ -1626,8 +1815,15 @@ function algo_init() {
         //从游戏界面上读取剩余回复药个数后，作为count传入进来
         let remainingnum = parseInt(count);
         let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
-        log("第"+(index+1)+"种回复药还剩"+remainingnum+"个");
-        log("根据嗑药个数限制,还可以继续磕"+limitnum+"个");
+        log(
+        "\n第"+(index+1)+"种回复药"
+        +"\n"+(limit["drug"+(index+1)]?"已启用":"已禁用")
+        +"\n剩余:    "+remainingnum+"个"
+        +"\n个数限制:"+limitnum+"个"
+        );
+
+        //如果未启用则直接返回false
+        if (!limit["drug"+(index+1)]) return false;
 
         //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
         if (limitnum < drugCosts[index]) return false;
@@ -1665,14 +1861,18 @@ function algo_init() {
 
     function refillAP() {
         log("根据情况,如果需要,就使用AP回复药");
-        var ap_refill_title_element = null;
+
+        //检测AP药选择窗口在最开始是不是打开的状态
+        var ap_refill_title_appeared = false;
+        var ap_refill_title_element = find(string.ap_refill_title, 200);
+        if (ap_refill_popup_element != null) ap_refill_title_appeared = true;
 
         var apCost = getCostAP();
 
         //循环嗑药到设定的AP上限倍数，并且达到关卡消耗的2倍
         var apMultiplier = parseInt(0+limit.apmul);
         while (true) {
-            var apinfo = getAP();
+            var apinfo = getAP(limit.timeout);
             if (apinfo == null) {
                 log("检测AP失败");
                 break;
@@ -1713,11 +1913,12 @@ function algo_init() {
                 ap_refill_title_element = find(string.ap_refill_title, false);
                 if (ap_refill_title_element != null) {
                     log("AP药选择窗口已经出现");
+                    ap_refill_title_appeared = true;
                     break;
                 }
                 if (attempt == ap_refill_title_attempt_max-1) {
                     log("长时间等待后，AP药选择窗口仍然没有出现，退出");
-                    threads.currentThread().interrupt();
+                    stopThread();
                 }
                 if (attempt % 5 == 0) {
                     log("点击AP按钮");
@@ -1769,7 +1970,7 @@ function algo_init() {
             if (!isDrugUsed) {
                 if (find(string.out_of_ap)) {
                     log("AP不足且未嗑药,退出");
-                    threads.currentThread().interrupt();
+                    stopThread();
                 }
                 log("未嗑药");
                 break; //可能AP还够完成一局，所以只结束while循环、继续往下执行关闭嗑药窗口，不退出
@@ -1780,7 +1981,11 @@ function algo_init() {
         if (ap_refill_title_element == null || !ap_refill_title_element.refresh()) {
             //AP药选择窗口之前可能被关闭过一次，又重新打开
             //在这种情况下需要重新寻找控件并赋值，否则会出现卡在AP药窗口的问题
-            ap_refill_title_element = find(string.ap_refill_title, 2000);
+
+            //不过，如果AP药选择窗口在最开始的时候就没出现过，后来也没故意要打开它，
+            //现在就认为它自从自始至终就从来没出现过，所以就不需要寻找它并等待它出现
+
+            if (ap_refill_title_appeared) ap_refill_title_element = find(string.ap_refill_title, 2000);
         }
         while (ap_refill_title_element != null && ap_refill_title_element.refresh()) {
             log("关闭AP回复窗口");
@@ -1789,6 +1994,48 @@ function algo_init() {
             waitElement(ap_refill_title_element, 5000);
         }
         return isDrugUsed;
+    }
+
+    function convertCoords(point) {
+        let newpoint = {x: point.x, y: point.y, pos: point.pos};
+
+        //先缩放
+        newpoint.x *= scalerate;
+        newpoint.y *= scalerate;
+
+        //移动坐标，使画面横向位置位于屏幕中央，以及加上刘海屏的额外偏移
+        newpoint.x += gameoffset.x;
+        newpoint.y += gameoffset.y;
+
+        switch (screen.type) {
+        case "normal":
+            break;
+        case "wider":
+            break;
+        case "higher":
+            switch (point.pos) {
+            case "top":
+                break;
+            case "center":
+            case "bottom":
+                newpoint.y += gameoffset[point.pos].y;
+                break;
+            default:
+                throw new Error("incorrect point.pos");
+            }
+            break;
+        default:
+            throw new Error("incorrect screen type");
+        }
+
+        newpoint.x = parseInt(newpoint.x);
+        newpoint.y = parseInt(newpoint.y);
+        return newpoint;
+    }
+
+    function clickReconnect() {
+        log("点击断线重连按钮所在区域");
+        click(convertCoords({x: 700, y: 730, pos: "center"}));
     }
 
     function selectBattle() { }
@@ -1800,6 +2047,11 @@ function algo_init() {
         var charabound = null;
         var battlepos = null;
         var inautobattle = false;
+        /*
+        //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
+        var stuckatreward = false;
+        var rewardtime = null;
+        */
         while (true) {
             switch (state) {
                 case STATE_MENU: {
@@ -1890,6 +2142,9 @@ function algo_init() {
                     //根据情况,如果需要就嗑药
                     refillAP();
 
+                    //等待“请选择支援角色”出现
+                    if (find(string.support, limit.timeout) == null) break;
+
                     // save battle name if needed
                     let battle = match(/^BATTLE.+/);
                     if (battle) {
@@ -1960,11 +2215,23 @@ function algo_init() {
                 }
 
                 case STATE_BATTLE: {
+                    //点击开始或自动续战按钮，在按钮消失后，就会走到这里
+                    //还在战斗，或者在战斗结束时弹出断线重连窗口，就会继续在这里循环
+                    //直到战斗结束，和服务器成功通信后，进入结算
+
                     // exit condition
-                    if (findID("charaWrap")) {
+                    //这里会等待2秒，对于防断线模式来说就是限制每2秒点击一次重连按钮的所在位置
+                    //另一方面，也可以极大程度上确保防断线模式不会在结算界面误点
+                    if (findID("charaWrap", 2000)) {
                         state = STATE_REWARD_CHARACTER;
                         log("进入角色结算");
                         break;
+                    }
+                    //防断线模式
+                    if (limit.autoReconnect) {
+                        //无法判断断线重连弹窗是否出现，但战斗中点击一般也是无害的
+                        //（不过也有可能因为机器非常非常非常卡，点击变成了长按，导致误操作取消官方自动续战）
+                        clickReconnect();
                     }
                     break;
                 }
@@ -1996,13 +2263,40 @@ function algo_init() {
                 }
 
                 case STATE_REWARD_MATERIAL: {
+                    //走到这里的可能情况：
+                    // (1)点再战按钮，回到助战选择界面
+                    // (2)没有再战按钮时点击，回到关卡选择界面
+
                     // exit condition
-                    let element = findID("hasTotalRiche");
+                    let element = findID("hasTotalRiche", 2000);
                     if (findID("android:id/content") && !element) {
                         state = STATE_REWARD_POST;
+                        /*
+                        //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
+                        stuckatreward = false;
+                        rewardtime = null;
+                        */
                         log("结算完成");
                         break;
                     }
+                    /*
+                    //防断线模式
+                    //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
+                    if (limit.autoReconnect) {
+                        if (!stuckatreward) {
+                            //如果发现在这里停留了30秒以上，就认为已经是断线了
+                            //然后就会尝试点击一次断线重连按钮
+                            if (rewardtime == null) {
+                                rewardtime = new Date().getTime();
+                            } else if (new Date().getTime() - rewardtime > 30 * 1000) stuckatreward = true;
+                        } else {
+                            //尝试点击一次断线重连按钮，为防止误点，只点击一次就不再点，再观察30秒
+                            clickReconnect();
+                            stuckatreward = false;
+                            rewardtime = null;
+                        }
+                    }
+                    */
                     // try click rebattle
                     element = findID("questRetryBtn");
                     if (element) {
@@ -2010,8 +2304,13 @@ function algo_init() {
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
                     } else if (charabound) {
+                        //走到这里的可能情况:
+                        //(1) AP不够再战一局（常见原因是官方自动续战）
+                        //(2) UI控件树残缺，明明有再战按钮却检测不到
                         log("点击再战区域");
-                        click(charabound.right, charabound.bottom);
+                        //    (如果屏幕是宽高比低于16:9的“方块屏”，还会因为再战按钮距离charabound右下角太远而点不到再战按钮，然后就会回到关卡选择)
+                        //click(charabound.right, charabound.bottom);
+                        click(convertCoords({x: 1680, y: 980, pos: "bottom"}));
                     }
                     sleep(500);
                     break;
