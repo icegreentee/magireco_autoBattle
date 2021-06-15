@@ -726,6 +726,11 @@ var clickSets = {
         x: 1300,
         y: 350,
         pos: "top"
+    },
+    recover_battle: {
+        x: 1230,
+        y: 730,
+        pos: "center"
     }
 }
 
@@ -1293,6 +1298,104 @@ function algo_init() {
             log("点击完成");
         } else {
             clickRoot(x, y);
+        }
+    }
+
+    function swipeRoot(x1, y1, x2, y2, duration) {
+        if (isFirstRootClick) {
+            toastLog("Android 7 以下设备运行脚本需要root或Shizuku(adb)权限\n正在尝试Shizuku...");
+            isFirstRootClick = false;
+        }
+        var shellcmd = "input swipe "+x1+" "+y1+" "+x2+" "+y2+(duration==null?"":(" "+duration));
+        //第一次会尝试使用Shizuku，如果失败，则不再尝试Shizuku，直到脚本退出
+        if (useShizuku) {
+            log("使用Shizuku模拟滑动 "+x1+","+y1+" => "+x2+","+y2);
+            $shell.setDefaultOptions({adb: true});
+            var result = null;
+            try {
+                result = $shell(shellcmd), false);
+            } catch (e) {
+                useShizuku = false;
+                toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
+                log(e);
+            }
+
+            //这里useShizuku实际上指示了是否捕获到抛出的异常
+            if (!useShizuku || result == null || result.code != 0) {
+                useShizuku = false;
+                log("使用Shizuku执行模拟滑动命令失败,尝试直接使用root权限");
+            } else {
+                log("模拟滑动完成");
+                return;//命令成功执行
+            }
+        }
+
+        //第一次尝试Shizuku失败后也会走到这里
+        if (!useShizuku) {
+            log("直接使用root权限模拟滑动 "+x1+","+y1+" => "+x2+","+y2);
+            $shell.setDefaultOptions({adb: false});
+            result = $shell(shellcmd, true);//第二个参数true表示使用root权限
+            if (result == null || result.code != 0) {
+                toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
+                stopThread();
+            } else {
+                log("模拟滑动完成");
+            }
+        }
+    }
+
+    function compatSwipe(x1, y1, x2, y2, duration) {
+        var points = [null, null];
+        if (arguments.length > 5) throw new Error("compatSwipe: incorrect argument count");
+        for (let i=0; i<arguments.length; i++) {
+            let num = parseInt(arguments[i]);
+            if (isNaN(num)) {
+                //参数本身就（可能）是一个坐标点对象
+                points.push(arguments[i]);
+            } else {
+                //参数应该是坐标X值或滑动时长
+                if (i < arguments.length-1) {
+                    //存在下一个参数，则把这个参数视为坐标X值，下一个参数视为坐标Y值
+                    points.push({x: arguments[i], y: arguments[i+1]});
+                    i++;
+                } else {
+                    //不存在下一个参数，这个参数应该是滑动时长
+                    duration = arguments[i];
+                }
+            }
+            //坐标X、Y值应该都是数字
+            if (isNaN(points[points.length-1].x) || isNaN(points[points.length-1].y))
+                throw new Error("compatSwipe: invalid arguments (invalid point)");
+            //又一个坐标点被加入，最多加入2个点，不允许加入第3个点
+            if (points.length > 2) {
+                throw new Error("compatSwipe invalid arguments (added more than 2 points)");
+            }
+        }
+        x1 = points[0].x;
+        y1 = points[0].y;
+        x2 = points[1].x;
+        y2 = points[1].y;
+        // limit range
+        var sz = getWindowSize();
+        if (x1 >= sz.x) {
+            x1 = sz.x - 1;
+        }
+        if (y1 >= sz.y) {
+            y1 = sz.y - 1;
+        }
+        if (x2 >= sz.x) {
+            x2 = sz.x - 1;
+        }
+        if (y2 >= sz.y) {
+            y2 = sz.y - 1;
+        }
+        // system version higher than Android 7.0
+        if (device.sdkInt >= 24) {
+            log("使用无障碍服务模拟滑动 "+x1+","+y1+" => "+x2+","+y2);
+            swipe(x1, y1, x2, y2, duration);
+            log("滑动完成");
+        } else {
+            swipeRoot(x1, y1, x2, y2, duration);
         }
     }
 
@@ -2064,7 +2167,7 @@ function algo_init() {
 
     function clickReconnect() {
         log("点击断线重连按钮所在区域");
-        click(convertCoords({x: 700, y: 730, pos: "center"}));
+        click(convertCoords(clickSets.reconection));
     }
 
     function selectBattle() { }
@@ -2478,7 +2581,7 @@ function algo_init() {
                         log("点击再战区域");
                         //    (如果屏幕是宽高比低于16:9的“方块屏”，还会因为再战按钮距离charabound右下角太远而点不到再战按钮，然后就会回到关卡选择)
                         //click(charabound.right, charabound.bottom);
-                        click(convertCoords({x: 1680, y: 980, pos: "bottom"}));
+                        click(convertCoords(clickSets.restart));
                     }
                     sleep(500);
                     break;
@@ -2538,7 +2641,7 @@ function algo_init() {
                 toastLog("重新登录完成");
                 return true;
             }
-            click(convertCoords({x: 1230, y: 730, pos: "center"}));
+            click(convertCoords(clickSets.recover_battle));
         }
     }
 
