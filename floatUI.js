@@ -2122,7 +2122,9 @@ function algo_init() {
         while (ap_refill_title_element != null && ap_refill_title_element.refresh()) {
             log("关闭AP回复窗口");
             bound = ap_refill_title_element.parent().bounds();
-            click(bound.right, bound.top);
+            //适配宽高比小于16:9的方块屏而且控件树残缺的情况（比如MuMu调成屏幕宽高相等）
+            let ap_refill_title_bound = ap_refill_title_element.bounds();
+            click(bound.right, ap_refill_title_bound.top);
             waitElement(ap_refill_title_element, 5000);
         }
         return isDrugUsed;
