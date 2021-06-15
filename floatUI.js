@@ -1987,7 +1987,7 @@ function algo_init() {
         newpoint.x *= scalerate;
         newpoint.y *= scalerate;
 
-        //刘海屏
+        //移动坐标，使画面横向位置位于屏幕中央，以及加上刘海屏的额外偏移
         newpoint.x += gameoffset.x;
         newpoint.y += gameoffset.y;
 
