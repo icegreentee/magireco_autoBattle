@@ -1819,10 +1819,10 @@ function algo_init() {
             log("游戏已经闪退");
             return "crashed";
         }
-        var connection_lost_title_element = find(string.connection_lost, limit.timeout);
+        var connection_lost_title_element = findID("popupInfoDetailTitle", limit.timeout);
         if (
             connection_lost_title_element != null
-            && connection_lost_title_element.id() == "popupInfoDetailTitle"
+            && getContent(connection_lost_title_element) == string.connection_lost;
         ) {
             log("游戏已经断线并强制回首页");
             return "logged_out";
