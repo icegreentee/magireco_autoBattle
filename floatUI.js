@@ -2076,7 +2076,7 @@ function algo_init() {
                         if (element && element.refresh()) {
                             log("尝试关闭弹窗");
                             let bound = element.bounds();
-                            click(bound.right, bound.top);
+                            click(bound.right-8, bound.top+8);
                         }
                     }
                     let element=match(string.regex_until)
@@ -2169,8 +2169,10 @@ function algo_init() {
                         sleep(5000)
                         killBackground(pkgName);
                         sleep(10000)
-                    } else if (limit.autoReconnect) {
+                    } else if (limit.autoReconnect && !findID("charaWrap")) {
                         clickReconnect();
+                        //slow down
+                        findID("charaWrap",2000);
                     }
                     break;
                 }
