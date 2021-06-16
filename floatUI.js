@@ -2480,12 +2480,14 @@ function algo_init() {
                 case STATE_TEAM: {
                     //如果之前误触了队伍名称变更，先尝试关闭
                     var team_name_change_element = null;
-                    team_name_change_element = find(string.team_name_change);
-                    if (team_name_change_element != null && team_name_change_element.id() != "popupInfoDetailTitle") {
-                        team_name_change_element = null;
-                    }
+                    team_name_change_element = findID("popupInfoDetailTitle");
                     if (team_name_change_element != null) {
-                        log("在队伍调整界面发现\""+string.team_name_change+"\"已经打开,尝试关闭");
+                        let popup_title = getContent(team_name_change_element);
+                        log("在队伍调整界面发现有弹窗\""+popup_title+"\"已经打开");
+                        if (popup_title != string.team_name_change) {
+                            log("弹窗标题不是意料之中的\""+string.team_name_change+"\"！");
+                        }
+                        log("尝试关闭弹窗");
                         let team_name_change_bounds = team_name_change_element.bounds();
                         click(team_name_change_bounds.right, team_name_change_bounds.top);
                         sleep(200);
