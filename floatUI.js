@@ -2213,6 +2213,9 @@ function algo_init() {
                     }
                     if (findID("nextPageBtn")) {
                         state = STATE_TEAM;
+                        toastLog("警告: 脚本不知道现在选了哪一关!"+
+                                 "本轮"+(limit.useAuto?"官方周回":"战斗")+"结束后,\n"+
+                                 "可能无法自动选关重新开始!");
                         log("进入队伍调整");
                         break;
                     }
