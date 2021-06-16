@@ -1307,7 +1307,7 @@ function algo_init() {
                 logString = "模拟滑动: "+x1+","+y1+" => "+x2+","+y2+(duration==null?"":(" ("+duration+"ms)"));
                 break;
             case 2:
-                shellcmd = "input click "+x1+" "+y1;
+                shellcmd = "input tap "+x1+" "+y1;
                 logString = "模拟点击: "+x1+","+y1;
                 break;
             default:
