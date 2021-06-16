@@ -1705,6 +1705,7 @@ function algo_init() {
             "ap_refill_popup",
             "ap_refill_confirm",
             "out_of_ap",
+            "team_name_change",
             "start",
             "follow",
             "follow_append",
@@ -1725,6 +1726,7 @@ function algo_init() {
             "回复确认",
             "回复",
             "AP不足",
+            "队伍名称变更",
             "开始",
             "关注",
             "关注追加",
@@ -1745,6 +1747,7 @@ function algo_init() {
             "回復確認",
             "進行回復",
             "AP不足",
+            "",//待补齐
             "開始",
             "關注",
             "追加關注",
@@ -1765,6 +1768,7 @@ function algo_init() {
             "回復確認",
             "回復する",
             "AP不足",
+            "",//待补齐
             "開始",
             "フォロー",
             "フォロー追加",
