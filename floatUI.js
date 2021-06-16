@@ -1822,7 +1822,7 @@ function algo_init() {
         var connection_lost_title_element = findID("popupInfoDetailTitle", limit.timeout);
         if (
             connection_lost_title_element != null
-            && getContent(connection_lost_title_element) == string.connection_lost;
+            && getContent(connection_lost_title_element) == string.connection_lost
         ) {
             log("游戏已经断线并强制回首页");
             return "logged_out";
