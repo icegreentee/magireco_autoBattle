@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "3.8.0";
+var version = "3.9.0";
 var appName = Name + " v" + version;
 
 function getProjectVersion() {

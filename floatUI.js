@@ -1743,7 +1743,7 @@ function algo_init() {
         if (device.sdkInt >= 28) {
             //Android 9或以上有原生的刘海屏API
             //处理转屏
-            if (limit.cutoutParams != null) {
+            if (limit.cutoutParams != null && limit.cutoutParams.cutout != null) {
                 let initialRotation = limit.cutoutParams.rotation;
                 let display = context.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
                 let currentRotation = display.getRotation();
