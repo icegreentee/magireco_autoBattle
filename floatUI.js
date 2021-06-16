@@ -2050,6 +2050,7 @@ function algo_init() {
         if(match(string.regex_until)) state = STATE_HOME;
         else if(find(string.support)) state = STATE_SUPPORT;
         else if(findID("nextPageBtn")) state = STATE_TEAM;
+        else if(find("BATTLE 1")) state=STATE_MENU;
         while (true) {
             switch (state) {
                 case STATE_LOGIN:{
@@ -2065,7 +2066,7 @@ function algo_init() {
                     break;
                 }
                 case STATE_HOME:{
-                    if(match(/^BATTLE.+/)){
+                    if(find("BATTLE 1")){
                         state=STATE_MENU;
                         log("进入关卡选择");
                         break;
@@ -2162,7 +2163,7 @@ function algo_init() {
                         last=Date.now();
                         state=STATE_LOGIN;
                         log("重启游戏进程，进入登录页面");
-                    } else if((Date.now()>last+1000*60*60) && findID("charaWrap")){
+                    } else if(((Date.now()>last+1000*60*60) && findID("charaWrap"))||(Date.now()>last+1000*60*65)){
                         log("尝试关闭游戏进程");
                         backtoMain();
                         sleep(5000)
