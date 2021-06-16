@@ -56,7 +56,7 @@ floatUI.scripts = [
         fn: autoMainver1,
     },
     {
-        name: "每40分钟自动重开，刷活动剧情1",
+        name: "每小时自动重开，刷剧情1",
         fn: tasks.reopen,
     },
 ];
@@ -1631,7 +1631,7 @@ function algo_init() {
             /^最终登录.+/,
             /＋\d+个$/,
             /[\s\S]*续战/,
-            /截止$/,
+            /.+截止$/,
             "com.bilibili.madoka.bilibili",
         ],
         zh_Hant: [
@@ -1650,7 +1650,7 @@ function algo_init() {
             /^最終登入.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
-            /為止$/,
+            /.+為止$/,
             "com.komoe.madokagp",
         ],
         ja: [
@@ -1669,7 +1669,7 @@ function algo_init() {
             /^最終ログイン.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
-            /まで$/,
+            /.+まで$/,
             "com.aniplex.magireco",
         ],
     };
@@ -2070,6 +2070,14 @@ function algo_init() {
                         log("进入关卡选择");
                         break;
                     }
+                    if (findID("popupInfoDetailTitle")) {
+                        let element = className("EditText").findOnce();
+                        if (element && element.refresh()) {
+                            log("尝试关闭弹窗");
+                            let bound = element.bounds();
+                            click(bound.right, bound.top);
+                        }
+                    }
                     let element=match(string.regex_until)
                     if(element){
                         click(element.bounds().centerX(),element.bounds().centerY())
@@ -2154,12 +2162,14 @@ function algo_init() {
                         last=Date.now();
                         state=STATE_LOGIN;
                         log("重启游戏进程，进入登录页面");
-                    } else if((Date.now()>last+1000*60*40) && findID("charaWrap")){
+                    } else if((Date.now()>last+1000*60*60) && findID("charaWrap")){
                         log("尝试关闭游戏进程");
                         backtoMain();
                         sleep(5000)
                         killBackground(pkgName);
                         sleep(10000)
+                    } else if (limit.autoReconnect) {
+                        clickReconnect();
                     }
                     break;
                 }
