@@ -1861,6 +1861,7 @@ function algo_init() {
 
     function refillAP() {
         log("根据情况,如果需要,就使用AP回复药");
+        var result = "drug_not_used";
 
         //检测AP药选择窗口在最开始是不是打开的状态
         var ap_refill_title_appeared = false;
@@ -1875,7 +1876,8 @@ function algo_init() {
             var apinfo = getAP(limit.timeout);
             if (apinfo == null) {
                 log("检测AP失败");
-                break;
+                result == "error";
+                break;//后面还是要尽量把AP药选择窗口关闭，如果已经打开的话
             }
             log("当前AP:"+apinfo.value+"/"+apinfo.total);
 
@@ -1904,8 +1906,6 @@ function algo_init() {
 
             log("继续嗑药");
 
-            var isDrugUsed = false;
-
             //确保AP药选择窗口已经打开
             let ap_refill_title_attempt_max = 1500;
             for (let attempt=0; attempt<ap_refill_title_attempt_max; attempt++) {
@@ -1915,6 +1915,17 @@ function algo_init() {
                     log("AP药选择窗口已经出现");
                     ap_refill_title_appeared = true;
                     break;
+                }
+                //如果AP药选择窗口还没出现，检查是不是已经切换到队伍调整
+                if (findID("nextPageBtn") != null) {
+                    //避免在已经切换到队伍调整后误触
+                    //不过在这里检测可能仍然不太可靠，因为能从助战选择那里调用到这里，本来就是之前已经检测过一次nextPageBtn却没有找到
+                    //（应该）还是有可能出现虽然已经从助战选择切换出去，但还没完全切换到队伍调整，也检测不到nextPageBtn的情况
+                    //这个时候还是会把队伍名称错当成AP按钮误点、然后弹出修改队伍名称的窗口
+                    //所以，归根到底还是得靠limit.timeout调大一些
+                    log("已经切换到队伍调整");
+                    result = "error";
+                    return result;//AP药选择窗口肯定没开，所以不需要在后面尝试关闭了
                 }
                 if (attempt == ap_refill_title_attempt_max-1) {
                     log("长时间等待后，AP药选择窗口仍然没有出现，退出");
@@ -1955,7 +1966,7 @@ function algo_init() {
                             waitElement(ap_refill_popup_element, 5000);
                         }
                         log("确认回复窗口已消失");
-                        isDrugUsed = true;
+                        result = "drug_used";
 
                         //更新嗑药个数限制数值，减去用掉的数量
                         updateDrugLimit(i);
@@ -1967,7 +1978,7 @@ function algo_init() {
                 }
             }
 
-            if (!isDrugUsed) {
+            if (result != "drug_used") {/* result == "drug_not_used" || result == "error" */
                 if (find(string.out_of_ap)) {
                     log("AP不足且未嗑药,退出");
                     stopThread();
@@ -1993,7 +2004,7 @@ function algo_init() {
             click(bound.right, bound.top);
             waitElement(ap_refill_title_element, 5000);
         }
-        return isDrugUsed;
+        return result;
     }
 
     function convertCoords(point) {
@@ -2140,7 +2151,11 @@ function algo_init() {
                     }
 
                     //根据情况,如果需要就嗑药
-                    refillAP();
+                    if (refillAP() == "error") {
+                        //AP检测失败，或者已经进入队伍调整
+                        sleep(200);
+                        break;
+                    }
 
                     //等待“请选择支援角色”出现
                     if (find(string.support, limit.timeout) == null) break;
@@ -2187,6 +2202,20 @@ function algo_init() {
                 }
 
                 case STATE_TEAM: {
+                    //如果之前误触了队伍名称变更，先尝试关闭
+                    var team_name_change_element = null;
+                    team_name_change_element = find(string.team_name_change);
+                    if (team_name_change_element != null && team_name_change_element.id() != "popupInfoDetailTitle") {
+                        team_name_change_element = null;
+                    }
+                    if (team_name_change_element != null) {
+                        log("在队伍调整界面发现\""+string.team_name_change+"\"已经打开,尝试关闭");
+                        let team_name_change_bounds = team_name_change_element.bounds();
+                        click(team_name_change_bounds.right, team_name_change_bounds.top);
+                        sleep(200);
+                        break;
+                    }
+
                     var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
                     if (limit.useAuto) {
                         if (element) {
