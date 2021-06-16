@@ -1318,6 +1318,11 @@ function algo_init() {
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        var elapsedTime = new Date().getTime() - startTime;
+        if (elapsedTime > 3000) {
+            log("耗时过长:"+elapsedTime+"ms");
+            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+        }
         return result;
     }
 
@@ -1336,6 +1341,11 @@ function algo_init() {
             if (result.length >= 1) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        var elapsedTime = new Date().getTime() - startTime;
+        if (elapsedTime > 3000) {
+            log("耗时过长:"+elapsedTime+"ms");
+            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+        }
         return result;
     }
 
@@ -1359,6 +1369,11 @@ function algo_init() {
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        var elapsedTime = new Date().getTime() - startTime;
+        if (elapsedTime > 3000) {
+            log("耗时过长:"+elapsedTime+"ms");
+            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+        }
         return result;
     }
 
@@ -1384,6 +1399,11 @@ function algo_init() {
             if (result.length >= 1) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        var elapsedTime = new Date().getTime() - startTime;
+        if (elapsedTime > 3000) {
+            log("耗时过长:"+elapsedTime+"ms");
+            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+        }
         return result;
     }
 
@@ -1404,6 +1424,11 @@ function algo_init() {
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        var elapsedTime = new Date().getTime() - startTime;
+        if (elapsedTime > 3000) {
+            log("耗时过长:"+elapsedTime+"ms");
+            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+        }
         return result;
     }
 
@@ -1433,6 +1458,11 @@ function algo_init() {
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+        var elapsedTime = new Date().getTime() - startTime;
+        if (elapsedTime > 3000) {
+            log("耗时过长:"+elapsedTime+"ms");
+            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+        }
         return result;
     }
 
