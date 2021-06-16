@@ -43,6 +43,12 @@ function logException(e) {
     }
 }
 
+var origFunc = {
+    click: function () {click.apply(this, arguments)},
+    swipe: function () {swipe.apply(this, arguments)},
+    press: function () {press.apply(this, arguments)},
+}
+
 var tasks = algo_init();
 // touch capture, will be initialized in main
 var capture = () => { };
@@ -1243,48 +1249,71 @@ floatUI.logParams = function () {
 function algo_init() {
 
     var useShizuku = true;
-    var isFirstRootClick = true;
+    var isFirstRunPrivCmd = true;
 
-    function clickRoot(x, y) {
-        if (isFirstRootClick) {
-            toastLog("Android 7 以下设备运行脚本需要root或Shizuku(adb)权限\n正在尝试Shizuku...");
-            isFirstRootClick = false;
+    //用Root或adb shell权限执行命令
+    function privShellCmd(shellcmd, logString) {
+        if (logString == null || logString === true) {
+            logString = "执行命令: "+shellcmd;
+        }
+        if (isFirstRunPrivCmd) {
+            if (logString !== false) toastLog("Android 7 以下设备运行脚本需要root或Shizuku(adb)权限\n正在尝试Shizuku...");
+            isFirstRunPrivCmd = false;
         }
         //第一次会尝试使用Shizuku，如果失败，则不再尝试Shizuku，直到脚本退出
         if (useShizuku) {
-            log("使用Shizuku模拟点击坐标 "+x+","+y);
+            if (logString !== false) log("使用Shizuku"+logString);
             $shell.setDefaultOptions({adb: true});
             var result = null;
             try {
-                result = $shell("input tap "+x+" "+y, false);
+                result = $shell(shellcmd, false);
             } catch (e) {
                 useShizuku = false;
-                toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
+                if (logString !== false) toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
                 logException(e);
             }
 
             //这里useShizuku实际上指示了是否捕获到抛出的异常
             if (!useShizuku || result == null || result.code != 0) {
                 useShizuku = false;
-                log("使用Shizuku执行模拟点击命令失败,尝试直接使用root权限");
+                if (logString !== false) log("使用Shizuku"+logString+"失败,尝试直接使用root权限");
             } else {
-                log("模拟点击完成");
+                if (logString !== false) log("使用Shizuku"+logString+"完成");
                 return;//命令成功执行
             }
         }
 
         //第一次尝试Shizuku失败后也会走到这里
         if (!useShizuku) {
-            log("直接使用root权限模拟点击坐标 "+x+","+y);
+            log("直接使用root权限"+logString);
             $shell.setDefaultOptions({adb: false});
-            result = $shell("input tap "+x+" "+y, true);//第二个参数true表示使用root权限
+            result = $shell(shellcmd, true);//第二个参数true表示使用root权限
             if (result == null || result.code != 0) {
-                toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
+                if (logString !== false) toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
                 stopThread();
             } else {
-                log("模拟点击完成");
+                if (logString !== false) log("直接使用root权限"+logString+"完成");
             }
         }
+    }
+
+    //虽然函数名里有Root，实际上用的可能还是adb shell权限
+    function clickOrSwipeRoot(x1, y1, x2, y2, duration) {
+        var shellcmd = null;
+        var logString = null;
+        switch (arguments.length) {
+            case 5:
+                shellcmd = "input swipe "+x1+" "+y1+" "+x2+" "+y2+(duration==null?"":(" "+duration));
+                logString = "模拟滑动: "+x1+","+y1+" => "+x2+","+y2+(duration==null?"":(" ("+duration+"ms)"));
+                break;
+            case 2:
+                shellcmd = "input click "+x1+" "+y1;
+                logString = "模拟点击: "+x1+","+y1;
+                break;
+            default:
+                throw new Error("clickOrSwipeRoot: invalid argument count");
+        }
+        privShellCmd(shellcmd, logString);
     }
 
     function click(x, y) {
@@ -1305,73 +1334,30 @@ function algo_init() {
         if (device.sdkInt >= 24) {
             // now accessibility gesture APIs are available
             log("使用无障碍服务模拟点击坐标 "+x+","+y);
-            press(x, y, 50);
+            origFunc.press(x, y, 50);
             log("点击完成");
         } else {
-            clickRoot(x, y);
+            clickOrSwipeRoot(x, y);
         }
     }
 
-    function swipeRoot(x1, y1, x2, y2, duration) {
-        if (isFirstRootClick) {
-            toastLog("Android 7 以下设备运行脚本需要root或Shizuku(adb)权限\n正在尝试Shizuku...");
-            isFirstRootClick = false;
-        }
-        var shellcmd = "input swipe "+x1+" "+y1+" "+x2+" "+y2+(duration==null?"":(" "+duration));
-        //第一次会尝试使用Shizuku，如果失败，则不再尝试Shizuku，直到脚本退出
-        if (useShizuku) {
-            log("使用Shizuku模拟滑动 "+x1+","+y1+" => "+x2+","+y2);
-            $shell.setDefaultOptions({adb: true});
-            var result = null;
-            try {
-                result = $shell(shellcmd, false);
-            } catch (e) {
-                useShizuku = false;
-                toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
-                logException(e);
-            }
-
-            //这里useShizuku实际上指示了是否捕获到抛出的异常
-            if (!useShizuku || result == null || result.code != 0) {
-                useShizuku = false;
-                log("使用Shizuku执行模拟滑动命令失败,尝试直接使用root权限");
-            } else {
-                log("模拟滑动完成");
-                return;//命令成功执行
-            }
-        }
-
-        //第一次尝试Shizuku失败后也会走到这里
-        if (!useShizuku) {
-            log("直接使用root权限模拟滑动 "+x1+","+y1+" => "+x2+","+y2);
-            $shell.setDefaultOptions({adb: false});
-            result = $shell(shellcmd, true);//第二个参数true表示使用root权限
-            if (result == null || result.code != 0) {
-                toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
-                stopThread();
-            } else {
-                log("模拟滑动完成");
-            }
-        }
-    }
-
-    function compatSwipe(x1, y1, x2, y2, duration) {
-        var points = [null, null];
+    function swipe(x1, y1, x2, y2, duration) {
+        // 解析参数
+        var points = [];
         if (arguments.length > 5) throw new Error("compatSwipe: incorrect argument count");
         for (let i=0; i<arguments.length; i++) {
-            let num = parseInt(arguments[i]);
-            if (isNaN(num)) {
+            if (isNaN(parseInt(arguments[i]))) {
                 //参数本身就（可能）是一个坐标点对象
                 points.push(arguments[i]);
             } else {
                 //参数应该是坐标X值或滑动时长
                 if (i < arguments.length-1) {
                     //存在下一个参数，则把这个参数视为坐标X值，下一个参数视为坐标Y值
-                    points.push({x: arguments[i], y: arguments[i+1]});
+                    points.push({x: parseInt(arguments[i]), y: parseInt(arguments[i+1])});
                     i++;
                 } else {
                     //不存在下一个参数，这个参数应该是滑动时长
-                    duration = arguments[i];
+                    duration = parseInt(arguments[i]);
                 }
             }
             //坐标X、Y值应该都是数字
@@ -1402,8 +1388,8 @@ function algo_init() {
         }
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
-            log("使用无障碍服务模拟滑动 "+x1+","+y1+" => "+x2+","+y2);
-            swipe(x1, y1, x2, y2, duration);
+            log("使用无障碍服务模拟滑动 "+x1+","+y1+" => "+x2+","+y2+(duration==null?"":(" ("+duration+"ms)")));
+            origFunc.swipe(x1, y1, x2, y2, duration);
             log("滑动完成");
         } else {
             swipeRoot(x1, y1, x2, y2, duration);
@@ -2708,7 +2694,7 @@ function algo_init() {
                     break;
                 case "swipe":
                     let points = op.points.map((point) => convertCoords(point));
-                    compatSwipe(points[0].x, points[0].y, points[1].x, points[1].y);
+                    swipe(points[0].x, points[0].y, points[1].x, points[1].y);
                     break;
                 case "sleep":
                     sleep(op.sleepTime);
@@ -2728,7 +2714,7 @@ function algo_init() {
                             log("重放终止");
                             if (limit.killOnReplayFail) {
                                 log("强行停止游戏", opList.package_name);
-                                rootShell("am force-stop "+opList.package_name);
+                                privShellCmd("am force-stop "+opList.package_name);
                                 log("强行停止完成");
                             }
                             return false;
