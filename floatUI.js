@@ -1257,7 +1257,7 @@ function algo_init() {
             logString = "执行命令: "+shellcmd;
         }
         if (isFirstRunPrivCmd) {
-            if (logString !== false) toastLog("Android 7 以下设备运行脚本需要root或Shizuku(adb)权限\n正在尝试Shizuku...");
+            toastLog("Android 7 以下设备运行脚本需要root或Shizuku(adb)权限\n正在尝试Shizuku...");
             isFirstRunPrivCmd = false;
         }
         //第一次会尝试使用Shizuku，如果失败，则不再尝试Shizuku，直到脚本退出
@@ -1269,7 +1269,7 @@ function algo_init() {
                 result = $shell(shellcmd, false);
             } catch (e) {
                 useShizuku = false;
-                if (logString !== false) toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
+                toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
                 logException(e);
             }
 
@@ -1289,7 +1289,7 @@ function algo_init() {
             $shell.setDefaultOptions({adb: false});
             result = $shell(shellcmd, true);//第二个参数true表示使用root权限
             if (result == null || result.code != 0) {
-                if (logString !== false) toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
+                toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
                 stopThread();
             } else {
                 if (logString !== false) log("直接使用root权限"+logString+"完成");
