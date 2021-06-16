@@ -1303,7 +1303,17 @@ function algo_init() {
         var startTime = new Date().getTime();
         var result = null;
         var it = 0;
+        var cycleTime = startTime;
+        var lastCycleTime = startTime;
+        var elapsedTime = 0;
         do {
+            lastCycleTime = cycleTime
+            cycleTime = new Date().getTime();
+            elapsedTime = cycleTime - lastCycleTime;
+            if (elapsedTime > 1000) {
+                log("耗时过长:"+elapsedTime+"ms");
+                try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
+            }
             it++;
             try {
                 auto.root.refresh();
@@ -1318,10 +1328,10 @@ function algo_init() {
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        var elapsedTime = new Date().getTime() - startTime;
+        elapsedTime = new Date().getTime() - startTime;
         if (elapsedTime > 3000) {
             log("耗时过长:"+elapsedTime+"ms");
-            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+            try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
         }
         return result;
     }
@@ -1331,7 +1341,17 @@ function algo_init() {
         var startTime = new Date().getTime();
         var result = [];
         var it = 0;
+        var cycleTime = startTime;
+        var lastCycleTime = startTime;
+        var elapsedTime = 0;
         do {
+            lastCycleTime = cycleTime
+            cycleTime = new Date().getTime();
+            elapsedTime = cycleTime - lastCycleTime;
+            if (elapsedTime > 1000) {
+                log("耗时过长:"+elapsedTime+"ms");
+                try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
+            }
             it++;
             result = textMatches(reg).find();
             result = result.filter((x) => x.refresh());
@@ -1341,10 +1361,10 @@ function algo_init() {
             if (result.length >= 1) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        var elapsedTime = new Date().getTime() - startTime;
+        elapsedTime = new Date().getTime() - startTime;
         if (elapsedTime > 3000) {
             log("耗时过长:"+elapsedTime+"ms");
-            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+            try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
         }
         return result;
     }
@@ -1354,7 +1374,17 @@ function algo_init() {
         var startTime = new Date().getTime();
         var result = null;
         var it = 0;
+        var cycleTime = startTime;
+        var lastCycleTime = startTime;
+        var elapsedTime = 0;
         do {
+            lastCycleTime = cycleTime
+            cycleTime = new Date().getTime();
+            elapsedTime = cycleTime - lastCycleTime;
+            if (elapsedTime > 1000) {
+                log("耗时过长:"+elapsedTime+"ms");
+                try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
+            }
             it++;
             try {
                 auto.root.refresh();
@@ -1369,10 +1399,10 @@ function algo_init() {
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        var elapsedTime = new Date().getTime() - startTime;
+        elapsedTime = new Date().getTime() - startTime;
         if (elapsedTime > 3000) {
             log("耗时过长:"+elapsedTime+"ms");
-            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+            try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
         }
         return result;
     }
@@ -1382,7 +1412,17 @@ function algo_init() {
         var startTime = new Date().getTime();
         var result = [];
         var it = 0;
+        var cycleTime = startTime;
+        var lastCycleTime = startTime;
+        var elapsedTime = 0;
         do {
+            lastCycleTime = cycleTime
+            cycleTime = new Date().getTime();
+            elapsedTime = cycleTime - lastCycleTime;
+            if (elapsedTime > 1000) {
+                log("耗时过长:"+elapsedTime+"ms");
+                try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
+            }
             it++;
             try {
                 auto.root.refresh();
@@ -1399,10 +1439,10 @@ function algo_init() {
             if (result.length >= 1) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        var elapsedTime = new Date().getTime() - startTime;
+        elapsedTime = new Date().getTime() - startTime;
         if (elapsedTime > 3000) {
             log("耗时过长:"+elapsedTime+"ms");
-            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+            try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
         }
         return result;
     }
@@ -1411,7 +1451,17 @@ function algo_init() {
         var startTime = new Date().getTime();
         var result = null;
         var it = 0;
+        var cycleTime = startTime;
+        var lastCycleTime = startTime;
+        var elapsedTime = 0;
         do {
+            lastCycleTime = cycleTime
+            cycleTime = new Date().getTime();
+            elapsedTime = cycleTime - lastCycleTime;
+            if (elapsedTime > 1000) {
+                log("耗时过长:"+elapsedTime+"ms");
+                try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
+            }
             it++;
             try {
                 auto.root.refresh();
@@ -1424,10 +1474,10 @@ function algo_init() {
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        var elapsedTime = new Date().getTime() - startTime;
+        elapsedTime = new Date().getTime() - startTime;
         if (elapsedTime > 3000) {
             log("耗时过长:"+elapsedTime+"ms");
-            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+            try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
         }
         return result;
     }
@@ -1445,7 +1495,17 @@ function algo_init() {
         var startTime = new Date().getTime();
         var result = null;
         var it = 0;
+        var cycleTime = startTime;
+        var lastCycleTime = startTime;
+        var elapsedTime = 0;
         do {
+            lastCycleTime = cycleTime
+            cycleTime = new Date().getTime();
+            elapsedTime = cycleTime - lastCycleTime;
+            if (elapsedTime > 1000) {
+                log("耗时过长:"+elapsedTime+"ms");
+                try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
+            }
             it++;
             try {
                 auto.root.refresh();
@@ -1458,10 +1518,10 @@ function algo_init() {
             if (result && result.refresh()) break;
             sleep(100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
-        var elapsedTime = new Date().getTime() - startTime;
+        elapsedTime = new Date().getTime() - startTime;
         if (elapsedTime > 3000) {
             log("耗时过长:"+elapsedTime+"ms");
-            try {log(arguments.callee.name);log(arguments);} catch (e) {log("获取函数名失败");}
+            try {log(arguments);log(arguments.callee.name);} catch (e) {log("获取函数名失败");}
         }
         return result;
     }
