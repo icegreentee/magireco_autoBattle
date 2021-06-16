@@ -1328,7 +1328,7 @@ function algo_init() {
             } catch (e) {
                 useShizuku = false;
                 toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
-                log(e);
+                logException(e);
             }
 
             //这里useShizuku实际上指示了是否捕获到抛出的异常
