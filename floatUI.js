@@ -695,10 +695,15 @@ floatUI.main = function () {
         return limit.privilege;
     }
 
+<<<<<<< HEAD
     if (limit.useScreencap || device.sdkInt < 24) {
         if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
             requestShellPrivilegeThread = threads.start(requestShellPrivilege);
         }
+=======
+    if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
+        requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+>>>>>>> 9f14192 (app启动时就检测root或adb权限；增加privShell等函数，如果仍然没权限就再次申请)
     }
 
 };
