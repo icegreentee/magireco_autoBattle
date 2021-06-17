@@ -553,7 +553,9 @@ function toUpdate() {
                     files.write(engines.myEngine().cwd() + "/main.js", mainjs)
                     files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
                     events.on("exit", function () {
-                        engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
+                        //通过execScriptFile好像会有问题，比如点击悬浮窗QB=>齿轮然后就出现两个QB
+                        //engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
+                        app.launch(context.getPackageName())
                         toast("更新完毕")
                     })
                     engines.stopAll()
