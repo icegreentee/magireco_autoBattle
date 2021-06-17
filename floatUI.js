@@ -1930,6 +1930,19 @@ function algo_init() {
         var apMultiplier = parseInt(0+limit.apmul);
         while (true) {
             if (apCost == null) {
+                //先检查是否误触，或者检测迟滞而步调不一致
+                //如果AP药选择窗口还没出现，检查是不是已经切换到队伍调整
+                if (findID("nextPageBtn") != null) {
+                    log("已经切换到队伍调整");
+                    result = "error";
+                    break;
+                }
+                //同上，检查是不是选助战时点击变成了长按，误触打开了助战角色信息面板
+                if (findID("detailTab") != null) {
+                    log("误触打开了助战角色信息面板");
+                    result = "error";
+                    break;
+                }
                 toastLog("关卡AP消耗未知，不嗑药\n（可能在刷门票活动本？这方面还有待改进）");
                 break;
             }
@@ -1981,6 +1994,12 @@ function algo_init() {
                     log("已经切换到队伍调整");
                     result = "error";
                     return result;//AP药选择窗口肯定没开，所以不需要在后面尝试关闭了
+                }
+                //同上，检查是不是选助战时点击变成了长按，误触打开了助战角色信息面板
+                if (findID("detailTab") != null) {
+                    log("误触打开了助战角色信息面板");
+                    result = "error";
+                    return result;
                 }
                 if (attempt == ap_refill_title_attempt_max-1) {
                     log("长时间等待后，AP药选择窗口仍然没有出现，退出");
@@ -2338,6 +2357,18 @@ function algo_init() {
                         log("进入队伍调整");
                         break;
                     }
+                    //之前一轮循环中，选助战时，因为卡顿，点击变成了长按，
+                    //然后就误触打开助战角色信息面版，需要关闭
+                    //因为后面refillAP出错时会break，如果这里不检测助战角色信息面版就会死循环
+                    if (findID("detailTab")) {
+                        log("误点击，尝试返回");
+                        let element = className("EditText").findOnce();
+                        if (element && element.refresh()) {
+                            let bound = element.bounds();
+                            click(bound.left, bound.top);
+                        }
+                        find(string.support, parseInt(limit.timeout));
+                    }
 
                     //根据情况,如果需要就嗑药
                     if (refillAP() == "error") {
@@ -2377,16 +2408,7 @@ function algo_init() {
                         findID("nextPageBtn", parseInt(limit.timeout));
                         break;
                     }
-                    // if unexpectedly treated as long touch
-                    if (findID("detailTab")) {
-                        log("误点击，尝试返回");
-                        let element = className("EditText").findOnce();
-                        if (element && element.refresh()) {
-                            let bound = element.bounds();
-                            click(bound.left, bound.top);
-                        }
-                        find(string.support, parseInt(limit.timeout));
-                    }
+                    //以前这里是处理万一误触打开助战角色信息面版的情况的，现在移动到前面
                     break;
                 }
 
