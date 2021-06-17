@@ -2458,13 +2458,13 @@ function algo_init() {
 
                 case STATE_REWARD_POST: {
                     // wait 5 seconds for transition
-                    match(/\d*\/\d*/, 5000);
+                    let apinfo = getAP(5000);
                     // exit condition
                     if (findID("nextPageBtn")) {
                         state = STATE_SUPPORT;
                         log("进入助战选择");
                         break;
-                    } else if (match(/\d*\/\d*/)) {
+                    } else if (apinfo != null) {
                         state = STATE_MENU;
                         log("进入关卡选择");
                         break;
