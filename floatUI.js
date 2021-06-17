@@ -651,7 +651,7 @@ floatUI.main = function () {
                 result = shizukuShell(shellcmd);
             } catch (e) {
                 result = {code: 1, result: "-1", err: ""};
-                log(e);
+                logException(e);;
             }
             let euid = -1;
             if (result.code == 0) {
