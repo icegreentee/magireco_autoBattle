@@ -695,8 +695,10 @@ floatUI.main = function () {
         return limit.privilege;
     }
 
-    if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
-        requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+    if (limit.useScreencap || device.sdkInt < 24) {
+        if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
+            requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+        }
     }
 
 };
