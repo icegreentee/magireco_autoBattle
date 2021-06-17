@@ -220,8 +220,7 @@ function reportBug() {
             sleep(1000);
         } while (logTailSize - logMaxSize > 0 || logTailSize - logMaxSize <= -32);
         logContent = logTailContent;
-        logSize = logBytes.length;
-        log("截取尾部 日志大小", logSize+"字节", logContent.length+"字符");
+        log("截取尾部 日志大小", logTailSize+"字节", logContent.length+"字符");
     }
 
     var resultLinks = "";
