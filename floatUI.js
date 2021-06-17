@@ -1470,6 +1470,56 @@ function algo_init() {
         return !isNaN(Number(content)) && !isNaN(parseInt(content));
     }
 
+    //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
+    function findPopupInfoDetailTitle(wait) {
+        let result = {
+            element: null,
+            title: "",
+            close: {
+                x: getWindowSize().x - 1,
+                y: 0
+            }
+        };
+
+        let element = findID("popupInfoDetailTitle", wait);
+
+        if (element == null) return null;
+        result.element = element;
+
+        let element_text = getContent(element);
+
+        if (element_text != null && element_text != "") {
+            //MuMu模拟器上popupInfoDetailTitle自身就有文字
+            let title = getContent(element);
+            result.title = ((title == null) ? "" : title);
+        } else if (element.childCount() > 0) {
+            //Android 10真机上popupInfoDetailTitle自身没有文字，文字是它的子控件
+            let children_elements = element.children();
+            let max = 0;
+            let title = "";
+            let closeY = 0;
+            for (let i=0; i<children_elements.length; i++) {
+                let child_element = children_elements[i];
+                let text = getContent(child_element);
+                if (text != null && text.length > max) {
+                    max = text.length;
+                    title = text;
+                }
+            }
+            result.title = title;
+        } else {
+            //意料之外的情况
+            result.title = "";
+        }
+
+        let half_height = parseInt(element.bounds().height() / 2);
+        result.close.x -= half_height;
+        result.close.y = element.bounds().top - half_height;
+        if (result.close.y < 0) result.close.y = half_height;
+
+        return result;
+    }
+
     //检测AP，缺省wait的情况下只检测一次就退出
     function getAP(wait) {
         var startTime = 0;
