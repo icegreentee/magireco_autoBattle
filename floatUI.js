@@ -595,24 +595,32 @@ floatUI.main = function () {
     adjustCutoutParams();
 
     //使用Shizuku执行shell命令
-    shizukuShell = function (shellcmd) {
+    shizukuShell = function (shellcmd, logstring) {
+        if (logstring === true || (logstring !== false && logstring == null))
+            logstring = "使用Shizuku执行shell命令: ["+shellcmd+"]";
+        if (logstring !== false) log("使用Shizuku"+logstring);
         $shell.setDefaultOptions({adb: true});
         let result = $shell(shellcmd);
         $shell.setDefaultOptions({adb: false});
+        if (logstring !== false) log("使用Shizuku"+logstring+" 完成");
         return result;
     };
     //直接使用root权限执行shell命令
-    rootShell = function (shellcmd) {
+    rootShell = function (shellcmd, logstring) {
+        if (logstring === true || (logstring !== false && logstring == null))
+            logstring = "直接使用root权限执行shell命令: ["+shellcmd+"]";
+        if (logstring !== false) log("直接使用root权限"+logstring);
         $shell.setDefaultOptions({adb: false});
+        if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
         return $shell(shellcmd, true);
     };
     //根据情况使用Shizuku还是直接使用root执行shell命令
-    privShell = function (shellcmd) {
+    privShell = function (shellcmd, logstring) {
         if (limit.privilege) {
             if (limit.privilege.shizuku) {
-                return shizukuShell(shellcmd);
+                return shizukuShell(shellcmd, logstring);
             } else {
-                return rootShell(shellcmd);
+                return rootShell(shellcmd, logstring);
             }
         } else {
             if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
@@ -624,8 +632,12 @@ floatUI.main = function () {
         }
     }
     //不使用特权执行shell命令
-    normalShell = function (shellcmd) {
+    normalShell = function (shellcmd, logstring) {
+        if (logstring === true || (logstring !== false && logstring == null))
+            logstring = "不使用特权执行shell命令: ["+shellcmd+"]";
+        if (logstring !== false) log("不使用特权"+logstring);
         $shell.setDefaultOptions({adb: false});
+        if (logstring !== false) log("不使用特权"+logstring+" 完成");
         return $shell(shellcmd);
     }
 
@@ -648,10 +660,10 @@ floatUI.main = function () {
             let shellcmd = "cat /proc/self/status";
             let result = null;
             try {
-                result = shizukuShell(shellcmd);
+                result = shizukuShell(shellcmd, logstring);
             } catch (e) {
                 result = {code: 1, result: "-1", err: ""};
-                logException(e);;
+                logException(e);
             }
             let euid = -1;
             if (result.code == 0) {
@@ -673,7 +685,7 @@ floatUI.main = function () {
                 toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
                 sleep(2500);
                 toastLog("请务必选择“永久”授权，而不是一次性授权！");
-                result = rootShell(shellcmd);
+                result = rootShell(shellcmd, logstring);
                 if (result.code == 0) euid = getEUID(result.result);
                 if (euid == 0) {
                     log("直接获取root权限成功");
@@ -1368,7 +1380,7 @@ function algo_init() {
 
     function clickRoot(x, y) {
         let shellcmd = "input tap "+x+" "+y;
-        privShell(shellcmd);//没权限就会抛异常
+        privShell(shellcmd, "模拟点击坐标 ["+x+","+y+"]");//没权限就会抛异常
     }
 
     //虽然函数名里有Root，实际上用的可能还是adb shell权限
