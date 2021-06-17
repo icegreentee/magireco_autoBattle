@@ -1877,7 +1877,7 @@ function algo_init() {
         }
         return null;
     }
-
+/*  //闪退自动重启相关代码，尚未完成
     //检测游戏是否闪退或掉线
     //注意！调用后会重新检测区服，从而可能导致string、lang变量被重新赋值
     function isGameDead() {
@@ -1900,7 +1900,7 @@ function algo_init() {
         }
         return false;
     }
-
+*/
     var screen = {width: 0, height: 0, type: "normal"};
     var gamebounds = null;
     var gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
@@ -2731,7 +2731,7 @@ function algo_init() {
             }
         }
     }
-
+/*  //闪退自动重启相关代码，尚未完成
     function reLaunchGame(package_name) {
         toastLog("重新启动游戏...");
         var it = new Intent();
@@ -2812,7 +2812,7 @@ function algo_init() {
         log("所有动作重放完成");
         return true;
     }
-
+*/
     return {
         default: taskDefault,
         reopen: enterLoop
