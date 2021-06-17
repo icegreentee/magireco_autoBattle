@@ -890,6 +890,11 @@ var clickSets = {
         x: 1230,
         y: 730,
         pos: "center"
+    },
+    back: {
+        x: 120,
+        y: 50,
+        pos: "top"
     }
 }
 
@@ -2442,12 +2447,8 @@ function algo_init() {
                     }
                     // if unexpectedly treated as long touch
                     if (findID("detailTab")) {
-                        log("误点击，尝试返回");
-                        let element = className("EditText").findOnce();
-                        if (element && element.refresh()) {
-                            let bound = element.bounds();
-                            click(bound.left, bound.top);
-                        }
+                        log("点击变长按，打开了detailTab，尝试返回");
+                        click(convertCoords(clickSets.back));
                         find(string.support, 5000);
                     }
                     break;
