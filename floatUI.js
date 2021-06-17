@@ -656,54 +656,66 @@ floatUI.main = function () {
     requestShellPrivilege = function () {
         if (limit.privilege) {
             log("已经获取到root或adb权限了");
-        } else {
-            let shellcmd = "cat /proc/self/status";
-            let result = null;
-            try {
-                result = shizukuShell(shellcmd);
-            } catch (e) {
-                result = {code: 1, result: "-1", err: ""};
-                logException(e);
-            }
-            let euid = -1;
-            if (result.code == 0) {
-                euid = getEUID(result.result);
-                switch (euid) {
-                case 0:
-                    log("Shizuku有root权限");
-                    limit.privilege = {shizuku: {uid: euid}};
-                    break;
-                case 2000:
-                    log("Shizuku有adb shell权限");
-                    limit.privilege = {shizuku: {uid: euid}};
-                    break;
-                default:
-                    log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
-                    limit.privilege = null;
-                }
-            } else {
-                toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
-                sleep(2500);
-                toastLog("请务必选择“永久”授权，而不是一次性授权！");
-                result = rootShell(shellcmd);
-                if (result.code == 0) euid = getEUID(result.result);
-                if (euid == 0) {
-                    log("直接获取root权限成功");
-                    limit.privilege = {shizuku: null};
-                } else {
-                    log("直接获取root权限失败");
-                    limit.privilege = null;
-                    if (device.sdkInt >= 23) {
-                        toastLog("请下载安装Shizuku,并按照说明启动它\n然后在Shizuku中给本应用授权");
-                        $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
-                    } else {
-                        toastLog("Android版本低于6，Shizuku不能使用最新版\n请安装并启动Shizuku 3.6.1，并给本应用授权");
-                        $app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
-                    }
-                    sleep(1000);
-                }
+            return limit.privilege;
+        }
+
+        let rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
+
+        let shellcmd = "cat /proc/self/status";
+        let result = null;
+        try {
+            result = shizukuShell(shellcmd);
+        } catch (e) {
+            result = {code: 1, result: "-1", err: ""};
+            logException(e);
+        }
+        let euid = -1;
+        if (result.code == 0) {
+            euid = getEUID(result.result);
+            switch (euid) {
+            case 0:
+                log("Shizuku有root权限");
+                limit.privilege = {shizuku: {uid: euid}};
+                break;
+            case 2000:
+                log("Shizuku有adb shell权限");
+                limit.privilege = {shizuku: {uid: euid}};
+                break;
+            default:
+                log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
+                limit.privilege = null;
             }
         }
+
+        if (limit.privilege != null) return;
+
+        if (!files.isFile(rootMarkerPath)) {
+            toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
+            sleep(2500);
+            toastLog("请务必选择“永久”授权，而不是一次性授权！");
+        } else {
+            log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
+        }
+        result = rootShell(shellcmd);
+        if (result.code == 0) euid = getEUID(result.result);
+        if (euid == 0) {
+            log("直接获取root权限成功");
+            limit.privilege = {shizuku: null};
+            files.create(rootMarkerPath);
+        } else {
+            toastLog("直接获取root权限失败！");
+            sleep(2500);
+            limit.privilege = null;
+            files.remove(rootMarkerPath);
+            if (device.sdkInt >= 23) {
+                toastLog("请下载安装Shizuku,并按照说明启动它\n然后在Shizuku中给本应用授权");
+                $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
+            } else {
+                toastLog("Android版本低于6，Shizuku不能使用最新版\n请安装并启动Shizuku 3.6.1，并给本应用授权");
+                $app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
+            }
+        }
+
         return limit.privilege;
     }
 
