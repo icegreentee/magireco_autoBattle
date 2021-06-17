@@ -313,10 +313,6 @@ ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('foreground_service', checked);
 });
 
-ui.useAuto.setOnCheckedChangeListener(function (widget, checked) {
-    ui.refillMax.setVisibility(checked ? View.VISIBLE : View.GONE);
-});
-
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {
     // 此时根据无障碍服务的开启情况，同步开关的状态
