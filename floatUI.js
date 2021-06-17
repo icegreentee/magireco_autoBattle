@@ -1878,6 +1878,10 @@ function algo_init() {
         //循环嗑药到设定的AP上限倍数，并且达到关卡消耗的2倍
         var apMultiplier = parseInt(0+limit.apmul);
         while (true) {
+            if (apCost == null) {
+                toastLog("关卡AP消耗未知，不嗑药\n（可能在刷门票活动本？这方面还有待改进）");
+                break;
+            }
             var apinfo = getAP(limit.timeout);
             if (apinfo == null) {
                 log("检测AP失败");
@@ -1891,12 +1895,7 @@ function algo_init() {
 
             if (apinfo.value >= apMax) {
                 log("当前AP已经达到设置的上限倍数");
-                if (apCost == null) {
-                    log("关卡AP消耗未知,视为30");
-                    apCost = 30;
-                } else {
-                    log("关卡消耗"+apCost+"AP");
-                }
+                log("关卡消耗"+apCost+"AP");//apCost == null的情况已经在前面排除了
                 if (apinfo.value >= apCost * 2) {
                     log("当前AP达到关卡消耗量的两倍,即"+(apCost*2)+"AP,停止嗑药");
                     break;
