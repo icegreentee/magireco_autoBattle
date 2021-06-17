@@ -2122,7 +2122,7 @@ function algo_init() {
                     }
                     let found_popup = findPopupInfoDetailTitle();
                     if (found_popup != null) {
-                        log("尝试关闭弹窗 标题:\""+found_popup.title+"\"");
+                        log("尝试关闭弹窗 标题: \""+found_popup.title+"\"");
                         click(found_popup.close);
                     }
                     let element=match(string.regex_until)
