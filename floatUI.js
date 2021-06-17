@@ -1378,11 +1378,6 @@ floatUI.logParams = function () {
 // compatible action closure
 function algo_init() {
 
-    function clickRoot(x, y) {
-        let shellcmd = "input tap "+x+" "+y;
-        privShell(shellcmd, "模拟点击坐标 ["+x+","+y+"]");//没权限就会抛异常
-    }
-
     //虽然函数名里有Root，实际上用的可能还是adb shell权限
     function clickOrSwipeRoot(x1, y1, x2, y2, duration) {
         var shellcmd = null;
@@ -2023,7 +2018,7 @@ function algo_init() {
                     let relativeRotation = (4 + currentRotation - initialRotation) % 4;
                     log("relativeRotation", relativeRotation);
 
-                    let safeInsets = {};;
+                    let safeInsets = {};
                     for (let key of ["Left", "Top", "Right", "Bottom"]) {
                         safeInsets[key] = limit.cutoutParams.cutout["getSafeInset"+key]();
                     }
