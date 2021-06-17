@@ -1466,7 +1466,7 @@ function algo_init() {
             origFunc.swipe(x1, y1, x2, y2, duration);
             log("滑动完成");
         } else {
-            swipeRoot(x1, y1, x2, y2, duration);
+            clickOrSwipeRoot(x1, y1, x2, y2, duration);
         }
     }
 
