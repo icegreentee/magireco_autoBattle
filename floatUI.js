@@ -643,7 +643,7 @@ floatUI.main = function () {
             let shellcmd = "cat /proc/self/status";
             let result = null;
             try {
-                result = shizukuShell(shellcmd, logstring);
+                result = shizukuShell(shellcmd);
             } catch (e) {
                 result = {code: 1, result: "-1", err: ""};
                 log(e);
@@ -668,7 +668,7 @@ floatUI.main = function () {
                 toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
                 sleep(2500);
                 toastLog("请务必选择“永久”授权，而不是一次性授权！");
-                result = rootShell(shellcmd, logstring);
+                result = rootShell(shellcmd);
                 if (result.code == 0) euid = getEUID(result.result);
                 if (euid == 0) {
                     log("直接获取root权限成功");
