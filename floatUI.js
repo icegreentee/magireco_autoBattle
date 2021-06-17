@@ -1471,7 +1471,7 @@ function algo_init() {
     }
 
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
-    function findPopupInfoDetailTitle(wait) {
+    function findPopupInfoDetailTitle(title_to_find, wait) {
         let result = {
             element: null,
             title: "",
@@ -1511,6 +1511,8 @@ function algo_init() {
             //意料之外的情况
             result.title = "";
         }
+
+        if (title_to_find != null && result.title != title_to_find) return null;
 
         let half_height = parseInt(element.bounds().height() / 2);
         result.close.x -= half_height;
