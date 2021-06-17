@@ -1,4 +1,5 @@
 "ui";
+importClass(android.view.View)
 importClass(android.graphics.Color)
 importClass(android.view.MenuItem)
 importClass(com.stardust.autojs.project.ProjectConfig)
@@ -307,10 +308,14 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
     ui.autoService.setChecked(auto.service != null)
 });
 //前台服务
+ui.foreground.setChecked($settings.isEnabled('foreground_service'));
 ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('foreground_service', checked);
 });
-ui.foreground.setChecked($settings.isEnabled('foreground_service'));
+
+ui.useAuto.setOnCheckedChangeListener(function (widget, checked) {
+    ui.refillMax.setVisibility(checked ? View.VISIBLE : View.GONE);
+});
 
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {

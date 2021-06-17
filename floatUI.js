@@ -55,6 +55,10 @@ floatUI.scripts = [
         name: "活动周回2（备用可选）",
         fn: autoMainver1,
     },
+    {
+        name: "每小时自动重开，刷剧情1",
+        fn: tasks.reopen,
+    },
 ];
 
 floatUI.main = function () {
@@ -169,13 +173,7 @@ floatUI.main = function () {
 
     // get to main activity
     function settingsWrap() {
-        var it = new Intent();
-        var name = context.getPackageName();
-        if (name != "org.autojs.autojspro")
-            it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
-        else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
-        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        app.startActivity(it);
+        backtoMain();
     }
 
     var task_popup = floaty.rawWindow(
@@ -1614,6 +1612,7 @@ function algo_init() {
             "regex_lastlogin",
             "regex_bonus",
             "regex_autobattle",
+            "regex_until",
             "package_name",
         ],
         zh_Hans: [
@@ -1632,6 +1631,7 @@ function algo_init() {
             /^最终登录.+/,
             /＋\d+个$/,
             /[\s\S]*续战/,
+            /.+截止$/,
             "com.bilibili.madoka.bilibili",
         ],
         zh_Hant: [
@@ -1650,6 +1650,7 @@ function algo_init() {
             /^最終登入.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
+            /.+為止$/,
             "com.komoe.madokagp",
         ],
         ja: [
@@ -1668,6 +1669,7 @@ function algo_init() {
             /^最終ログイン.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
+            /.+まで$/,
             "com.aniplex.magireco",
         ],
     };
@@ -2040,6 +2042,145 @@ function algo_init() {
 
     function selectBattle() { }
 
+    function enterLoop(){
+        var last=Date.now();
+        initialize();
+        var pkgName = auto.root.packageName();
+        var state = STATE_BATTLE;
+        if(match(string.regex_until)) state = STATE_HOME;
+        else if(find(string.support)) state = STATE_SUPPORT;
+        else if(findID("nextPageBtn")) state = STATE_TEAM;
+        else if(find("BATTLE 1")) state=STATE_MENU;
+        while (true) {
+            switch (state) {
+                case STATE_LOGIN:{
+                    if(match(string.regex_until)){
+                        state=STATE_HOME;
+                        log("进入主页面");
+                        break;
+                    }
+                    let window=findID("android:id/content")
+                    if(window){
+                        click(window.bounds().centerX(),window.bounds().centerY())
+                    }
+                    break;
+                }
+                case STATE_HOME:{
+                    if(find("BATTLE 1")){
+                        state=STATE_MENU;
+                        log("进入关卡选择");
+                        break;
+                    }
+                    if (findID("popupInfoDetailTitle")) {
+                        let element = className("EditText").findOnce();
+                        if (element && element.refresh()) {
+                            log("尝试关闭弹窗");
+                            let bound = element.bounds();
+                            click(bound.right-8, bound.top+8);
+                        }
+                    }
+                    let element=match(string.regex_until)
+                    if(element){
+                        click(element.bounds().centerX(),element.bounds().centerY())
+                    }
+                    break;
+                }
+
+                case STATE_MENU:{
+                    if (find(string.support)) {
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
+                    }
+                    let element=find("BATTLE 1")
+                    if(element){
+                        if(element.bounds().top<element.bounds().bottom){
+                            click(element.bounds().centerX(),element.bounds().centerY())
+                        }
+                        else{
+                            let sx=element.bounds().centerX()
+                            let syfrom=getWindowSize().y-100
+                            let syto=parseInt(syfrom/2)
+                            swipe(sx, syfrom, sx, syto, 100)
+                        }
+                    }
+                    break;
+                }
+                
+                case STATE_SUPPORT: {
+                    // exit condition
+                    if (findID("nextPageBtn")) {
+                        state = STATE_TEAM;
+                        log("进入队伍调整");
+                        break;
+                    }
+                    // pick support
+                    let ptlist = getPTList();
+                    let playercount = matchAll(string.regex_lastlogin).length;
+                    log("候选数量" + ptlist.length + ",玩家数量" + playercount);
+                    if (ptlist.length) {
+                        // front with more pt
+                        let bound = ptlist[0].bounds;
+                        click(bound.centerX(), bound.centerY());
+                        // wait for start button for 5 seconds
+                        findID("nextPageBtn", 5000);
+                        break;
+                    }
+                    // if unexpectedly treated as long touch
+                    if (findID("detailTab")) {
+                        log("误点击，尝试返回");
+                        let element = className("EditText").findOnce();
+                        if (element && element.refresh()) {
+                            let bound = element.bounds();
+                            click(bound.left, bound.top);
+                        }
+                        find(string.support, 5000);
+                    }
+                    break;
+                }
+
+                case STATE_TEAM: {
+                    var element = findID("nextPageBtnLoop");
+                    // exit condition
+                    if (findID("android:id/content") && !element) {
+                        state = STATE_BATTLE;
+                        log("进入战斗");
+                        break;
+                    }
+                    // click start
+                    if (element) {
+                        let bound = element.bounds();
+                        click(bound.centerX(), bound.centerY());
+                        waitElement(element, 500);
+                    }
+                    break;
+                }
+
+                case STATE_BATTLE:{
+                    if (!packageName(pkgName).findOnce()) {
+                        app.launch(pkgName);
+                        sleep(2000);
+                        last=Date.now();
+                        state=STATE_LOGIN;
+                        log("重启游戏进程，进入登录页面");
+                    } else if(((Date.now()>last+1000*60*60) && findID("charaWrap"))||(Date.now()>last+1000*60*65)){
+                        log("尝试关闭游戏进程");
+                        backtoMain();
+                        sleep(5000)
+                        killBackground(pkgName);
+                        sleep(10000)
+                    } else if (limit.autoReconnect && !findID("charaWrap")) {
+                        clickReconnect();
+                        //slow down
+                        findID("charaWrap",2000);
+                    }
+                    break;
+                }
+            }
+            sleep(1000);
+        }
+    }
+
     function taskDefault() {
         initialize();
         var state = STATE_MENU;
@@ -2347,6 +2488,7 @@ function algo_init() {
 
     return {
         default: taskDefault,
+        reopen: enterLoop
     };
 }
 
@@ -2356,6 +2498,21 @@ function getWindowSize() {
     var pt = new Point();
     wm.getDefaultDisplay().getSize(pt);
     return pt;
+}
+
+function killBackground(packageName) {
+    var am = context.getSystemService(context.ACTIVITY_SERVICE);
+    am.killBackgroundProcesses(packageName);
+}
+
+function backtoMain() {
+    var it = new Intent();
+    var name = context.getPackageName();
+    if (name != "org.autojs.autojspro")
+        it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
+    else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+    it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+    app.startActivity(it);
 }
 
 module.exports = floatUI;
