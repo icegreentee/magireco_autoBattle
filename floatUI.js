@@ -1671,7 +1671,6 @@ function algo_init() {
             let children_elements = element.children();
             let max = 0;
             let title = "";
-            let closeY = 0;
             for (let i=0; i<children_elements.length; i++) {
                 let child_element = children_elements[i];
                 let text = getContent(child_element);
