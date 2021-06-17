@@ -2278,7 +2278,7 @@ function algo_init() {
                     }
                     let window=findID("android:id/content")
                     if(window){
-                        click(window.bounds().centerX(),window.bounds().centerY())
+                        click(convertCoords(clickSets.recover_battle))
                     }
                     break;
                 }
