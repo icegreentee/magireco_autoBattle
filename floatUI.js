@@ -2234,6 +2234,7 @@ function algo_init() {
                             var ap_refill_confirm_popup = findPopupInfoDetailTitle(string.ap_refill_popup, 2000);
                         } while (ap_refill_confirm_popup == null);
 
+                        bound = find(string.ap_refill_confirm, true).bounds();
                         while (ap_refill_confirm_popup.element.refresh()) {
                             log("找到确认回复窗口，点击确认回复");
                             click(bound.centerX(), bound.centerY());
