@@ -1387,7 +1387,7 @@ function algo_init() {
             default:
                 throw new Error("clickOrSwipeRoot: invalid argument count");
         }
-        privShellCmd(shellcmd, logString);
+        privShell(shellcmd, logString);
     }
 
     function click(x, y) {
