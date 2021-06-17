@@ -150,6 +150,7 @@ function setFollowRedirects(value) {
     http.__okhttp__.muteClient(newokhttp);
 }
 
+const logMaxSize = 1048576;
 var reportTask = null;
 function reportBug() {
     toastLog("正在上传日志和最近一次的快照,请耐心等待...");
@@ -191,11 +192,37 @@ function reportBug() {
         let latestSnapshotFilename = latest.slice(0, 3).join('-') + "_" + latest.slice(3, 6).join('-') + ".xml";
         log("要上传的快照文件名", latestSnapshotFilename);
         snapshotContent = files.read(files.join(snapshotDir, latestSnapshotFilename));
+        let snapshotBytes = files.readBytes(files.join(snapshotDir, latestSnapshotFilename));
+        let snapshotSize = snapshotBytes.length;
+        log("快照大小", snapshotSize+"字节", snapshotContent.length+"字符");
+        if (snapshotSize > logMaxSize) {
+            //大于1MB时不上传
+            snapshotContent = null;
+            toastLog("快照文件太大，请采取其他方式上传");
+        }
     }
 
     var parentDir = files.join(engines.myEngine().cwd(), "..");
     var logDir = files.join(parentDir, "logs");
     var logContent = files.read(files.join(logDir, "log.txt"));
+    let logBytes = files.readBytes(files.join(logDir, "log.txt"));
+    let logSize = logBytes.length;
+    log("日志大小", logSize+"字节", logContent.length+"字符");
+    if (logSize > logMaxSize) {
+        //大于1MB时只截取尾部
+        let excessSize = logSize - logMaxSize;
+        let rate = logSize / logContent.length;
+        let est = excessSize / rate;
+        do {
+            var logTailContent = new java.lang.String(logContent).substring(est, logContent.length-1);
+            var logTailSize = new java.lang.String(logTailContent).getBytes().length;
+            est += (logTailSize - logMaxSize) / rate;
+            sleep(1000);
+        } while (logTailSize - logMaxSize > 0 || logTailSize - logMaxSize <= -32);
+        logContent = logTailContent;
+        logSize = logBytes.length;
+        log("截取尾部 日志大小", logSize+"字节", logContent.length+"字符");
+    }
 
     var resultLinks = "";
 
