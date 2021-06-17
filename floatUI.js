@@ -2003,7 +2003,7 @@ function algo_init() {
 
                         while (ap_refill_confirm_popup.element.refresh()) {
                             log("找到确认回复窗口，点击确认回复");
-                            click(ap_refill_confirm_popup.close);
+                            click(bound.centerX(), bound.centerY());
                             waitElement(ap_refill_confirm_popup.element, 5000);
                         }
                         log("确认回复窗口已消失");
