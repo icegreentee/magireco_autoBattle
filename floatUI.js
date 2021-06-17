@@ -1918,8 +1918,8 @@ function algo_init() {
 
         //检测AP药选择窗口在最开始是不是打开的状态
         var ap_refill_title_appeared = false;
-        var ap_refill_title_element = find(string.ap_refill_title, 200);
-        if (ap_refill_popup_element != null) ap_refill_title_appeared = true;
+        var ap_refill_title_popup = findPopupInfoDetailTitle(string.ap_refill_title, 200);
+        if (ap_refill_title_popup != null) ap_refill_title_appeared = true;
 
         var apCost = getCostAP();
 
@@ -1964,8 +1964,8 @@ function algo_init() {
             let ap_refill_title_attempt_max = 1500;
             for (let attempt=0; attempt<ap_refill_title_attempt_max; attempt++) {
                 log("等待AP药选择窗口出现...");
-                ap_refill_title_element = find(string.ap_refill_title, false);
-                if (ap_refill_title_element != null) {
+                ap_refill_title_popup = findPopupInfoDetailTitle(string.ap_refill_title, false);
+                if (ap_refill_title_popup != null) {
                     log("AP药选择窗口已经出现");
                     ap_refill_title_appeared = true;
                     break;
@@ -1999,14 +1999,13 @@ function algo_init() {
                             log("点击使用第"+(i+1)+"种回复药");
                             click(bound.centerX(), bound.centerY());
                             // wait for confirmation popup
-                            var ap_refill_popup_element = find(string.ap_refill_popup, 2000);
-                        } while (ap_refill_popup_element == null);
+                            var ap_refill_confirm_popup = findPopupInfoDetailTitle(string.ap_refill_popup, 2000);
+                        } while (ap_refill_confirm_popup == null);
 
-                        bound = find(string.ap_refill_confirm, true).bounds();
-                        while (ap_refill_popup_element.refresh()) {
+                        while (ap_refill_confirm_popup.element.refresh()) {
                             log("找到确认回复窗口，点击确认回复");
-                            click(bound.centerX(), bound.centerY());
-                            waitElement(ap_refill_popup_element, 5000);
+                            click(ap_refill_confirm_popup.close);
+                            waitElement(ap_refill_confirm_popup.element, 5000);
                         }
                         log("确认回复窗口已消失");
                         isDrugUsed = true;
@@ -2032,20 +2031,19 @@ function algo_init() {
         }
 
         //关闭AP药选择窗口
-        if (ap_refill_title_element == null || !ap_refill_title_element.refresh()) {
+        if (ap_refill_title_popup == null || !ap_refill_title_popup.element.refresh()) {
             //AP药选择窗口之前可能被关闭过一次，又重新打开
             //在这种情况下需要重新寻找控件并赋值，否则会出现卡在AP药窗口的问题
 
             //不过，如果AP药选择窗口在最开始的时候就没出现过，后来也没故意要打开它，
             //现在就认为它自从自始至终就从来没出现过，所以就不需要寻找它并等待它出现
 
-            if (ap_refill_title_appeared) ap_refill_title_element = find(string.ap_refill_title, 2000);
+            if (ap_refill_title_appeared) ap_refill_title_popup = findPopupInfoDetailTitle(string.ap_refill_title, 2000);
         }
-        while (ap_refill_title_element != null && ap_refill_title_element.refresh()) {
+        while (ap_refill_title_popup != null && ap_refill_title_popup.element.refresh()) {
             log("关闭AP回复窗口");
-            bound = ap_refill_title_element.parent().bounds();
-            click(bound.right, bound.top);
-            waitElement(ap_refill_title_element, 5000);
+            click(ap_refill_title_popup.close);
+            waitElement(ap_refill_title_popup.element, 5000);
         }
         return isDrugUsed;
     }
@@ -2123,13 +2121,10 @@ function algo_init() {
                         log("进入关卡选择");
                         break;
                     }
-                    if (findID("popupInfoDetailTitle")) {
-                        let element = className("EditText").findOnce();
-                        if (element && element.refresh()) {
-                            log("尝试关闭弹窗");
-                            let bound = element.bounds();
-                            click(bound.right-8, bound.top+8);
-                        }
+                    let found_popup = findPopupInfoDetailTitle();
+                    if (found_popup != null) {
+                        log("尝试关闭弹窗 标题:\""+found_popup.title+"\"");
+                        click(found_popup.close);
                     }
                     let element=match(string.regex_until)
                     if(element){
@@ -2263,7 +2258,7 @@ function algo_init() {
                         break;
                     }
 
-                    if (findID("popupInfoDetailTitle")) {
+                    if (findPopupInfoDetailTitle()) {
                         //如果已经打开AP药选择窗口，就先尝试嗑药
                         //在 #31 之前,认为:
                         /* “走到这里的一种情况是:如果之前是在AP不足的情况下点击进入关卡，就会弹出AP药选择窗口” */
