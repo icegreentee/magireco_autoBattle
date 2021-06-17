@@ -1788,7 +1788,7 @@ function algo_init() {
         let results = [];
         //在收集可能是Pt的控件之前，应该先找到“请选择支援角色”
         //如果找不到，那应该是出现意料之外的情况了，这里也不好应对处理
-        let string_support_element = find(string.support, limit.timeout);
+        let string_support_element = find(string.support, parseInt(limit.timeout));
         let left = string_support_element.bounds().left;
         let elements = matchAll(/^\+\d*$/);
         log("PT匹配结果数量" + elements.length);
@@ -1960,12 +1960,12 @@ function algo_init() {
         var detectedLang = null;
         do {
             detectedLang = detectGameLang();
-        } while (new Date().getTime() < startTime + limit.timeout);
+        } while (new Date().getTime() < startTime + parseInt(limit.timeout));
         if (detectedLang == null) {
             log("游戏已经闪退");
             return "crashed";
         }
-        var connection_lost_title_element = findID("popupInfoDetailTitle", limit.timeout);
+        var connection_lost_title_element = findID("popupInfoDetailTitle", parseInt(limit.timeout));
         if (
             connection_lost_title_element != null
             && getContent(connection_lost_title_element) == string.connection_lost
@@ -2171,7 +2171,7 @@ function algo_init() {
                 toastLog("关卡AP消耗未知，不嗑药\n（可能在刷门票活动本？这方面还有待改进）");
                 break;
             }
-            var apinfo = getAP(limit.timeout);
+            var apinfo = getAP(parseInt(limit.timeout));
             if (apinfo == null) {
                 log("检测AP失败");
                 result == "error";
@@ -2215,7 +2215,7 @@ function algo_init() {
                     //不过在这里检测可能仍然不太可靠，因为能从助战选择那里调用到这里，本来就是之前已经检测过一次nextPageBtn却没有找到
                     //（应该）还是有可能出现虽然已经从助战选择切换出去，但还没完全切换到队伍调整，也检测不到nextPageBtn的情况
                     //这个时候还是会把队伍名称错当成AP按钮误点、然后弹出修改队伍名称的窗口
-                    //所以，归根到底还是得靠limit.timeout调大一些，以及队伍调整环节的防误触
+                    //所以，归根到底还是得靠parseInt(limit.timeout)调大一些，以及队伍调整环节的防误触
                     log("已经切换到队伍调整");
                     result = "error";
                     return result;//AP药选择窗口肯定没开，所以不需要在后面尝试关闭了
@@ -2624,7 +2624,7 @@ function algo_init() {
 
                     //等待“请选择支援角色”出现
                     log("等待\""+string.support+"\"出现...");
-                    if (find(string.support, limit.timeout) == null) break;
+                    if (find(string.support, parseInt(limit.timeout)) == null) break;
                     log("等待\""+string.support+"\"已经出现");
 
                     // save battle name if needed
@@ -2852,7 +2852,7 @@ function algo_init() {
         //循环点击继续战斗按钮位置（和放弃断线重连按钮位置重合），直到能检测到AP
         toastLog("重新登录...");
         while (true) {
-            let apinfo = getAP(limit.timeout);
+            let apinfo = getAP(parseInt(limit.timeout));
             if (apinfo != null) {
                 log("当前AP:"+apinfo.value+"/"+apinfo.total);
                 toastLog("重新登录完成");
@@ -2885,7 +2885,7 @@ function algo_init() {
                     break;
                 case "checkText":
                     let nextAction = null;
-                    if (find(op.text, limit.timeout) != null) {
+                    if (find(op.text, parseInt(limit.timeout)) != null) {
                         nextAction = op.found.nextAction;
                     } else {
                         nextAction = op.notFound.nextAction;
