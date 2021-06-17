@@ -1261,7 +1261,9 @@ function algo_init() {
         if (!useShizuku) {
             log("直接使用root权限模拟点击坐标 "+x+","+y);
             $shell.setDefaultOptions({adb: false});
-            result = $shell("input tap "+x+" "+y, true);//第二个参数true表示使用root权限
+            //直接设置第二个参数root为true在某些模拟器上可能无法弹出授权窗口,或者即便弹出了也无法点允许
+            //result = $shell("input tap "+x+" "+y, true);
+            result = $shell("su\ninput tap "+x+" "+y+"\nexit\n");
             if (result == null || result.code != 0) {
                 toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
                 stopThread();
