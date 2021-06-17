@@ -1514,7 +1514,7 @@ function algo_init() {
         if (title_to_find != null && result.title != title_to_find) return null;
 
         let half_height = parseInt(element.bounds().height() / 2);
-        result.close.x -= half_height;
+        //result.close.x -= half_height; //刘海屏也许会出问题，先注释掉
         result.close.y = element.bounds().top - half_height;
         if (result.close.y < 0) result.close.y = half_height;
 
