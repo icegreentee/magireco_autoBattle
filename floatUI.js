@@ -2623,12 +2623,15 @@ function algo_init() {
                     }
 
                     //等待“请选择支援角色”出现
+                    log("等待\""+string.support+"\"出现...");
                     if (find(string.support, limit.timeout) == null) break;
+                    log("等待\""+string.support+"\"已经出现");
 
                     // save battle name if needed
                     let battle = match(/^BATTLE.+/);
                     if (battle) {
                         battlename = getContent(battle);
+                        log("已记下关卡名: \""+battlename+"\"");
                     }
                     // pick support
                     let ptlist = getPTList();
