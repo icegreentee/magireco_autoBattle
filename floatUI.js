@@ -54,6 +54,15 @@ var tasks = algo_init();
 var capture = () => { };
 // 停止脚本线程，尤其是防止停止自己的时候仍然继续往下执行少许语句（同上，会在main函数中初始化）
 var stopThread = () => { };
+// （不）使用Shizuku/root执行shell命令
+var shizukuShell = () => { };
+var rootShell = () => { };
+var privShell = () => { };
+var normalShell = () => { };
+// 检查root或adb权限
+var getEUID = () => { };
+var requestShellPrivilege = () => { };
+var requestShellPrivilegeThread = null;
 // available script list
 floatUI.scripts = [
     {
@@ -585,6 +594,111 @@ floatUI.main = function () {
     //脚本启动时检测一次
     adjustCutoutParams();
 
+    //使用Shizuku执行shell命令
+    shizukuShell = function (shellcmd) {
+        $shell.setDefaultOptions({adb: true});
+        let result = $shell(shellcmd);
+        $shell.setDefaultOptions({adb: false});
+        return result;
+    };
+    //直接使用root权限执行shell命令
+    rootShell = function (shellcmd) {
+        $shell.setDefaultOptions({adb: false});
+        return $shell(shellcmd, true);
+    };
+    //根据情况使用Shizuku还是直接使用root执行shell命令
+    privShell = function (shellcmd) {
+        if (limit.privilege) {
+            if (limit.privilege.shizuku) {
+                return shizukuShell(shellcmd);
+            } else {
+                return rootShell(shellcmd);
+            }
+        } else {
+            if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
+                toastLog("已经在尝试申请root或adb权限了\n请稍后重试,或彻底退出脚本后重试");
+            } else {
+                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+            }
+            throw new Error("没有root或adb权限");
+        }
+    }
+    //不使用特权执行shell命令
+    normalShell = function (shellcmd) {
+        $shell.setDefaultOptions({adb: false});
+        return $shell(shellcmd);
+    }
+
+    //检查并申请root或adb权限
+    getEUID = function (procStatusContent) {
+        let matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
+        if (matched != null) {
+            matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
+        }
+        if (matched != null) {
+            return parseInt(matched[0]);
+        } else {
+            return -1;
+        }
+    }
+    requestShellPrivilege = function () {
+        if (limit.privilege) {
+            log("已经获取到root或adb权限了");
+        } else {
+            let shellcmd = "cat /proc/self/status";
+            let result = null;
+            try {
+                result = shizukuShell(shellcmd);
+            } catch (e) {
+                result = {code: 1, result: "-1", err: ""};
+                log(e);
+            }
+            let euid = -1;
+            if (result.code == 0) {
+                euid = getEUID(result.result);
+                switch (euid) {
+                case 0:
+                    log("Shizuku有root权限");
+                    limit.privilege = {shizuku: {uid: euid}};
+                    break;
+                case 2000:
+                    log("Shizuku有adb shell权限");
+                    limit.privilege = {shizuku: {uid: euid}};
+                    break;
+                default:
+                    log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
+                    limit.privilege = null;
+                }
+            } else {
+                toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
+                sleep(2500);
+                toastLog("请务必选择“永久”授权，而不是一次性授权！");
+                result = rootShell(shellcmd);
+                if (result.code == 0) euid = getEUID(result.result);
+                if (euid == 0) {
+                    log("直接获取root权限成功");
+                    limit.privilege = {shizuku: null};
+                } else {
+                    log("直接获取root权限失败");
+                    limit.privilege = null;
+                    if (device.sdkInt >= 23) {
+                        toastLog("请下载安装Shizuku,并按照说明启动它\n然后在Shizuku中给本应用授权");
+                        $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
+                    } else {
+                        toastLog("Android版本低于6，Shizuku不能使用最新版\n请安装并启动Shizuku 3.6.1，并给本应用授权");
+                        $app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
+                    }
+                    sleep(1000);
+                }
+            }
+        }
+        return limit.privilege;
+    }
+
+    if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
+        requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+    }
+
 };
 // ------------主要逻辑--------------------
 var langNow = "zh"
@@ -611,7 +725,9 @@ var limit = {
     default: 0,
     useAuto: true,
     apmul: "",
-    timeout: "5000"
+    timeout: "5000",
+    useScreencap: false,
+    privilege: null,
 }
 var clickSets = {
     ap: {
@@ -1248,53 +1364,9 @@ floatUI.logParams = function () {
 // compatible action closure
 function algo_init() {
 
-    var useShizuku = true;
-    var isFirstRunPrivCmd = true;
-
-    //用Root或adb shell权限执行命令
-    function privShellCmd(shellcmd, logString) {
-        if (logString == null || logString === true) {
-            logString = "执行命令: "+shellcmd;
-        }
-        if (isFirstRunPrivCmd) {
-            toastLog("Android 7 以下设备运行脚本需要root或Shizuku(adb)权限\n正在尝试Shizuku...");
-            isFirstRunPrivCmd = false;
-        }
-        //第一次会尝试使用Shizuku，如果失败，则不再尝试Shizuku，直到脚本退出
-        if (useShizuku) {
-            if (logString !== false) log("使用Shizuku"+logString);
-            $shell.setDefaultOptions({adb: true});
-            var result = null;
-            try {
-                result = $shell(shellcmd, false);
-            } catch (e) {
-                useShizuku = false;
-                toastLog("Shizuku未安装/未启动,或者未授权\n尝试直接使用root权限...");
-                logException(e);
-            }
-
-            //这里useShizuku实际上指示了是否捕获到抛出的异常
-            if (!useShizuku || result == null || result.code != 0) {
-                useShizuku = false;
-                if (logString !== false) log("使用Shizuku"+logString+"失败,尝试直接使用root权限");
-            } else {
-                if (logString !== false) log("使用Shizuku"+logString+"完成");
-                return;//命令成功执行
-            }
-        }
-
-        //第一次尝试Shizuku失败后也会走到这里
-        if (!useShizuku) {
-            log("直接使用root权限"+logString);
-            $shell.setDefaultOptions({adb: false});
-            result = $shell(shellcmd, true);//第二个参数true表示使用root权限
-            if (result == null || result.code != 0) {
-                toastLog("Android 7 以下设备运行脚本需要root\n没有root权限,退出");
-                stopThread();
-            } else {
-                if (logString !== false) log("直接使用root权限"+logString+"完成");
-            }
-        }
+    function clickRoot(x, y) {
+        let shellcmd = "input tap "+x+" "+y;
+        privShell(shellcmd);//没权限就会抛异常
     }
 
     //虽然函数名里有Root，实际上用的可能还是adb shell权限
