@@ -2276,6 +2276,21 @@ function algo_init() {
                         log("进入主页面");
                         break;
                     }
+                    if(find("BATTLE 1")){
+                        state=STATE_MENU;
+                        log("进入关卡选择");
+                        break;
+                    }
+                    if (find(string.support)) {
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
+                    }
+                    if (findID("nextPageBtn")) {
+                        state = STATE_TEAM;
+                        log("进入队伍调整");
+                        break;
+                    }
                     let window=findID("android:id/content")
                     if(window){
                         click(convertCoords(clickSets.recover_battle))
