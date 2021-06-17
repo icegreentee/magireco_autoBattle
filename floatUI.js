@@ -2357,10 +2357,11 @@ function algo_init() {
                         log("进入队伍调整");
                         break;
                     }
-                    //之前一轮循环中，选助战时，因为卡顿，点击变成了长按，
-                    //然后就误触打开助战角色信息面版，需要关闭
-                    //因为后面refillAP出错时会break，如果这里不检测助战角色信息面版就会死循环
                     if (findID("detailTab")) {
+                        //之前一轮循环中，选助战时，因为卡顿，点击变成了长按，
+                        //然后就误触打开助战角色信息面版，需要关闭。
+                        //因为后面refillAP出错时会break，等待“请选择支援角色”不出现也会break，
+                        //所以，如果这里不检测助战角色信息面版就会死循环。
                         log("误点击，尝试返回");
                         let element = className("EditText").findOnce();
                         if (element && element.refresh()) {
