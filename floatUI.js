@@ -2287,6 +2287,8 @@ function algo_init() {
             }
         }
 
+        log("嗑药结束");
+
         //关闭AP药选择窗口
         if (ap_refill_title_popup == null || !ap_refill_title_popup.element.refresh()) {
             //AP药选择窗口之前可能被关闭过一次，又重新打开
