@@ -1540,7 +1540,7 @@ function algo_init() {
         let results = [];
         //在收集可能是Pt的控件之前，应该先找到“请选择支援角色”
         //如果找不到，那应该是出现意料之外的情况了，这里也不好应对处理
-        let string_support_element = find(string.support, limit.timeout);
+        let string_support_element = find(string.support, parseInt(limit.timeout));
         let left = string_support_element.bounds().left;
         let elements = matchAll(/^\+\d*$/);
         log("PT匹配结果数量" + elements.length);
@@ -1874,7 +1874,7 @@ function algo_init() {
         //循环嗑药到设定的AP上限倍数，并且达到关卡消耗的2倍
         var apMultiplier = parseInt(0+limit.apmul);
         while (true) {
-            var apinfo = getAP(limit.timeout);
+            var apinfo = getAP(parseInt(limit.timeout));
             if (apinfo == null) {
                 log("检测AP失败");
                 break;
@@ -2284,7 +2284,7 @@ function algo_init() {
                     refillAP();
 
                     //等待“请选择支援角色”出现
-                    if (find(string.support, limit.timeout) == null) break;
+                    if (find(string.support, parseInt(limit.timeout)) == null) break;
 
                     // save battle name if needed
                     let battle = match(/^BATTLE.+/);
