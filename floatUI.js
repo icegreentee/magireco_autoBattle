@@ -2852,7 +2852,7 @@ function algo_init() {
         }
         toastLog("重新启动游戏...");
         var it = new Intent();
-        var name = specified_package_name == null ? strings[last_alive_lang].package_name : specified_package_name;
+        var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
         log("app.launch("+name+")");
         app.launch(name);//是不是真的启动成功，在外边检测
         log("重启游戏完成");
@@ -2926,13 +2926,14 @@ function algo_init() {
             stopThread();
         }
         var result = {
-            package_name: strings[detectedLang].package_name,
+            package_name: strings[detectedLang][strings.name.findIndex((e) => e == "package_name")],
             //现在的convertCoords只能从1920x1080转到别的分辨率，不能逆向转换
             //如果以后做了reverseConvertCoords，那就可以把isGeneric设为true了，然后录制的动作列表可以通用
             isGeneric: false,
             defaultSleepTime: 2000,
             steps: []
         }
+        log("DEBUG result", result);
         toastLog("请务必先回到首页再开始录制！");
         sleep(2000);
         let new_sleep_time = -1;
@@ -3134,6 +3135,10 @@ function algo_init() {
         if (opList == null) opList = last_op_list;
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
+            return false;
+        }
+        if (opList.package_name == null || opList.package_name == "") {
+            toastLog("重放出错: package_name为空");
             return false;
         }
         log("重放录制的操作...");
