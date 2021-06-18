@@ -3078,7 +3078,7 @@ function algo_init() {
                     //现在不考虑加入循环跳转什么的
                     op.exit = {};
                     op.exit.kill = false;
-                    dialog_options = ["成功", "失败", "先强关游戏再报告成功", "先强关游戏再报告失败"];
+                    dialog_options = ["报告成功", "报告失败", "先强关游戏再报告成功", "先强关游戏再报告失败"];
                     dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", dialog_options);
                     switch (dialog_selected) {
                         case 2:
@@ -3101,9 +3101,9 @@ function algo_init() {
                     endRecording = true;
                     break;
                 case "back":
+                    step -= 2;//这一步没录，还要回到上一步，所以是-2
                     if (result.steps.length > 0) {
                         result.steps.pop();
-                        step--;
                         toastLog("重录第"+(step+1)+"步");
                     } else {
                         toastLog("还没开始录制第1步");
@@ -3136,7 +3136,7 @@ function algo_init() {
         }
         log("重放录制的操作...");
         let endReplaying = false;
-        for (let i=0; i<opList.length&&!endReplaying; i++) {
+        for (let i=0; i<opList.steps.length&&!endReplaying; i++) {
             let op = opList.steps[i];
             log("第"+(i+1)+"步", op);
             switch (op.action) {
