@@ -3101,13 +3101,14 @@ function algo_init() {
                     endRecording = true;
                     break;
                 case "back":
-                    step -= 2;//这一步没录，还要回到上一步，所以是-2
+                    step--;
                     if (result.steps.length > 0) {
                         result.steps.pop();
                         toastLog("重录第"+(step+1)+"步");
                     } else {
                         toastLog("还没开始录制第1步");
                     }
+                    step--;//这一步没录，所以需要再-1
                     break;
                 case null:
                     result = null;
