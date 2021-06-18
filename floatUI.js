@@ -3101,8 +3101,8 @@ function algo_init() {
                     endRecording = true;
                     break;
                 case "back":
-                    step--;
                     if (result.steps.length > 0) {
+                        step--;
                         result.steps.pop();
                         toastLog("重录第"+(step+1)+"步");
                     } else {
