@@ -611,7 +611,7 @@ floatUI.main = function () {
     //使用Shizuku执行shell命令
     shizukuShell = function (shellcmd, logstring) {
         if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "使用Shizuku执行shell命令: ["+shellcmd+"]";
+            logstring = "执行shell命令: ["+shellcmd+"]";
         if (logstring !== false) log("使用Shizuku"+logstring);
         $shell.setDefaultOptions({adb: true});
         let result = $shell(shellcmd);
@@ -622,7 +622,7 @@ floatUI.main = function () {
     //直接使用root权限执行shell命令
     rootShell = function (shellcmd, logstring) {
         if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "直接使用root权限执行shell命令: ["+shellcmd+"]";
+            logstring = "执行shell命令: ["+shellcmd+"]";
         if (logstring !== false) log("直接使用root权限"+logstring);
         $shell.setDefaultOptions({adb: false});
         if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
@@ -648,7 +648,7 @@ floatUI.main = function () {
     //不使用特权执行shell命令
     normalShell = function (shellcmd, logstring) {
         if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "不使用特权执行shell命令: ["+shellcmd+"]";
+            logstring = "执行shell命令: ["+shellcmd+"]";
         if (logstring !== false) log("不使用特权"+logstring);
         $shell.setDefaultOptions({adb: false});
         if (logstring !== false) log("不使用特权"+logstring+" 完成");
@@ -2919,6 +2919,15 @@ function algo_init() {
 
     function recordOperations() {
         initialize();
+        if (!limit.privilege) {
+            toastLog("必须有root或adb权限才能进行强关游戏操作!");
+            sleep(3000);
+            if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
+                toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
+            } else {
+                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+            }
+        }
         var detectedLang = detectGameLang();
         if (detectedLang == null) {
             //由于initialize里就退出了，走不到这里
@@ -3229,7 +3238,7 @@ function algo_init() {
                     if (check_result.kill) {
                         log("强行停止游戏", opList.package_name);
                         while (true) {
-                            killBackground(opList.package_name);
+                            privShell("am force-stop "+opList.package_name);
                             sleep(1000);
                             if (isGameDead()) break;
                             log("游戏仍在运行,再次尝试强行停止...");
@@ -3244,7 +3253,7 @@ function algo_init() {
                     if (op.exit.kill) {
                         log("强行停止游戏", opList.package_name);
                         while (true) {
-                            killBackground(opList.package_name);
+                            privShell("am force-stop "+opList.package_name);
                             sleep(1000);
                             if (isGameDead()) break;
                             log("游戏仍在运行,再次尝试强行停止...");
