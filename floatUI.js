@@ -2845,6 +2845,37 @@ function algo_init() {
         }
     }
 
+    function killGame(specified_package_name) {
+        if (specified_package_name == null && last_alive_lang == null) {
+            toastLog("不知道要强关哪个区服，退出");
+            stopThread();
+        }
+        var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
+        toastLog("强关游戏...");
+        if (limit.privilege) {
+            log("使用am force-stop命令...");
+            while (true) {
+                privShell("am force-stop "+name);
+                sleep(1000);
+                if (isGameDead()) break;
+                log("游戏仍在运行,再次尝试强行停止...");
+            }
+        } else {
+            toastLog("为了有权限杀死进程,需要先把游戏切到后台...");
+            while (true) {
+                backtoMain();
+                sleep(2000);
+                if (detectGameLang() == null) break;
+                log("游戏仍在前台...");
+            };
+            log("再等待2秒...");
+            sleep(2000);
+            killBackground(name);
+            log("已调用杀死后台进程，等待10秒...")
+            sleep(10000);
+        }
+    }
+
     function reLaunchGame(specified_package_name) {
         if (specified_package_name == null && last_alive_lang == null) {
             toastLog("不知道要重启哪个区服，退出");
@@ -2919,15 +2950,6 @@ function algo_init() {
 
     function recordOperations() {
         initialize();
-        if (!limit.privilege) {
-            toastLog("必须有root或adb权限才能进行强关游戏操作!");
-            sleep(3000);
-            if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
-                toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
-            } else {
-                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-            }
-        }
         var detectedLang = detectGameLang();
         if (detectedLang == null) {
             //由于initialize里就退出了，走不到这里
@@ -3237,12 +3259,7 @@ function algo_init() {
                     }
                     if (check_result.kill) {
                         log("强行停止游戏", opList.package_name);
-                        while (true) {
-                            privShell("am force-stop "+opList.package_name);
-                            sleep(1000);
-                            if (isGameDead()) break;
-                            log("游戏仍在运行,再次尝试强行停止...");
-                        }
+                        killGame(opList.package_name);
                         log("强行停止完成");
                     }
                     break;
@@ -3252,12 +3269,7 @@ function algo_init() {
                     result = op.exit.exitStatus;
                     if (op.exit.kill) {
                         log("强行停止游戏", opList.package_name);
-                        while (true) {
-                            privShell("am force-stop "+opList.package_name);
-                            sleep(1000);
-                            if (isGameDead()) break;
-                            log("游戏仍在运行,再次尝试强行停止...");
-                        }
+                        killGame(opList.package_name);
                         log("强行停止完成");
                     }
                     break;
