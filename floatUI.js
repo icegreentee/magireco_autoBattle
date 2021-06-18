@@ -2522,367 +2522,6 @@ function algo_init() {
         }
     }
 
-    function taskDefault() {
-        initialize();
-        var state = STATE_MENU;
-        var battlename = "";
-        var charabound = null;
-        var battlepos = null;
-        var inautobattle = false;
-        /*
-        //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
-        var stuckatreward = false;
-        var rewardtime = null;
-        */
-        while (true) {
-            switch (isGameDead()) {
-                case "crashed":
-                    log("等待5秒后重启游戏...");
-                    sleep(5000);
-                    reLaunchGame();
-                    log("重启完成,再等待2秒...");
-                    sleep(2000);
-                    continue;
-                case "logged_out":
-                    state = STATE_LOGIN;
-                    break;
-                case null:
-                    state = STATE_MENU;
-                    break;
-                default:
-                    log("游戏闪退状态未知");
-                    stopThread();
-            }
-            switch (state) {
-                case STATE_LOGIN: {
-                    if (!reLogin()) break;
-                    if (replayOperations()) {
-                        log("重放完成,报告成功,应该可以选关了");
-                        state = STATE_MENU;
-                    }
-                    break;
-                }
-                case STATE_MENU: {
-                    waitAny(
-                        [
-                            () => find(string.support),
-                            () => findID("helpBtn"),
-                            () => match(/^BATTLE.+/),
-                            () => findID("nextPageBtn"),
-                        ],
-                        3000
-                    );
-                    // exit condition
-                    if (find(string.support)) {
-                        state = STATE_SUPPORT;
-                        log("进入助战选择");
-                        break;
-                    }
-                    if (findID("nextPageBtn")) {
-                        state = STATE_TEAM;
-                        toastLog("警告: 脚本不知道现在选了哪一关!"+
-                                 "本轮"+(limit.useAuto?"官方周回":"战斗")+"结束后,\n"+
-                                 "可能无法自动选关重新开始!");
-                        log("进入队伍调整");
-                        break;
-                    }
-
-                    if (findPopupInfoDetailTitle()) {
-                        //如果已经打开AP药选择窗口，就先尝试嗑药
-                        //在 #31 之前,认为:
-                        /* “走到这里的一种情况是:如果之前是在AP不足的情况下点击进入关卡，就会弹出AP药选择窗口” */
-                        //但在合并 #31 之后，state在那种情况下会直接切换到STATE_SUPPORT，然后应该就不会走到这里了
-                        refillAP();
-                        //当初 #26 在这里加了break，认为：
-                        /* “如果这里不break，在捕获了关卡坐标的情况下，继续往下执行就会错把助战当作关卡来点击
-                           break后，下一轮循环state就会切换到STATE_SUPPORT，然后就避免了这个误点击问题” */
-                        //但实际上这样并没有完全修正这个问题，貌似如果助战页面出现太慢，还是会出现误点击问题
-                        //然后 #31 再次尝试修正这个问题
-                        break;
-                    }
-
-                    // if need to click to enter battle
-                    let button = find(string.battle_confirm);
-                    if (button) {
-                        log("点击确认进入battle");
-                        let bound = button.bounds();
-                        click(bound.centerX(), bound.centerY());
-                        // wait for support screen for 5 seconds
-                        find(string.support, parseInt(limit.timeout));
-                    } else if (battlepos) {
-                        log("尝试点击关卡坐标");
-                        click(battlepos.x, battlepos.y);
-                        waitAny(
-                            [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
-
-                            parseInt(limit.timeout)
-
-                        );
-                        if (find(string.out_of_ap)) {
-                            log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
-                            state = STATE_SUPPORT;
-                        }
-                    }
-                    // click battle if available
-                    else if (battlename) {
-                        let battle = find(battlename);
-                        if (battle) {
-                            log("尝试点击关卡名称");
-                            let bound = battle.bounds();
-                            click(bound.centerX(), bound.centerY());
-                            waitAny(
-                                [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
-
-                                parseInt(limit.timeout)
-
-                            );
-                            if (find(string.out_of_ap)) {
-                                log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
-                                state = STATE_SUPPORT;
-                            }
-                        }
-                    } else {
-                        log("等待捕获关卡坐标");
-                        battlepos = capture();
-                    }
-                    break;
-                }
-
-                case STATE_SUPPORT: {
-                    // exit condition
-                    if (findID("nextPageBtn")) {
-                        state = STATE_TEAM;
-                        log("进入队伍调整");
-                        break;
-                    }
-                    if (findID("detailTab")) {
-                        //之前一轮循环中，选助战时，因为卡顿，点击变成了长按，
-                        //然后就误触打开助战角色信息面版，需要关闭。
-                        //因为后面refillAP出错时会break，等待“请选择支援角色”不出现也会break，
-                        //所以，如果这里不检测助战角色信息面版就会死循环。
-                        log("点击变长按，打开了detailTab，尝试返回");
-                        click(convertCoords(clickSets.back));
-                        find(string.support, parseInt(limit.timeout));
-                    }
-
-                    //根据情况,如果需要就嗑药
-                    if (refillAP() == "error") {
-                        //AP检测失败，或者已经进入队伍调整
-                        sleep(200);
-                        break;
-                    }
-
-                    //等待“请选择支援角色”出现
-                    log("等待\""+string.support+"\"出现...");
-                    if (find(string.support, parseInt(limit.timeout)) == null) break;
-                    log("等待\""+string.support+"\"已经出现");
-
-                    // save battle name if needed
-                    let battle = match(/^BATTLE.+/);
-                    if (battle) {
-                        battlename = getContent(battle);
-                        log("已记下关卡名: \""+battlename+"\"");
-                    }
-                    // pick support
-                    let ptlist = getPTList();
-                    let playercount = matchAll(string.regex_lastlogin).length;
-                    log("候选数量" + ptlist.length + ",玩家数量" + playercount);
-                    if (ptlist.length) {
-                        let bound;
-                        if (
-                            ptlist.length > playercount &&
-                            (limit.justNPC || ptlist[ptlist.length - 1].value > ptlist[0].value)
-                        ) {
-                            log("选择NPC助战");
-                            // NPC comes in the end of list if available
-                            bound = ptlist[ptlist.length - 1].bounds;
-                        } else {
-                            log("选择玩家助战");
-                            // higher PT bonus goes ahead
-                            bound = ptlist[0].bounds;
-                        }
-                        click(bound.centerX(), bound.centerY());
-                        // wait for start button for 5 seconds
-                        findID("nextPageBtn", parseInt(limit.timeout));
-                        break;
-                    }
-                    //以前这里是处理万一误触打开助战角色信息面版的情况的，现在移动到前面
-                    break;
-                }
-
-                case STATE_TEAM: {
-                    //如果之前误触了队伍名称变更，先尝试关闭
-                    var found_popup = null;
-                    found_popup = findPopupInfoDetailTitle();
-                    if (found_popup != null) {
-                        log("在队伍调整界面发现有弹窗\""+found_popup.title+"\"已经打开");
-                        if (found_popup.title != string.team_name_change) {
-                            log("弹窗标题不是意料之中的\""+string.team_name_change+"\"！");
-                        }
-                        log("尝试关闭弹窗");
-                        click(found_popup.close);
-                        sleep(200);
-                        break;
-                    }
-
-                    var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
-                    if (limit.useAuto) {
-                        if (element) {
-                            inautobattle = true;
-                        } else {
-                            element = findID("nextPageBtn");
-                            if (element) {
-                                inautobattle = false;
-                                log("未发现自动续战，改用标准战斗");
-                            }
-                        }
-                    }
-                    // exit condition
-                    if (findID("android:id/content") && !element) {
-                        state = STATE_BATTLE;
-                        log("进入战斗");
-                        break;
-                    }
-                    // click start
-                    if (element) {
-                        let bound = element.bounds();
-                        click(bound.centerX(), bound.centerY());
-                        waitElement(element, 500);
-                    }
-                    break;
-                }
-
-                case STATE_BATTLE: {
-                    //点击开始或自动续战按钮，在按钮消失后，就会走到这里
-                    //还在战斗，或者在战斗结束时弹出断线重连窗口，就会继续在这里循环
-                    //直到战斗结束，和服务器成功通信后，进入结算
-
-                    // exit condition
-                    //这里会等待2秒，对于防断线模式来说就是限制每2秒点击一次重连按钮的所在位置
-                    //另一方面，也可以极大程度上确保防断线模式不会在结算界面误点
-                    if (findID("charaWrap", 2000)) {
-                        state = STATE_REWARD_CHARACTER;
-                        log("进入角色结算");
-                        break;
-                    }
-                    //防断线模式
-                    if (limit.autoReconnect) {
-                        //无法判断断线重连弹窗是否出现，但战斗中点击一般也是无害的
-                        //（不过也有可能因为机器非常非常非常卡，点击变成了长按，导致误操作取消官方自动续战）
-                        clickReconnect();
-                    }
-                    break;
-                }
-
-                case STATE_REWARD_CHARACTER: {
-                    // exit condition
-                    if (findID("hasTotalRiche")) {
-                        state = STATE_REWARD_MATERIAL;
-                        log("进入掉落结算");
-                        break;
-                    }
-                    let element = findID("charaWrap");
-                    if (element) {
-                        if (element.bounds().height() > 0) charabound = element.bounds();
-                        let targetX = element.bounds().right;
-                        let targetY = element.bounds().bottom;
-                        // click if upgrade
-                        element = find("OK");
-                        if (element) {
-                            log("点击玩家升级确认");
-                            let bound = element.bounds();
-                            targetX = bound.centerX();
-                            targetY = bound.centerY();
-                        }
-                        click(targetX, targetY);
-                    }
-                    sleep(500);
-                    break;
-                }
-
-                case STATE_REWARD_MATERIAL: {
-                    //走到这里的可能情况：
-                    // (1)点再战按钮，回到助战选择界面
-                    // (2)没有再战按钮时点击，回到关卡选择界面
-
-                    // exit condition
-                    let element = findID("hasTotalRiche", 2000);
-                    if (findID("android:id/content") && !element) {
-                        state = STATE_REWARD_POST;
-                        /*
-                        //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
-                        stuckatreward = false;
-                        rewardtime = null;
-                        */
-                        log("结算完成");
-                        break;
-                    }
-                    /*
-                    //防断线模式
-                    //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
-                    if (limit.autoReconnect) {
-                        if (!stuckatreward) {
-                            //如果发现在这里停留了30秒以上，就认为已经是断线了
-                            //然后就会尝试点击一次断线重连按钮
-                            if (rewardtime == null) {
-                                rewardtime = new Date().getTime();
-                            } else if (new Date().getTime() - rewardtime > 30 * 1000) stuckatreward = true;
-                        } else {
-                            //尝试点击一次断线重连按钮，为防止误点，只点击一次就不再点，再观察30秒
-                            clickReconnect();
-                            stuckatreward = false;
-                            rewardtime = null;
-                        }
-                    }
-                    */
-                    // try click rebattle
-                    element = findID("questRetryBtn");
-                    if (element) {
-                        log("点击再战按钮");
-                        let bound = element.bounds();
-                        click(bound.centerX(), bound.centerY());
-                    } else if (charabound) {
-                        //走到这里的可能情况:
-                        //(1) AP不够再战一局（常见原因是官方自动续战）
-                        //(2) UI控件树残缺，明明有再战按钮却检测不到
-                        log("点击再战区域");
-                        //    (如果屏幕是宽高比低于16:9的“方块屏”，还会因为再战按钮距离charabound右下角太远而点不到再战按钮，然后就会回到关卡选择)
-                        //click(charabound.right, charabound.bottom);
-                        click(convertCoords(clickSets.restart));
-                    }
-                    sleep(500);
-                    break;
-                }
-
-                case STATE_REWARD_POST: {
-                    // wait 5 seconds for transition
-                    let apinfo = getAP(5000);
-                    // exit condition
-                    if (findID("nextPageBtn")) {
-                        state = STATE_SUPPORT;
-                        log("进入助战选择");
-                        break;
-                    } else if (apinfo != null) {
-                        state = STATE_MENU;
-                        log("进入关卡选择");
-                        break;
-                    } else if (inautobattle) {
-                        state = STATE_BATTLE;
-                        break;
-                    }
-                    // try to skip
-                    let element = className("EditText").findOnce();
-                    if (element && element.refresh()) {
-                        log("尝试跳过剧情");
-                        let bound = element.bounds();
-                        click(bound.right, bound.top);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
     function killGame(specified_package_name) {
         if (specified_package_name == null && last_alive_lang == null) {
             toastLog("不知道要强关哪个区服，退出");
@@ -3334,6 +2973,367 @@ function algo_init() {
         }
         log("所有动作重放完成,结果:"+(result));
         return result;
+    }
+
+    function taskDefault() {
+        initialize();
+        var state = STATE_MENU;
+        var battlename = "";
+        var charabound = null;
+        var battlepos = null;
+        var inautobattle = false;
+        /*
+        //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
+        var stuckatreward = false;
+        var rewardtime = null;
+        */
+        while (true) {
+            switch (isGameDead()) {
+                case "crashed":
+                    log("等待5秒后重启游戏...");
+                    sleep(5000);
+                    reLaunchGame();
+                    log("重启完成,再等待2秒...");
+                    sleep(2000);
+                    continue;
+                case "logged_out":
+                    state = STATE_LOGIN;
+                    break;
+                case null:
+                    state = STATE_MENU;
+                    break;
+                default:
+                    log("游戏闪退状态未知");
+                    stopThread();
+            }
+            switch (state) {
+                case STATE_LOGIN: {
+                    if (!reLogin()) break;
+                    if (replayOperations()) {
+                        log("重放完成,报告成功,应该可以选关了");
+                        state = STATE_MENU;
+                    }
+                    break;
+                }
+                case STATE_MENU: {
+                    waitAny(
+                        [
+                            () => find(string.support),
+                            () => findID("helpBtn"),
+                            () => match(/^BATTLE.+/),
+                            () => findID("nextPageBtn"),
+                        ],
+                        3000
+                    );
+                    // exit condition
+                    if (find(string.support)) {
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
+                    }
+                    if (findID("nextPageBtn")) {
+                        state = STATE_TEAM;
+                        toastLog("警告: 脚本不知道现在选了哪一关!"+
+                                 "本轮"+(limit.useAuto?"官方周回":"战斗")+"结束后,\n"+
+                                 "可能无法自动选关重新开始!");
+                        log("进入队伍调整");
+                        break;
+                    }
+
+                    if (findPopupInfoDetailTitle()) {
+                        //如果已经打开AP药选择窗口，就先尝试嗑药
+                        //在 #31 之前,认为:
+                        /* “走到这里的一种情况是:如果之前是在AP不足的情况下点击进入关卡，就会弹出AP药选择窗口” */
+                        //但在合并 #31 之后，state在那种情况下会直接切换到STATE_SUPPORT，然后应该就不会走到这里了
+                        refillAP();
+                        //当初 #26 在这里加了break，认为：
+                        /* “如果这里不break，在捕获了关卡坐标的情况下，继续往下执行就会错把助战当作关卡来点击
+                           break后，下一轮循环state就会切换到STATE_SUPPORT，然后就避免了这个误点击问题” */
+                        //但实际上这样并没有完全修正这个问题，貌似如果助战页面出现太慢，还是会出现误点击问题
+                        //然后 #31 再次尝试修正这个问题
+                        break;
+                    }
+
+                    // if need to click to enter battle
+                    let button = find(string.battle_confirm);
+                    if (button) {
+                        log("点击确认进入battle");
+                        let bound = button.bounds();
+                        click(bound.centerX(), bound.centerY());
+                        // wait for support screen for 5 seconds
+                        find(string.support, parseInt(limit.timeout));
+                    } else if (battlepos) {
+                        log("尝试点击关卡坐标");
+                        click(battlepos.x, battlepos.y);
+                        waitAny(
+                            [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
+
+                            parseInt(limit.timeout)
+
+                        );
+                        if (find(string.out_of_ap)) {
+                            log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
+                            state = STATE_SUPPORT;
+                        }
+                    }
+                    // click battle if available
+                    else if (battlename) {
+                        let battle = find(battlename);
+                        if (battle) {
+                            log("尝试点击关卡名称");
+                            let bound = battle.bounds();
+                            click(bound.centerX(), bound.centerY());
+                            waitAny(
+                                [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
+
+                                parseInt(limit.timeout)
+
+                            );
+                            if (find(string.out_of_ap)) {
+                                log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
+                                state = STATE_SUPPORT;
+                            }
+                        }
+                    } else {
+                        log("等待捕获关卡坐标");
+                        battlepos = capture();
+                    }
+                    break;
+                }
+
+                case STATE_SUPPORT: {
+                    // exit condition
+                    if (findID("nextPageBtn")) {
+                        state = STATE_TEAM;
+                        log("进入队伍调整");
+                        break;
+                    }
+                    if (findID("detailTab")) {
+                        //之前一轮循环中，选助战时，因为卡顿，点击变成了长按，
+                        //然后就误触打开助战角色信息面版，需要关闭。
+                        //因为后面refillAP出错时会break，等待“请选择支援角色”不出现也会break，
+                        //所以，如果这里不检测助战角色信息面版就会死循环。
+                        log("点击变长按，打开了detailTab，尝试返回");
+                        click(convertCoords(clickSets.back));
+                        find(string.support, parseInt(limit.timeout));
+                    }
+
+                    //根据情况,如果需要就嗑药
+                    if (refillAP() == "error") {
+                        //AP检测失败，或者已经进入队伍调整
+                        sleep(200);
+                        break;
+                    }
+
+                    //等待“请选择支援角色”出现
+                    log("等待\""+string.support+"\"出现...");
+                    if (find(string.support, parseInt(limit.timeout)) == null) break;
+                    log("等待\""+string.support+"\"已经出现");
+
+                    // save battle name if needed
+                    let battle = match(/^BATTLE.+/);
+                    if (battle) {
+                        battlename = getContent(battle);
+                        log("已记下关卡名: \""+battlename+"\"");
+                    }
+                    // pick support
+                    let ptlist = getPTList();
+                    let playercount = matchAll(string.regex_lastlogin).length;
+                    log("候选数量" + ptlist.length + ",玩家数量" + playercount);
+                    if (ptlist.length) {
+                        let bound;
+                        if (
+                            ptlist.length > playercount &&
+                            (limit.justNPC || ptlist[ptlist.length - 1].value > ptlist[0].value)
+                        ) {
+                            log("选择NPC助战");
+                            // NPC comes in the end of list if available
+                            bound = ptlist[ptlist.length - 1].bounds;
+                        } else {
+                            log("选择玩家助战");
+                            // higher PT bonus goes ahead
+                            bound = ptlist[0].bounds;
+                        }
+                        click(bound.centerX(), bound.centerY());
+                        // wait for start button for 5 seconds
+                        findID("nextPageBtn", parseInt(limit.timeout));
+                        break;
+                    }
+                    //以前这里是处理万一误触打开助战角色信息面版的情况的，现在移动到前面
+                    break;
+                }
+
+                case STATE_TEAM: {
+                    //如果之前误触了队伍名称变更，先尝试关闭
+                    var found_popup = null;
+                    found_popup = findPopupInfoDetailTitle();
+                    if (found_popup != null) {
+                        log("在队伍调整界面发现有弹窗\""+found_popup.title+"\"已经打开");
+                        if (found_popup.title != string.team_name_change) {
+                            log("弹窗标题不是意料之中的\""+string.team_name_change+"\"！");
+                        }
+                        log("尝试关闭弹窗");
+                        click(found_popup.close);
+                        sleep(200);
+                        break;
+                    }
+
+                    var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
+                    if (limit.useAuto) {
+                        if (element) {
+                            inautobattle = true;
+                        } else {
+                            element = findID("nextPageBtn");
+                            if (element) {
+                                inautobattle = false;
+                                log("未发现自动续战，改用标准战斗");
+                            }
+                        }
+                    }
+                    // exit condition
+                    if (findID("android:id/content") && !element) {
+                        state = STATE_BATTLE;
+                        log("进入战斗");
+                        break;
+                    }
+                    // click start
+                    if (element) {
+                        let bound = element.bounds();
+                        click(bound.centerX(), bound.centerY());
+                        waitElement(element, 500);
+                    }
+                    break;
+                }
+
+                case STATE_BATTLE: {
+                    //点击开始或自动续战按钮，在按钮消失后，就会走到这里
+                    //还在战斗，或者在战斗结束时弹出断线重连窗口，就会继续在这里循环
+                    //直到战斗结束，和服务器成功通信后，进入结算
+
+                    // exit condition
+                    //这里会等待2秒，对于防断线模式来说就是限制每2秒点击一次重连按钮的所在位置
+                    //另一方面，也可以极大程度上确保防断线模式不会在结算界面误点
+                    if (findID("charaWrap", 2000)) {
+                        state = STATE_REWARD_CHARACTER;
+                        log("进入角色结算");
+                        break;
+                    }
+                    //防断线模式
+                    if (limit.autoReconnect) {
+                        //无法判断断线重连弹窗是否出现，但战斗中点击一般也是无害的
+                        //（不过也有可能因为机器非常非常非常卡，点击变成了长按，导致误操作取消官方自动续战）
+                        clickReconnect();
+                    }
+                    break;
+                }
+
+                case STATE_REWARD_CHARACTER: {
+                    // exit condition
+                    if (findID("hasTotalRiche")) {
+                        state = STATE_REWARD_MATERIAL;
+                        log("进入掉落结算");
+                        break;
+                    }
+                    let element = findID("charaWrap");
+                    if (element) {
+                        if (element.bounds().height() > 0) charabound = element.bounds();
+                        let targetX = element.bounds().right;
+                        let targetY = element.bounds().bottom;
+                        // click if upgrade
+                        element = find("OK");
+                        if (element) {
+                            log("点击玩家升级确认");
+                            let bound = element.bounds();
+                            targetX = bound.centerX();
+                            targetY = bound.centerY();
+                        }
+                        click(targetX, targetY);
+                    }
+                    sleep(500);
+                    break;
+                }
+
+                case STATE_REWARD_MATERIAL: {
+                    //走到这里的可能情况：
+                    // (1)点再战按钮，回到助战选择界面
+                    // (2)没有再战按钮时点击，回到关卡选择界面
+
+                    // exit condition
+                    let element = findID("hasTotalRiche", 2000);
+                    if (findID("android:id/content") && !element) {
+                        state = STATE_REWARD_POST;
+                        /*
+                        //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
+                        stuckatreward = false;
+                        rewardtime = null;
+                        */
+                        log("结算完成");
+                        break;
+                    }
+                    /*
+                    //防断线模式
+                    //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
+                    if (limit.autoReconnect) {
+                        if (!stuckatreward) {
+                            //如果发现在这里停留了30秒以上，就认为已经是断线了
+                            //然后就会尝试点击一次断线重连按钮
+                            if (rewardtime == null) {
+                                rewardtime = new Date().getTime();
+                            } else if (new Date().getTime() - rewardtime > 30 * 1000) stuckatreward = true;
+                        } else {
+                            //尝试点击一次断线重连按钮，为防止误点，只点击一次就不再点，再观察30秒
+                            clickReconnect();
+                            stuckatreward = false;
+                            rewardtime = null;
+                        }
+                    }
+                    */
+                    // try click rebattle
+                    element = findID("questRetryBtn");
+                    if (element) {
+                        log("点击再战按钮");
+                        let bound = element.bounds();
+                        click(bound.centerX(), bound.centerY());
+                    } else if (charabound) {
+                        //走到这里的可能情况:
+                        //(1) AP不够再战一局（常见原因是官方自动续战）
+                        //(2) UI控件树残缺，明明有再战按钮却检测不到
+                        log("点击再战区域");
+                        //    (如果屏幕是宽高比低于16:9的“方块屏”，还会因为再战按钮距离charabound右下角太远而点不到再战按钮，然后就会回到关卡选择)
+                        //click(charabound.right, charabound.bottom);
+                        click(convertCoords(clickSets.restart));
+                    }
+                    sleep(500);
+                    break;
+                }
+
+                case STATE_REWARD_POST: {
+                    // wait 5 seconds for transition
+                    let apinfo = getAP(5000);
+                    // exit condition
+                    if (findID("nextPageBtn")) {
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
+                    } else if (apinfo != null) {
+                        state = STATE_MENU;
+                        log("进入关卡选择");
+                        break;
+                    } else if (inautobattle) {
+                        state = STATE_BATTLE;
+                        break;
+                    }
+                    // try to skip
+                    let element = className("EditText").findOnce();
+                    if (element && element.refresh()) {
+                        log("尝试跳过剧情");
+                        let bound = element.bounds();
+                        click(bound.right, bound.top);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     return {
