@@ -1980,7 +1980,7 @@ function algo_init() {
             log("游戏已经闪退");
             return "crashed";
         }
-        if (findPopupInfoDetailTitle(string.connection_lost, parseInt(limit.timeout)) {
+        if (findPopupInfoDetailTitle(string.connection_lost, parseInt(limit.timeout))) {
             log("游戏已经断线并强制回首页");
             return "logged_out";
         }
@@ -2873,7 +2873,7 @@ function algo_init() {
                 sleep(5000);
                 continue;
             }
-            var found_popup = findPopupInfoDetailTitle(parseInt(limit.timeout));
+            var found_popup = findPopupInfoDetailTitle(null, parseInt(limit.timeout));
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
                 if (found_popup.title != strings[last_alive_lang].connection_lost) {
