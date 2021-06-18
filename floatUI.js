@@ -2907,10 +2907,10 @@ function algo_init() {
     //上次录制的关卡选择动作列表
     var last_op_list = null;
 
-    function chooseAction() {
+    function chooseAction(step) {
         var result = null;
         let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
-        let selected = dialogs.select("请选择要录制的下一步动作", options);
+        let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
         let actions = ["click", "swipe", "sleep", "checkText", "exit", "back", null];
         result = actions[selected];
         return result;
@@ -2928,15 +2928,27 @@ function algo_init() {
             //现在的convertCoords只能从1920x1080转到别的分辨率，不能逆向转换
             //如果以后做了reverseConvertCoords，那就可以把isGeneric设为true了，然后录制的动作列表可以通用
             isGeneric: false,
+            defaultSleepTime: 2000,
             steps: []
         }
         toastLog("请务必先回到首页再开始录制！");
         sleep(2000);
+        let new_sleep_time = -1;
+        do {
+            new_sleep_time = dialogs.rawInput("每一步操作之间的等待时长设为多少毫秒?", "2000");
+            new_sleep_time = parseInt(new_sleep_time);
+            if (isNaN(new_sleep_time) || new_sleep_time <= 0) {
+                toastLog("请输入一个正整数");
+                continue;
+        } while (new_sleep_time <= 0);
+        result.defaultSleepTime = new_sleep_time;
+        toastLog("每一步操作之间将会等待"+result.defaultSleepTime+"毫秒");
+
         let endRecording = false;
         for (let step=0; !endRecording; step++) {
             toastLog("录制第"+(step+1)+"步操作...");
             let op = {};
-            op.action = chooseAction();
+            op.action = chooseAction(step);
             switch (op.action) {
                 case "click":
                     log("等待录制点击动作...");
@@ -3018,7 +3030,7 @@ function algo_init() {
                                 selected = 0;
                                 break;
                             default:
-                                selected = dialogs.select("在点击位置检测到多个含有文字的控件,请选择:", all_text);
+                                selected = dialogs.select("录制第"+(step+1)+"步操作\n在点击位置检测到多个含有文字的控件,请选择:", all_text);
                         }
                     }
                     op.checkText.text = all_text[selected];
@@ -3036,31 +3048,53 @@ function algo_init() {
                     for (let found_or_not_found of ["found", "notFound"]) {
                         op.checkText[found_or_not_found] = {};
                         op.checkText[found_or_not_found].kill = false;
-                        dialog_options = ["报告成功并结束", "报告失败并结束", "先强关游戏进程再报告失败并结束", "什么也不做,继续执行"];
-                        dialog_selected = dialogs.select((found_or_not_found=="notFound"?"未":"")+"检测到文字时要做什么?", dialog_options);
+                        dialog_options = ["什么也不做,继续执行", "报告成功并结束", "报告失败并结束", "先强关游戏再报告成功并结束", "先强关游戏再报告失败并结束"];
+                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字时要做什么?", dialog_options);
                         switch (dialog_selected) {
                             case 0:
-                                op.checkText[found_or_not_found].nextAction = "success";
-                                break;
-                            case 2:
-                                op.checkText[found_or_not_found].kill = true;//不break
-                            case 1:
-                                op.checkText[found_or_not_found].nextAction = "fail";
+                                op.checkText[found_or_not_found].nextAction = "ignore";
                                 break;
                             case 3:
-                                op.checkText[found_or_not_found].nextAction = "ignore";
+                                op.checkText[found_or_not_found].kill = true;//不break
+                            case 1:
+                                op.checkText[found_or_not_found].nextAction = "success";
+                                break;
+                            case 4:
+                                op.checkText[found_or_not_found].kill = true;//不break
+                            case 2:
+                                op.checkText[found_or_not_found].nextAction = "fail";
                                 break;
                             default:
                                 toastLog("询问检测文字后要做什么时出错");
                                 stopThread();
                         }
-                        toastLog(dialog_options[dialog_selected]);
+                        toastLog("录制第"+(step+1)+"步操作\n"+dialog_options[dialog_selected]);
                     }
                     result.steps.push(op);
                     toastLog("已记录文字检测动作");
                     break;
                 case "exit":
                     //现在不考虑加入循环跳转什么的
+                    op.exit = {};
+                    op.exit.kill = false;
+                    dialog_options = ["成功", "失败", "先强关游戏再报告成功", "先强关游戏再报告失败"];
+                    dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", dialog_options);
+                    switch (dialog_selected) {
+                        case 2:
+                            op.exit.kill = true;//不break
+                        case 0:
+                            op.exit.exitStatus = true;
+                            break;
+                        case 3:
+                            op.exit.kill = true;//不break
+                        case 1:
+                            op.exit.exitStatus = false;
+                            break;
+                        default:
+                            toastLog("询问结束时报告成功还是失败时出错");
+                            stopThread();
+                    }
+                    toastLog("录制第"+(step+1)+"步操作\n结束时要"+dialog_options[dialog_selected]);
                     result.steps.push(op);
                     toastLog("录制结束");
                     endRecording = true;
@@ -3093,13 +3127,15 @@ function algo_init() {
 
     function replayOperations(opList) {
         initialize();
+        var result = false;
         var operations = opList == null ? last_op_list : opList;
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
             return false;
         }
         log("重放录制的操作...");
-        for (let i in opList) {
+        let endReplaying = false;
+        for (let i=0; i<opList.length&&!endReplaying; i++) {
             let op = opList.steps[i];
             log("第"+(i+1)+"步", op);
             switch (op.action) {
@@ -3168,28 +3204,51 @@ function algo_init() {
                     switch (check_result.nextAction) {
                         case "success":
                             log("重放成功结束");
-                            return true;
+                            endReplaying = true;
+                            result = true;
                         case "fail":
-                            log("重放终止");
-                            if (check_result.kill) {
-                                log("强行停止游戏", opList.package_name);
-                                killBackground(opList.package_name);
-                                log("强行停止完成");
-                            }
-                            return false;
+                            log("重放失败终止");
+                            endReplaying = true;
+                            result = false;
                         case "ignore":
                             log("继续重放");
                     }
+                    if (check_result.kill) {
+                        log("强行停止游戏", opList.package_name);
+                        while (true) {
+                            killBackground(opList.package_name);
+                            sleep(1000);
+                            if (isGameDead()) break;
+                            log("游戏仍在运行,再次尝试强行停止...");
+                        }
+                        log("强行停止完成");
+                    }
                     break;
                 case "exit":
-                    log("结束脚本执行");
+                    log("结束重放");
+                    endReplaying = true;
+                    result = op.exit.exitStatus;
+                    if (op.exit.kill) {
+                        log("强行停止游戏", opList.package_name);
+                        while (true) {
+                            killBackground(opList.package_name);
+                            sleep(1000);
+                            if (isGameDead()) break;
+                            log("游戏仍在运行,再次尝试强行停止...");
+                        }
+                        log("强行停止完成");
+                    }
                     break;
                 default:
                     log("未知操作");
             }
+            if (!endReplaying) {
+                log("第"+(i+1)+"步操作完成,等待"+opList.defaultSleepTime+"毫秒...");
+                sleep(opList.defaultSleepTime);
+            }
         }
-        log("所有动作重放完成");
-        return true;
+        log("所有动作重放完成,结果:"+(result));
+        return result;
     }
 
     return {
