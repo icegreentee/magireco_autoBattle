@@ -2917,6 +2917,7 @@ function algo_init() {
     }
 
     function recordOperations() {
+        initialize();
         var detectedLang = detectGameLang();
         if (detectedLang == null) {
             toastLog("请先把魔纪切换到前台再开始录制");
@@ -2940,11 +2941,12 @@ function algo_init() {
                 case "click":
                     log("等待录制点击动作...");
                     op.click = {};
-                    op.click.point = capture("请点击要记录下来的点击位置");
+                    op.click.point = capture("录制第"+(step+1)+"步操作\n请点击要记录下来的点击位置");
                     if (op.click.point == null) {
                         toastLog("录制点击动作出错");
                         stopThread();
                     }
+                    click(op.click.point);
                     result.steps.push(op);
                     toastLog("已记录点击动作: ["+op.click.point.x+","+op.click.point.y+"]");
                     break;
@@ -2953,13 +2955,14 @@ function algo_init() {
                     op.swipe = {};
                     op.swipe.points = [];
                     for (let i=0; i<2; i++) {
-                        let swipepoint = capture("请点击滑动"+(i==0?"开始":"结束")+"位置");
+                        let swipepoint = capture("录制第"+(step+1)+"步操作\n请点击滑动"+(i==0?"开始":"结束")+"位置");
                         if (swipepoint == null) {
                             toastLog("录制滑动动作出错");
                             stopThread();
                         }
                         op.swipe.points.push(swipepoint);
                     }
+                    swipe(op.swipe.points[0], op.swipe.points[1]);
                     result.steps.push(op);
                     toastLog("已记录滑动动作: "
                              +"["+op.swipe.points[0].x+","+op.swipe.points[0].y+"]"
@@ -2971,7 +2974,7 @@ function algo_init() {
                     op.sleep = {};
                     let sleep_ms = 0;
                     do {
-                        sleep_ms = dialogs.rawInput("要等待多少毫秒", "5000");
+                        sleep_ms = dialogs.rawInput("录制第"+(step+1)+"步操作\n要等待多少毫秒", "5000");
                         sleep_ms = parseInt(sleep_ms);
                         if (isNaN(sleep_ms) || sleep_ms <= 0) {
                             toastLog("请输入一个正整数");
@@ -2992,7 +2995,7 @@ function algo_init() {
                     let dialog_selected = null;
                     while (selected < 0) {
                         selected = -1;
-                        check_text_point = capture("请点击要检测的文字出现的位置");
+                        check_text_point = capture("录制第"+(step+1)+"步操作\n请点击要检测的文字出现的位置");
                         if (check_text_point == null) {
                             toastLog("录制检测文字是否出现动作出错");
                             stopThread();
@@ -3019,10 +3022,10 @@ function algo_init() {
                         }
                     }
                     op.checkText.text = all_text[selected];
-                    toastLog("要检测的文字是\""+op.checkText.text+"\"");
+                    toastLog("录制第"+(step+1)+"步操作\n要检测的文字是\""+op.checkText.text+"\"");
 
                     dialog_options = ["横纵坐标都检测", "只检测横坐标X", "只检测纵坐标Y", "横纵坐标都不检测"];
-                    dialog_selected = dialogs.select("是否要检测文字在屏幕出现的位置和现在是否一致?", dialog_options);
+                    dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n是否要检测文字在屏幕出现的位置和现在是否一致?", dialog_options);
                     if (dialog_selected == 0 || dialog_selected == 1) {
                         op.checkText.centerX = check_text_point.x;
                     }
@@ -3076,7 +3079,7 @@ function algo_init() {
                     toastLog("放弃录制");
                     stopThread();
                 default:
-                    toastLog("录制动作出错: 未知动作", op.action);
+                    toastLog("录制第"+(step+1)+"步操作\n出错: 未知动作", op.action);
                     stopThread();
             }
             if (op.action != "back") log("录制第"+result.steps.length+"步动作完成");
@@ -3089,6 +3092,7 @@ function algo_init() {
     }
 
     function replayOperations(opList) {
+        initialize();
         var operations = opList == null ? last_op_list : opList;
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
