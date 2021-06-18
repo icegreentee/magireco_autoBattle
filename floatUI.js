@@ -2973,7 +2973,7 @@ function algo_init() {
                     do {
                         sleep_ms = dialogs.rawInput("要等待多少毫秒", "5000");
                         sleep_ms = parseInt(sleep_ms);
-                        if (isNaN(sleep_ms) || sleep_ms <= 0)) {
+                        if (isNaN(sleep_ms) || sleep_ms <= 0) {
                             toastLog("请输入一个正整数");
                             continue;
                         }
