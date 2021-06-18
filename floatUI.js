@@ -1964,7 +1964,7 @@ function algo_init() {
         for (detectedLang in strings) {
             if (detectedLang == "name") continue;
             if (findPackageName(strings[detectedLang][strings.name.findIndex((e) => e == "package_name")], 1000)) {
-                log("区服", detectedLang);
+                if (detectedLang != last_alive_lang) log("区服", detectedLang);
                 break;
             }
             detectedLang = null;
@@ -2535,7 +2535,33 @@ function algo_init() {
         var rewardtime = null;
         */
         while (true) {
+            switch (isGameDead()) {
+                case "crashed":
+                    log("等待5秒后重启游戏...");
+                    sleep(5000);
+                    reLaunchGame();
+                    log("重启完成,再等待2秒...");
+                    sleep(2000);
+                    continue;
+                case "logged_out":
+                    state = STATE_LOGIN;
+                    break;
+                case null:
+                    state = STATE_MENU;
+                    break;
+                default:
+                    log("游戏闪退状态未知");
+                    stopThread();
+            }
             switch (state) {
+                case STATE_LOGIN: {
+                    if (!reLogin()) break;
+                    if (replayOperations()) {
+                        log("重放完成,报告成功,应该可以选关了");
+                        state = STATE_MENU;
+                    }
+                    break;
+                }
                 case STATE_MENU: {
                     waitAny(
                         [
@@ -2890,7 +2916,7 @@ function algo_init() {
 
     function reLaunchGame(specified_package_name) {
         if (specified_package_name == null && last_alive_lang == null) {
-            toastLog("不知道要重启哪个区服，退出");
+            toastLog("不知道要重启哪个区服,退出");
             stopThread();
         }
         toastLog("重新启动游戏...");
@@ -2905,23 +2931,20 @@ function algo_init() {
     function reLogin() {
         //循环点击继续战斗按钮位置（和放弃断线重连按钮位置重合），直到能检测到AP
         if (last_alive_lang == null) {
-            toastLog("不知道要重新登录哪个区服，退出");
+            toastLog("不知道要重新登录哪个区服,退出");
             stopThread();
         }
         toastLog("重新登录...");
         while (true) {
             if (isGameDead()) {
-                log("检测到游戏再次闪退");
-                reLaunchGame();
-                log("等待5秒...");
-                sleep(5000);
-                continue;
+                log("检测到游戏再次闪退,无法继续登录");
+                return false;
             }
             var found_popup = findPopupInfoDetailTitle(null, parseInt(limit.timeout));
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
-                if (found_popup.title != strings[last_alive_lang].connection_lost) {
-                    log("弹窗标题不是\""+strings[last_alive_lang].connection_lost+"\",尝试关闭...");
+                if (found_popup.title != strings[last_alive_lang][strings.name.findIndex((e) => e == "connection_lost")]) {
+                    log("弹窗标题不是\""+strings[last_alive_lang][strings.name.findIndex((e) => e == "connection_lost")]+"\",尝试关闭...");
                     click(found_popup.close);
                     log("等待2秒...");
                     sleep(2000);
@@ -2946,6 +2969,7 @@ function algo_init() {
             log("点击恢复战斗按钮区域完成,等待5秒...");
             sleep(5000);
         }
+        return false;
     }
 
     //上次录制的关卡选择动作列表

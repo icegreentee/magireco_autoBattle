@@ -212,6 +212,7 @@ function reportBug() {
     log("日志大小", logSize+"字节", logContent.length+"字符");
     if (logSize > logMaxSize) {
         //大于1MB时只截取尾部
+        //算法太渣，很慢，需要改
         let excessSize = logSize - logMaxSize;
         let rate = logSize / logContent.length;
         let est = excessSize / rate;
