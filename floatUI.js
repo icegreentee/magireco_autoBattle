@@ -3085,7 +3085,7 @@ function algo_init() {
             if (op.action != "back") log("录制第"+result.steps.length+"步动作完成");
         }
         if (result != null) {
-            toastLog("录制完成,共记录"+(step+1)+"步动作");
+            toastLog("录制完成,共记录"+result.steps.length+"步动作");
             last_op_list = result;
         }
         return result;
