@@ -2939,7 +2939,7 @@ function algo_init() {
             new_sleep_time = parseInt(new_sleep_time);
             if (isNaN(new_sleep_time) || new_sleep_time <= 0) {
                 toastLog("请输入一个正整数");
-                continue;
+            }
         } while (new_sleep_time <= 0);
         result.defaultSleepTime = new_sleep_time;
         toastLog("每一步操作之间将会等待"+result.defaultSleepTime+"毫秒");
