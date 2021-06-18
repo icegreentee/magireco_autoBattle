@@ -85,6 +85,14 @@ floatUI.scripts = [
         name: "每小时自动重开，刷剧情1",
         fn: tasks.reopen,
     },
+    {
+        name: "录制选关动作",
+        fn: tasks.recordSteps,
+    },
+    {
+        name: "重放选关动作",
+        fn: tasks.replaySteps,
+    }
 ];
 
 floatUI.main = function () {
@@ -526,10 +534,12 @@ floatUI.main = function () {
     context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED));
 
     var touch_pos = null;
+    const default_description_text = "请点击需要周回的battle\n(请通关一次后再用，避免错位)";
     var overlay = floaty.rawWindow(
         <frame id="container" w="*" h="*">
             <frame w="*" h="*" bg="#000000" alpha="0.2"></frame>
             <text
+                id="description_text"
                 w="auto"
                 h="auto"
                 text="请点击需要周回的battle{{'\n'}}(请通关一次后再用，避免错位)"
@@ -557,11 +567,15 @@ floatUI.main = function () {
         return true;
     });
 
-    capture = function () {
+    capture = function (description_text) {
+        if (description_text == null) {
+            description_text = default_description_text;
+        }
         touch_pos = null;
         ui.post(() => {
             var sz = getWindowSize();
             overlay.setSize(sz.x, sz.y);
+            overlay.container.description_text.setText(description_text);
             overlay.container.setVisibility(View.VISIBLE);
             overlay.setTouchable(true);
         });
@@ -2890,8 +2904,192 @@ function algo_init() {
         }
     }
 
+    //上次录制的关卡选择动作列表
+    var last_op_list = null;
+
+    function chooseAction() {
+        var result = null;
+        let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
+        let selected = dialogs.select("请选择要录制的下一步动作", options);
+        let actions = ["click", "swipe", "sleep", "checkText", "exit", "back", null];
+        result = actions[selected];
+        return result;
+    }
+
+    function recordOperations() {
+        var detectedLang = detectGameLang();
+        if (detectedLang == null) {
+            toastLog("请先把魔纪切换到前台再开始录制");
+            stopThread();
+        }
+        var result = {
+            package_name: strings[detectedLang].package_name,
+            //现在的convertCoords只能从1920x1080转到别的分辨率，不能逆向转换
+            //如果以后做了reverseConvertCoords，那就可以把isGeneric设为true了，然后录制的动作列表可以通用
+            isGeneric: false,
+            steps: []
+        }
+        toastLog("请务必先回到首页再开始录制！");
+        sleep(2000);
+        let endRecording = false;
+        for (let step=0; !endRecording; step++) {
+            toastLog("录制第"+(step+1)+"步操作...");
+            let op = {};
+            op.action = chooseAction();
+            switch (op.action) {
+                case "click":
+                    log("等待录制点击动作...");
+                    op.click = {};
+                    op.click.point = capture("请点击要记录下来的点击位置");
+                    if (op.click.point == null) {
+                        toastLog("录制点击动作出错");
+                        stopThread();
+                    }
+                    result.steps.push(op);
+                    toastLog("已记录点击动作: ["+op.click.point.x+","+op.click.point.y+"]");
+                    break;
+                case "swipe":
+                    log("等待录制滑动动作...");
+                    op.swipe = {};
+                    op.swipe.points = [];
+                    for (let i=0; i<2; i++) {
+                        let swipepoint = capture("请点击滑动"+(i==0?"开始":"结束")+"位置");
+                        if (swipepoint == null) {
+                            toastLog("录制滑动动作出错");
+                            stopThread();
+                        }
+                        op.swipe.points.push(swipepoint);
+                    }
+                    result.steps.push(op);
+                    toastLog("已记录滑动动作: "
+                             +"["+op.swipe.points[0].x+","+op.swipe.points[0].y+"]"
+                             +" => "
+                             +"["+op.swipe.points[1].x+","+op.swipe.points[1].y+"]"
+                             );
+                    break;
+                case "sleep":
+                    op.sleep = {};
+                    let sleep_ms = 0;
+                    do {
+                        sleep_ms = dialogs.rawInput("要等待多少毫秒", "5000");
+                        sleep_ms = parseInt(sleep_ms);
+                        if (isNaN(sleep_ms) || sleep_ms <= 0)) {
+                            toastLog("请输入一个正整数");
+                            continue;
+                        }
+                    } while (sleep_ms <= 0);
+                    op.sleep.sleepTime = sleep_ms;
+                    result.steps.push(op);
+                    toastLog("已记录等待动作,时间为"+op.sleep.sleepTime+"毫秒");
+                    break;
+                case "checkText":
+                    op.checkText = {};
+                    log("等待录制文字检测动作...");
+                    let selected = -1;
+                    let all_text = [];
+                    let check_text_point = null;
+                    let dialog_options = [];
+                    let dialog_selected = null;
+                    while (selected < 0) {
+                        selected = -1;
+                        check_text_point = capture("请点击要检测的文字出现的位置");
+                        if (check_text_point == null) {
+                            toastLog("录制检测文字是否出现动作出错");
+                            stopThread();
+                        }
+
+                        let all_found_text = boundsContains(check_text_point.x, check_text_point.y, check_text_point.x, check_text_point.y)
+                                             .find();
+                        for (let i=0; i<all_found_text.length; i++) {
+                            let found_text = all_found_text[i];
+                            let content = getContent(found_text);
+                            if (content != null && content != "") {
+                                all_text.push(content);
+                            }
+                        }
+                        switch (all_text.length) {
+                            case 0:
+                                toastLog("在点击位置没有检测到有文字的控件,请重新选择");
+                                break;
+                            case 1:
+                                selected = 0;
+                                break;
+                            default:
+                                selected = dialogs.select("在点击位置检测到多个含有文字的控件,请选择:", all_text);
+                        }
+                    }
+                    op.checkText.text = all_text[selected];
+                    toastLog("要检测的文字是\""+op.checkText.text+"\"");
+
+                    dialog_options = ["横纵坐标都检测", "只检测横坐标X", "只检测纵坐标Y", "横纵坐标都不检测"];
+                    dialog_selected = dialogs.select("是否要检测文字在屏幕出现的位置和现在是否一致?", dialog_options);
+                    if (dialog_selected == 0 || dialog_selected == 1) {
+                        op.checkText.centerX = check_text_point.x;
+                    }
+                    if (dialog_selected == 0 || dialog_selected == 2) {
+                        op.checkText.centerY = check_text_point.y;
+                    }
+                    toastLog(dialog_options[dialog_selected]);
+                    for (let found_or_not_found of ["found", "notFound"]) {
+                        op.checkText[found_or_not_found] = {};
+                        op.checkText[found_or_not_found].kill = false;
+                        dialog_options = ["报告成功并结束", "报告失败并结束", "先强关游戏进程再报告失败并结束", "什么也不做,继续执行"];
+                        dialog_selected = dialogs.select((found_or_not_found=="notFound"?"未":"")+"检测到文字时要做什么?", dialog_options);
+                        switch (dialog_selected) {
+                            case 0:
+                                op.checkText[found_or_not_found].nextAction = "success";
+                                break;
+                            case 2:
+                                op.checkText[found_or_not_found].kill = true;//不break
+                            case 1:
+                                op.checkText[found_or_not_found].nextAction = "fail";
+                                break;
+                            case 3:
+                                op.checkText[found_or_not_found].nextAction = "ignore";
+                                break;
+                            default:
+                                toastLog("询问检测文字后要做什么时出错");
+                                stopThread();
+                        }
+                        toastLog(dialog_options[dialog_selected]);
+                    }
+                    result.steps.push(op);
+                    toastLog("已记录文字检测动作");
+                    break;
+                case "exit":
+                    //现在不考虑加入循环跳转什么的
+                    result.steps.push(op);
+                    toastLog("录制结束");
+                    endRecording = true;
+                    break;
+                case "back":
+                    if (results.steps.length > 0) {
+                        results.steps.pop();
+                        step--;
+                        toastLog("重录第"+(step+1)+"步");
+                    } else {
+                        toastLog("还没开始录制第1步");
+                    }
+                    break;
+                case null:
+                    result = null;
+                    toastLog("放弃录制");
+                    stopThread();
+                default:
+                    toastLog("录制动作出错: 未知动作", op.action);
+                    stopThread();
+            }
+            if (op.action != "back") log("录制第"+result.steps.length+"步动作完成");
+        }
+        if (result != null) {
+            toastLog("录制完成,共记录"+(step+1)+"步动作");
+            last_op_list = result;
+        }
+        return result;
+    }
+
     function replayOperations(opList) {
-        var operations = opList == null ? recordedOperations : opList;
+        var operations = opList == null ? last_op_list : opList;
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
             return false;
@@ -2902,29 +3100,74 @@ function algo_init() {
             log("第"+(i+1)+"步", op);
             switch (op.action) {
                 case "click":
-                    click(convertCoords(op.points[0]));
+                    if (opList.isGeneric) {
+                        click(convertCoords(op.click.point));
+                    } else {
+                        click(op.click.point);
+                    }
                     break;
                 case "swipe":
-                    let points = op.points.map((point) => convertCoords(point));
-                    swipe(points[0].x, points[0].y, points[1].x, points[1].y);
+                    let points = op.swipe.points;
+                    if (opList.isGeneric) {
+                        points = op.swipe.points.map((point) => convertCoords(point));
+                    }
+                    swipe(points[0], points[1]);
                     break;
                 case "sleep":
-                    sleep(op.sleepTime);
+                    sleep(op.sleep.sleepTime);
                     break;
                 case "checkText":
-                    let nextAction = null;
-                    if (find(op.text, parseInt(limit.timeout)) != null) {
-                        nextAction = op.found.nextAction;
-                    } else {
-                        nextAction = op.notFound.nextAction;
+                    let reallyFound = false;
+                    let check_result = null;
+                    let all_found_text = findAll(op.checkText.text, parseInt(limit.timeout));
+                    if (all_found_text != null && all_found_text.length > 0) {
+                        for (let j=0; j<all_found_text.length; j++) {
+                            try {
+                                let found_text = all_found_text[j];
+                                //先排除大小为0或者干脆数值就不合法（比如左边缘比右边缘还靠右）的控件
+                                //然后检查控件位置是否符合要求
+                                //如果centerX/Y不是数值（比如undefined）那就不检查横/纵坐标中的这一项（另一项如果是数值还要检查）
+                                let found_text_bounds = null;
+                                if (typeof op.checkText.centerX == "number"
+                                    || typeof op.checkText.centerY == "number")
+                                {
+                                    found_text_bounds = found_text.bounds();//注意Rect包含左/上边缘，不包括右/下边缘
+                                }
+                                if (typeof op.checkText.centerX == "number") {
+                                    if (found_text_bounds.left >= found_text_bounds.right) {reallyFound = false; break;}
+                                    if (found_text_bounds.left > op.checkText.centerX) {reallyFound = false; break;}
+                                    if (found_text_bounds.right <= op.checkText.centerX) {reallyFound = false; break;}
+                                }
+                                if (typeof op.checkText.centerY == "number") {
+                                    if (found_text_bounds.top >= found_text_bounds.bottom) {reallyFound = false; break;}
+                                    if (found_text_bounds.top > op.checkText.centerY) {reallyFound = false; break;}
+                                    if (found_text_bounds.bottom <= op.checkText.centerY) {reallyFound = false; break;}
+                                }
+                                //全部检查通过
+                                reallyFound = true;
+                                break;
+                            } catch (e) {
+                                reallyFound = false;
+                                logException(e);
+                                break;
+                            }
+                            reallyFound = false;
+                        }
                     }
-                    switch (nextAction) {
+                    if (reallyFound) {
+                        log("找到位于["+op.checkText.centerX+","+op.checkText.centerY+"],文字为\""+op.checkText.text+"\"的控件");
+                        check_result = op.checkText.found;
+                    } else {
+                        log("未找到满足指定位置和文字内容条件的控件");
+                        check_result = op.checkText.notFound;
+                    }
+                    switch (check_result.nextAction) {
                         case "success":
                             log("重放成功结束");
                             return true;
                         case "fail":
                             log("重放终止");
-                            if (limit.killOnReplayFail) {
+                            if (check_result.kill) {
                                 log("强行停止游戏", opList.package_name);
                                 killBackground(opList.package_name);
                                 log("强行停止完成");
@@ -2933,6 +3176,9 @@ function algo_init() {
                         case "ignore":
                             log("继续重放");
                     }
+                    break;
+                case "exit":
+                    log("结束脚本执行");
                     break;
                 default:
                     log("未知操作");
@@ -2944,7 +3190,9 @@ function algo_init() {
 
     return {
         default: taskDefault,
-        reopen: enterLoop
+        reopen: enterLoop,
+        recordSteps: recordOperations,
+        replaySteps: replayOperations,
     };
 }
 
