@@ -733,7 +733,7 @@ floatUI.main = function () {
         return limit.privilege;
     }
 
-    if (limit.useScreencap || device.sdkInt < 24) {
+    if (device.sdkInt < 24) {
         if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
             requestShellPrivilegeThread = threads.start(requestShellPrivilege);
         }
@@ -766,8 +766,10 @@ var limit = {
     useAuto: true,
     apmul: "",
     timeout: "5000",
-    useScreencap: false,
-    privilege: null,
+    rootScreencap: false,
+    rootForceStop: false,
+    RecordStepsRequestRoot: true,
+    privilege: null
 }
 var clickSets = {
     ap: {
@@ -1399,6 +1401,16 @@ floatUI.adjust = function (key, value) {
     if (value !== undefined) {
         limit[key] = value
         log("更新参数：", key, value)
+
+        //如果需要就弹窗申请root或adb权限
+        let isPrivNeeded = false;
+        if (key == "rootForceStop" && value) isPrivNeeded = true;
+        if (key == "rootScreencap" && value) isPrivNeeded = true;
+        if (!limit.privilege && isPrivNeeded) {
+            if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
+                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+            }
+        }
     }
 }
 
@@ -2950,6 +2962,22 @@ function algo_init() {
 
     function recordOperations() {
         initialize();
+        if ((limit.rootForceStop || limit.RecordStepsRequestRoot) && (!limit.privilege)) {
+            limit.RecordStepsRequestRoot = false;
+            if (dialogs.confirm("提示", "如果没有root或adb权限,\n模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
+            {
+                RecordStepsRequestRoot = true;//如果这次没申请到权限，下次还会提醒
+                if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
+                    toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
+                } else {
+                    requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                }
+                stopThread();//等到权限获取完再重试
+                return;
+            } else {
+                RecordStepsRequestRoot = false;//下次不会提醒了
+            }
+        }
         var detectedLang = detectGameLang();
         if (detectedLang == null) {
             //由于initialize里就退出了，走不到这里
@@ -2964,7 +2992,6 @@ function algo_init() {
             defaultSleepTime: 2000,
             steps: []
         }
-        log("DEBUG result", result);
         toastLog("请务必先回到首页再开始录制！");
         sleep(2000);
         let new_sleep_time = -1;
