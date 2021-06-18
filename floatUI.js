@@ -1975,6 +1975,7 @@ function algo_init() {
         var detectedLang = null;
         do {
             detectedLang = detectGameLang();
+            if (detectedLang != null) break;
         } while (new Date().getTime() < startTime + parseInt(limit.timeout));
         if (detectedLang == null) {
             log("游戏已经闪退");
