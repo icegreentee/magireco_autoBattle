@@ -3069,7 +3069,7 @@ function algo_init() {
                                 toastLog("询问检测文字后要做什么时出错");
                                 stopThread();
                         }
-                        toastLog("录制第"+(step+1)+"步操作\n"+dialog_options[dialog_selected]);
+                        toastLog("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字时要\n"+dialog_options[dialog_selected]);
                     }
                     result.steps.push(op);
                     toastLog("已记录文字检测动作");
@@ -3113,7 +3113,7 @@ function algo_init() {
                 case null:
                     result = null;
                     toastLog("放弃录制");
-                    stopThread();
+                    stopThread();//last_op_list不会被重新赋值为null
                 default:
                     toastLog("录制第"+(step+1)+"步操作\n出错: 未知动作", op.action);
                     stopThread();
@@ -3208,12 +3208,17 @@ function algo_init() {
                             log("重放成功结束");
                             endReplaying = true;
                             result = true;
+                            break;
                         case "fail":
                             log("重放失败终止");
                             endReplaying = true;
                             result = false;
+                            break;
                         case "ignore":
                             log("继续重放");
+                            break;
+                        default:
+                            log("未知nextAction", check_result.nextAction);
                     }
                     if (check_result.kill) {
                         log("强行停止游戏", opList.package_name);
