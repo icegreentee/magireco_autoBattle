@@ -1931,7 +1931,7 @@ function algo_init() {
     };
 
     var string = {};
-    var lang = null;
+    var last_alive_lang = null; //用于游戏闪退重启
 
     function detectGameLang() {
         let detectedLang = null;
@@ -1944,9 +1944,10 @@ function algo_init() {
             detectedLang = null;
         }
         if (detectedLang != null) {
-            lang = detectedLang;
+            //如果游戏不在前台的话，last_alive_lang不会被重现赋值
+            last_alive_lang = detectedLang;
             for (let i = 0; i < strings.name.length; i++) {
-                string[strings.name[i]] = strings[lang][i];
+                string[strings.name[i]] = strings[last_alive_lang][i];
             }
             return detectedLang;
         }
@@ -1954,7 +1955,7 @@ function algo_init() {
     }
 
     //检测游戏是否闪退或掉线
-    //注意！调用后会重新检测区服，从而可能导致string、lang变量被重新赋值
+    //注意！调用后会重新检测区服，从而可能导致string、last_alive_lang变量被重新赋值
     function isGameDead() {
         var startTime = new Date().getTime();
         var detectedLang = null;
@@ -1965,11 +1966,7 @@ function algo_init() {
             log("游戏已经闪退");
             return "crashed";
         }
-        var connection_lost_title_element = findID("popupInfoDetailTitle", parseInt(limit.timeout));
-        if (
-            connection_lost_title_element != null
-            && getContent(connection_lost_title_element) == string.connection_lost
-        ) {
+        if (findPopupInfoDetailTitle(string.connection_lost, parseInt(limit.timeout)) {
             log("游戏已经断线并强制回首页");
             return "logged_out";
         }
@@ -2833,32 +2830,63 @@ function algo_init() {
         }
     }
 
-    function reLaunchGame(package_name) {
+    function reLaunchGame(specified_package_name) {
+        if (specified_package_name == null && last_alive_lang == null) {
+            toastLog("不知道要重启哪个区服，退出");
+            stopThread();
+        }
         toastLog("重新启动游戏...");
         var it = new Intent();
-        var name = package_name == null ? string.package_name : package_name;
-        if (name == null) {
-            toastLog("不知道要启动哪个区服");
-            return false;
-        }
-        it.setClassName(name, "jp.f4samurai.appactivity");
-        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        app.startActivity(it);
+        var name = specified_package_name == null ? strings[last_alive_lang].package_name : specified_package_name;
+        log("app.launch("+name+")");
+        app.launch(name);//是不是真的启动成功，在外边检测
         log("重启游戏完成");
         return true;
     }
 
     function reLogin() {
         //循环点击继续战斗按钮位置（和放弃断线重连按钮位置重合），直到能检测到AP
+        if (last_alive_lang == null) {
+            toastLog("不知道要重新登录哪个区服，退出");
+            stopThread();
+        }
         toastLog("重新登录...");
         while (true) {
-            let apinfo = getAP(parseInt(limit.timeout));
+            if (isGameDead()) {
+                log("检测到游戏再次闪退");
+                reLaunchGame();
+                log("等待5秒...");
+                sleep(5000);
+                continue;
+            }
+            var found_popup = findPopupInfoDetailTitle(limit.timeout);
+            if (found_popup != null) {
+                log("发现弹窗 标题: \""+found_popup.title+"\"");
+                if (found_popup.title != strings[last_alive_lang].connection_lost) {
+                    log("弹窗标题不是\""+strings[last_alive_lang].connection_lost+"\",尝试关闭...");
+                    click(found_popup.close);
+                    log("等待2秒...");
+                    sleep(2000);
+                    continue;
+                }
+            }
+            var apinfo = getAP(parseInt(limit.timeout));
+            var button = null;
             if (apinfo != null) {
                 log("当前AP:"+apinfo.value+"/"+apinfo.total);
+            } else {
+                button = findID("nextPageBtn", parseInt(limit.timeout));
+            }
+            if (apinfo != null || button != null) {
                 toastLog("重新登录完成");
                 return true;
             }
+            //“恢复战斗”按钮和断线重连的“否”重合，很蛋疼，但是没有控件可以检测，没办法
+            //不过恢复战斗又掉线的几率并不高，而且即便又断线了，点“否”后游戏会重新登录，然后还是可以再点一次“恢复战斗”
+            log("点击恢复战斗按钮区域...");
             click(convertCoords(clickSets.recover_battle));
+            log("点击恢复战斗按钮区域完成,等待5秒...");
+            sleep(5000);
         }
     }
 
@@ -2898,7 +2926,7 @@ function algo_init() {
                             log("重放终止");
                             if (limit.killOnReplayFail) {
                                 log("强行停止游戏", opList.package_name);
-                                privShellCmd("am force-stop "+opList.package_name);
+                                killBackground(opList.package_name);
                                 log("强行停止完成");
                             }
                             return false;
