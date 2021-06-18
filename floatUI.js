@@ -907,6 +907,11 @@ var clickSets = {
         y: 730,
         pos: "center"
     },
+    backToHomepage: {
+        x: 960,
+        y: 830,
+        pos: "center"
+    },
     back: {
         x: 120,
         y: 50,
@@ -2582,13 +2587,17 @@ function algo_init() {
             var found_popup = findPopupInfoDetailTitle(null, parseInt(limit.timeout));
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
-                if (found_popup.title != strings[last_alive_lang][strings.name.findIndex((e) => e == "connection_lost")]) {
-                    log("弹窗标题不是\""+strings[last_alive_lang][strings.name.findIndex((e) => e == "connection_lost")]+"\",尝试关闭...");
+                let expected_title = strings[last_alive_lang][strings.name.findIndex((e) => e == "connection_lost")];
+                if (found_popup.title == expected_title) {
+                    log("弹窗标题\""+expected_title+"\",没有关闭按钮,只有回首页按钮,点击回首页...");
+                    click(convertCoords(clickSets.backToHomepage));
+                } else {
+                    log("弹窗标题不是\""+expected_title+"\",尝试关闭...");
                     click(found_popup.close);
-                    log("等待2秒...");
-                    sleep(2000);
-                    continue;
                 }
+                log("等待2秒...");
+                sleep(2000);
+                continue;
             }
             var apinfo = getAP(parseInt(limit.timeout));
             var button = null;
@@ -2999,7 +3008,7 @@ function algo_init() {
                 case "logged_out":
                     state = STATE_LOGIN;
                     break;
-                case null:
+                case false:
                     state = STATE_MENU;
                     break;
                 default:
