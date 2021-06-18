@@ -2873,7 +2873,7 @@ function algo_init() {
                 sleep(5000);
                 continue;
             }
-            var found_popup = findPopupInfoDetailTitle(limit.timeout);
+            var found_popup = findPopupInfoDetailTitle(parseInt(limit.timeout));
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
                 if (found_popup.title != strings[last_alive_lang].connection_lost) {
