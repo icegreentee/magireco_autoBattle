@@ -2920,6 +2920,7 @@ function algo_init() {
         initialize();
         var detectedLang = detectGameLang();
         if (detectedLang == null) {
+            //由于initialize里就退出了，走不到这里
             toastLog("请先把魔纪切换到前台再开始录制");
             stopThread();
         }
@@ -3100,8 +3101,8 @@ function algo_init() {
                     endRecording = true;
                     break;
                 case "back":
-                    if (results.steps.length > 0) {
-                        results.steps.pop();
+                    if (result.steps.length > 0) {
+                        result.steps.pop();
                         step--;
                         toastLog("重录第"+(step+1)+"步");
                     } else {
@@ -3128,7 +3129,7 @@ function algo_init() {
     function replayOperations(opList) {
         initialize();
         var result = false;
-        var operations = opList == null ? last_op_list : opList;
+        if (opList == null) opList = last_op_list;
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
             return false;
