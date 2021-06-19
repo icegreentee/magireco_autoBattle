@@ -1961,12 +1961,14 @@ function algo_init() {
         //这里的假设是玩家名肯定在Lv和Pt之间——如果还有更奇葩的环境不满足这个假设就没辙了
         //假Lv前面肯定还有真Lv（所以需要倒着从后往前搜才能先碰到假的）
         NPCLvIndices = NPCLvIndices.reverse().filter(function (index, i, arr) {
-            //最后一个(序号arr.length-1)在颠倒前就是第一个，最后一个没有更后一个对应颠倒前第一个没有更前一个
-            if (i >= arr.length - 1) return true;
-            //往后推一个对应颠倒前往前推一个
-            let nextIndex = arr[i+1];
+            //当前Lv控件在AllLvIndices中的序号
+            let i_index = AllLvIndices.findIndex((val) => val == index);
+            //已经是第一个Lv控件(序号0)了，不可能是假的
+            if (i_index == 0) return true;
+            //找到前一个Lv控件
+            let prevIndex = AllLvIndices[i_index-1];
 
-            let PtIndex = PtLikeIndices.find((val) => val > index && val < nextIndex);
+            let PtIndex = PtLikeIndices.find((val) => val > prevIndex && val < index);
 
             if (PtIndex == null) {
                 //假Lv和真Lv之间肯定没有Pt
