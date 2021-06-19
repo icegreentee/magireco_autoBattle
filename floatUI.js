@@ -4004,6 +4004,9 @@ function algo_init() {
                 }
 
                 case STATE_BATTLE: {
+                    if (battleStartBtnClickTime == 0) {
+                        battleStartBtnClickTime = new Date().getTime();
+                    }
                     //点击开始或自动续战按钮，在按钮消失后，就会走到这里
                     //还在战斗，或者在战斗结束时弹出断线重连窗口，就会继续在这里循环
                     //直到战斗结束，和服务器成功通信后，进入结算
