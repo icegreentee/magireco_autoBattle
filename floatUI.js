@@ -92,6 +92,14 @@ floatUI.scripts = [
     {
         name: "重放选关动作",
         fn: tasks.replaySteps,
+    },
+    {
+        name: "导入动作录制数据",
+        fn: tasks.importSteps,
+    },
+    {
+        name: "导出动作录制数据",
+        fn: tasks.exportSteps,
     }
 ];
 
@@ -1463,7 +1471,7 @@ function algo_init() {
         if (device.sdkInt >= 24) {
             // now accessibility gesture APIs are available
             log("使用无障碍服务模拟点击坐标 "+x+","+y);
-            origFunc.press(x, y, 50);
+            origFunc.click(x, y);
             log("点击完成");
         } else {
             clickOrSwipeRoot(x, y);
@@ -1501,6 +1509,7 @@ function algo_init() {
         y1 = points[0].y;
         x2 = points[1].x;
         y2 = points[1].y;
+
         // limit range
         var sz = getWindowSize();
         if (x1 >= sz.x) {
@@ -1515,11 +1524,17 @@ function algo_init() {
         if (y2 >= sz.y) {
             y2 = sz.y - 1;
         }
+
+        // 默认滑动时间计算，距离越长时间越长
+        let swipe_distance = Math.sqrt(Math.pow((x2 - x1), 2) + Math.pow((y2 - y1), 2));
+        let screen_diagonal = Math.sqrt(Math.pow((device.width), 2) + Math.pow((device.height), 2));
+        var default_duration = parseInt(500 + 3000 * (swipe_distance / screen_diagonal));
+
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             log("使用无障碍服务模拟滑动 "+x1+","+y1+" => "+x2+","+y2+(duration==null?"":(" ("+duration+"ms)")));
             if (duration == null) {
-                origFunc.swipe(x1, y1, x2, y2, 2500); //最后一个参数不能缺省
+                origFunc.swipe(x1, y1, x2, y2, default_duration); //最后一个参数不能缺省
             } else {
                 origFunc.swipe(x1, y1, x2, y2, duration);
             }
@@ -2888,6 +2903,11 @@ function algo_init() {
         return false;
     }
 
+    function getScreenParams() {
+        if (screen != null && gameoffset != null)
+            return JSON.stringify({screen: screen, gameoffset: gameoffset});
+    }
+
     //上次录制的关卡选择动作列表
     var last_op_list = null;
 
@@ -2895,13 +2915,18 @@ function algo_init() {
         var result = null;
         let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
         let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
-        let actions = ["click", "swipe", "sleep", "checkText", "exit", "back", null];
+        let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", null];
         result = actions[selected];
         return result;
     }
 
     function recordOperations() {
         initialize();
+        let currentScreenParams = getScreenParams();
+        if (currentScreenParams == null || currentScreenParams == "") {
+            toastLog("获取屏幕参数失败,无法录制");
+            return;
+        }
         if ((limit.rootForceStop || limit.RecordStepsRequestRoot) && (!limit.privilege)) {
             limit.RecordStepsRequestRoot = false;
             if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
@@ -2926,7 +2951,7 @@ function algo_init() {
         }
         var detectedLang = detectGameLang();
         if (detectedLang == null) {
-            //由于initialize里就退出了，走不到这里
+            //如果游戏不在前台，在initialize里就退出了，走不到这里
             toastLog("请先把魔纪切换到前台再开始录制");
             stopThread();
         }
@@ -2935,6 +2960,7 @@ function algo_init() {
             //现在的convertCoords只能从1920x1080转到别的分辨率，不能逆向转换
             //如果以后做了reverseConvertCoords，那就可以把isGeneric设为true了，然后录制的动作列表可以通用
             isGeneric: false,
+            screenParams: currentScreenParams,
             defaultSleepTime: 2000,
             steps: []
         }
@@ -2953,7 +2979,7 @@ function algo_init() {
 
         let endRecording = false;
         for (let step=0; !endRecording; step++) {
-            toastLog("录制第"+(step+1)+"步操作...");
+            log("录制第"+(step+1)+"步操作...");
             let op = {};
             op.action = chooseAction(step);
             switch (op.action) {
@@ -2968,6 +2994,8 @@ function algo_init() {
                     click(op.click.point);
                     result.steps.push(op);
                     toastLog("已记录点击动作: ["+op.click.point.x+","+op.click.point.y+"]");
+                    toast("如果点击没点到,请重录上一步");
+                    sleep(4000);
                     break;
                 case "swipe":
                     log("等待录制滑动动作...");
@@ -2988,12 +3016,14 @@ function algo_init() {
                              +" => "
                              +"["+op.swipe.points[1].x+","+op.swipe.points[1].y+"]"
                              );
+                    toast("如果滑动没反应,请重录上一步");
+                    sleep(4000);
                     break;
                 case "sleep":
                     op.sleep = {};
                     let sleep_ms = 0;
                     do {
-                        sleep_ms = dialogs.rawInput("录制第"+(step+1)+"步操作\n要等待多少毫秒", "5000");
+                        sleep_ms = dialogs.rawInput("录制第"+(step+1)+"步操作\n要等待多少毫秒", "3000");
                         sleep_ms = parseInt(sleep_ms);
                         if (isNaN(sleep_ms) || sleep_ms <= 0) {
                             toastLog("请输入一个正整数");
@@ -3002,7 +3032,7 @@ function algo_init() {
                     } while (sleep_ms <= 0);
                     op.sleep.sleepTime = sleep_ms;
                     result.steps.push(op);
-                    toastLog("已记录等待动作,时间为"+op.sleep.sleepTime+"毫秒");
+                    toastLog("录制第"+(step+1)+"步操作\n已记录等待动作,时间为"+op.sleep.sleepTime+"毫秒");
                     break;
                 case "checkText":
                     op.checkText = {};
@@ -3044,7 +3074,7 @@ function algo_init() {
                     toastLog("录制第"+(step+1)+"步操作\n要检测的文字是\""+op.checkText.text+"\"");
 
                     dialog_options = ["横纵坐标都检测", "只检测横坐标X", "只检测纵坐标Y", "横纵坐标都不检测"];
-                    dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n是否要检测文字在屏幕出现的位置和现在是否一致?", dialog_options);
+                    dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n是否要检测文字\""+op.checkText.text+"\"在屏幕出现的位置和现在是否一致?", dialog_options);
                     if (dialog_selected == 0 || dialog_selected == 1) {
                         op.checkText.centerX = check_text_point.x;
                     }
@@ -3056,7 +3086,7 @@ function algo_init() {
                         op.checkText[found_or_not_found] = {};
                         op.checkText[found_or_not_found].kill = false;
                         dialog_options = ["什么也不做,继续执行", "报告成功并结束", "报告失败并结束", "先强关游戏再报告成功并结束", "先强关游戏再报告失败并结束"];
-                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字时要做什么?", dialog_options);
+                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字\""+op.checkText.text+"\"时要做什么?", dialog_options);
                         switch (dialog_selected) {
                             case 0:
                                 op.checkText[found_or_not_found].nextAction = "ignore";
@@ -3078,9 +3108,27 @@ function algo_init() {
                         toastLog("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字时要\n"+dialog_options[dialog_selected]);
                     }
                     result.steps.push(op);
-                    toastLog("已记录文字检测动作");
+                    toastLog("已记录检测文字\""+op.checkText.text+"\"是否出现的动作");
                     break;
                 case "exit":
+                    log("DEBUG", result.steps.length > 0, (result.steps.find((val) => val.action == "checkText") == null));
+                    log("DEBUG", result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null));
+                    if (result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null)) {
+                        dialog_selected = dialogs.confirm(
+                            "警告", "您没有录制文字检测动作！\n"
+                            +"重放时未必可以一次成功，点错并不是稀奇事。\n"
+                            +"点错后可能发生各种不可预知的后果：从脚本因步调错乱而停滞不动，到误触误删文件，再到变成魔女，全都是有可能的哦！\n"
+                            +"您确定【不需要】检测文字么？");
+                        if (!dialog_selected) {
+                            let last_action = result.steps[result.steps.length-1].action;
+                            toastLog("继续录制\n第"+(step+1)+"步");
+                            step--;//这一步没录，所以需要-1
+                            break;
+                        } else {
+                            toastLog("好吧，尊重你的选择：\n不检测文字\n祝你好运!");
+                            sleep(1000);
+                        }
+                    }
                     //现在不考虑加入循环跳转什么的
                     op.exit = {};
                     op.exit.kill = false;
@@ -3106,11 +3154,27 @@ function algo_init() {
                     toastLog("录制结束");
                     endRecording = true;
                     break;
-                case "back":
+                case "undo":
                     if (result.steps.length > 0) {
+                        let last_action = result.steps[result.steps.length-1].action;
                         step--;
                         result.steps.pop();
                         toastLog("重录第"+(step+1)+"步");
+                        if (last_action == "click" || last_action == "swipe") {
+                            sleep(3000);
+                            toast("录制将会在 12 秒后继续...");
+                            sleep(2000);
+                            toast("请把游戏界面重新整理好");
+                            sleep(2000);
+                            toast("录制将会在 8 秒后继续...");
+                            sleep(2000);
+                            toast("请把游戏界面重新整理好");
+                            sleep(2000);
+                            toast("录制将会在 4 秒后继续...");
+                            sleep(2000);
+                            toast("请把游戏界面重新整理好");
+                            sleep(2000);
+                        }
                     } else {
                         toastLog("还没开始录制第1步");
                     }
@@ -3124,13 +3188,38 @@ function algo_init() {
                     toastLog("录制第"+(step+1)+"步操作\n出错: 未知动作", op.action);
                     stopThread();
             }
-            if (op.action != "back") log("录制第"+result.steps.length+"步动作完成");
+            if (op.action != "undo") log("录制第"+result.steps.length+"步动作完成");
         }
         if (result != null) {
             toastLog("录制完成,共记录"+result.steps.length+"步动作");
             last_op_list = result;
         }
         return result;
+    }
+
+    function validateOpList(opList) {
+        //只是简单的检查，并没有仔细地检查
+        if (opList.package_name == null || opList.package_name == "") {
+            toastLog("动作录制数据无效: package_name为空");
+            return false;
+        }
+        let currentScreenParams = getScreenParams();
+        if (currentScreenParams == null || currentScreenParams == "") {
+            toastLog("无法检验动作录制数据: 获取屏幕参数失败");
+            return false;
+        }
+        if (opList.isGeneric) {
+            if (opList.screenParams != null) {
+                toastLog("动作录制数据无效: isGeneric为true但screenParams不为null");
+                return false;
+            }
+        } else {
+            if (opList.screenParams != currentScreenParams) {
+                toastLog("动作录制数据无效: 屏幕参数不匹配");
+                return false;
+            }
+        }
+        return true;
     }
 
     function replayOperations(opList) {
@@ -3141,8 +3230,8 @@ function algo_init() {
             toastLog("不知道要重放什么动作,退出");
             return false;
         }
-        if (opList.package_name == null || opList.package_name == "") {
-            toastLog("重放出错: package_name为空");
+        if (!validateOpList(opList)) {
+            toastLog("重放失败\n动作录制数据无效");
             return false;
         }
         log("重放录制的操作...");
@@ -3256,6 +3345,51 @@ function algo_init() {
         }
         log("所有动作重放完成,结果:"+(result));
         return result;
+    }
+
+    function exportOpList(specified_op_list) {
+        let opList = specified_op_list == null ? last_op_list : specified_op_list;
+        if (opList != null) {
+            let opListStringified = null;
+            try {
+                opListStringified = JSON.stringify(opList);
+            } catch (e) {
+                logException(e);
+                toastLog("导出失败");
+                return;
+            }
+            dialogs.build({
+                title: "导出选关动作",
+                content: "您可以 全选=>复制 以下内容，然后在别处粘贴保存。\n很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。",
+                inputPrefill: opListStringified
+            }).show();
+        } else {
+            toastLog("没有录下来的动作可供导出");
+        }
+    }
+
+    function importOpList() {
+        let op_list_string = dialogs.build({
+            title: "导入选关动作",
+            content: "您可以把之前录制并保存下来的动作重新导入进来。",
+            inputPrefill: ""
+        }).show();
+        let importedOpList = null;
+        try {
+            importedOpList = JSON.parse(op_list_string);
+        } catch (e) {
+            logException(e);
+            importedOpList = null;
+            toastLog("导入失败");
+        }
+        if (importedOpList != null && typeof importedOpList != "string") {
+            if (validateOpList(importedOpList)) {
+                last_op_list = importedOpList;
+                toastLog("导入完成");
+            } else {
+                toastLog("导入失败\n动作录制数据无效");
+            }
+        }
     }
 
     function taskDefault() {
@@ -3633,6 +3767,8 @@ function algo_init() {
         reopen: enterLoop,
         recordSteps: recordOperations,
         replaySteps: replayOperations,
+        exportSteps: exportOpList,
+        importSteps: importOpList,
     };
 }
 
