@@ -2429,7 +2429,7 @@ function algo_init() {
 
         //检测区服
         if (detectGameLang() == null) {
-            toastLog("未在前台检测到魔法纪录,退出");
+            toastLog("请先把魔法纪录切换到前台,然后再试一次");
             stopThread();
         }
 
