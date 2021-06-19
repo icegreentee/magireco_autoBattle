@@ -3746,6 +3746,20 @@ function algo_init() {
                 continue;
             }
 
+            //打断官方自动周回的计时点
+            switch(state) {
+                case STATE_BATTLE:
+                case STATE_REWARD_CHARACTER:
+                case STATE_REWARD_MATERIAL:
+                case STATE_REWARD_POST:
+                    if (battleStartBtnClickTime == 0) {
+                        battleStartBtnClickTime = new Date().getTime();
+                    }
+                    break;
+                default:
+                    battleStartBtnClickTime = 0;
+            }
+
             //然后，再继续自动周回处理
             switch (state) {
                 case STATE_CRASHED: {
@@ -4004,9 +4018,6 @@ function algo_init() {
                 }
 
                 case STATE_BATTLE: {
-                    if (battleStartBtnClickTime == 0) {
-                        battleStartBtnClickTime = new Date().getTime();
-                    }
                     //点击开始或自动续战按钮，在按钮消失后，就会走到这里
                     //还在战斗，或者在战斗结束时弹出断线重连窗口，就会继续在这里循环
                     //直到战斗结束，和服务器成功通信后，进入结算
@@ -4015,7 +4026,6 @@ function algo_init() {
                     //这里会等待2秒，对于防断线模式来说就是限制每2秒点击一次重连按钮的所在位置
                     //另一方面，也可以极大程度上确保防断线模式不会在结算界面误点
                     if (findID("charaWrap", 2000)) {
-                        battleStartBtnClickTime = 0;
                         state = STATE_REWARD_CHARACTER;
                         log("进入角色结算");
                         break;
