@@ -780,7 +780,7 @@ var limit = {
     timeout: "5000",
     rootScreencap: false,
     rootForceStop: false,
-    RecordStepsRequestRoot: true,
+    firstRequestPrivilege: true,
     privilege: null
 }
 var clickSets = {
@@ -2900,8 +2900,8 @@ function algo_init() {
             //不过恢复战斗又掉线的几率并不高，而且即便又断线了，点“否”后游戏会重新登录，然后还是可以再点一次“恢复战斗”
             log("点击恢复战斗按钮区域...");
             click(convertCoords(clickSets.recover_battle));
-            log("点击恢复战斗按钮区域完成,等待5秒...");
-            sleep(5000);
+            log("点击恢复战斗按钮区域完成,等待1秒...");
+            sleep(1000);
         }
         return false;
     }
@@ -2909,6 +2909,33 @@ function algo_init() {
     function getScreenParams() {
         if (screen != null && gameoffset != null)
             return JSON.stringify({screen: screen, gameoffset: gameoffset});
+    }
+
+    function requestPrivilegeIfNeeded() {
+        if (limit.privilege) return true;
+
+        if (limit.rootForceStop || limit.firstRequestPrivilege) {
+            limit.firstRequestPrivilege = false;
+            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
+            {
+                limit.firstRequestPrivilege = true;//如果这次没申请到权限，下次还会提醒
+                ui.run(() => {
+                    ui["rootForceStop"].setChecked(true);
+                });
+                if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
+                    toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
+                } else {
+                    requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                }
+                return false;//等到权限获取完再重试
+            } else {
+                limit.firstRequestPrivilege = false;//下次不会提醒了
+                ui.run(() => {
+                    ui["rootForceStop"].setChecked(false);
+                });
+            }
+        }
+        return true;//可能没有特权，但用户选择不获取特权
     }
 
     //上次录制的关卡选择动作列表
@@ -2924,34 +2951,20 @@ function algo_init() {
     }
 
     function recordOperations() {
+        if (!requestPrivilegeIfNeeded()) {
+            log("用户选择获取特权,但还没获取到,退出录制");
+            stopThread();//等到权限获取完再重试
+            return;
+        }
+
         initialize();
+
         let currentScreenParams = getScreenParams();
         if (currentScreenParams == null || currentScreenParams == "") {
             toastLog("获取屏幕参数失败,无法录制");
             return;
         }
-        if ((limit.rootForceStop || limit.RecordStepsRequestRoot) && (!limit.privilege)) {
-            limit.RecordStepsRequestRoot = false;
-            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
-            {
-                RecordStepsRequestRoot = true;//如果这次没申请到权限，下次还会提醒
-                ui.run(() => {
-                    ui["rootForceStop"].setChecked(true);
-                });
-                if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
-                    toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
-                } else {
-                    requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-                }
-                stopThread();//等到权限获取完再重试
-                return;
-            } else {
-                RecordStepsRequestRoot = false;//下次不会提醒了
-                ui.run(() => {
-                    ui["rootForceStop"].setChecked(false);
-                });
-            }
-        }
+
         var detectedLang = detectGameLang();
         if (detectedLang == null) {
             //如果游戏不在前台，在initialize里就退出了，走不到这里
@@ -3199,6 +3212,7 @@ function algo_init() {
     }
 
     function validateOpList(opList) {
+        //initialize(); //让调用者initialize
         //只是简单的检查，并没有仔细地检查
         if (opList.package_name == null || opList.package_name == "") {
             toastLog("动作录制数据无效: package_name为空");
@@ -3224,18 +3238,29 @@ function algo_init() {
     }
 
     function replayOperations(opList) {
+        if (!requestPrivilegeIfNeeded()) {
+            log("用户选择获取特权,但还没获取到,退出录制");
+            stopThread();//等到权限获取完再重试
+            return;
+        }
+
         initialize();
+
         var result = false;
+
         if (opList == null) opList = last_op_list;
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
             return false;
         }
+
         if (!validateOpList(opList)) {
             toastLog("重放失败\n动作录制数据无效");
             return false;
         }
+
         log("重放录制的操作...");
+
         let endReplaying = false;
         for (let i=0; i<opList.steps.length&&!endReplaying; i++) {
             let op = opList.steps[i];
@@ -3382,7 +3407,14 @@ function algo_init() {
     }
 
     function importOpList() {
+        if (!requestPrivilegeIfNeeded()) {
+            log("用户选择获取特权,但还没获取到,退出录制");
+            stopThread();//等到权限获取完再重试
+            return;
+        }
+
         initialize(); //如果游戏不在前台则无法检验导入进来的动作录制数据
+
         dialogs.build({
             title: "导入选关动作",
             content: "您可以把之前录制并保存下来的动作重新导入进来。",
@@ -3425,6 +3457,17 @@ function algo_init() {
     }
 
     function taskDefault() {
+        if (last_op_list == null) {
+            toastLog("没有动作录制数据\n将不会进行闪退重启");
+        } else {
+            if (!requestPrivilegeIfNeeded()) {
+                log("用户选择获取特权,但还没获取到,退出录制");
+                stopThread();//等到权限获取完再重试
+                return;
+            }
+            toastLog("已加载动作录制数据\n游戏闪退时将自动重启");
+        }
+
         initialize();
         var state = STATE_MENU;
         var battlename = "";
@@ -3455,13 +3498,10 @@ function algo_init() {
                             log("重启完成,再等待2秒...");
                             sleep(2000);
                             break;
+                        case false: //isGameDead不知道游戏登录了没
                         case "logged_out":
                             log("闪退检测完成,进入登录页面");
                             state = STATE_LOGIN;
-                            break;
-                        case false:
-                            log("闪退检测完成,进入关卡选择");
-                            state = STATE_MENU;
                             break;
                         default:
                             log("游戏闪退状态未知");
@@ -3475,6 +3515,7 @@ function algo_init() {
                         log("重放完成,报告成功,应该可以选关了");
                         state = STATE_MENU;
                     }
+                    //动作录制数据里会指定在失败时杀掉进程重启
                     break;
                 }
                 case STATE_MENU: {
