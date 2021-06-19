@@ -1873,6 +1873,7 @@ function algo_init() {
     const ptDistanceY = 243.75;
 
     function pickSupportWithMostPt() {
+        toast("请勿拖动助战列表!\n自动选择助战...");
         var hasError = false;
         //Lv [Rank] 玩家名 [最终登录] Pt
         //Lv 玩家名 [Rank] [最终登录] Pt
