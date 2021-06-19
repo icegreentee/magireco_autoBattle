@@ -2865,12 +2865,18 @@ function algo_init() {
             stopThread();
         }
         toastLog("重新登录...");
+        var wait = parseInt(limit.timeout);
+        const max_wait_in_relogin = 60 * 1000;
+        if (wait > max_wait_in_relogin) {
+            toastLog("等待控件超时太长,超过一分钟:"+limit.timeout+",在reLogin中视作一分钟处理");
+            wait = max_wait_in_relogin;
+        }
         while (true) {
-            if (isGameDead(parseInt(limit.timeout))) {
+            if (isGameDead(wait)) {
                 log("检测到游戏再次闪退,无法继续登录");
                 return false;
             }
-            var found_popup = findPopupInfoDetailTitle(null, parseInt(limit.timeout));
+            var found_popup = findPopupInfoDetailTitle(null, wait);
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
                 let expected_title = strings[last_alive_lang][strings.name.findIndex((e) => e == "connection_lost")];
@@ -2885,12 +2891,12 @@ function algo_init() {
                 sleep(2000);
                 continue;
             }
-            var apinfo = getAP(parseInt(limit.timeout));
+            var apinfo = getAP(wait);
             var button = null;
             if (apinfo != null) {
                 log("当前AP:"+apinfo.value+"/"+apinfo.total);
             } else {
-                button = findID("nextPageBtn", parseInt(limit.timeout));
+                button = findID("nextPageBtn", wait);
             }
             if (apinfo != null || button != null) {
                 toastLog("重新登录完成");
