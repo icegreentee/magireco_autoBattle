@@ -3358,10 +3358,19 @@ function algo_init() {
                 toastLog("导出失败");
                 return;
             }
+            ui.run(() => {
+                clip = android.content.ClipData.newPlainText("auto_export_op_list", opListStringified);
+                activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
+                toast("内容已复制到剪贴板");
+            });
             dialogs.build({
                 title: "导出选关动作",
-                content: "您可以 全选=>复制 以下内容，然后在别处粘贴保存。\n很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。",
+                content: "您可以 全选=>复制 以下内容，然后在别处粘贴保存。",
                 inputPrefill: opListStringified
+            }).show();
+            dialogs.build({
+                title: "提示",
+                content: "导出完成\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。"
             }).show();
         } else {
             toastLog("没有录下来的动作可供导出");
