@@ -3348,6 +3348,7 @@ function algo_init() {
     }
 
     function exportOpList(specified_op_list) {
+        //initialize(); //在脚本界面也可以导出
         let opList = specified_op_list == null ? last_op_list : specified_op_list;
         if (opList != null) {
             let opListStringified = null;
@@ -3367,10 +3368,12 @@ function algo_init() {
                 title: "导出选关动作",
                 content: "您可以 全选=>复制 以下内容，然后在别处粘贴保存。",
                 inputPrefill: opListStringified
-            }).show();
-            dialogs.build({
-                title: "提示",
-                content: "导出完成\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。"
+            }).on("dismiss", () => {
+                dialogs.build({
+                    title: "提示",
+                    content: "导出完成！\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。",
+                    positive: "确定"
+                }).show();
             }).show();
         } else {
             toastLog("没有录下来的动作可供导出");
@@ -3378,27 +3381,34 @@ function algo_init() {
     }
 
     function importOpList() {
-        let op_list_string = dialogs.build({
+        initialize(); //如果游戏不在前台则无法检验导入进来的动作录制数据
+        dialogs.build({
             title: "导入选关动作",
             content: "您可以把之前录制并保存下来的动作重新导入进来。",
-            inputPrefill: ""
-        }).show();
-        let importedOpList = null;
-        try {
-            importedOpList = JSON.parse(op_list_string);
-        } catch (e) {
-            logException(e);
-            importedOpList = null;
-            toastLog("导入失败");
-        }
-        if (importedOpList != null && typeof importedOpList != "string") {
-            if (validateOpList(importedOpList)) {
-                last_op_list = importedOpList;
-                toastLog("导入完成");
-            } else {
-                toastLog("导入失败\n动作录制数据无效");
+            inputPrefill: "",
+            positive: "确定",
+            negative: "取消"
+        }).on("input", (op_list_string) => {
+            log("确定导入动作录制数据");
+            let importedOpList = null;
+            try {
+                importedOpList = JSON.parse(op_list_string);
+            } catch (e) {
+                logException(e);
+                importedOpList = null;
+                toastLog("导入失败");
             }
-        }
+            if (importedOpList != null && typeof importedOpList != "string") {
+                if (validateOpList(importedOpList)) {
+                    last_op_list = importedOpList;
+                    toastLog("导入完成");
+                } else {
+                    toastLog("导入失败\n动作录制数据无效");
+                }
+            }
+        }).on("negative", (dialog) => {
+            toastLog("取消导入动作录制数据");
+        }).show();
     }
 
     function taskDefault() {
