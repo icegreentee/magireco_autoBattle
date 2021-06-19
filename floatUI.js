@@ -1518,7 +1518,11 @@ function algo_init() {
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             log("使用无障碍服务模拟滑动 "+x1+","+y1+" => "+x2+","+y2+(duration==null?"":(" ("+duration+"ms)")));
-            origFunc.swipe(x1, y1, x2, y2, duration);
+            if (duration == null) {
+                origFunc.swipe(x1, y1, x2, y2, 2500); //最后一个参数不能缺省
+            } else {
+                origFunc.swipe(x1, y1, x2, y2, duration);
+            }
             log("滑动完成");
         } else {
             clickOrSwipeRoot(x1, y1, x2, y2, duration);
@@ -2244,14 +2248,25 @@ function algo_init() {
         var startTime = new Date().getTime();
         var detectedLang = null;
         do {
-            detectedLang = detectGameLang();
-            if (detectedLang != null) break;
+            if (last_alive_lang != null) {
+                for (let i=0; i<10; i++) {
+                    try {auto.root.refresh();} catch(e) {};
+                    if (auto.root != null && auto.root.packageName() == string.package_name) {
+                        detectedLang = last_alive_lang;
+                        break;
+                    }
+                }
+            } else {
+                detectedLang = detectGameLang();
+                if (detectedLang != null) break;
+            }
+            sleep(50);
         } while (new Date().getTime() < startTime + parseInt(limit.timeout));
         if (detectedLang == null) {
             log("游戏已经闪退");
             return "crashed";
         }
-        if (findPopupInfoDetailTitle(string.connection_lost, parseInt(limit.timeout))) {
+        if (findPopupInfoDetailTitle(string.connection_lost, false)) {
             log("游戏已经断线并强制回首页");
             return "logged_out";
         }
@@ -2806,8 +2821,8 @@ function algo_init() {
             log("再等待2秒...");
             sleep(2000);
             killBackground(name);
-            log("已调用杀死后台进程，等待10秒...")
-            sleep(10000);
+            log("已调用杀死后台进程，等待5秒...")
+            sleep(5000);
         }
     }
 
@@ -2889,7 +2904,7 @@ function algo_init() {
         initialize();
         if ((limit.rootForceStop || limit.RecordStepsRequestRoot) && (!limit.privilege)) {
             limit.RecordStepsRequestRoot = false;
-            if (dialogs.confirm("提示", "如果没有root或adb权限,\n模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
+            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
             {
                 RecordStepsRequestRoot = true;//如果这次没申请到权限，下次还会提醒
                 ui.run(() => {
@@ -3256,7 +3271,7 @@ function algo_init() {
         var rewardtime = null;
         */
         while (true) {
-            /*
+            //首先，检测游戏是否闪退或掉线
             switch (isGameDead()) {
                 case "crashed":
                     log("等待5秒后重启游戏...");
@@ -3275,7 +3290,8 @@ function algo_init() {
                     log("游戏闪退状态未知");
                     stopThread();
             }
-            */
+
+            //然后，再继续自动周回处理
             switch (state) {
                 case STATE_LOGIN: {
                     if (!reLogin()) break;
