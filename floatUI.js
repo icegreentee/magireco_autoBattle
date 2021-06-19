@@ -2912,7 +2912,7 @@ function algo_init() {
             wait = max_wait_in_relogin;
         }
         while (true) {
-            if (isGameDead(200)) {
+            if (isGameDead(200) == "crashed") {
                 log("检测到游戏再次闪退,无法继续登录");
                 return false;
             }
