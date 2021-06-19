@@ -2936,7 +2936,7 @@ function algo_init() {
                 if (findID(resID, 200)) {
                     battle_end_found = true;
                     log("已进入战斗结算");
-                    return false;//调用者会杀进程
+                    return false;
                 }
             }
 
