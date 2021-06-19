@@ -100,6 +100,10 @@ floatUI.scripts = [
     {
         name: "导出动作录制数据",
         fn: tasks.exportSteps,
+    },
+    {
+        name: "清除动作录制数据",
+        fn: tasks.clearSteps,
     }
 ];
 
@@ -2135,15 +2139,16 @@ function algo_init() {
         }
     }
 
-    const STATE_LOGIN = 0;
-    const STATE_HOME = 1;
-    const STATE_MENU = 2;
-    const STATE_SUPPORT = 3;
-    const STATE_TEAM = 4;
-    const STATE_BATTLE = 5;
-    const STATE_REWARD_CHARACTER = 6;
-    const STATE_REWARD_MATERIAL = 7;
-    const STATE_REWARD_POST = 8;
+    const STATE_CRASHED = 0
+    const STATE_LOGIN = 1;
+    const STATE_HOME = 2;
+    const STATE_MENU = 3;
+    const STATE_SUPPORT = 4;
+    const STATE_TEAM = 5;
+    const STATE_BATTLE = 6;
+    const STATE_REWARD_CHARACTER = 7;
+    const STATE_REWARD_MATERIAL = 8;
+    const STATE_REWARD_POST = 9;
 
     // strings constants
     const strings = {
@@ -2259,29 +2264,27 @@ function algo_init() {
 
     //检测游戏是否闪退或掉线
     //注意！调用后会重新检测区服，从而可能导致string、last_alive_lang变量被重新赋值
-    function isGameDead() {
+    function isGameDead(wait) {
         var startTime = new Date().getTime();
         var detectedLang = null;
         do {
             if (last_alive_lang != null) {
-                for (let i=0; i<10; i++) {
-                    try {auto.root.refresh();} catch(e) {};
-                    if (auto.root != null && auto.root.packageName() == string.package_name) {
-                        detectedLang = last_alive_lang;
-                        break;
-                    }
+                try {auto.root.refresh();} catch (e) {};
+                if (auto.root != null && auto.root.packageName() == string.package_name) {
+                    detectedLang = last_alive_lang;
+                    break;
                 }
             } else {
                 detectedLang = detectGameLang();
                 if (detectedLang != null) break;
             }
             sleep(50);
-        } while (new Date().getTime() < startTime + parseInt(limit.timeout));
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         if (detectedLang == null) {
             log("游戏已经闪退");
             return "crashed";
         }
-        if (findPopupInfoDetailTitle(string.connection_lost, false)) {
+        if (findPopupInfoDetailTitle(string.connection_lost, wait)) {
             log("游戏已经断线并强制回首页");
             return "logged_out";
         }
@@ -2719,7 +2722,7 @@ function algo_init() {
                     break;
                 }
 
-                case STATE_MENU:{
+                case STATE_MENU: {
                     if (find(string.support)) {
                         state = STATE_SUPPORT;
                         log("进入助战选择");
@@ -2822,7 +2825,7 @@ function algo_init() {
             while (true) {
                 privShell("am force-stop "+name);
                 sleep(1000);
-                if (isGameDead()) break;
+                if (isGameDead(parseInt(limit.timeout))) break;
                 log("游戏仍在运行,再次尝试强行停止...");
             }
         } else {
@@ -2863,7 +2866,7 @@ function algo_init() {
         }
         toastLog("重新登录...");
         while (true) {
-            if (isGameDead()) {
+            if (isGameDead(parseInt(limit.timeout))) {
                 log("检测到游戏再次闪退,无法继续登录");
                 return false;
             }
@@ -3111,8 +3114,6 @@ function algo_init() {
                     toastLog("已记录检测文字\""+op.checkText.text+"\"是否出现的动作");
                     break;
                 case "exit":
-                    log("DEBUG", result.steps.length > 0, (result.steps.find((val) => val.action == "checkText") == null));
-                    log("DEBUG", result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null));
                     if (result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null)) {
                         dialog_selected = dialogs.confirm(
                             "警告", "您没有录制文字检测动作！\n"
@@ -3411,6 +3412,18 @@ function algo_init() {
         }).show();
     }
 
+    function clearOpList() {
+        dialogs.build({
+            title: "清除选关动作录制数据",
+            content: "确定要清除么？",
+            positive: "确定",
+            negative: "取消"
+        }).on("positive", () => {
+            last_op_list = null;
+            toastLog("已清除选关动作数据");
+        }).show();
+    }
+
     function taskDefault() {
         initialize();
         var state = STATE_MENU;
@@ -3425,27 +3438,37 @@ function algo_init() {
         */
         while (true) {
             //首先，检测游戏是否闪退或掉线
-            switch (isGameDead()) {
-                case "crashed":
-                    log("等待5秒后重启游戏...");
-                    sleep(5000);
-                    reLaunchGame();
-                    log("重启完成,再等待2秒...");
-                    sleep(2000);
-                    continue;
-                case "logged_out":
-                    state = STATE_LOGIN;
-                    break;
-                case false:
-                    state = STATE_MENU;
-                    break;
-                default:
-                    log("游戏闪退状态未知");
-                    stopThread();
+            if (state != STATE_CRASHED && isGameDead(false)) {
+                state = STATE_CRASHED;
+                log("进入闪退/登出重启");
+                continue;
             }
 
             //然后，再继续自动周回处理
             switch (state) {
+                case STATE_CRASHED: {
+                    switch (isGameDead(parseInt(limit.timeout))) {
+                        case "crashed":
+                            log("等待5秒后重启游戏...");
+                            sleep(5000);
+                            reLaunchGame();
+                            log("重启完成,再等待2秒...");
+                            sleep(2000);
+                            break;
+                        case "logged_out":
+                            log("闪退检测完成,进入登录页面");
+                            state = STATE_LOGIN;
+                            break;
+                        case false:
+                            log("闪退检测完成,进入关卡选择");
+                            state = STATE_MENU;
+                            break;
+                        default:
+                            log("游戏闪退状态未知");
+                            stopThread();
+                    }
+                    break;
+                }
                 case STATE_LOGIN: {
                     if (!reLogin()) break;
                     if (replayOperations()) {
@@ -3788,6 +3811,7 @@ function algo_init() {
         replaySteps: replayOperations,
         exportSteps: exportOpList,
         importSteps: importOpList,
+        clearSteps: clearOpList,
     };
 }
 
