@@ -2892,6 +2892,9 @@ function algo_init() {
             if (dialogs.confirm("提示", "如果没有root或adb权限,\n模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
             {
                 RecordStepsRequestRoot = true;//如果这次没申请到权限，下次还会提醒
+                ui.run(() => {
+                    ui["rootForceStop"].setChecked(true);
+                });
                 if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
                     toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
                 } else {
@@ -2901,6 +2904,9 @@ function algo_init() {
                 return;
             } else {
                 RecordStepsRequestRoot = false;//下次不会提醒了
+                ui.run(() => {
+                    ui["rootForceStop"].setChecked(false);
+                });
             }
         }
         var detectedLang = detectGameLang();
