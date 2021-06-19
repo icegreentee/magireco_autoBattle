@@ -2008,8 +2008,10 @@ function algo_init() {
                 let PtContent = getContent(AllElements[ptIndex]);
                 let Pt = parseInt(PtContent);
                 //处理+和60分开的情况
-                if (isNaN(Pt)) PtContent = getContent(AllElements[ptIndex+1]);
-                Pt = parseInt(PtContent);
+                if (isNaN(Pt)) {
+                    PtContent = getContent(AllElements[++ptIndex]);
+                    Pt = parseInt(PtContent);
+                }
                 if (isNaN(Pt)) {
                     log("助战选择出错,在第"+(i+1)+"个Lv控件后无法读取Pt数值");
                     hasError = true;
