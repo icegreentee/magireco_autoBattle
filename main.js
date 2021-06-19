@@ -11,6 +11,7 @@ var Name = "AutoBattle";
 var version = "3.9.0";
 var appName = Name + " v" + version;
 
+//注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
     if (conf) return conf.versionName;
@@ -520,6 +521,9 @@ for (let key of tempParamList) {
         setOnChangeListener(key);
     }
 }
+
+//传递当前版本号给floatUI
+floatUI.adjust("version", version);
 
 //限制apmul取值
 //digits="01234"貌似不起效，没办法，只能手动实现

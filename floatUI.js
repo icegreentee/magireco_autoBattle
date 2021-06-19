@@ -49,6 +49,15 @@ var origFunc = {
     press: function () {press.apply(this, arguments)},
 }
 
+//注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
+function getProjectVersion() {
+    var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
+    if (conf) return conf.versionName;
+}
+
+//记录当前版本是否测试过助战的文件
+var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
+
 var tasks = algo_init();
 // touch capture, will be initialized in main
 var capture = () => { };
@@ -104,6 +113,10 @@ floatUI.scripts = [
     {
         name: "清除动作录制数据",
         fn: tasks.clearSteps,
+    },
+    {
+        name: "测试助战自动选择",
+        fn: tasks.testSupportSel,
     }
 ];
 
@@ -761,6 +774,7 @@ var language = {
 }
 var currentLang = language.zh
 var limit = {
+    version: '',
     helpx: '',
     helpy: '',
     battleNo: 'cb3',
@@ -1895,7 +1909,7 @@ function algo_init() {
     }
     const ptDistanceY = 243.75;
 
-    function pickSupportWithMostPt() {
+    function pickSupportWithMostPt(isTestMode) {
         toast("请勿拖动助战列表!\n自动选择助战...");
         var hasError = false;
         //Lv [Rank] 玩家名 [最终登录] Pt
@@ -2087,29 +2101,51 @@ function algo_init() {
             log("助战选择出错,NPCPt控件数+玩家高Pt加成控件数!=高Pt加成控件总数");
         }
 
+        //测试模式
+        var testOutputString = null;
+        if (isTestMode) {
+            if (!hasError) {
+                testOutputString  =
+                        "最高Pt加成:"
+                    + "\n  "+HighestPt
+                    + "\n助战总数:"
+                    + "\n  "+AllPtIndices.length
+                    + "\n    NPC个数:"
+                    + "\n      "+NPCPtIndices.length
+                    + "\n    玩家总数:"
+                    + "\n      "+PlayerPtIndices.length
+                    + "\n        互关好友个数:"
+                    + "\n          "+PlayerHighPtIndices.length
+                    + "\n        单FO或路人个数:"
+                    + "\n          "+(PlayerPtIndices.length-PlayerHighPtIndices.length);
+            } else {
+                testOutputString = null;
+            }
+        }
+
         //间接推算坐标，而不是直接读取坐标
 
         if (hasError) {
             log("助战选择过程中出错,返回第一个助战");
-            return convertCoords(knownFirstPtPoint);
+            return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
         }
 
         if (AllPtIndices.length == 0) {
             log("没有助战可供选择");
-            return null;
+            return {point: null, testdata: testOutputString};
         }
 
         if (limit.justNPC) {
             if (NPCPtIndices.length > 0) {
                 log("仅使用NPC已开启,选择第一个助战(即第一个NPC)");
-                return convertCoords(knownFirstPtPoint);
+                return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
             } else if (PlayerPtIndices.length > 0) {
                 log("仅使用NPC已开启,但是没有NPC,选择第一个助战(即第一个玩家)");
-                return convertCoords(knownFirstPtPoint);
+                return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
             } else {
                 //不应该走到这里
                 log("没有助战可供选择");
-                return null;
+                return {point: null, testdata: testOutputString};
             }
         }
 
@@ -2122,24 +2158,24 @@ function algo_init() {
             }
             point = convertCoords(point);
             if (point.y >= getWindowSize().y - 1) {
-                log("推算出的坐标已经超出屏幕范围");
+                toastLog("推算出的第一个互关好友坐标已经超出屏幕范围");
                 //在click里会限制到屏幕范围之内
             }
-            return point;
+            return {point: point, testdata: testOutputString};
         } else if (NPCPtIndices.length > 0) {
             log("没有互关好友,选择第一个助战(即第一个NPC)");
-            return convertCoords(knownFirstPtPoint);
+            return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
         } else if (PlayerPtIndices.length > 0) {
             log("没有互关好友也没有NPC,选择第一个助战(即单向关注好友或路人)");
-            return convertCoords(knownFirstPtPoint);
+            return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
         } else {
             //不应该走到这里
             log("没有助战可供选择");
-            return null;
+            return {point: null, testdata: testOutputString};
         }
     }
 
-    const STATE_CRASHED = 0
+    const STATE_CRASHED = 0;
     const STATE_LOGIN = 1;
     const STATE_HOME = 2;
     const STATE_MENU = 3;
@@ -2868,7 +2904,7 @@ function algo_init() {
         var wait = parseInt(limit.timeout);
         const max_wait_in_relogin = 60 * 1000;
         if (wait > max_wait_in_relogin) {
-            toastLog("等待控件超时太长,超过一分钟:"+limit.timeout+",在reLogin中视作一分钟处理");
+            toastLog("等待控件超时太长,超过一分钟:"+parseInt(limit.timeout)+",在reLogin中视作一分钟处理");
             wait = max_wait_in_relogin;
         }
         while (true) {
@@ -3136,9 +3172,10 @@ function algo_init() {
                     if (result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null)) {
                         dialog_selected = dialogs.confirm(
                             "警告", "您没有录制文字检测动作！\n"
+                            +"您确定 不需要 检测文字么？\n"
                             +"重放时未必可以一次成功，点错并不是稀奇事。\n"
-                            +"点错后可能发生各种不可预知的后果：从脚本因步调错乱而停滞不动，到误触误删文件，再到变成魔女，全都是有可能的哦！\n"
-                            +"您确定【不需要】检测文字么？");
+                            +"点错后可能发生各种不可预知的后果：从脚本因步调错乱而停滞不动，到误触误删文件，再到变成魔女，全都是有可能的哦！"
+                            );
                         if (!dialog_selected) {
                             let last_action = result.steps[result.steps.length-1].action;
                             toastLog("继续录制\n第"+(step+1)+"步");
@@ -3462,9 +3499,169 @@ function algo_init() {
         }).show();
     }
 
+    var is_support_picking_tested = false;
+
+    function getCurrentVersion() {
+        if (limit.version == "") return getProjectVersion();
+        return limit.version;
+    }
+
+    function testSupportPicking() {
+        initialize();
+
+        if (find(string.support) == null) {
+            do {
+                toastLog("等待进入助战选择界面...");
+            } while (find(string.support, 10000) == null);
+        }
+
+        //写入文件，来记录曾经测试过
+        is_support_picking_tested = true;
+        files.create(supportPickingTestRecordPath);
+        let test_record = files.read(supportPickingTestRecordPath);
+        let tested_versions = test_record.split('\n');
+        if (tested_versions.find((val) => val == getCurrentVersion()) == null) {
+            files.append(supportPickingTestRecordPath, "\n"+getCurrentVersion()+"\n"); //会产生空行，但无所谓
+        }
+
+        //开始测试
+        let testMode = true;
+        let result = pickSupportWithMostPt(testMode);
+        if (result == null || result.testdata == null || result.testdata == "") {
+            sleep(2000);
+            toastLog("选择助战时出错");
+            sleep(2000);
+            toastLog("请回到脚本主界面,点击右上角菜单里的\"报告问题\",谢谢！");
+            sleep(2000);
+            stopThread();
+        } else {
+            while (dialogs.confirm(
+                "测试助战自动选择",
+                "请检查游戏中实际显示的助战数目是否和下面的结果一致。"
+                +"\n如果发现结果不对，请回到脚本主界面,点击右上角菜单里的\"报告问题\",谢谢！"
+                +"\n点击\"取消\"结束；点击\"确定\"后，对话框会先消失10秒再重新弹出。"
+                +"\n\n"+result.testdata
+            )) {
+                toast("10秒后将重新弹出对话框");
+                sleep(8000);
+                toast("2秒后将重新弹出对话框");
+                sleep(2000);
+            };
+
+            if (result.point != null) {
+                if (dialogs.confirm(
+                    "测试助战自动选择",
+                    "要继续让脚本点击自动选择的助战么？如果是，请在点击\"确定\"后，拖动助战列表，使其回到初始状态，让第一个助战显示在顶部。"
+                )) {
+                    toastLog("10秒后将会自动点击助战...");
+                    sleep(8000);
+                    toastLog("2秒后将会自动点击助战...");
+                    sleep(2000);
+                    click(result.point);
+                } else {
+                    toastLog("助战选择测试结束");
+                    return;
+                }
+                while (dialogs.confirm(
+                    "测试助战自动选择",
+                    "请检查游戏中实际出现在队伍里的助战角色是否正确。"
+                    +"\n如果发现结果不对，请回到脚本主界面,点击右上角菜单里的\"报告问题\",谢谢！"
+                    +"\n点击\"取消\"结束；点击\"确定\"后，对话框会先消失5秒再重新弹出"
+                    +"\n"+result.testdata
+                )) {sleep(5000);};
+            }
+
+            toastLog("助战选择测试结束");
+        }
+    }
+
+    function detectInitialState() {
+        log("检测初始状态...");
+
+        let state = STATE_BATTLE;
+
+        if (isGameDead()) {
+            state = STATE_CRASHED;
+            return state;
+        }
+
+        while (true) {
+            let found_popup = findPopupInfoDetailTitle();
+            log("弹窗检测结果", found_popup);
+            if (found_popup == null) break;
+            if (found_popup.title != string.connection_lost) {
+                log("关闭弹窗...");
+                click(found_popup.close);
+            } else {
+                log("游戏已经断线并强制回首页");
+                state = STATE_CRASHED;
+                return state;
+            }
+            sleep(1000);
+        }
+
+        if (findID("questLinkList")) {
+            state = STATE_MENU;
+            log("STATE_MENU");
+        } else if (findID("questWrapTitle")) {
+            state = STATE_MENU;
+            log("STATE_MENU");
+        } else if (find(string.support)) {
+            state = STATE_SUPPORT;
+            log("STATE_SUPPORT");
+        } else if (findID("nextPageBtn")) {
+            state = STATE_TEAM;
+            log("STATE_TEAM");
+        } else if (findID("charaWrap")) {
+            state = STATE_REWARD_CHARACTER;
+            log("STATE_REWARD_CHARACTER");
+        } else if (findID("hasTotalRiche")) {
+            state = STATE_REWARD_MATERIAL;
+            log("STATE_REWARD_MATERIAL");
+        } else if (getAP() == null) {
+            sleep(2000);
+            toastLog("进入战斗状态\n如果当前不在战斗中，请停止脚本运行");
+            sleep(2000);
+            state = STATE_BATTLE;
+            log("STATE_BATTLE");
+        }
+
+        return state;
+    }
+
+    function startSupportPickTestingIfNeeded() {
+        if (is_support_picking_tested) return;
+
+        if (files.isFile(supportPickingTestRecordPath)) {
+            let test_record = files.read(supportPickingTestRecordPath);
+            let tested_versions = test_record.split('\n');
+            if (tested_versions.find((val) => val == getCurrentVersion()) != null) {
+                is_support_picking_tested = true;
+            } else {
+                is_support_picking_tested = false;
+            }
+        } else {
+            is_support_picking_tested = false;
+        }
+        if (!is_support_picking_tested) {
+            if (dialogs.confirm("测试助战自动选择",
+                "安装这个版本以来还没有测试过助战自动选择是否可以正常工作。"
+                +"\n要测试吗？"))
+            {
+                currentTask = threads.start(testSupportPicking);
+                toastLog("已停止当前脚本");
+                stopThread();
+                //测试完再写入文件，来记录是否曾经测试过
+            } else {
+                files.create(supportPickingTestRecordPath);
+                files.append(supportPickingTestRecordPath, "\n"+getCurrentVersion()+"\n");//会产生空行，但无所谓
+            }
+        }
+    }
+
     function taskDefault() {
         if (last_op_list == null) {
-            toastLog("没有动作录制数据\n将不会进行闪退重启");
+            toastLog("没有动作录制数据\n不会启用闪退自动重启功能");
         } else {
             if (!requestPrivilegeIfNeeded()) {
                 log("用户选择获取特权,但还没获取到,退出录制");
@@ -3475,7 +3672,11 @@ function algo_init() {
         }
 
         initialize();
-        var state = STATE_MENU;
+
+        startSupportPickTestingIfNeeded();//如果选择开始测试会不再继续往下运行
+
+        var state = detectInitialState();
+
         var battlename = "";
         var charabound = null;
         var battlepos = null;
@@ -3605,6 +3806,10 @@ function algo_init() {
                                 state = STATE_SUPPORT;
                             }
                         }
+                    // 重放动作录制之前需要先回主页，最简单粗暴的办法就是杀进程重开
+                    } else if (last_op_list) {
+                        log("已加载动作录制数据,先杀掉游戏再重启重新选关");
+                        killGame(string.package_name);
                     } else {
                         log("等待捕获关卡坐标");
                         battlepos = capture();
@@ -3656,6 +3861,7 @@ function algo_init() {
                     }
                     // pick support
                     let pt_point = pickSupportWithMostPt();
+                    if (pt_point != null) pt_point = pt_point.point;
                     if (pt_point != null) {
                         click(pt_point);
                         // wait for start button for 5 seconds
@@ -3859,6 +4065,7 @@ function algo_init() {
         exportSteps: exportOpList,
         importSteps: importOpList,
         clearSteps: clearOpList,
+        testSupportSel: testSupportPicking,
     };
 }
 
