@@ -2900,11 +2900,14 @@ function algo_init() {
             toastLog("不知道要重新登录哪个区服,退出");
             stopThread();
         }
+
+        var startTime = new Date().getTime();
+
         toastLog("重新登录...");
         var wait = parseInt(limit.timeout);
-        const max_wait_in_relogin = 60 * 1000;
+        const max_wait_in_relogin = 30 * 1000;
         if (wait > max_wait_in_relogin) {
-            toastLog("等待控件超时太长,超过一分钟:"+parseInt(limit.timeout)+",在reLogin中视作一分钟处理");
+            toastLog("等待控件超时太长,超过30秒:"+parseInt(limit.timeout)+",在reLogin中视作30秒处理");
             wait = max_wait_in_relogin;
         }
         while (true) {
@@ -2938,6 +2941,13 @@ function algo_init() {
                 toastLog("重新登录完成");
                 return true;
             }
+
+            if (new Date().getTime() - startTime > 10 * 60 * 1000) {
+                toastLog("超过10分钟没有登录成功,将杀进程重开后再试");
+                killGame(string.package_name);
+                return false;
+            }
+
             //“恢复战斗”按钮和断线重连的“否”重合，很蛋疼，但是没有控件可以检测，没办法
             //不过恢复战斗又掉线的几率并不高，而且即便又断线了，点“否”后游戏会重新登录，然后还是可以再点一次“恢复战斗”
             log("点击恢复战斗按钮区域...");
@@ -3019,14 +3029,14 @@ function algo_init() {
             //如果以后做了reverseConvertCoords，那就可以把isGeneric设为true了，然后录制的动作列表可以通用
             isGeneric: false,
             screenParams: currentScreenParams,
-            defaultSleepTime: 2000,
+            defaultSleepTime: 1500,
             steps: []
         }
         toastLog("请务必先回到首页再开始录制！");
         sleep(2000);
         let new_sleep_time = -1;
         do {
-            new_sleep_time = dialogs.rawInput("每一步操作之间的等待时长设为多少毫秒?", "2000");
+            new_sleep_time = dialogs.rawInput("每一步操作之间的默认等待时长设为多少毫秒？（除了强制要求的500毫秒安全检查之外）", "1500");
             new_sleep_time = parseInt(new_sleep_time);
             if (isNaN(new_sleep_time) || new_sleep_time <= 0) {
                 toastLog("请输入一个正整数");
@@ -3280,6 +3290,22 @@ function algo_init() {
         return true;
     }
 
+    const dangerousResIDs = [
+        "charaListElms",    //魔法少女选择器，可能是无害的队伍调整页面，也可能是魔法少女强化页面
+        "useItem",          //记忆结晶强化、突破的已选素材列表
+        "gachaPickUpWrap",  //扭蛋PickUP对象展示区
+    ];
+
+    function safetyCheck() {
+        for (let resID of dangerousResIDs) {
+            if (findID(resID)) {
+                log("检测到危险控件:\""+resID+"\"");
+                return false;
+            }
+        }
+        return true;
+    }
+
     function replayOperations(opList) {
         if (!requestPrivilegeIfNeeded()) {
             log("用户选择获取特权,但还没获取到,退出录制");
@@ -3305,7 +3331,19 @@ function algo_init() {
         log("重放录制的操作...");
 
         let endReplaying = false;
+        let defaultOpCycleWaitTime = 500 + parseInt(opList.defaultSleepTime);
         for (let i=0; i<opList.steps.length&&!endReplaying; i++) {
+            log("执行安全检查,同时等待"+defaultOpCycleWaitTime+"毫秒...");
+            let opCycleStartTime = new Date().getTime();
+            do {
+                if (!safetyCheck()) {
+                    toastLog("检测到可能涉及危险操作的控件,停止重放\n即将杀进程重开...");
+                    killGame(string.package_name);
+                    return false;
+                }
+                sleep(50);
+            } while (new Date().getTime() < opCycleStartTime + defaultOpCycleWaitTime);
+
             let op = opList.steps[i];
             log("第"+(i+1)+"步", op);
             switch (op.action) {
@@ -3408,8 +3446,7 @@ function algo_init() {
                     log("未知操作");
             }
             if (!endReplaying) {
-                log("第"+(i+1)+"步操作完成,等待"+opList.defaultSleepTime+"毫秒...");
-                sleep(opList.defaultSleepTime);
+                log("第"+(i+1)+"步操作完成");
             }
         }
         log("所有动作重放完成,结果:"+(result));
@@ -3578,7 +3615,7 @@ function algo_init() {
     function detectInitialState() {
         log("检测初始状态...");
 
-        let state = STATE_BATTLE;
+        let state = STATE_MENU;
 
         if (isGameDead()) {
             state = STATE_CRASHED;
@@ -3624,6 +3661,10 @@ function algo_init() {
             sleep(2000);
             state = STATE_BATTLE;
             log("STATE_BATTLE");
+        } else {
+            log("没有检测到典型的STATE_MENU状态控件");
+            state = STATE_MENU;
+            log("STATE_MENU");
         }
 
         return state;
