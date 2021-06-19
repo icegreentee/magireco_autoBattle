@@ -1674,7 +1674,7 @@ function algo_init() {
             result = fnlist[current]();
             if (result && result.refresh()) break;
             current++;
-            sleep(100);
+            sleep(50);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         if (wait)
             log(
@@ -1690,9 +1690,11 @@ function algo_init() {
     }
 
     function getContent(element) {
-        if (element) {
-            return (element.text() === "" || element.text() == null) ? element.desc() : element.text();
-        }
+        if (element == null) return "";
+        let text = element.text();
+        if (text === "" || text == null) text = element.desc();
+        if (text === "" || text == null) text = "";
+        return text;
     }
 
     function checkNumber(content) {
@@ -1860,6 +1862,252 @@ function algo_init() {
                     return Number(getContent(next));
                 }
             }
+        }
+    }
+
+    const knownFirstPtPoint = {
+        x: 1808,
+        y: 325,
+        pos: "top"
+    }
+    const ptDistanceY = 243.75;
+
+    function pickSupportWithMostPt() {
+        var hasError = false;
+        //Lv [Rank] 玩家名 [最终登录] Pt
+        //Lv 玩家名 [Rank] [最终登录] Pt
+        let AllElements = [];
+        let uicollection = packageName(string.package_name).find();
+        for (let i=0; i<uicollection.length; i++) {
+            AllElements.push(uicollection[i]);
+        }
+
+        let finalIndex = -1;
+        AllElements.forEach(function (val, index) {
+            if (getContent(val).match(string.regex_difficulty)) finalIndex = index
+        });
+        if (finalIndex == -1) {
+            log("助战选择出错,找不到难度");
+            hasError = true;
+            finalIndex = AllElements.length-1; //先让他继续跑，虽然结果不会用
+        }
+
+        let LvLikeIndices = [];
+        AllElements.forEach(function (val, i) {
+            if (getContent(val).match(/^Lv\d*$/)) LvLikeIndices.push(i)
+        });
+        let RankLikeIndices = [];
+        AllElements.forEach(function (val, i) {
+            if (getContent(val).match(/^Rank\d*$/)) RankLikeIndices.push(i)
+        });
+        let LastLoginLikeIndices = [];
+        AllElements.forEach(function (val, i) {
+            if (getContent(val).match(string.regex_lastlogin)) LastLoginLikeIndices.push(i)
+        });
+        let PtLikeIndices = [];
+        AllElements.forEach(function (val, i){
+            if (getContent(val).match(/^\+\d*$/)) PtLikeIndices.push(i)
+        });
+        log("\n匹配到:"
+            +"\n  类似Lv的控件个数:       "+LvLikeIndices.length
+            +"\n  类似Rank的控件个数:     "+RankLikeIndices.length
+            +"\n  类似上次登录的控件个数: "+LastLoginLikeIndices.length
+            +"\n  类似Pt的控件个数:       "+PtLikeIndices.length);
+
+        let AllLvIndices = [];
+        let PlayerLvIndices = [];
+        let NPCLvIndices = [];
+        //倒着从后往前搜寻，这样才会先碰到和Lv混淆的恶搞玩家名，从而排除，而不会误排除真正的Lv
+        LvLikeIndices.reverse().forEach(function (index, i, arr) {
+            //第一个(序号0)在颠倒前就是最后一个，因为后面已经没有下一个Lv控件了，用finalIndex
+            //第二个(序号1)和后续的在颠倒前就是倒数第二个和之前的，往前推一个对应颠倒前往后推一个
+            let nextIndex = i == 0 ? finalIndex : arr[i-1];
+
+            let rankIndex = RankLikeIndices.find((val) => val > index && val < nextIndex);
+            let lastLoginIndex = LastLoginLikeIndices.find((val) => val > index && val < nextIndex);
+
+            if (rankIndex != null && lastLoginIndex != null) {
+                //在Lv后找到Rank和上次登录，就是玩家的Lv；否则是NPC或恶搞玩家名
+                PlayerLvIndices.push(index);
+                AllLvIndices.push(index);
+                return
+            }
+            if (rankIndex != null && lastLoginIndex == null) {
+                log("在第"+(arr.length-i)+"个Lv控件后,找到了Rank,却没找到上次登录");
+                return;
+            }
+            if (rankIndex == null && lastLoginIndex != null) {
+                log("在第"+(arr.length-i)+"个Lv控件后,没找到Rank,却找到上次登录");
+                return;
+            }
+            if (rankIndex == null && lastLoginIndex == null) {
+                //NPC一定是没有Rank也没有上次登录
+                //但是，不知道是不是有些环境下，玩家名后面本来就既没有Rank也没有上次登录
+                //预想在这种情况下，会把和Lv相似的恶搞玩家名误判为NPC
+                NPCLvIndices.push(index);
+                AllLvIndices.push(index);
+                return;
+            }
+        });
+        //恢复原来的顺序
+        LvLikeIndices.reverse();
+        AllLvIndices.reverse();
+        PlayerLvIndices.reverse();
+        NPCLvIndices.reverse();
+        log("玩家助战总数: "+PlayerLvIndices.length);
+
+        //从NPC的Lv里排除和Lv相似的恶搞玩家名
+        //这里的假设是玩家名肯定在Lv和Pt之间——如果还有更奇葩的环境不满足这个假设就没辙了
+        //假Lv前面肯定还有真Lv（所以需要倒着从后往前搜才能先碰到假的）
+        NPCLvIndices = NPCLvIndices.reverse().filter(function (index, i, arr) {
+            //最后一个(序号arr.length-1)在颠倒前就是第一个，最后一个没有更后一个对应颠倒前第一个没有更前一个
+            if (i >= arr.length - 1) return true;
+            //往后推一个对应颠倒前往前推一个
+            let nextIndex = arr[i+1];
+
+            let PtIndex = PtLikeIndices.find((val) => val > index && val < nextIndex);
+
+            if (PtIndex == null) {
+                //假Lv和真Lv之间肯定没有Pt
+                let delete_i = AllLvIndices.findIndex((val) => val == index);
+                log("第"+(delete_i+1)+"个Lv控件是恶搞玩家名,排除");
+                AllLvIndices.splice(delete_i, 1);
+                return false;
+            }
+            if (PtIndex != null) {
+                //真Lv之前要么已经没有更前面的Lv，如果有（无论真假），和前一个Lv之间肯定有Pt
+                return true;
+            }
+        });
+        NPCLvIndices.reverse();//恢复原来的顺序
+
+        log("NPC助战个数: "+NPCLvIndices.length);
+        log("助战总数: "+AllLvIndices.length);
+        if (NPCLvIndices.length + PlayerLvIndices.length != AllLvIndices.length) {
+            hasError = true;
+            log("助战选择出错,NPC助战个数+玩家助战总数!=助战总数");
+        }
+
+        //寻找最高的Pt加成
+        let HighestPt = 0;
+        let AllPtIndices = [];
+        let NPCPtIndices = [];
+        let PlayerPtIndices = [];
+        //可以不用颠倒过来了
+        AllLvIndices.forEach(function (index, i, arr) {
+            //最后一个Lv控件后面已经没有下一个Lv控件了，用finalIndex；其余的往后推一个即可
+            let nextIndex = i >= arr.length - 1 ? finalIndex : arr[i+1];
+
+            //倒过来从后往前搜Pt控件，防止碰到类似Pt的恶搞玩家名
+            let ptIndex = PtLikeIndices.reverse().find((val) => val > index && val < nextIndex);
+            //恢复原状
+            PtLikeIndices.reverse();
+
+            if (ptIndex != null) {
+                let PtContent = getContent(AllElements[ptIndex]);
+                let Pt = parseInt(PtContent);
+                //处理+和60分开的情况
+                if (isNaN(Pt)) PtContent = getContent(AllElements[ptIndex+1]);
+                Pt = parseInt(PtContent);
+                if (isNaN(Pt)) {
+                    log("助战选择出错,在第"+(i+1)+"个Lv控件后无法读取Pt数值");
+                    hasError = true;
+                    return;
+                }
+
+                if (NPCLvIndices.find((val) => val == index) != null) {
+                    NPCPtIndices.push(ptIndex);
+                }
+                if (PlayerLvIndices.find((val) => val == index) != null) {
+                    PlayerPtIndices.push(ptIndex);
+                }
+                AllPtIndices.push(ptIndex);
+
+                if (Pt > HighestPt) {
+                    log("在第"+(i+1)+"个Lv控件后找到了更高的Pt加成: "+Pt);
+                    HighestPt = Pt;
+                }
+                return;
+            }
+            if (ptIndex == null) {
+                log("助战选择出错,在第"+(i+1)+"个Lv控件后,找不到Pt控件");
+                hasError = true;
+                return;
+            }
+        });
+        log("最高Pt加成: "+HighestPt);
+
+        if (NPCPtIndices.length != NPCLvIndices.length) {
+            hasError = true;
+            log("助战选择出错,NPCPt控件数!=NPCLv控件数");
+        }
+        if (PlayerPtIndices.length != PlayerLvIndices.length) {
+            hasError = true;
+            log("助战选择出错,玩家Pt控件数!=玩家Lv控件数");
+        }
+        if (AllPtIndices.length != AllLvIndices.length) {
+            hashError = true;
+            log("助战选择出错,Pt控件总数!=Lv控件总数");
+        }
+
+        let AllHighPtIndices = AllPtIndices.filter((index) => parseInt(getContent(AllElements[index])) == HighestPt);
+        let PlayerHighPtIndices = PlayerPtIndices.filter((index) => parseInt(getContent(AllElements[index])) == HighestPt);
+        log("高Pt加成助战总数: "+AllHighPtIndices.length);
+        log("玩家高Pt加成助战个数: "+PlayerHighPtIndices.length);
+        if (NPCPtIndices.length + PlayerHighPtIndices.length != AllHighPtIndices.length) {
+            hasError = true;
+            log("助战选择出错,NPCPt控件数+玩家高Pt加成控件数!=高Pt加成控件总数");
+        }
+
+        //间接推算坐标，而不是直接读取坐标
+
+        if (hasError) {
+            log("助战选择过程中出错,返回第一个助战");
+            return convertCoords(knownFirstPtPoint);
+        }
+
+        if (AllPtIndices.length == 0) {
+            log("没有助战可供选择");
+            return null;
+        }
+
+        if (limit.justNPC) {
+            if (NPCPtIndices.length > 0) {
+                log("仅使用NPC已开启,选择第一个助战(即第一个NPC)");
+                return convertCoords(knownFirstPtPoint);
+            } else if (PlayerPtIndices.length > 0) {
+                log("仅使用NPC已开启,但是没有NPC,选择第一个助战(即第一个玩家)");
+                return convertCoords(knownFirstPtPoint);
+            } else {
+                //不应该走到这里
+                log("没有助战可供选择");
+                return null;
+            }
+        }
+
+        if (PlayerHighPtIndices.length > 0) {
+            log("选择第一个互关好友");
+            let point = {
+                x: knownFirstPtPoint.x,
+                y: knownFirstPtPoint.y + ptDistanceY * NPCPtIndices.length,
+                pos: knownFirstPtPoint.pos
+            }
+            point = convertCoords(point);
+            if (point.y >= getWindowSize().y - 1) {
+                log("推算出的坐标已经超出屏幕范围");
+                //在click里会限制到屏幕范围之内
+            }
+            return point;
+        } else if (NPCPtIndices.length > 0) {
+            log("没有互关好友,选择第一个助战(即第一个NPC)");
+            return convertCoords(knownFirstPtPoint);
+        } else if (PlayerPtIndices.length > 0) {
+            log("没有互关好友也没有NPC,选择第一个助战(即单向关注好友或路人)");
+            return convertCoords(knownFirstPtPoint);
+        } else {
+            //不应该走到这里
+            log("没有助战可供选择");
+            return null;
         }
     }
 
@@ -2997,6 +3245,7 @@ function algo_init() {
         var rewardtime = null;
         */
         while (true) {
+            /*
             switch (isGameDead()) {
                 case "crashed":
                     log("等待5秒后重启游戏...");
@@ -3015,6 +3264,7 @@ function algo_init() {
                     log("游戏闪退状态未知");
                     stopThread();
             }
+            */
             switch (state) {
                 case STATE_LOGIN: {
                     if (!reLogin()) break;
@@ -3030,6 +3280,8 @@ function algo_init() {
                             () => find(string.support),
                             () => findID("helpBtn"),
                             () => match(/^BATTLE.+/),
+                            () => findID("questLinkList"),
+                            () => findID("questWrapTitle"),
                             () => findID("nextPageBtn"),
                         ],
                         3000
@@ -3126,6 +3378,13 @@ function algo_init() {
                         click(convertCoords(clickSets.back));
                         find(string.support, parseInt(limit.timeout));
                     }
+                    if (findID("questLinkList") || findID("questWrapTitle")) {
+                        //助战选择失败后会点击返回
+                        //这里不检测BATTLE文字是否出现，避免叫做“BATTLE”的恶搞玩家名干扰
+                        state = STATE_MENU;
+                        log("进入关卡选择");
+                        break;
+                    }
 
                     //根据情况,如果需要就嗑药
                     if (refillAP() == "error") {
@@ -3146,26 +3405,23 @@ function algo_init() {
                         log("已记下关卡名: \""+battlename+"\"");
                     }
                     // pick support
-                    let ptlist = getPTList();
-                    let playercount = matchAll(string.regex_lastlogin).length;
-                    log("候选数量" + ptlist.length + ",玩家数量" + playercount);
-                    if (ptlist.length) {
-                        let bound;
-                        if (
-                            ptlist.length > playercount &&
-                            (limit.justNPC || ptlist[ptlist.length - 1].value > ptlist[0].value)
-                        ) {
-                            log("选择NPC助战");
-                            // NPC comes in the end of list if available
-                            bound = ptlist[ptlist.length - 1].bounds;
-                        } else {
-                            log("选择玩家助战");
-                            // higher PT bonus goes ahead
-                            bound = ptlist[0].bounds;
-                        }
-                        click(bound.centerX(), bound.centerY());
+                    let pt_point = pickSupportWithMostPt();
+                    if (pt_point != null) {
+                        click(pt_point);
                         // wait for start button for 5 seconds
                         findID("nextPageBtn", parseInt(limit.timeout));
+                        break;
+                    } else {
+                        log("助战选择失败,点击返回重试");
+                        click(convertCoords(clickSets.back));
+                        //点击后等待默认最多5秒(可配置)
+                        waitAny(
+                          [
+                            () => findID("questLinkList"),
+                            () => findID("questWrapTitle")
+                          ],
+                          parseInt(limit.timeout)
+                        );
                         break;
                     }
                     //以前这里是处理万一误触打开助战角色信息面版的情况的，现在移动到前面
