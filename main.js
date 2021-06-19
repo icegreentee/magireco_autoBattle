@@ -80,6 +80,11 @@ ui.layout(
                                 <text text="倍以上" textColor="#666666" />
                             </linear>
                             <text text="注意:嗑药至AP上限倍数不会永久保存,脚本完全退出后会被重置!" textColor="#666666" />
+                            <linear>
+                                <text text="经过" textColor="#000000" />
+                                <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打破" text="" textSize="14" inputType="number|none" />
+                                <text text="秒后,长按打破官方自动周回" textColor="#000000" />
+                            </linear>
                             <linear padding="0 0 0 0" w="*" h="auto">
                                 <text text="等待控件超时" textColor="#000000" />
                                 <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
@@ -377,7 +382,7 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "timeout", "rootForceStop"]
+const persistParamList = ["foreground", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "breakAutoCycleDuration", "timeout", "rootForceStop"]
 const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
 
 var idmap = {};

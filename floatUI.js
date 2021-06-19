@@ -790,6 +790,7 @@ var limit = {
     drug4num: '0',
     default: 0,
     useAuto: true,
+    breakAutoCycleDuration: "",
     apmul: "",
     timeout: "5000",
     rootScreencap: false,
@@ -2930,6 +2931,15 @@ function algo_init() {
                 sleep(2000);
                 continue;
             }
+
+            for (let resID of ["charaWrap", "hasTotalRiche"]) {
+                if (findID(resID, 200)) {
+                    battle_end_found = true;
+                    log("已进入战斗结算");
+                    return false;//调用者会杀进程
+                }
+            }
+
             var apinfo = getAP(wait);
             var button = null;
             if (apinfo != null) {
@@ -2943,9 +2953,8 @@ function algo_init() {
             }
 
             if (new Date().getTime() - startTime > 10 * 60 * 1000) {
-                toastLog("超过10分钟没有登录成功,将杀进程重开后再试");
-                killGame(string.package_name);
-                return false;
+                toastLog("超过10分钟没有登录成功");
+                return false;//调用者会杀进程
             }
 
             //“恢复战斗”按钮和断线重连的“否”重合，很蛋疼，但是没有控件可以检测，没办法
@@ -3722,6 +3731,7 @@ function algo_init() {
         var charabound = null;
         var battlepos = null;
         var inautobattle = false;
+        var battleStartBtnClickTime = 0;
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -3758,7 +3768,23 @@ function algo_init() {
                     break;
                 }
                 case STATE_LOGIN: {
-                    if (!reLogin()) break;
+                    if (!reLogin()) {
+                        if (findID("questLinkList") || findID("questWrapTitle")) {
+                            state = STATE_MENU;
+                            break;
+                        }
+                        if (find(string.support)) {
+                            state = STATE_SUPPORT;
+                            break;
+                        }
+                        if (findID("nextPageBtn")) {
+                            state = STATE_TEAM;
+                            break;
+                        }
+                        killGame(string.package_name);
+                        state = STATE_CRASHED;
+                        break;
+                    }
                     if (replayOperations()) {
                         log("重放完成,报告成功,应该可以选关了");
                         state = STATE_MENU;
@@ -3960,6 +3986,7 @@ function algo_init() {
                     }
                     // click start
                     if (element) {
+                        battleStartBtnClickTime = new Date().getTime();
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
                         waitElement(element, 500);
@@ -3976,6 +4003,7 @@ function algo_init() {
                     //这里会等待2秒，对于防断线模式来说就是限制每2秒点击一次重连按钮的所在位置
                     //另一方面，也可以极大程度上确保防断线模式不会在结算界面误点
                     if (findID("charaWrap", 2000)) {
+                        battleStartBtnClickTime = 0;
                         state = STATE_REWARD_CHARACTER;
                         log("进入角色结算");
                         break;
@@ -3985,6 +4013,14 @@ function algo_init() {
                         //无法判断断线重连弹窗是否出现，但战斗中点击一般也是无害的
                         //（不过也有可能因为机器非常非常非常卡，点击变成了长按，导致误操作取消官方自动续战）
                         clickReconnect();
+                    }
+                    let auto_cycle_break_duration = parseInt(limit.breakAutoCycleDuration);
+                    if (!isNaN(auto_cycle_break_duration) && auto_cycle_break_duration > 0) {
+                        if (new Date().getTime() > battleStartBtnClickTime + 1000 * auto_cycle_break_duration) {
+                            log("时间到,长按屏幕以打断官方自动周回...");
+                            swipe(convertCoords(clickSets.reconection), convertCoords(clickSets.reconection), 5000);
+                            log("长按操作已完成");
+                        }
                     }
                     break;
                 }
