@@ -3739,7 +3739,7 @@ function algo_init() {
         */
         while (true) {
             //首先，检测游戏是否闪退或掉线
-            if (state != STATE_CRASHED && isGameDead(false)) {
+            if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
                 state = STATE_CRASHED;
                 log("进入闪退/登出重启");
                 continue;
@@ -3768,6 +3768,10 @@ function algo_init() {
                     break;
                 }
                 case STATE_LOGIN: {
+                    if (isGameDead(parseInt(limit.timeout)) == "crashed") {
+                        state = STATE_CRASHED;
+                        break;
+                    }
                     if (!reLogin()) {
                         if (findID("questLinkList") || findID("questWrapTitle")) {
                             state = STATE_MENU;
@@ -3779,6 +3783,10 @@ function algo_init() {
                         }
                         if (findID("nextPageBtn")) {
                             state = STATE_TEAM;
+                            break;
+                        }
+                        if (findID("charaWrap") || findID("hasTotalRiche")) {
+                            state = STATE_REWARD_CHARACTER;
                             break;
                         }
                         killGame(string.package_name);
