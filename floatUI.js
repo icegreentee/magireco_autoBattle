@@ -2903,7 +2903,7 @@ function algo_init() {
             while (true) {
                 privShell("am force-stop "+name);
                 sleep(1000);
-                if (isGameDead(parseInt(limit.timeout))) break;
+                if (isGameDead(2000)) break;
                 log("游戏仍在运行,再次尝试强行停止...");
             }
         } else {
@@ -3792,7 +3792,7 @@ function algo_init() {
             //然后，再继续自动周回处理
             switch (state) {
                 case STATE_CRASHED: {
-                    switch (isGameDead(parseInt(limit.timeout))) {
+                    switch (isGameDead(2000)) {
                         case "crashed":
                             log("等待5秒后重启游戏...");
                             sleep(5000);
@@ -3812,7 +3812,7 @@ function algo_init() {
                     break;
                 }
                 case STATE_LOGIN: {
-                    if (isGameDead(parseInt(limit.timeout)) == "crashed") {
+                    if (isGameDead(2000) == "crashed") {
                         state = STATE_CRASHED;
                         break;
                     }
