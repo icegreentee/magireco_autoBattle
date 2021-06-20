@@ -2282,14 +2282,16 @@ function algo_init() {
         let detectedLang = null;
         for (detectedLang in strings) {
             if (detectedLang == "name") continue;
-            if (findPackageName(strings[detectedLang][strings.name.findIndex((e) => e == "package_name")], 1000)) {
-                if (detectedLang != last_alive_lang) log("区服", detectedLang);
-                break;
-            }
+            try {
+                if (findPackageName(strings[detectedLang][strings.name.findIndex((e) => e == "package_name")], 1000)) {
+                    if (detectedLang != last_alive_lang) log("区服", detectedLang);
+                    break;
+                }
+            } catch (e) {detectedLang = null;}
             detectedLang = null;
         }
         if (detectedLang != null) {
-            //如果游戏不在前台的话，last_alive_lang不会被重现赋值
+            //如果游戏不在前台的话，last_alive_lang和string不会被重新赋值
             last_alive_lang = detectedLang;
             for (let i = 0; i < strings.name.length; i++) {
                 string[strings.name[i]] = strings[last_alive_lang][i];
@@ -2306,8 +2308,14 @@ function algo_init() {
         var detectedLang = null;
         do {
             if (last_alive_lang != null) {
-                try {auto.root.refresh();} catch (e) {};
-                if (auto.root != null && auto.root.packageName() == string.package_name) {
+                let current_package_name = null;
+                try {
+                    auto.root.refresh();
+                    if (auto.root != null) {
+                        current_package_name = auto.root.packageName();
+                    }
+                } catch (e) {current_package_name = null;};
+                if (current_package_name == string.package_name) {
                     detectedLang = last_alive_lang;
                     break;
                 }
@@ -2321,7 +2329,14 @@ function algo_init() {
             log("游戏已经闪退");
             return "crashed";
         }
-        if (findPopupInfoDetailTitle(string.connection_lost, wait)) {
+        let connection_lost_popup = null;
+        try {
+            connection_lost_popup = findPopupInfoDetailTitle(string.connection_lost, wait);
+        } catch (e) {
+            logException(e);
+            connection_lost_popup = null;
+        }
+        if (connection_lost_popup) {
             log("游戏已经断线并强制回首页");
             return "logged_out";
         }
@@ -2334,39 +2349,40 @@ function algo_init() {
 
     function detectScreenParams() {
         //开始脚本前可能转过屏之类的，所以参数需要先重置
-        screen = {width: 0, height: 0, type: "normal"};
-        gamebounds = null;
-        gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
+        //如果中途有问题有问题，最终就不会修改之前的参数
+        let detected_screen = {width: 0, height: 0, type: "normal"};
+        let detected_gamebounds = null;
+        let detected_gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
 
-        screen.width = device.width;
-        screen.height = device.height;
-        if (screen.height > screen.width) {
+        detected_screen.width = device.width;
+        detected_screen.height = device.height;
+        if (detected_screen.height > detected_screen.width) {
             //魔纪只能横屏运行
-            let temp = screen.height;
-            screen.height = screen.width;
-            screen.width = temp;
+            let temp = detected_screen.height;
+            detected_screen.height = detected_screen.width;
+            detected_screen.width = temp;
         }
-        if (screen.width * 9 > screen.height * 16) {
-            screen.type = "wider";
-            scalerate = screen.height / 1080;
-            gameoffset.x = parseInt((screen.width - (1920 * scalerate)) / 2);
+        if (detected_screen.width * 9 > detected_screen.height * 16) {
+            detected_screen.type = "wider";
+            scalerate = detected_screen.height / 1080;
+            detected_gameoffset.x = parseInt((detected_screen.width - (1920 * scalerate)) / 2);
         } else {
-            scalerate = screen.width / 1920;
-            if (screen.width * 9 == screen.height * 16) {
-                screen.type = "normal";
+            scalerate = detected_screen.width / 1920;
+            if (detected_screen.width * 9 == detected_screen.height * 16) {
+                detected_screen.type = "normal";
             } else {
-                screen.type = "higher";
-                gameoffset.bottom.y = parseInt(screen.height - (1080 * scalerate));
-                gameoffset.center.y = parseInt((screen.height - (1080 * scalerate)) / 2);
+                detected_screen.type = "higher";
+                detected_gameoffset.bottom.y = parseInt(detected_screen.height - (1080 * scalerate));
+                detected_gameoffset.center.y = parseInt((detected_screen.height - (1080 * scalerate)) / 2);
             }
         }
-        log("screen", screen, "gameoffset", gameoffset);
+        log("detected_screen", detected_screen, "detected_gameoffset", detected_gameoffset);
 
         let element = selector().packageName(string.package_name).className("android.widget.EditText").algorithm("BFS").findOnce();
         log("EditText bounds", element.bounds());
         element = element.parent();
-        gamebounds = element.bounds();
-        log("gamebounds", gamebounds);
+        detected_gamebounds = element.bounds();
+        log("detected_gamebounds", detected_gamebounds);
 
         //刘海屏
         //(1)假设发生画面裁切时，实际显示画面上下（或左右）被裁切的宽度一样（刘海总宽度的一半），
@@ -2403,8 +2419,8 @@ function algo_init() {
                     }
                     log("safeInsets after rotation", safeInsets);
 
-                    gameoffset.x += (safeInsets.Left - safeInsets.Right) / 2;
-                    gameoffset.y += (safeInsets.Top - safeInsets.Bottom) / 2;
+                    detected_gameoffset.x += (safeInsets.Left - safeInsets.Right) / 2;
+                    detected_gameoffset.y += (safeInsets.Top - safeInsets.Bottom) / 2;
 
                     isGameoffsetAdjusted = true;
                 }
@@ -2413,16 +2429,22 @@ function algo_init() {
         log("isGameoffsetAdjusted", isGameoffsetAdjusted);
         if (!isGameoffsetAdjusted) {
             //Android 8.1或以下没有刘海屏API；或者因为未知原因虽然是Android 9或以上但没有成功获取刘海屏参数
-            //(2)假设gamebounds就是实际显示的游戏画面(模拟器测试貌似有时候不对)
+            //(2)假设detected_gamebounds就是实际显示的游戏画面(模拟器测试貌似有时候不对)
             //所以结合(1)考虑，游戏画面中点减去屏幕中点就得到偏移量
             //（因为刘海宽度未知，所以不能直接用游戏左上角当偏移量）
-            gameoffset.x += parseInt(gamebounds.centerX() - (screen.width / 2));
-            gameoffset.y += parseInt(gamebounds.centerY() - (screen.height / 2));
+            detected_gameoffset.x += parseInt(detected_gamebounds.centerX() - (detected_screen.width / 2));
+            detected_gameoffset.y += parseInt(detected_gamebounds.centerY() - (detected_screen.height / 2));
         }
-        log("gameoffset", gameoffset);
+        log("detected_gameoffset", detected_gameoffset);
+
+        return {
+            screen: detected_screen,
+            gamebounds: detected_gamebounds,
+            gameoffset: detected_gameoffset
+        };
     }
 
-    function initialize() {
+    function initialize(dontStopOnError) {
         if (auto.root == null) {
             toastLog("未开启无障碍服务");
             selector().depth(0).findOnce();//弹出申请开启无障碍服务的弹窗
@@ -2430,12 +2452,31 @@ function algo_init() {
 
         //检测区服
         if (detectGameLang() == null) {
-            toastLog("请先把魔法纪录切换到前台,然后再试一次");
-            stopThread();
-        }
+            if (!dontStopOnError) {
+                toastLog("请先把魔法纪录切换到前台,然后再试一次");
+                stopThread();
+            } else {
+                log("检测区服没有返回结果");
+            }
+        }//detectGameLang会修改string和last_alive_lang
 
         //检测屏幕参数
-        detectScreenParams();
+        let detected_screen_params = null;
+        try {
+            detected_screen_params = detectScreenParams();
+        } catch (e) {
+            logException(e);
+            log("检测屏幕参数时出错");
+            detected_screen_params = null;
+        }
+        if (detected_screen_params == null) {
+            log("检测屏幕参数没有返回结果");
+            if (!dontStopOnError) stopThread();
+        } else {
+            screen = detected_screen_params.screen;
+            gamebounds = detected_screen_params.gamebounds;
+            gameoffset = detected_screen_params.gameoffset;
+        }
     }
 
     //绿药或红药，每次消耗1个
@@ -3019,7 +3060,7 @@ function algo_init() {
             return;
         }
 
-        initialize();
+        initialize();//不然的话string.package_name没更新
 
         let currentScreenParams = getScreenParams();
         if (currentScreenParams == null || currentScreenParams == "") {
@@ -3027,14 +3068,8 @@ function algo_init() {
             return;
         }
 
-        var detectedLang = detectGameLang();
-        if (detectedLang == null) {
-            //如果游戏不在前台，在initialize里就退出了，走不到这里
-            toastLog("请先把魔纪切换到前台再开始录制");
-            stopThread();
-        }
         var result = {
-            package_name: strings[detectedLang][strings.name.findIndex((e) => e == "package_name")],
+            package_name: string.package_name,
             //现在的convertCoords只能从1920x1080转到别的分辨率，不能逆向转换
             //如果以后做了reverseConvertCoords，那就可以把isGeneric设为true了，然后录制的动作列表可以通用
             isGeneric: false,
@@ -3316,14 +3351,14 @@ function algo_init() {
         return true;
     }
 
-    function replayOperations(opList) {
+    function replayOperations(opList, dontStopOnError) {
         if (!requestPrivilegeIfNeeded()) {
             log("用户选择获取特权,但还没获取到,退出录制");
             stopThread();//等到权限获取完再重试
             return;
         }
 
-        initialize();
+        initialize(dontStopOnError); //如果是悬浮窗按钮调用，initialize出错就停止；否则不停
 
         var result = false;
 
@@ -3808,7 +3843,7 @@ function algo_init() {
                         state = STATE_CRASHED;
                         break;
                     }
-                    if (replayOperations()) {
+                    if (replayOperations(last_op_list, true)) {//dontStopOnError设为true
                         log("重放完成,报告成功,应该可以选关了");
                         state = STATE_MENU;
                     }
