@@ -2964,10 +2964,10 @@ function algo_init() {
                 let expected_title = strings[last_alive_lang][strings.name.findIndex((e) => e == "connection_lost")];
                 if (found_popup.title == expected_title) {
                     log("弹窗标题\""+expected_title+"\",没有关闭按钮,只有回首页按钮,点击回首页...");
-                    click(convertCoords(clickSets.backToHomepage));
+                    if (isGameDead() != "crashed") click(convertCoords(clickSets.backToHomepage));
                 } else {
                     log("弹窗标题不是\""+expected_title+"\",尝试关闭...");
-                    click(found_popup.close);
+                    if (isGameDead() != "crashed") click(found_popup.close);
                 }
                 log("等待2秒...");
                 sleep(2000);
@@ -3002,7 +3002,7 @@ function algo_init() {
             //“恢复战斗”按钮和断线重连的“否”重合，很蛋疼，但是没有控件可以检测，没办法
             //不过恢复战斗又掉线的几率并不高，而且即便又断线了，点“否”后游戏会重新登录，然后还是可以再点一次“恢复战斗”
             log("点击恢复战斗按钮区域...");
-            click(convertCoords(clickSets.recover_battle));
+            if (isGameDead() != "crashed") click(convertCoords(clickSets.recover_battle));
             log("点击恢复战斗按钮区域完成,等待1秒...");
             sleep(1000);
         }
