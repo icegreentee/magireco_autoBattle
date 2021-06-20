@@ -2946,15 +2946,9 @@ function algo_init() {
         var startTime = new Date().getTime();
 
         toastLog("重新登录...");
-        var wait = parseInt(limit.timeout);
-        const max_wait_in_relogin = 30 * 1000;
-        if (wait > max_wait_in_relogin) {
-            toastLog("等待控件超时太长,超过30秒:"+parseInt(limit.timeout)+",在reLogin中视作30秒处理");
-            wait = max_wait_in_relogin;
-        }
-        wait /= 3;//后面有3个地方要等
+        var wait = 2500;
         while (true) {
-            if (isGameDead(200) == "crashed") {
+            if (isGameDead(1000) == "crashed") {
                 log("检测到游戏再次闪退,无法继续登录");
                 return false;
             }
