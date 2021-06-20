@@ -1555,7 +1555,7 @@ function algo_init() {
         // 默认滑动时间计算，距离越长时间越长
         let swipe_distance = Math.sqrt(Math.pow((x2 - x1), 2) + Math.pow((y2 - y1), 2));
         let screen_diagonal = Math.sqrt(Math.pow((device.width), 2) + Math.pow((device.height), 2));
-        var default_duration = parseInt(500 + 3000 * (swipe_distance / screen_diagonal));
+        var default_duration = parseInt(1500 + 3000 * (swipe_distance / screen_diagonal));
 
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
