@@ -74,25 +74,42 @@ ui.layout(
                         <text text="默认脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <Switch id="useAuto" w="*" margin="0 3" checked="true" textColor="#000000" text="优先使用官方自动续战" />
-                            <linear padding="0 0 0 0" w="*" h="auto">
-                                <text text="嗑药至AP上限" textColor="#666666" />
-                                <input maxLength="1" margin="5 0 0 0" id="apmul" hint="可选值0-4,留空视为0" text="" textSize="14" inputType="number|none" />
-                                <text text="倍以上" textColor="#666666" />
-                            </linear>
-                            <text text="注意:嗑药至AP上限倍数不会永久保存,脚本完全退出后会被重置!" textColor="#666666" />
-                            <linear>
-                                <text text="经过" textColor="#000000" />
-                                <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打破" text="" textSize="14" inputType="number|none" />
-                                <text text="秒后,长按打破官方自动周回" textColor="#000000" />
-                            </linear>
-                            <linear padding="0 0 0 0" w="*" h="auto">
-                                <text text="等待控件超时" textColor="#000000" />
-                                <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
-                                <text text="毫秒" textColor="#000000" />
-                            </linear>
-                            <text text="修改“等待控件超时”并不能让脚本变快,数值太小反而可能出错。如果不是机器特别卡(这种情况也要把这个值改得更大,而不是更小)请不要改,退格可自动恢复默认(5000毫秒)" textColor="#000000" />
-                            <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
-                            <text text="部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
+                            <vertical padding="0 8 0 0" w="*" h="auto">
+                                <linear padding="0 0 0 0" w="*" h="auto">
+                                    <text text="嗑药至AP上限" textColor="#666666" />
+                                    <input maxLength="1" margin="5 0 0 0" id="apmul" hint="可选值0-4,留空视为0" text="" textSize="14" inputType="number|none" />
+                                    <text text="倍以上" textColor="#666666" />
+                                </linear>
+                                <text text="注意:嗑药至AP上限倍数不会永久保存,脚本完全退出后会被重置!" textColor="#666666" />
+                            </vertical>
+                            <vertical padding="0 8 0 0" w="*" h="auto">
+                                <linear>
+                                    <text text="每隔" textColor="#000000" />
+                                    <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打断" text="" textSize="14" inputType="number|none" />
+                                    <text text="秒打断官方自动续战" textColor="#000000" />
+                                </linear>
+                                <text text="经过设定的秒数后,长按打断官方自动周回" textColor="#000000" />
+                            </vertical>
+                            <vertical padding="0 8 0 0" w="*" h="auto">
+                                <linear>
+                                    <text text="假死检测超时" textColor="#000000" />
+                                    <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开" textColor="#000000" />
+                            </vertical>
+                            <vertical padding="0 8 0 0" w="*" h="auto">
+                                <linear padding="0 0 0 0" w="*" h="auto">
+                                    <text text="等待控件超时" textColor="#000000" />
+                                    <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
+                                    <text text="毫秒" textColor="#000000" />
+                                </linear>
+                                <text text="修改“等待控件超时”并不能让脚本变快,数值太小反而可能出错。如果不是机器特别卡(这种情况也要把这个值改得更大,而不是更小)请不要改,退格可自动恢复默认(5000毫秒)" textColor="#000000" />
+                            </vertical>
+                            <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
+                                <text text="部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -382,7 +399,7 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "breakAutoCycleDuration", "timeout", "rootForceStop"]
+const persistParamList = ["foreground", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "breakAutoCycleDuration", "forceStopTimeout", "timeout", "rootForceStop"]
 const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
 
 var idmap = {};

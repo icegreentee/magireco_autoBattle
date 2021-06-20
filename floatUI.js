@@ -791,6 +791,7 @@ var limit = {
     default: 0,
     useAuto: true,
     breakAutoCycleDuration: "",
+    forceStopTimeout: "",
     apmul: "",
     timeout: "5000",
     rootScreencap: false,
@@ -2194,6 +2195,19 @@ function algo_init() {
     const STATE_REWARD_CHARACTER = 7;
     const STATE_REWARD_MATERIAL = 8;
     const STATE_REWARD_POST = 9;
+
+    const StateNames = [
+        "STATE_CRASHED",
+        "STATE_LOGIN",
+        "STATE_HOME",
+        "STATE_MENU",
+        "STATE_SUPPORT",
+        "STATE_TEAM",
+        "STATE_BATTLE",
+        "STATE_REWARD_CHARACTER",
+        "STATE_REWARD_MATERIAL",
+        "STATE_REWARD_POST"
+    ];
 
     // strings constants
     const strings = {
@@ -3686,33 +3700,27 @@ function algo_init() {
 
         if (findID("questLinkList")) {
             state = STATE_MENU;
-            log("STATE_MENU");
         } else if (findID("questWrapTitle")) {
             state = STATE_MENU;
-            log("STATE_MENU");
         } else if (find(string.support)) {
             state = STATE_SUPPORT;
-            log("STATE_SUPPORT");
         } else if (findID("nextPageBtn")) {
             state = STATE_TEAM;
-            log("STATE_TEAM");
         } else if (findID("charaWrap")) {
             state = STATE_REWARD_CHARACTER;
-            log("STATE_REWARD_CHARACTER");
         } else if (findID("hasTotalRiche")) {
             state = STATE_REWARD_MATERIAL;
-            log("STATE_REWARD_MATERIAL");
         } else if (getAP() == null) {
             sleep(2000);
             toastLog("进入战斗状态\n如果当前不在战斗中，请停止脚本运行");
             sleep(2000);
             state = STATE_BATTLE;
-            log("STATE_BATTLE");
         } else {
             log("没有检测到典型的STATE_MENU状态控件");
             state = STATE_MENU;
-            log("STATE_MENU");
         }
+
+        log(StateNames[state]);
 
         return state;
     }
@@ -3764,12 +3772,14 @@ function algo_init() {
         startSupportPickTestingIfNeeded();//如果选择开始测试会不再继续往下运行
 
         var state = detectInitialState();
+        var last_state = -1;
 
         var battlename = "";
         var charabound = null;
         var battlepos = null;
         var inautobattle = false;
         var battleStartBtnClickTime = 0;
+        var stuckStartTime = new Date().getTime();
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -3783,6 +3793,20 @@ function algo_init() {
                 continue;
             }
 
+            //假死超时自动重开的计时点
+            if (state != STATE_CRASHED && state != STATE_LOGIN) {
+                if (state != last_state) {
+                    stuckStartTime = new Date().getTime();
+                } else if (!isNaN(parseInt(limit.forceStopTimeout))) {
+                    let state_stuck_timeout = 1000 * parseInt(limit.forceStopTimeout);
+                    if (new Date().getTime() > stuckStartTime + state_stuck_timeout) {
+                        toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定\n杀进程重开...");
+                        killGame(limit.package_name);
+                        state = STATE_CRASHED;
+                    }
+                }
+            }
+            last_state = state;
             //打断官方自动周回的计时点
             switch(state) {
                 case STATE_BATTLE:
@@ -4089,7 +4113,11 @@ function algo_init() {
                     }
                     let auto_cycle_break_duration = parseInt(limit.breakAutoCycleDuration);
                     if (!isNaN(auto_cycle_break_duration) && auto_cycle_break_duration > 0) {
-                        if (new Date().getTime() > battleStartBtnClickTime + 1000 * auto_cycle_break_duration) {
+                        if (
+                            battleStartBtnClickTime != 0
+                            && new Date().getTime() > battleStartBtnClickTime + 1000 * auto_cycle_break_duration
+                           )
+                        {
                             log("时间到,长按屏幕以打断官方自动周回...");
                             swipe(convertCoords(clickSets.reconection), convertCoords(clickSets.reconection), 5000);
                             log("长按操作已完成");
