@@ -3058,7 +3058,56 @@ function algo_init() {
     }
 
     //上次录制的关卡选择动作列表
-    var last_op_list = null;
+    var lastOpList = null;
+    //默认动作录制数据保存位置
+    var savedLastOpListPath = files.join(engines.myEngine().cwd(), "lastRecordedSteps.txt");
+
+    //从文件读取上次录制的数据
+    function loadOpList(justFileContent) {
+        if (!files.isFile(savedLastOpListPath)) {
+            toastLog("未找到动作录制数据文件");
+            return null;
+        }
+
+        let file_content = files.read(savedLastOpListPath);
+        if (justFileContent) return file_content;
+
+        let loadedOpList = null;
+        try {
+            loadedOpList = JSON.parse(file_content);
+        } catch (e) {
+            logException(e);
+            loadedOpList = null;
+        }
+        if (loadedOpList != null) return loadedOpList;
+    }
+
+    //保存上次录制的数据
+    function saveOpList(opList) {
+        if (opList == null) opList = lastOpList;//这里不应该传入stringify过的字符串
+        if (lastOpList == null) {
+            toastLog("没有动作录制数据,无法保存");
+            return false;
+        }
+        let opListStringified = JSON.stringify(opList);
+        files.write(savedLastOpListPath, opListStringified);
+        if (files.isFile(savedLastOpListPath)) {
+            let file_content = files.read(savedLastOpListPath);
+            if (file_content != null && file_content != "" && file_content == opListStringified) {
+                toastLog("已保存动作录制数据");
+                return true;
+            } else {
+                toastLog("保存动作录制数据时出错");
+                if (!files.remove(savedLastOpListPath)) {
+                    toastLog("无法删除有问题的动作录制数据文件");
+                }
+                return false;
+            }
+        } else {
+            toastLog("无法保存动作录制数据:\n创建文件失败");
+            return false;
+        }
+    }
 
     function chooseAction(step) {
         var result = null;
@@ -3311,7 +3360,7 @@ function algo_init() {
                 case null:
                     result = null;
                     toastLog("放弃录制");
-                    stopThread();//last_op_list不会被重新赋值为null
+                    stopThread();//lastOpList不会被重新赋值为null
                 default:
                     toastLog("录制第"+(step+1)+"步操作\n出错: 未知动作", op.action);
                     stopThread();
@@ -3319,8 +3368,9 @@ function algo_init() {
             if (op.action != "undo") log("录制第"+result.steps.length+"步动作完成");
         }
         if (result != null) {
+            saveOpList(result);//写入到文件
+            lastOpList = result;
             toastLog("录制完成,共记录"+result.steps.length+"步动作");
-            last_op_list = result;
         }
         return result;
     }
@@ -3378,7 +3428,7 @@ function algo_init() {
 
         var result = false;
 
-        if (opList == null) opList = last_op_list;
+        if (opList == null) opList = lastOpList;
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
             return false;
@@ -3510,31 +3560,38 @@ function algo_init() {
                 log("第"+(i+1)+"步操作完成");
             }
         }
-        log("所有动作重放完成,结果:"+(result));
+        toastLog("所有动作重放完成,结果:"+(result?"成功":"失败"));
         return result;
     }
 
-    function exportOpList(specified_op_list) {
-        //initialize(); //在脚本界面也可以导出
-        let opList = specified_op_list == null ? last_op_list : specified_op_list;
-        if (opList != null) {
-            let opListStringified = null;
+    function exportOpList() {
+        //initialize(); //不要求游戏在前台，所以在脚本界面也可以导出
+        let lastOpListStringified = null;
+        if (lastOpList == null) {
+            //动作录制数据还没加载，那就直接尝试读取文件内容（不过不保证读出来的内容可以通过检查）
+            toastLog("未加载动作录制数据\n尝试从文件读取(但暂不加载使用)");
+            let justFileContent = true;
+            lastOpListStringified = loadOpList(justFileContent);
+            //不对lastOpList重新赋值
+        } else {
             try {
-                opListStringified = JSON.stringify(opList);
+                lastOpListStringified = JSON.stringify(lastOpList);
             } catch (e) {
                 logException(e);
                 toastLog("导出失败");
                 return;
             }
+        }
+        if (lastOpListStringified != null && lastOpListStringified != "") {
             ui.run(() => {
-                clip = android.content.ClipData.newPlainText("auto_export_op_list", opListStringified);
+                clip = android.content.ClipData.newPlainText("auto_export_op_list", lastOpListStringified);
                 activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
                 toast("内容已复制到剪贴板");
             });
             dialogs.build({
                 title: "导出选关动作",
                 content: "您可以 全选=>复制 以下内容，然后在别处粘贴保存。",
-                inputPrefill: opListStringified
+                inputPrefill: lastOpListStringified
             }).on("dismiss", () => {
                 dialogs.build({
                     title: "提示",
@@ -3574,8 +3631,9 @@ function algo_init() {
             }
             if (importedOpList != null && typeof importedOpList != "string") {
                 if (validateOpList(importedOpList)) {
-                    last_op_list = importedOpList;
+                    lastOpList = importedOpList;
                     toastLog("导入完成");
+                    saveOpList(importedOpList);//写入到文件
                 } else {
                     toastLog("导入失败\n动作录制数据无效");
                 }
@@ -3592,7 +3650,11 @@ function algo_init() {
             positive: "确定",
             negative: "取消"
         }).on("positive", () => {
-            last_op_list = null;
+            lastOpList = null;
+            if (!files.remove(savedLastOpListPath)) {
+                toastLog("删除动作录制数据文件失败");
+                return;
+            }
             toastLog("已清除选关动作数据");
         }).show();
     }
@@ -3756,7 +3818,25 @@ function algo_init() {
     }
 
     function taskDefault() {
-        if (last_op_list == null) {
+        initialize();
+
+        if (lastOpList == null) {
+            if (files.isFile(savedLastOpListPath)) {
+                if (dialogs.confirm("自动选关", "要加载之前保存的选关动作录制数据吗?")) {
+                    lastOpList = loadOpList();
+                } else {
+                    if (dialogs.confirm("自动选关", "要删除保存选关动作录制数据的文件么?")) {
+                        if (!files.remove(savedLastOpListPath)) {
+                            toastLog("删除动作录制数据文件失败");
+                        } else {
+                            toastLog("已删除动作录制数据文件");
+                        }
+                    }
+                }
+            }
+        }
+
+        if (lastOpList == null) {
             toastLog("没有动作录制数据\n不会启用闪退自动重启功能");
         } else {
             if (!requestPrivilegeIfNeeded()) {
@@ -3766,8 +3846,6 @@ function algo_init() {
             }
             toastLog("已加载动作录制数据\n游戏闪退时将自动重启");
         }
-
-        initialize();
 
         startSupportPickTestingIfNeeded();//如果选择开始测试会不再继续往下运行
 
@@ -3869,8 +3947,8 @@ function algo_init() {
                         state = STATE_CRASHED;
                         break;
                     }
-                    if (replayOperations(last_op_list, true)) {//dontStopOnError设为true
-                        log("重放完成,报告成功,应该可以选关了");
+                    if (replayOperations(lastOpList, true)) {//dontStopOnError设为true
+                        toastLog("重放完成,报告成功,应该可以选关了");
                         state = STATE_MENU;
                     }
                     //动作录制数据里会指定在失败时杀掉进程重启
@@ -3958,8 +4036,8 @@ function algo_init() {
                             }
                         }
                     // 重放动作录制之前需要先回主页，最简单粗暴的办法就是杀进程重开
-                    } else if (last_op_list) {
-                        log("已加载动作录制数据,先杀掉游戏再重启重新选关");
+                    } else if (lastOpList) {
+                        toastLog("已加载动作录制数据,先杀掉游戏再重启重新选关");
                         killGame(string.package_name);
                     } else {
                         log("等待捕获关卡坐标");
