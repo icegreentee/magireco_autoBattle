@@ -4054,9 +4054,23 @@ function algo_init() {
                     // exit condition
                     //这里会等待2秒，对于防断线模式来说就是限制每2秒点击一次重连按钮的所在位置
                     //另一方面，也可以极大程度上确保防断线模式不会在结算界面误点
-                    if (findID("charaWrap", 2000)) {
+                    waitAny(
+                        [
+                            () => findID("charaWrap"),
+                            () => findID("hasTotalRiche")
+                        ],
+                        2000
+                    );
+                    if (findID("charaWrap")) {
                         state = STATE_REWARD_CHARACTER;
                         log("进入角色结算");
+                        break;
+                    } else if (findID("hasTotalRiche")) {
+                        state = STATE_REWARD_CHARACTER;
+                        break;
+                    } else if (getAP() != null) {
+                        state = STATE_REWARD_POST;
+                        log("检测到AP控件，之前可能并不处于战斗状态");
                         break;
                     }
                     //防断线模式
