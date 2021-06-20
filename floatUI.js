@@ -3800,7 +3800,7 @@ function algo_init() {
                 } else if (!isNaN(parseInt(limit.forceStopTimeout))) {
                     let state_stuck_timeout = 1000 * parseInt(limit.forceStopTimeout);
                     if (new Date().getTime() > stuckStartTime + state_stuck_timeout) {
-                        toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)s+")\n杀进程重开...");
+                        toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n杀进程重开...");
                         killGame(limit.package_name);
                         state = STATE_CRASHED;
                     }
