@@ -1473,6 +1473,10 @@ function algo_init() {
     }
 
     function click(x, y) {
+        if (isGameDead() == "crashed") {
+            log("游戏已经闪退,放弃点击");
+            return;
+        }
         if (y == null) {
             var point = x;
             x = point.x;
@@ -1498,6 +1502,10 @@ function algo_init() {
     }
 
     function swipe(x1, y1, x2, y2, duration) {
+        if (isGameDead() == "crashed") {
+            log("游戏已经闪退,放弃滑动");
+            return;
+        }
         // 解析参数
         var points = [];
         if (arguments.length > 5) throw new Error("compatSwipe: incorrect argument count");
