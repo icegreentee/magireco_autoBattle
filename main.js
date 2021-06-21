@@ -25,7 +25,7 @@ ui.layout(
         <appbar id="appbar" w="*">
             <toolbar id="toolbar" bg="#ff4fb3ff" title="{{appName}}" />
         </appbar>
-        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout id="swipe" layout_below="appbar" layout_above="start">
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout id="swipe" layout_below="appbar">
             <ScrollView id="content">
                 <vertical gravity="center" layout_weight="1">
 
