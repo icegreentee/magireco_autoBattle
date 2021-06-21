@@ -3299,6 +3299,7 @@ function algo_init() {
                         op.checkText.centerY = check_text_point.y;
                     }
                     toastLog(dialog_options[dialog_selected]);
+                    let deadEnd = true;//如果无论指定的文字是否被检测到,都设置要结束,那么录制也可以到此为止了
                     for (let found_or_not_found of ["found", "notFound"]) {
                         op.checkText[found_or_not_found] = {};
                         op.checkText[found_or_not_found].kill = false;
@@ -3307,6 +3308,7 @@ function algo_init() {
                         switch (dialog_selected) {
                             case 0:
                                 op.checkText[found_or_not_found].nextAction = "ignore";
+                                deadEnd = false;
                                 break;
                             case 3:
                                 op.checkText[found_or_not_found].kill = true;//不break
@@ -3326,6 +3328,10 @@ function algo_init() {
                     }
                     result.steps.push(op);
                     toastLog("已记录检测文字\""+op.checkText.text+"\"是否出现的动作");
+                    if (deadEnd) {
+                        endRecording = true;
+                        toastLog("录制结束");
+                    }
                     break;
                 case "exit":
                     if (result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null)) {
