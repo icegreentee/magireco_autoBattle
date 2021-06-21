@@ -3931,9 +3931,14 @@ function algo_init() {
         while (true) {
             //首先，检测游戏是否闪退或掉线
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
-                state = STATE_CRASHED;
-                log("进入闪退/登出重启");
-                continue;
+                if (lastOpList != null) {
+                    state = STATE_CRASHED;
+                    log("进入闪退/登出重启");
+                    continue;
+                } else {
+                    log("没有动作录制数据,不进入闪退/登出重启\n停止运行");
+                    stopThread();
+                }
             }
 
             //假死超时自动重开的计时点
@@ -3943,9 +3948,14 @@ function algo_init() {
                 } else if (!isNaN(parseInt(limit.forceStopTimeout))) {
                     let state_stuck_timeout = 1000 * parseInt(limit.forceStopTimeout);
                     if (new Date().getTime() > stuckStartTime + state_stuck_timeout) {
-                        toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n杀进程重开...");
-                        killGame(limit.package_name);
-                        state = STATE_CRASHED;
+                        if (lastOpList != null) {
+                            toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n杀进程重开...");
+                            killGame(limit.package_name);
+                            state = STATE_CRASHED;
+                        } else {
+                            toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n等待10秒...");
+                            sleep(10000);
+                        }
                     }
                 }
             }
@@ -3967,6 +3977,11 @@ function algo_init() {
             //然后，再继续自动周回处理
             switch (state) {
                 case STATE_CRASHED: {
+                    if (lastOpList == null) {
+                        toastLog("没有动作录制数据,退出");
+                        stopThread();
+                        break;
+                    }
                     switch (isGameDead(2000)) {
                         case "crashed":
                             log("等待5秒后重启游戏...");
@@ -3987,6 +4002,11 @@ function algo_init() {
                     break;
                 }
                 case STATE_LOGIN: {
+                    if (lastOpList == null) {
+                        toastLog("没有动作录制数据,退出");
+                        stopThread();
+                        break;
+                    }
                     if (isGameDead(2000) == "crashed") {
                         state = STATE_CRASHED;
                         break;
