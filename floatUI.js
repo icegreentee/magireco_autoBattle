@@ -1502,6 +1502,13 @@ function algo_init() {
         }
     }
 
+    function getDefaultSwipeDuration(x1, x2, y1, y2) {
+        // 默认滑动时间计算，距离越长时间越长
+        let swipe_distance = Math.sqrt(Math.pow((x2 - x1), 2) + Math.pow((y2 - y1), 2));
+        let screen_diagonal = Math.sqrt(Math.pow((device.width), 2) + Math.pow((device.height), 2));
+        return parseInt(1500 + 3000 * (swipe_distance / screen_diagonal));
+    }
+
     function swipe(x1, y1, x2, y2, duration) {
         if (isGameDead() == "crashed") {
             log("游戏已经闪退,放弃滑动");
@@ -1553,22 +1560,13 @@ function algo_init() {
             y2 = sz.y - 1;
         }
 
-        // 默认滑动时间计算，距离越长时间越长
-        let swipe_distance = Math.sqrt(Math.pow((x2 - x1), 2) + Math.pow((y2 - y1), 2));
-        let screen_diagonal = Math.sqrt(Math.pow((device.width), 2) + Math.pow((device.height), 2));
-        var default_duration = parseInt(1500 + 3000 * (swipe_distance / screen_diagonal));
-
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             log("使用无障碍服务模拟滑动 "+x1+","+y1+" => "+x2+","+y2+(duration==null?"":(" ("+duration+"ms)")));
-            if (duration == null) {
-                origFunc.swipe(x1, y1, x2, y2, default_duration); //最后一个参数不能缺省
-            } else {
-                origFunc.swipe(x1, y1, x2, y2, duration);
-            }
+            origFunc.swipe(x1, y1, x2, y2, duration != null ? duration : getDefaultSwipeDuration(x1, x2, y1, y2)); //最后一个参数不能缺省
             log("滑动完成");
         } else {
-            clickOrSwipeRoot(x1, y1, x2, y2, duration);
+            clickOrSwipeRoot(x1, y1, x2, y2, duration != null ? duration : getDefaultSwipeDuration(x1, x2, y1, y2));
         }
     }
 
