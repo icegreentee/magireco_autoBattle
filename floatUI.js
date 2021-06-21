@@ -3003,13 +3003,12 @@ function algo_init() {
         var startTime = new Date().getTime();
 
         toastLog("重新登录...");
-        var wait = 2500;
         while (true) {
             if (isGameDead(1000) == "crashed") {
                 log("检测到游戏再次闪退,无法继续登录");
                 return false;
             }
-            var found_popup = findPopupInfoDetailTitle(null, wait);
+            var found_popup = findPopupInfoDetailTitle(null, 1000);
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
                 let expected_titles = [];
@@ -3037,12 +3036,12 @@ function algo_init() {
                 }
             }
 
-            var apinfo = getAP(wait);
+            var apinfo = getAP(200);
             var button = null;
             if (apinfo != null) {
                 log("当前AP:"+apinfo.value+"/"+apinfo.total);
             } else {
-                button = findID("nextPageBtn", wait);
+                button = findID("nextPageBtn", 200);
             }
             if (apinfo != null || button != null) {
                 toastLog("重新登录完成");
@@ -4074,9 +4073,7 @@ function algo_init() {
                         click(battlepos.x, battlepos.y);
                         waitAny(
                             [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
-
                             parseInt(limit.timeout)
-
                         );
                         if (find(string.out_of_ap)) {
                             log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
@@ -4092,9 +4089,7 @@ function algo_init() {
                             click(bound.centerX(), bound.centerY());
                             waitAny(
                                 [() => find(string.battle_confirm), () => find(string.support), () => find(string.out_of_ap)],
-
                                 parseInt(limit.timeout)
-
                             );
                             if (find(string.out_of_ap)) {
                                 log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
