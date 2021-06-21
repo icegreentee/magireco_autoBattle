@@ -11,6 +11,7 @@ var Name = "AutoBattle";
 var version = "3.9.0";
 var appName = Name + " v" + version;
 
+//注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
     if (conf) return conf.versionName;
@@ -73,18 +74,42 @@ ui.layout(
                         <text text="默认脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <Switch id="useAuto" w="*" margin="0 3" checked="true" textColor="#000000" text="优先使用官方自动续战" />
-                            <linear padding="0 0 0 0" w="*" h="auto">
-                                <text text="嗑药至AP上限" textColor="#666666" />
-                                <input maxLength="1" margin="5 0 0 0" id="apmul" hint="可选值0-4,留空视为0" text="" textSize="14" inputType="number|none" />
-                                <text text="倍以上" textColor="#666666" />
-                            </linear>
-                            <text text="注意:嗑药至AP上限倍数不会永久保存,脚本完全退出后会被重置!" textColor="#666666" />
-                            <linear padding="0 0 0 0" w="*" h="auto">
-                                <text text="等待控件超时" textColor="#000000" />
-                                <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
-                                <text text="毫秒" textColor="#000000" />
-                            </linear>
-                            <text text="修改“等待控件超时”并不能让脚本变快,数值太小反而可能出错。如果不是机器特别卡(这种情况也要把这个值改得更大,而不是更小)请不要改,退格可自动恢复默认(5000毫秒)" textColor="#000000" />
+                            <vertical padding="0 8 0 0" w="*" h="auto">
+                                <linear padding="0 0 0 0" w="*" h="auto">
+                                    <text text="嗑药至AP上限" textColor="#666666" />
+                                    <input maxLength="1" margin="5 0 0 0" id="apmul" hint="可选值0-4,留空视为0" text="" textSize="14" inputType="number|none" />
+                                    <text text="倍以上" textColor="#666666" />
+                                </linear>
+                                <text text="注意:嗑药至AP上限倍数不会永久保存,脚本完全退出后会被重置!" textColor="#666666" />
+                            </vertical>
+                            <vertical padding="0 8 0 0" w="*" h="auto">
+                                <linear>
+                                    <text text="每隔" textColor="#000000" />
+                                    <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打断" text="" textSize="14" inputType="number|none" />
+                                    <text text="秒打断官方自动续战" textColor="#000000" />
+                                </linear>
+                                <text text="经过设定的秒数后,长按打断官方自动周回" textColor="#000000" />
+                            </vertical>
+                            <vertical padding="0 8 0 0" w="*" h="auto">
+                                <linear>
+                                    <text text="假死检测超时" textColor="#000000" />
+                                    <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开" textColor="#000000" />
+                            </vertical>
+                            <vertical padding="0 8 0 0" w="*" h="auto">
+                                <linear padding="0 0 0 0" w="*" h="auto">
+                                    <text text="等待控件超时" textColor="#000000" />
+                                    <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
+                                    <text text="毫秒" textColor="#000000" />
+                                </linear>
+                                <text text="修改“等待控件超时”并不能让脚本变快,数值太小反而可能出错。如果不是机器特别卡(这种情况也要把这个值改得更大,而不是更小)请不要改,退格可自动恢复默认(5000毫秒)" textColor="#000000" />
+                            </vertical>
+                            <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
+                                <text text="部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -150,6 +175,7 @@ function setFollowRedirects(value) {
     http.__okhttp__.muteClient(newokhttp);
 }
 
+const logMaxSize = 1048576;
 var reportTask = null;
 function reportBug() {
     toastLog("正在上传日志和最近一次的快照,请耐心等待...");
@@ -191,11 +217,37 @@ function reportBug() {
         let latestSnapshotFilename = latest.slice(0, 3).join('-') + "_" + latest.slice(3, 6).join('-') + ".xml";
         log("要上传的快照文件名", latestSnapshotFilename);
         snapshotContent = files.read(files.join(snapshotDir, latestSnapshotFilename));
+        let snapshotBytes = files.readBytes(files.join(snapshotDir, latestSnapshotFilename));
+        let snapshotSize = snapshotBytes.length;
+        log("快照大小", snapshotSize+"字节", snapshotContent.length+"字符");
+        if (snapshotSize > logMaxSize) {
+            //大于1MB时不上传
+            snapshotContent = null;
+            toastLog("快照文件太大，请采取其他方式上传");
+        }
     }
 
     var parentDir = files.join(engines.myEngine().cwd(), "..");
     var logDir = files.join(parentDir, "logs");
     var logContent = files.read(files.join(logDir, "log.txt"));
+    let logBytes = files.readBytes(files.join(logDir, "log.txt"));
+    let logSize = logBytes.length;
+    log("日志大小", logSize+"字节", logContent.length+"字符");
+    if (logSize > logMaxSize) {
+        //大于1MB时只截取尾部
+        //算法太渣，很慢，需要改
+        let excessSize = logSize - logMaxSize;
+        let rate = logSize / logContent.length;
+        let est = excessSize / rate;
+        do {
+            var logTailContent = new java.lang.String(logContent).substring(est, logContent.length-1);
+            var logTailSize = new java.lang.String(logTailContent).getBytes().length;
+            est += (logTailSize - logMaxSize) / rate;
+            sleep(1000);
+        } while (logTailSize - logMaxSize > 0 || logTailSize - logMaxSize <= -32);
+        logContent = logTailContent;
+        log("截取尾部 日志大小", logTailSize+"字节", logContent.length+"字符");
+    }
 
     var resultLinks = "";
 
@@ -304,17 +356,19 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
             action: "android.settings.ACCESSIBILITY_SETTINGS"
         });
     }
-    if (!checked && auto.service) auto.service.disableSelf()
+    if (!checked && auto.service) {
+        if (device.sdkInt >= 24) {
+            auto.service.disableSelf();
+        } else {
+            toastLog("Android 6.0或以下请到系统设置里关闭无障碍服务");
+        }
+    }
     ui.autoService.setChecked(auto.service != null)
 });
 //前台服务
 ui.foreground.setChecked($settings.isEnabled('foreground_service'));
 ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('foreground_service', checked);
-});
-
-ui.useAuto.setOnCheckedChangeListener(function (widget, checked) {
-    ui.refillMax.setVisibility(checked ? View.VISIBLE : View.GONE);
 });
 
 //回到本界面时，resume事件会被触发
@@ -351,7 +405,7 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "timeout"]
+const persistParamList = ["foreground", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "breakAutoCycleDuration", "forceStopTimeout", "timeout", "rootForceStop"]
 const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
 
 var idmap = {};
@@ -495,6 +549,9 @@ for (let key of tempParamList) {
         setOnChangeListener(key);
     }
 }
+
+//传递当前版本号给floatUI
+floatUI.adjust("version", version);
 
 //限制apmul取值
 //digits="01234"貌似不起效，没办法，只能手动实现
