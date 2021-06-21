@@ -558,7 +558,10 @@ floatUI.main = function () {
 
     context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED));
 
-    var touch_pos = null;
+    var touch_down_pos = null;
+    var touch_up_pos = null;
+    var touch_down_time = 0;
+    var touch_up_time = 0;
     const default_description_text = "请点击需要周回的battle\n(请通关一次后再用，避免错位)";
     var overlay = floaty.rawWindow(
         <frame id="container" w="*" h="*">
@@ -580,14 +583,27 @@ floatUI.main = function () {
         overlay.setTouchable(false);
     });
     overlay.container.setOnTouchListener(function (self, event) {
-        if (event.getAction() == event.ACTION_UP) {
-            touch_pos = {
-                x: parseInt(event.getRawX()),
-                y: parseInt(event.getRawY()),
-            };
-            log("捕获点击坐标", touch_pos.x, touch_pos.y);
-            overlay.setTouchable(false);
-            overlay.container.setVisibility(View.INVISIBLE);
+        switch (event.getAction()) {
+            case event.ACTION_DOWN:
+                if (touch_down_pos == null) {
+                    touch_down_time = new Date().getTime();
+                    touch_down_pos = {
+                        x: parseInt(event.getRawX()),
+                        y: parseInt(event.getRawY()),
+                    }
+                    log("捕获触控按下坐标", touch_down_pos.x, touch_down_pos.y);
+                }
+                break;
+            case event.ACTION_UP:
+                touch_up_time = new Date().getTime();
+                touch_up_pos = {
+                    x: parseInt(event.getRawX()),
+                    y: parseInt(event.getRawY()),
+                };
+                log("捕获触控松开坐标", touch_up_pos.x, touch_up_pos.y);
+                overlay.setTouchable(false);
+                overlay.container.setVisibility(View.INVISIBLE);
+                break;
         }
         return true;
     });
@@ -596,7 +612,10 @@ floatUI.main = function () {
         if (description_text == null) {
             description_text = default_description_text;
         }
-        touch_pos = null;
+        touch_down_time = 0;
+        touch_up_time = 0;
+        touch_down_pos = null;
+        touch_up_pos = null;
         ui.post(() => {
             var sz = getWindowSize();
             overlay.setSize(sz.x, sz.y);
@@ -610,7 +629,9 @@ floatUI.main = function () {
         while (overlay.container.getVisibility() == View.VISIBLE) {
             sleep(200);
         }
-        return touch_pos;
+        if (touch_down_time == 0 || touch_up_time == 0) return null;//不应该仍然为0。实际上应该不会发生
+        let swipe_duration = touch_up_time - touch_down_time;
+        return {pos_down: touch_down_pos, pos_up: touch_up_pos, duration: swipe_duration};
     };
 
     //检测刘海屏参数
@@ -2229,6 +2250,8 @@ function algo_init() {
             "regex_until",
             "package_name",
             "connection_lost",
+            "auth_error",
+            "generic_error",
         ],
         zh_Hans: [
             "请选择支援角色",
@@ -2250,6 +2273,8 @@ function algo_init() {
             /.+截止$/,
             "com.bilibili.madoka.bilibili",
             "连线超时",
+            "认证错误",//被踢下线
+            "错误",
         ],
         zh_Hant: [
             "請選擇支援角色",
@@ -2271,6 +2296,8 @@ function algo_init() {
             /.+為止$/,
             "com.komoe.madokagp",
             "連線超時",
+            "認證錯誤",//被踢下线
+            "錯誤",
         ],
         ja: [
             "サポートキャラを選んでください",
@@ -2292,6 +2319,8 @@ function algo_init() {
             /.+まで$/,
             "com.aniplex.magireco",
             "通信エラー",
+            "認証エラー",//这个是脑补的。实际上日服貌似只能引继，没有多端登录，所以也就没有被“顶号”、被踢下线……
+            "エラー",
         ],
     };
 
@@ -2345,21 +2374,29 @@ function algo_init() {
             }
             sleep(50);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+
         if (detectedLang == null) {
             log("游戏已经闪退");
             return "crashed";
         }
-        let connection_lost_popup = null;
-        try {
-            connection_lost_popup = findPopupInfoDetailTitle(string.connection_lost, wait);
-        } catch (e) {
-            logException(e);
-            connection_lost_popup = null;
-        }
-        if (connection_lost_popup) {
-            log("游戏已经断线并强制回首页");
-            return "logged_out";
-        }
+
+        do {
+            let found_popup = null;
+            for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
+                try {
+                    found_popup = findPopupInfoDetailTitle(string[error_type]);
+                } catch (e) {
+                    logException(e);
+                    found_popup = null;
+                }
+                if (found_popup != null) break;
+            }
+            if (found_popup) {
+                log("游戏已经断线/登出/出错,并强制回首页");
+                return "logged_out";
+            }
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+
         return false;
     }
 
@@ -2975,12 +3012,16 @@ function algo_init() {
             var found_popup = findPopupInfoDetailTitle(null, wait);
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
-                let expected_title = strings[last_alive_lang][strings.name.findIndex((e) => e == "connection_lost")];
-                if (found_popup.title == expected_title) {
-                    log("弹窗标题\""+expected_title+"\",没有关闭按钮,只有回首页按钮,点击回首页...");
+                let expected_titles = [];
+                for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
+                    expected_titles.push(string[error_type]);
+                }
+                let matched_title = expected_titles.find((val) => val == found_popup.title);
+                if (matched_title != null) {
+                    log("弹窗标题\""+matched_title+"\",没有关闭按钮,只有回首页按钮,点击回首页...");
                     if (isGameDead() != "crashed") click(convertCoords(clickSets.backToHomepage));
                 } else {
-                    log("弹窗标题不是\""+expected_title+"\",尝试关闭...");
+                    log("弹窗标题为\""+found_popup.title+"\",尝试关闭...");
                     if (isGameDead() != "crashed") click(found_popup.close);
                 }
                 log("等待2秒...");
@@ -3083,7 +3124,7 @@ function algo_init() {
     //保存上次录制的数据
     function saveOpList(opList) {
         if (opList == null) opList = lastOpList;//这里不应该传入stringify过的字符串
-        if (lastOpList == null) {
+        if (opList == null) {
             toastLog("没有动作录制数据,无法保存");
             return false;
         }
@@ -3162,7 +3203,7 @@ function algo_init() {
                 case "click":
                     log("等待录制点击动作...");
                     op.click = {};
-                    op.click.point = capture("录制第"+(step+1)+"步操作\n请点击要记录下来的点击位置");
+                    op.click.point = capture("录制第"+(step+1)+"步操作\n请点击要记录下来的点击位置").pos_up;
                     if (op.click.point == null) {
                         toastLog("录制点击动作出错");
                         stopThread();
@@ -3177,20 +3218,20 @@ function algo_init() {
                     log("等待录制滑动动作...");
                     op.swipe = {};
                     op.swipe.points = [];
-                    for (let i=0; i<2; i++) {
-                        let swipepoint = capture("录制第"+(step+1)+"步操作\n请点击滑动"+(i==0?"开始":"结束")+"位置");
-                        if (swipepoint == null) {
-                            toastLog("录制滑动动作出错");
-                            stopThread();
-                        }
-                        op.swipe.points.push(swipepoint);
+                    let swipe_data = capture("录制第"+(step+1)+"步操作\n请进行触控滑动操作\n为了增加重放成功的概率,请尽量慢一些");
+                    if (swipe_data == null) {
+                        toastLog("录制滑动动作出错");
+                        stopThread();
                     }
-                    swipe(op.swipe.points[0], op.swipe.points[1]);
+                    for (let pos of ["pos_down", "pos_up"]) op.swipe.points.push(swipe_data[pos]);
+                    op.swipe.duration = swipe_data.duration;
+                    swipe(op.swipe.points[0], op.swipe.points[1], op.swipe.duration);
                     result.steps.push(op);
                     toastLog("已记录滑动动作: "
                              +"["+op.swipe.points[0].x+","+op.swipe.points[0].y+"]"
                              +" => "
                              +"["+op.swipe.points[1].x+","+op.swipe.points[1].y+"]"
+                             +" ("+op.swipe.duration+"ms)"
                              );
                     toast("如果滑动没反应,请重录上一步");
                     sleep(4000);
@@ -3220,7 +3261,7 @@ function algo_init() {
                     let dialog_selected = null;
                     while (selected < 0) {
                         selected = -1;
-                        check_text_point = capture("录制第"+(step+1)+"步操作\n请点击要检测的文字出现的位置");
+                        check_text_point = capture("录制第"+(step+1)+"步操作\n请点击要检测的文字出现的位置").pos_up;
                         if (check_text_point == null) {
                             toastLog("录制检测文字是否出现动作出错");
                             stopThread();
@@ -3442,6 +3483,21 @@ function algo_init() {
         let endReplaying = false;
         let defaultOpCycleWaitTime = 500 + parseInt(opList.defaultSleepTime);
         for (let i=0; i<opList.steps.length&&!endReplaying; i++) {
+            switch (isGameDead()) {
+                case "crashed":
+                    log("游戏已经闪退,停止重放");
+                    return false;
+                    break;
+                case "logged_out":
+                    log("游戏已经登出,停止重放");
+                    return false;
+                    break;
+                case false:
+                    break;//没闪退
+                default:
+                    log("未知闪退状态,停止重放");
+                    return false;
+            }
             log("执行安全检查,同时等待"+defaultOpCycleWaitTime+"毫秒...");
             let opCycleStartTime = new Date().getTime();
             do {
@@ -3747,13 +3803,19 @@ function algo_init() {
             let found_popup = findPopupInfoDetailTitle();
             log("弹窗检测结果", found_popup);
             if (found_popup == null) break;
-            if (found_popup.title != string.connection_lost) {
-                log("关闭弹窗...");
-                click(found_popup.close);
-            } else {
-                log("游戏已经断线并强制回首页");
+            let expected_titles = [];
+            for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
+                expected_titles.push(string[error_type]);
+            }
+            let matched_title = expected_titles.find((val) => val == found_popup.title);
+            if (matched_title != null) {
+                //没有关闭按钮
+                log("游戏已经断线/登出/出错并强制回首页");
                 state = STATE_CRASHED;
                 return state;
+            } else {
+                log("关闭弹窗\""+found_popup.title+"\"...");
+                click(found_popup.close);
             }
             sleep(1000);
         }
@@ -4039,7 +4101,7 @@ function algo_init() {
                         killGame(string.package_name);
                     } else {
                         log("等待捕获关卡坐标");
-                        battlepos = capture();
+                        battlepos = capture().pos_up;
                     }
                     break;
                 }
