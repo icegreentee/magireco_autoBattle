@@ -356,7 +356,13 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
             action: "android.settings.ACCESSIBILITY_SETTINGS"
         });
     }
-    if (!checked && auto.service) auto.service.disableSelf()
+    if (!checked && auto.service) {
+        if (device.sdkInt >= 24) {
+            auto.service.disableSelf();
+        } else {
+            toastLog("Android 6.0或以下请到系统设置里关闭无障碍服务");
+        }
+    }
     ui.autoService.setChecked(auto.service != null)
 });
 //前台服务
