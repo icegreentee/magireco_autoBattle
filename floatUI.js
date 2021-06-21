@@ -4008,7 +4008,7 @@ function algo_init() {
                         break;
                     }
                     if (replayOperations(lastOpList, true)) {//dontStopOnError设为true
-                        toastLog("重放完成,报告成功,应该可以选关了");
+                        toastLog("重放完成,报告成功,应该已经完成选关了");
                         state = STATE_MENU;
                     }
                     //动作录制数据里会指定在失败时杀掉进程重启
