@@ -2527,8 +2527,12 @@ function algo_init() {
             detected_screen_params = null;
         }
         if (detected_screen_params == null) {
-            log("检测屏幕参数没有返回结果");
-            if (!dontStopOnError) stopThread();
+            if (!dontStopOnError) {
+                toastLog("检测屏幕参数失败\n请再试一次");
+                stopThread();
+            } else {
+                log("检测屏幕参数没有返回结果");
+            }
         } else {
             screen = detected_screen_params.screen;
             gamebounds = detected_screen_params.gamebounds;
