@@ -44,9 +44,10 @@ function logException(e) {
 }
 
 var origFunc = {
-    click: function () {click.apply(this, arguments)},
-    swipe: function () {swipe.apply(this, arguments)},
-    press: function () {press.apply(this, arguments)},
+    click: function () {return click.apply(this, arguments)},
+    swipe: function () {return swipe.apply(this, arguments)},
+    press: function () {return press.apply(this, arguments)},
+    buildDialog: function() {return dialogs.build.apply(this, arguments)},
 }
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -120,6 +121,79 @@ floatUI.scripts = [
     }
 ];
 
+//当前正在运行的线程
+var currentTask = null;
+//被打开的所有对话框（用于在线程退出时dismiss）
+var openedDialogs = {openedDialogCount: 0};
+var openedDialogsLock = threads.lock();
+
+//运行脚本时隐藏UI控件，防止误触
+var menuItems = [];
+var menuItemsLock = threads.lock();
+function lockUI(isLocked) {
+    ui.run(() => {
+        menuItemsLock.lock();
+        ui["swipe"].setVisibility(isLocked?View.GONE:View.VISIBLE);
+        ui["running_stats"].setVisibility(isLocked?View.VISIBLE:View.GONE);
+        activity.setSupportActionBar(isLocked?null:ui.toolbar);
+        let menu = ui["toolbar"].getMenu();
+        menu.close();
+        if (isLocked) {
+            for (let i=0; i<menu.size(); i++) menuItems.push(menu.getItem(i));
+            menu.clear();
+        } else {
+            menu.clear();
+            for (let i=0; i<menuItems.length; i++)
+                menu.add(menuItems[i].getTitle())
+                    .setIcon(menuItems[i].getIcon())
+                    .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+        }
+        menuItemsLock.unlock();
+    });
+}
+
+//监视当前任务的线程
+var monitoredTask = null;
+
+var syncedReplaceCurrentTask = sync(function(runnable) {
+    if (currentTask != null && currentTask.isAlive()) {
+        stopThread(currentTask);
+        toastLog("已停止之前的脚本");
+    }
+    if (monitoredTask != null && monitoredTask.isAlive()) {
+        monitoredTask.join();
+    }
+    monitoredTask = threads.start(function () {
+        try {
+            currentTask = threads.start(runnable);
+            currentTask.waitFor();
+        } catch (e) {logException(e);}
+        if (currentTask != null && currentTask.isAlive()) {
+            lockUI(true);
+            currentTask.join();
+            lockUI(false);
+        }
+        //关闭所有对话框
+        openedDialogsLock.lock();
+        for (let key in openedDialogs) {
+            if (key != "openedDialogCount") {
+                try {openedDialogs[key].node.dialog.dismiss();} catch (e) {logException(e);};
+            }
+        }
+        openedDialogsLock.unlock();
+    });
+    monitoredTask.waitFor();
+});
+//syncedReplaceCurrentTask函数也需要新开一个线程来执行，
+//如果在UI线程直接调用，第二次调用就会卡在monitoredTask.join()这里
+function replaceCurrentTask(runnable) {
+    threads.start(function () {syncedReplaceCurrentTask(runnable);}).waitFor();
+}
+function replaceSelfCurrentTask(runnable) {
+    replaceCurrentTask(runnable);
+    stopThread();
+}
+
 floatUI.main = function () {
     // space between buttons compare to button size
     var space_factor = 1.5;
@@ -127,8 +201,6 @@ floatUI.main = function () {
     var logo_factor = 7.0 / 11;
     // button size in dp
     var button_size = 44;
-    // current running thread
-    var currentTask = null;
 
     // submenu definition
     var menu_list = [
@@ -211,12 +283,8 @@ floatUI.main = function () {
     }
 
     function defaultWrap() {
-        if (currentTask && currentTask.isAlive()) {
-            toastLog("停止之前的脚本");
-            stopThread(currentTask);
-        }
         toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
-        currentTask = threads.start(floatUI.scripts[limit.default].fn);
+        replaceCurrentTask(floatUI.scripts[limit.default].fn);
     }
 
     function taskWrap() {
@@ -227,7 +295,7 @@ floatUI.main = function () {
 
     function cancelWrap() {
         toastLog("停止脚本");
-        if (currentTask && currentTask.isAlive()) stopThread(currentTask);
+        replaceCurrentTask(function () {});
     }
 
     // get to main activity
@@ -281,12 +349,8 @@ floatUI.main = function () {
         task_popup.container.setVisibility(View.INVISIBLE);
         task_popup.setTouchable(false);
         if (item.fn) {
-            if (currentTask && currentTask.isAlive()) {
-                toastLog("停止之前的脚本");
-                stopThread(currentTask);
-            }
             toastLog("执行 " + item.name + " 脚本");
-            currentTask = threads.start(item.fn);
+            replaceCurrentTask(item.fn);
         }
     });
     task_popup.close_button.click(() => {
@@ -2324,6 +2388,114 @@ function algo_init() {
         ],
     };
 
+    function deleteDialogAndSetResult(openedDialogsNode, result) {
+        //调用origFunc.buildDialog时貌似又会触发一次dismiss，然后造成openedDialogsLock死锁，所以这里return来避免这个死锁
+        if (openedDialogsNode.alreadyDeleted.getAndIncrement() != 0) return;
+
+        let count = openedDialogsNode.count;
+        openedDialogsLock.lock();
+        openedDialogsNode.dialogResult.setAndNotify(result);
+        delete openedDialogs[""+count];
+        openedDialogsLock.unlock();
+    }
+    var dialogs = {
+        buildAndShow: function (dialogType, title, content, callback1, callback2) {
+            openedDialogsLock.lock();
+
+            let count = ++openedDialogs.openedDialogCount;
+            openedDialogs[""+count] = {node: {}};
+            let openedDialogsNode = openedDialogs[""+count].node;
+            openedDialogsNode.count = count;
+
+            var prefill = content;
+            if (dialogType == "rawInputWithContent") {
+                callback2 = arguments[5];
+                callback1 = arguments[4];
+                prefill = arguments[3];
+            }
+
+            openedDialogsNode.dialogResult = threads.disposable();
+
+            let dialogParams = {title: title, positive: "确定"};
+            switch (dialogType) {
+                case "alert":
+                    dialogParams["content"] = content;
+                    break;
+                case "select":
+                    if (callback2 != null) dialogParams["negative"] = "取消";
+                    dialogParams["items"] = content;
+                    break;
+                case "confirm":
+                    dialogParams["negative"] = "取消";
+                    dialogParams["content"] = content;
+                    break;
+                case "rawInput":
+                case "rawInputWithContent":
+                    if (callback2 != null) dialogParams["negative"] = "取消";
+                    if (content != null && content != "") dialogParams["content"] = content;
+                    dialogParams["inputPrefill"] = prefill;
+                    break;
+            }
+
+            let newDialog = origFunc.buildDialog(dialogParams);
+
+            openedDialogsNode.alreadyDeleted = threads.atomic(0);
+            newDialog = newDialog.on("dismiss", () => {
+                //dismiss应该在positive/negative/input之后，所以应该不会有总是传回null的问题
+                //其中，positive/input之后应该不会继续触发dismiss，只有negative才会
+                deleteDialogAndSetResult(openedDialogsNode, null);
+            });
+
+            if (dialogType != "rawInput" && dialogType != "rawInputWithContent") {
+                newDialog = newDialog.on("positive", () => {
+                    if (callback1 != null) callback1();
+                    //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                    deleteDialogAndSetResult(openedDialogsNode, true);
+                });
+            }
+
+            switch (dialogType) {
+                case "alert":
+                    break;
+                case "select":
+                case "confirm":
+                    newDialog = newDialog.on("negative", () => {
+                        if (callback2 != null) callback2();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, false);
+                    });
+                    break;
+                case "rawInput":
+                case "rawInputWithContent":
+                    newDialog = newDialog.on("input", (input) => {
+                        if (callback1 != null) callback1();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, input);
+                    });
+                    newDialog = newDialog.on("negative", () => {
+                        if (callback2 != null) callback2();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, null);
+                    });
+                    break;
+            }
+
+            openedDialogsNode.dialog = newDialog;
+
+            openedDialogsLock.unlock();
+
+            newDialog.show();
+
+            let result = openedDialogsNode.dialogResult.blockedGet();
+            return result;
+        },
+        alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
+        select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
+        confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
+        rawInput: function(title, prefill, callback1, callback2) {return this.buildAndShow("rawInput", title, prefill, callback1, callback2)},
+        rawInputWithContent: function(title, content, prefill, callback1, callback2) {return this.buildAndShow("rawInputWithContent", title, content, prefill, callback1, callback2)},
+    };
+
     var string = {};
     var last_alive_lang = null; //用于游戏闪退重启
 
@@ -3647,17 +3819,8 @@ function algo_init() {
                 activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
                 toast("内容已复制到剪贴板");
             });
-            dialogs.build({
-                title: "导出选关动作",
-                content: "您可以 全选=>复制 以下内容，然后在别处粘贴保存。",
-                inputPrefill: lastOpListStringified
-            }).on("dismiss", () => {
-                dialogs.build({
-                    title: "提示",
-                    content: "导出完成！\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。",
-                    positive: "确定"
-                }).show();
-            }).show();
+            dialogs.rawInputWithContent("导出选关动作", "您可以 全选=>复制 以下内容，然后在别处粘贴保存。", lastOpListStringified);
+            dialogs.alert("提示", "导出完成！\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。");
         } else {
             toastLog("没有录下来的动作可供导出");
         }
@@ -3672,17 +3835,20 @@ function algo_init() {
 
         initialize(); //如果游戏不在前台则无法检验导入进来的动作录制数据
 
-        dialogs.build({
-            title: "导入选关动作",
-            content: "您可以把之前录制并保存下来的动作重新导入进来。",
-            inputPrefill: "",
-            positive: "确定",
-            negative: "取消"
-        }).on("input", (op_list_string) => {
+        let input = dialogs.rawInputWithContent(
+            "导入选关动作",
+            "您可以把之前录制并保存下来的动作重新导入进来。",
+            "",
+            function () {},
+            function () {
+                toastLog("取消导入动作录制数据");
+            }
+        );
+        if (input != null) {
             log("确定导入动作录制数据");
             let importedOpList = null;
             try {
-                importedOpList = JSON.parse(op_list_string);
+                importedOpList = JSON.parse(input);
             } catch (e) {
                 logException(e);
                 importedOpList = null;
@@ -3697,25 +3863,20 @@ function algo_init() {
                     toastLog("导入失败\n动作录制数据无效");
                 }
             }
-        }).on("negative", (dialog) => {
-            toastLog("取消导入动作录制数据");
-        }).show();
+        }
     }
 
     function clearOpList() {
-        dialogs.build({
-            title: "清除选关动作录制数据",
-            content: "确定要清除么？",
-            positive: "确定",
-            negative: "取消"
-        }).on("positive", () => {
+        dialogs.confirm("清除选关动作录制数据", "确定要清除么？", () => {
             lastOpList = null;
             if (!files.remove(savedLastOpListPath)) {
                 toastLog("删除动作录制数据文件失败");
                 return;
             }
             toastLog("已清除选关动作数据");
-        }).show();
+        }, () => {
+            toastLog("未清除选关动作数据");
+        });
     }
 
     var is_support_picking_tested = false;
@@ -3871,9 +4032,7 @@ function algo_init() {
                 "安装这个版本以来还没有测试过助战自动选择是否可以正常工作。"
                 +"\n要测试吗？"))
             {
-                currentTask = threads.start(testSupportPicking);
-                toastLog("已停止当前脚本");
-                stopThread();
+                replaceSelfCurrentTask(testSupportPicking);
                 //测试完再写入文件，来记录是否曾经测试过
             } else {
                 files.create(supportPickingTestRecordPath);
