@@ -17,6 +17,16 @@ function getProjectVersion() {
     if (conf) return conf.versionName;
 }
 
+// 捕获异常时打log记录详细的调用栈
+function logException(e) {
+    try { throw e; } catch (caught) {
+        Error.captureStackTrace(caught, logException);
+        //log(e, caught.stack); //输出挤在一行里了，不好看
+        log(e);
+        log(caught.stack);
+    }
+}
+
 var floatUI = require('floatUI.js');
 
 ui.statusBarColor("#FF4FB3FF")
@@ -393,12 +403,27 @@ ui.swipe.setOnRefreshListener({
 
 var floatIsActive = false;
 // 悬浮窗权限检查
-if (!floaty.checkPermission()) {
-    app.startActivity({
-        packageName: "com.android.settings",
-        className: "com.android.settings.Settings$AppDrawOverlaySettingsActivity",
-        data: "package:" + context.getPackageName(),
-    });
+if (!$floaty.checkPermission()) {
+    toastLog("没有悬浮窗权限\n申请中...");
+    try {
+        app.startActivity({
+            packageName: "com.android.settings",
+            className: "com.android.settings.Settings$AppDrawOverlaySettingsActivity",
+            data: "package:" + context.getPackageName(),
+        });
+    } catch (e) {logException(e);};
+    if (!$floaty.checkPermission()) {
+        toastLog("仍然没有悬浮窗权限\n再次申请...");
+        try {
+            $floaty.requestPermission();
+        } catch (e) {logException(e);};
+    }
+    if (!$floaty.checkPermission()) {
+        toastLog("申请悬浮窗权限失败\n请到应用设置里手动授权");
+    } else {
+        toast("请重新启动脚本");
+    }
+    exit();
 } else {
     floatUI.main();
     floatIsActive = true;
