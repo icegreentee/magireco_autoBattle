@@ -2064,7 +2064,7 @@ function algo_init() {
         let PlayerPtIndices = [];
         //可以不用颠倒过来了
         AllLvIndices.forEach(function (index, i, arr) {
-            //最后一个Lv/ATK/DEF/HP控件后面已经没有下一个Lv控件了，用finalIndex；其余的往后推一个即可
+            //最后一个Lv/ATK/DEF/HP控件后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex；其余的往后推一个即可
             let nextIndex = i >= arr.length - 1 ? finalIndex : arr[i+1];
 
             //倒过来从后往前搜Pt控件，防止碰到类似Pt的恶搞玩家名
