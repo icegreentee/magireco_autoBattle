@@ -1941,8 +1941,8 @@ function algo_init() {
     function pickSupportWithMostPt(isTestMode) {
         toast("请勿拖动助战列表!\n自动选择助战...");
         var hasError = false;
-        //Lv [Rank] 玩家名 [最终登录] Pt
-        //Lv 玩家名 [Rank] [最终登录] Pt
+        //Lv/ATK/DEF/HP [Rank] 玩家名 [最终登录] Pt
+        //Lv/ATK/DEF/HP 玩家名 [Rank] [最终登录] Pt
         let AllElements = [];
         let uicollection = packageName(string.package_name).find();
         for (let i=0; i<uicollection.length; i++) {
@@ -1976,17 +1976,17 @@ function algo_init() {
             if (getContent(val).match(/^\+\d*$/)) PtLikeIndices.push(i)
         });
         log("\n匹配到:"
-            +"\n  类似Lv的控件个数:       "+LvLikeIndices.length
-            +"\n  类似Rank的控件个数:     "+RankLikeIndices.length
-            +"\n  类似上次登录的控件个数: "+LastLoginLikeIndices.length
-            +"\n  类似Pt的控件个数:       "+PtLikeIndices.length);
+            +"\n  类似Lv/ATK/DEF/HP的控件个数: "+LvLikeIndices.length
+            +"\n  类似Rank的控件个数:          "+RankLikeIndices.length
+            +"\n  类似上次登录的控件个数:      "+LastLoginLikeIndices.length
+            +"\n  类似Pt的控件个数:            "+PtLikeIndices.length);
 
         let AllLvIndices = [];
         let PlayerLvIndices = [];
         let NPCLvIndices = [];
-        //倒着从后往前搜寻，这样才会先碰到和Lv混淆的恶搞玩家名，从而排除，而不会误排除真正的Lv
+        //倒着从后往前搜寻，这样才会先碰到和Lv/ATK/DEF/HP混淆的恶搞玩家名，从而排除，而不会误排除真正的Lv/ATK/DEF/HP
         LvLikeIndices.reverse().forEach(function (index, i, arr) {
-            //第一个(序号0)在颠倒前就是最后一个，因为后面已经没有下一个Lv控件了，用finalIndex
+            //第一个(序号0)在颠倒前就是最后一个，因为后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex
             //第二个(序号1)和后续的在颠倒前就是倒数第二个和之前的，往前推一个对应颠倒前往后推一个
             let nextIndex = i == 0 ? finalIndex : arr[i-1];
 
@@ -1994,23 +1994,23 @@ function algo_init() {
             let lastLoginIndex = LastLoginLikeIndices.find((val) => val > index && val < nextIndex);
 
             if (rankIndex != null && lastLoginIndex != null) {
-                //在Lv后找到Rank和上次登录，就是玩家的Lv；否则是NPC或恶搞玩家名
+                //在Lv/ATK/DEF/HP后找到Rank和上次登录，就是玩家的Lv/ATK/DEF/HP；否则是NPC或恶搞玩家名
                 PlayerLvIndices.push(index);
                 AllLvIndices.push(index);
                 return
             }
             if (rankIndex != null && lastLoginIndex == null) {
-                log("在第"+(arr.length-i)+"个Lv控件后,找到了Rank,却没找到上次登录");
+                log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank,却没找到上次登录");
                 return;
             }
             if (rankIndex == null && lastLoginIndex != null) {
-                log("在第"+(arr.length-i)+"个Lv控件后,没找到Rank,却找到上次登录");
+                log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,没找到Rank,却找到上次登录");
                 return;
             }
             if (rankIndex == null && lastLoginIndex == null) {
                 //NPC一定是没有Rank也没有上次登录
                 //但是，不知道是不是有些环境下，玩家名后面本来就既没有Rank也没有上次登录
-                //预想在这种情况下，会把和Lv相似的恶搞玩家名误判为NPC
+                //预想在这种情况下，会把和Lv/ATK/DEF/HP相似的恶搞玩家名误判为NPC
                 NPCLvIndices.push(index);
                 AllLvIndices.push(index);
                 return;
@@ -2023,28 +2023,28 @@ function algo_init() {
         NPCLvIndices.reverse();
         log("玩家助战总数: "+PlayerLvIndices.length);
 
-        //从NPC的Lv里排除和Lv相似的恶搞玩家名
-        //这里的假设是玩家名肯定在Lv和Pt之间——如果还有更奇葩的环境不满足这个假设就没辙了
-        //假Lv前面肯定还有真Lv（所以需要倒着从后往前搜才能先碰到假的）
+        //从NPC的Lv/ATK/DEF/HP里排除和Lv/ATK/DEF/HP相似的恶搞玩家名
+        //这里的假设是玩家名肯定在Lv/ATK/DEF/HP和Pt之间——如果还有更奇葩的环境不满足这个假设就没辙了
+        //假Lv/ATK/DEF/HP前面肯定还有真Lv/ATK/DEF/HP（所以需要倒着从后往前搜才能先碰到假的）
         NPCLvIndices = NPCLvIndices.reverse().filter(function (index, i, arr) {
-            //当前Lv控件在AllLvIndices中的序号
+            //当前Lv/ATK/DEF/HP控件在AllLvIndices中的序号
             let i_index = AllLvIndices.findIndex((val) => val == index);
-            //已经是第一个Lv控件(序号0)了，不可能是假的
+            //已经是第一个Lv/ATK/DEF/HP控件(序号0)了，不可能是假的
             if (i_index == 0) return true;
-            //找到前一个Lv控件
+            //找到前一个Lv/ATK/DEF/HP控件
             let prevIndex = AllLvIndices[i_index-1];
 
             let PtIndex = PtLikeIndices.find((val) => val > prevIndex && val < index);
 
             if (PtIndex == null) {
-                //假Lv和真Lv之间肯定没有Pt
+                //假Lv/ATK/DEF/HP和真Lv/ATK/DEF/HP之间肯定没有Pt
                 let delete_i = AllLvIndices.findIndex((val) => val == index);
-                log("第"+(delete_i+1)+"个Lv控件是恶搞玩家名,排除");
+                log("第"+(delete_i+1)+"个Lv/ATK/DEF/HP控件是恶搞玩家名,排除");
                 AllLvIndices.splice(delete_i, 1);
                 return false;
             }
             if (PtIndex != null) {
-                //真Lv之前要么已经没有更前面的Lv，如果有（无论真假），和前一个Lv之间肯定有Pt
+                //真Lv/ATK/DEF/HP之前要么已经没有更前面的Lv，如果有（无论真假），和前一个Lv/ATK/DEF/HP之间肯定有Pt
                 return true;
             }
         });
@@ -2064,7 +2064,7 @@ function algo_init() {
         let PlayerPtIndices = [];
         //可以不用颠倒过来了
         AllLvIndices.forEach(function (index, i, arr) {
-            //最后一个Lv控件后面已经没有下一个Lv控件了，用finalIndex；其余的往后推一个即可
+            //最后一个Lv/ATK/DEF/HP控件后面已经没有下一个Lv控件了，用finalIndex；其余的往后推一个即可
             let nextIndex = i >= arr.length - 1 ? finalIndex : arr[i+1];
 
             //倒过来从后往前搜Pt控件，防止碰到类似Pt的恶搞玩家名
@@ -2081,7 +2081,7 @@ function algo_init() {
                     Pt = parseInt(PtContent);
                 }
                 if (isNaN(Pt)) {
-                    log("助战选择出错,在第"+(i+1)+"个Lv控件后无法读取Pt数值");
+                    log("助战选择出错,在第"+(i+1)+"个Lv/ATK/DEF/HP控件后无法读取Pt数值");
                     hasError = true;
                     return;
                 }
@@ -2095,13 +2095,13 @@ function algo_init() {
                 AllPtIndices.push(ptIndex);
 
                 if (Pt > HighestPt) {
-                    log("在第"+(i+1)+"个Lv控件后找到了更高的Pt加成: "+Pt);
+                    log("在第"+(i+1)+"个Lv/ATK/DEF/HP控件后找到了更高的Pt加成: "+Pt);
                     HighestPt = Pt;
                 }
                 return;
             }
             if (ptIndex == null) {
-                log("助战选择出错,在第"+(i+1)+"个Lv控件后,找不到Pt控件");
+                log("助战选择出错,在第"+(i+1)+"个Lv/ATK/DEF/HP控件后,找不到Pt控件");
                 hasError = true;
                 return;
             }
@@ -2110,15 +2110,15 @@ function algo_init() {
 
         if (NPCPtIndices.length != NPCLvIndices.length) {
             hasError = true;
-            log("助战选择出错,NPCPt控件数!=NPCLv控件数");
+            log("助战选择出错,NPCPt控件数!=NPCLv/ATK/DEF/HP控件数");
         }
         if (PlayerPtIndices.length != PlayerLvIndices.length) {
             hasError = true;
-            log("助战选择出错,玩家Pt控件数!=玩家Lv控件数");
+            log("助战选择出错,玩家Pt控件数!=玩家Lv/ATK/DEF/HP控件数");
         }
         if (AllPtIndices.length != AllLvIndices.length) {
             hashError = true;
-            log("助战选择出错,Pt控件总数!=Lv控件总数");
+            log("助战选择出错,Pt控件总数!=Lv/ATK/DEF/HP控件总数");
         }
 
         let AllHighPtIndices = AllPtIndices.filter((index) => parseInt(getContent(AllElements[index])) == HighestPt);
