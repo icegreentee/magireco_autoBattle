@@ -1961,7 +1961,7 @@ function algo_init() {
 
         let LvLikeIndices = [];
         AllElements.forEach(function (val, i) {
-            if (getContent(val).match(/^Lv\d*$/)) LvLikeIndices.push(i)
+            if (getContent(val).match(/^((Lv|ATK|DEF|HP)\d*)$/)) LvLikeIndices.push(i)
         });
         let RankLikeIndices = [];
         AllElements.forEach(function (val, i) {
