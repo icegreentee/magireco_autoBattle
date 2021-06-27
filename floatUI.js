@@ -4411,7 +4411,7 @@ function getWindowSize() {
 function getFragmentViewBounds(package_name) {
     if (package_name == null || package_name == "") {
         try {
-            throw new Error("getFragmentViewBounds: null/empty package_name"
+            throw new Error("getFragmentViewBounds: null/empty package_name");
         } catch (e) {
             logException(e);
         }
@@ -4429,7 +4429,7 @@ function getFragmentViewBounds(package_name) {
 function getFragmentViewSize(package_name) {
     if (package_name == null || package_name == "") {
         try {
-            throw new Error("getFragmentViewSize: null/empty package_name"
+            throw new Error("getFragmentViewSize: null/empty package_name");
         } catch (e) {
             logException(e);
         }
