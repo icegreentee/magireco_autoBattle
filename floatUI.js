@@ -1505,12 +1505,12 @@ function algo_init() {
             y = point.y;
         }
         // limit range
-        var sz = getWindowSize();
-        if (x >= sz.x) {
-            x = sz.x - 1;
+        var sz = getFragmentViewBounds();
+        if (x >= sz.right) {
+            x = sz.right - 1;
         }
-        if (y >= sz.y) {
-            y = sz.y - 1;
+        if (y >= sz.bottom) {
+            y = sz.bottom - 1;
         }
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
@@ -1567,18 +1567,18 @@ function algo_init() {
         y2 = points[1].y;
 
         // limit range
-        var sz = getWindowSize();
-        if (x1 >= sz.x) {
-            x1 = sz.x - 1;
+        var sz = getFragmentViewBounds();
+        if (x1 >= sz.right) {
+            x1 = sz.right - 1;
         }
-        if (y1 >= sz.y) {
-            y1 = sz.y - 1;
+        if (y1 >= sz.bottom) {
+            y1 = sz.bottom - 1;
         }
-        if (x2 >= sz.x) {
-            x2 = sz.x - 1;
+        if (x2 >= sz.right) {
+            x2 = sz.right - 1;
         }
-        if (y2 >= sz.y) {
-            y2 = sz.y - 1;
+        if (y2 >= sz.bottom) {
+            y2 = sz.bottom - 1;
         }
 
         // system version higher than Android 7.0
@@ -1773,7 +1773,7 @@ function algo_init() {
             element: null,
             title: "",
             close: {
-                x: getWindowSize().x - 1,
+                x: getFragmentViewBounds().right - 1,
                 y: 0
             }
         };
@@ -2326,6 +2326,10 @@ function algo_init() {
 
     var string = {};
     var last_alive_lang = null; //用于游戏闪退重启
+
+    function getFragmentViewBounds() {
+        return getFragmentViewBounds_(string.package_name);
+    }
 
     function detectGameLang() {
         let detectedLang = null;
@@ -4394,10 +4398,10 @@ function getWindowSize() {
     return pt;
 }
 
-function getFragmentViewBounds(package_name) {
+function getFragmentViewBounds_(package_name) {
     if (package_name == null || package_name == "") {
         try {
-            throw new Error("getFragmentViewBounds: null/empty package_name");
+            throw new Error("getFragmentViewBounds_: null/empty package_name");
         } catch (e) {
             logException(e);
         }
