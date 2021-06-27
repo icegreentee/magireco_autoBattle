@@ -2435,10 +2435,11 @@ function algo_init() {
         }
         log("detected_screen", detected_screen, "detected_gameoffset", detected_gameoffset);
 
-        detected_gamebounds = getFragmentViewBounds(string.package_name);
+        let element = selector().packageName(string.package_name).className("android.widget.EditText").algorithm("BFS").findOnce();
+        log("EditText bounds", element.bounds());
+        element = element.parent();
+        detected_gamebounds = element.bounds();
         log("detected_gamebounds", detected_gamebounds);
-        log("getFragmentViewSize()", getFragmentViewSize(string.package_name));
-        log("getWindowSize()", getWindowSize());
 
         //刘海屏
         //(1)假设发生画面裁切时，实际显示画面上下（或左右）被裁切的宽度一样（刘海总宽度的一半），
@@ -4406,37 +4407,6 @@ function getWindowSize() {
     var pt = new Point();
     wm.getDefaultDisplay().getSize(pt);
     return pt;
-}
-
-function getFragmentViewBounds(package_name) {
-    if (package_name == null || package_name == "") {
-        try {
-            throw new Error("getFragmentViewBounds: null/empty package_name");
-        } catch (e) {
-            logException(e);
-        }
-        let sz = getWindowSize();
-        return new android.graphics.Rect(0, 0, sz.x, sz.y);
-    }
-    return selector()
-           .packageName(package_name)
-           .className("android.widget.EditText")
-           .algorithm("BFS")
-           .findOnce()
-           .parent()
-           .bounds();
-}
-function getFragmentViewSize(package_name) {
-    if (package_name == null || package_name == "") {
-        try {
-            throw new Error("getFragmentViewSize: null/empty package_name");
-        } catch (e) {
-            logException(e);
-        }
-        return getWindowSize();
-    }
-    let bounds = getFragmentViewBounds(package_name);
-    return new android.graphics.Point(bounds.width(), bounds.height());
 }
 
 function killBackground(packageName) {
