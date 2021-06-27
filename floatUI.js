@@ -4409,6 +4409,15 @@ function getWindowSize() {
 }
 
 function getFragmentViewBounds(package_name) {
+    if (package_name == null || package_name == "") {
+        try {
+            throw new Error("getFragmentViewBounds: null/empty package_name"
+        } catch (e) {
+            logException(e);
+        }
+        let sz = getWindowSize();
+        return new android.graphics.Rect(0, 0, sz.x, sz.y);
+    }
     return selector()
            .packageName(package_name)
            .className("android.widget.EditText")
@@ -4418,8 +4427,16 @@ function getFragmentViewBounds(package_name) {
            .bounds();
 }
 function getFragmentViewSize(package_name) {
+    if (package_name == null || package_name == "") {
+        try {
+            throw new Error("getFragmentViewSize: null/empty package_name"
+        } catch (e) {
+            logException(e);
+        }
+        return getWindowSize();
+    }
     let bounds = getFragmentViewBounds(package_name);
-    return new Point(bounds.width(), bounds.height());
+    return new android.graphics.Point(bounds.width(), bounds.height());
 }
 
 function killBackground(packageName) {
