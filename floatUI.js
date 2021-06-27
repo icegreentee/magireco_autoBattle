@@ -4394,6 +4394,33 @@ function getWindowSize() {
     return pt;
 }
 
+function getFragmentViewBounds(package_name) {
+    if (package_name == null || package_name == "") {
+        try {
+            throw new Error("getFragmentViewBounds: null/empty package_name");
+        } catch (e) {
+            logException(e);
+        }
+        let sz = getWindowSize();
+        return new android.graphics.Rect(0, 0, sz.x, sz.y);
+    }
+    let bounds = null;
+    try {
+        bounds = selector()
+            .packageName(package_name)
+            .className("android.widget.EditText")
+            .algorithm("BFS")
+            .findOnce()
+            .parent()
+            .bounds();
+    } catch (e) {
+        logException(e);
+        let sz = getWindowSize();
+        return new android.graphics.Rect(0, 0, sz.x, sz.y);
+    }
+    return bounds;
+}
+
 function killBackground(packageName) {
     var am = context.getSystemService(context.ACTIVITY_SERVICE);
     am.killBackgroundProcesses(packageName);
