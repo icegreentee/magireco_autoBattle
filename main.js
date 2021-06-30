@@ -405,21 +405,30 @@ var floatIsActive = false;
 // 悬浮窗权限检查
 if (!$floaty.checkPermission()) {
     toastLog("没有悬浮窗权限\n申请中...");
+    let failed = false;
+    //这里的调用都不阻塞
     try {
         app.startActivity({
             packageName: "com.android.settings",
             className: "com.android.settings.Settings$AppDrawOverlaySettingsActivity",
             data: "package:" + context.getPackageName(),
         });
-    } catch (e) {logException(e);};
-    if (!$floaty.checkPermission()) {
-        toastLog("仍然没有悬浮窗权限\n再次申请...");
+    } catch (e) {
+        failed = true;
+        logException(e);
+    }
+    if (failed) {
+        failed = false;
+        toastLog("申请悬浮窗权限时出错\n再次申请...");
         try {
             $floaty.requestPermission();
-        } catch (e) {logException(e);};
+        } catch (e) {
+            failed = true;
+            logException(e);
+        }
     }
-    if (!$floaty.checkPermission()) {
-        toastLog("申请悬浮窗权限失败\n请到应用设置里手动授权");
+    if (failed) {
+        toastLog("申请悬浮窗权限时出错\n请到应用设置里手动授权");
     } else {
         toast("请重新启动脚本");
     }
