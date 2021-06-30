@@ -1495,6 +1495,7 @@ function algo_init() {
     }
 
     function click(x, y) {
+        //isGameDead和getFragmentViewBounds其实是在后面定义的
         if (isGameDead() == "crashed") {
             log("游戏已经闪退,放弃点击");
             return;
@@ -1506,8 +1507,14 @@ function algo_init() {
         }
         // limit range
         var sz = getFragmentViewBounds();
+        if (x < sz.left) {
+            x = sz.left;
+        }
         if (x >= sz.right) {
             x = sz.right - 1;
+        }
+        if (y < sz.top) {
+            y = sz.top;
         }
         if (y >= sz.bottom) {
             y = sz.bottom - 1;
@@ -1531,6 +1538,7 @@ function algo_init() {
     }
 
     function swipe(x1, y1, x2, y2, duration) {
+        //isGameDead和getFragmentViewBounds其实是在后面定义的
         if (isGameDead() == "crashed") {
             log("游戏已经闪退,放弃滑动");
             return;
@@ -1568,14 +1576,26 @@ function algo_init() {
 
         // limit range
         var sz = getFragmentViewBounds();
+        if (x1 < sz.left) {
+            x1 = sz.left;
+        }
         if (x1 >= sz.right) {
             x1 = sz.right - 1;
+        }
+        if (y1 < sz.top) {
+            y1 = sz.top;
         }
         if (y1 >= sz.bottom) {
             y1 = sz.bottom - 1;
         }
+        if (x2 < sz.left) {
+            x2 = sz.left;
+        }
         if (x2 >= sz.right) {
             x2 = sz.right - 1;
+        }
+        if (y2 < sz.top) {
+            y2 = sz.top;
         }
         if (y2 >= sz.bottom) {
             y2 = sz.bottom - 1;
@@ -1773,6 +1793,7 @@ function algo_init() {
             element: null,
             title: "",
             close: {
+                //getFragmentViewBounds其实是在后面定义的
                 x: getFragmentViewBounds().right - 1,
                 y: 0
             }
