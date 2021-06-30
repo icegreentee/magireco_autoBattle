@@ -407,6 +407,8 @@ if (!$floaty.checkPermission()) {
     toastLog("没有悬浮窗权限\n申请中...");
     let failed = false;
     //这里的调用都不阻塞
+    //也许$floaty.requestPermission出问题时未必会抛异常，但startActivity在MIUI上确证会抛异常
+    //所以先尝试startActivity，再尝试$floaty.requestPermission
     try {
         app.startActivity({
             packageName: "com.android.settings",
