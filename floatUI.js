@@ -2327,10 +2327,6 @@ function algo_init() {
     var string = {};
     var last_alive_lang = null; //用于游戏闪退重启
 
-    function getFragmentViewBounds() {
-        return getFragmentViewBounds_(string.package_name);
-    }
-
     function detectGameLang() {
         let detectedLang = null;
         for (detectedLang in strings) {
@@ -2402,6 +2398,34 @@ function algo_init() {
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
 
         return false;
+    }
+
+    function getFragmentViewBounds() {
+        if (string == null || string.package_name == null || string.package_name == "") {
+            try {
+                throw new Error("getFragmentViewBounds: null/empty string.package_name");
+            } catch (e) {
+                logException(e);
+            }
+            let sz = getWindowSize();
+            return new android.graphics.Rect(0, 0, sz.x, sz.y);
+        }
+        let bounds = null;
+        try {
+            bounds = selector()
+                .packageName(string.package_name)
+                .className("android.widget.EditText")
+                .algorithm("BFS")
+                .findOnce()
+                .parent()
+                .bounds();
+        } catch (e) {
+            logException(e);
+            log("getFragmentViewBounds出错,使用getWindowSize作为替代");
+            let sz = getWindowSize();
+            return new android.graphics.Rect(0, 0, sz.x, sz.y);
+        }
+        return bounds;
     }
 
     var screen = {width: 0, height: 0, type: "normal"};
@@ -4396,33 +4420,6 @@ function getWindowSize() {
     var pt = new Point();
     wm.getDefaultDisplay().getSize(pt);
     return pt;
-}
-
-function getFragmentViewBounds_(package_name) {
-    if (package_name == null || package_name == "") {
-        try {
-            throw new Error("getFragmentViewBounds_: null/empty package_name");
-        } catch (e) {
-            logException(e);
-        }
-        let sz = getWindowSize();
-        return new android.graphics.Rect(0, 0, sz.x, sz.y);
-    }
-    let bounds = null;
-    try {
-        bounds = selector()
-            .packageName(package_name)
-            .className("android.widget.EditText")
-            .algorithm("BFS")
-            .findOnce()
-            .parent()
-            .bounds();
-    } catch (e) {
-        logException(e);
-        let sz = getWindowSize();
-        return new android.graphics.Rect(0, 0, sz.x, sz.y);
-    }
-    return bounds;
 }
 
 function killBackground(packageName) {
