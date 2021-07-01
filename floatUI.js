@@ -2876,6 +2876,21 @@ function algo_init() {
             selector().depth(0).findOnce();//弹出申请开启无障碍服务的弹窗
         }
 
+        if ($settings.isEnabled("stable_mode")) {
+            toastLog("警告: 发现AutoJS的无障碍服务\"稳定模式\"被开启!\n\"稳定模式\"会干扰控件信息抓取!\n尝试关闭...");
+            $settings.setEnabled("stable_mode", false);
+            if (device.sdkInt >= 24) {
+                auto.service.disableSelf();
+                toastLog("为了关闭\"稳定模式\",已停用无障碍服务\n请重新启用无障碍服务后继续");
+            } else {
+                toastLog("为了关闭\"稳定模式\",\nAndroid 6.0或以下,请到系统设置里:\n先停用无障碍服务,再重新启用");
+            }
+            app.startActivity({
+                action: "android.settings.ACCESSIBILITY_SETTINGS"
+            });
+            stopThread();
+        }
+
         //检测区服
         if (detectGameLang() == null) {
             if (!dontStopOnError) {

@@ -375,7 +375,10 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
         if (device.sdkInt >= 24) {
             auto.service.disableSelf();
         } else {
-            toastLog("Android 6.0或以下请到系统设置里关闭无障碍服务");
+            toastLog("Android 6.0或以下请到系统设置里手动关闭无障碍服务");
+            app.startActivity({
+                action: "android.settings.ACCESSIBILITY_SETTINGS"
+            });
         }
     }
     ui.autoService.setChecked(auto.service != null)
