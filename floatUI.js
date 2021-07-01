@@ -293,24 +293,36 @@ var syncedReplaceCurrentTask = sync(function(taskItem) {
             lockUI(false);
         }
         log("关闭所有无主对话框...");
-        openedDialogsLock.lock();//先加锁，dismiss会等待解锁后再开始删
-        for (let key in openedDialogs) {
-            if (key != "openedDialogCount") {
-                try {openedDialogs[key].node.dialog.dismiss();} catch (e) {logException(e);};
+        try {
+            openedDialogsLock.lock();//先加锁，dismiss会等待解锁后再开始删
+            for (let key in openedDialogs) {
+                if (key != "openedDialogCount") {
+                    openedDialogs[key].node.dialog.dismiss();
+                }
             }
+        } catch (e) {
+            logException(e);
+            throw e;
+        } finally {
+            openedDialogsLock.unlock();
         }
-        openedDialogsLock.unlock();
         //等待dismiss删完，如果不等删完的话，下一次启动的脚本调用对话框又会死锁
         log("等待无主对话框全部清空...");
         while (true) {
             let remaining = 0;
-            openedDialogsLock.lock();
-            for (let key in openedDialogs) {
-                if (key != "openedDialogCount") {
-                    remaining++;
+            try {
+                openedDialogsLock.lock();
+                for (let key in openedDialogs) {
+                    if (key != "openedDialogCount") {
+                        remaining++;
+                    }
                 }
+            } catch (e) {
+                logException(e);
+                throw e;
+            } finally {
+                openedDialogsLock.unlock();
             }
-            openedDialogsLock.unlock();
             if (remaining == 0) break;
             sleep(100);
         }
@@ -371,11 +383,17 @@ floatUI.main = function () {
             thread = threads.currentThread();
             isSelf = true;
         }
-        //while循环也会阻塞执行，防止继续运行下去产生误操作
-        //为防止 isAlive() 不靠谱（虽然还没有这方面的迹象），停止自己的线程时用 isSelf 短路，直接死循环
-        while (isSelf || (thread != null && thread.isAlive())) {
-            try {thread.interrupt();} catch (e) {}
-            //因为可能在UI线程调用，所以不能sleep
+        if (ui.isUiThread()) {
+            if (isSelf) {
+                log("不能停止UI线程!");
+            } else threads.start(function () {
+                stopThread(thread);
+            });
+        } else {
+            while (isSelf || (thread != null && thread.isAlive())) {
+                try {thread.interrupt();} catch (e) {};
+                sleep(200);
+            }
         }
     }
 
@@ -2581,19 +2599,24 @@ function algo_init() {
 
         let count = openedDialogsNode.count;
 
-        openedDialogsLock.lock();
-        delete openedDialogs[""+count];
-        openedDialogsLock.unlock();
+        try {
+            openedDialogsLock.lock();
+            delete openedDialogs[""+count];
+        } catch (e) {
+            logException(e);
+            throw e;
+        } finally {
+            openedDialogsLock.unlock();
+        }
 
         openedDialogsNode.dialogResult.setAndNotify(result);
     }
     var dialogs = {
-        buildAndShow: function () {
+        buildAndShow: function () { let openedDialogsNode = {}; try {
             openedDialogsLock.lock();
 
             let count = ++openedDialogs.openedDialogCount;
-            openedDialogs[""+count] = {node: {}};
-            let openedDialogsNode = openedDialogs[""+count].node;
+            openedDialogs[""+count] = {node: openedDialogsNode};
             openedDialogsNode.count = count;
 
             var dialogType = arguments[0];
@@ -2676,13 +2699,13 @@ function algo_init() {
 
             openedDialogsNode.dialog = newDialog;
 
-            openedDialogsLock.unlock();
-
             newDialog.show();
-
-            let result = openedDialogsNode.dialogResult.blockedGet();
-            return result;
-        },
+        } catch (e) {
+            logException(e);
+            throw e;
+        } finally {
+            openedDialogsLock.unlock();
+        } return openedDialogsNode.dialogResult.blockedGet(); },
         alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
         select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
         confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
