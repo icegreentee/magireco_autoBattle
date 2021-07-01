@@ -528,10 +528,6 @@ for (let key of persistParamList) {
     syncValue(key, value);    //如果储存了超出取值范围之外的数据则会被listener重置
 }
 
-//绿药或红药，每次消耗1个
-//魔法石，每次碎5钻
-const drugCosts = [1, 1, 5, 1];
-
 function setDrugCheckboxListener(drugname) {
     ui[drugname].setOnCheckedChangeListener(function (widget, checked) {
         saveParamIfPersist(drugname, checked);
