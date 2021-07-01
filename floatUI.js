@@ -852,8 +852,21 @@ floatUI.main = function () {
             limit.cutoutParams = cutoutParams;
         }
     }
-    //脚本启动时检测一次
-    adjustCutoutParams();
+    //脚本启动时反复尝试检测,4秒后停止尝试
+    threads.start(function () {
+        //Android 8.1或以下没有刘海屏API,无法检测
+        if (device.sdkInt < 28) return;
+
+        cutoutParamsLock.lock();
+        var startTime = new Date().getTime();
+        do {
+            try {adjustCutoutParams();} catch (e) {logException(e);};
+            if (limit.cutoutParams != null && limit.cutoutParams.cutout != null) break;
+            sleep(500);
+        } while (new Date().getTime() < startTime + 4000);
+        cutoutParamsLock.unlock();
+        log("limit.cutoutParams", limit.cutoutParams);
+    });
 
     //使用Shizuku执行shell命令
     shizukuShell = function (shellcmd, logstring) {
@@ -1070,6 +1083,9 @@ var limit = {
     firstRequestPrivilege: true,
     privilege: null
 }
+
+var cutoutParamsLock = threads.lock();
+
 var clickSets = {
     ap: {
         x: 1000,
@@ -2816,8 +2832,11 @@ function algo_init() {
         if (device.sdkInt >= 28) {
             //Android 9或以上有原生的刘海屏API
             //处理转屏
-            if (limit.cutoutParams != null && limit.cutoutParams.cutout != null) {
-                let initialRotation = limit.cutoutParams.rotation;
+            cutoutParamsLock.lock();
+            var initialRotation = limit.cutoutParams != null ? limit.cutoutParams.rotation : null;
+            var initialCutout = limit.cutoutParams != null ? limit.cutoutParams.cutout : null;
+            cutoutParamsLock.unlock();
+            if (initialRotation != null && initialCutout != null) {
                 let display = context.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
                 let currentRotation = display.getRotation();
                 log("currentRotation", currentRotation, "initialRotation", initialRotation);
@@ -2831,7 +2850,7 @@ function algo_init() {
 
                     let safeInsets = {};
                     for (let key of ["Left", "Top", "Right", "Bottom"]) {
-                        safeInsets[key] = limit.cutoutParams.cutout["getSafeInset"+key]();
+                        safeInsets[key] = initialCutout["getSafeInset"+key]();
                     }
                     log("safeInsets before rotation", safeInsets);
 
