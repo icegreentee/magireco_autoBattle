@@ -1765,6 +1765,7 @@ function algo_init() {
     }
 
     function click(x, y) {
+        //isGameDead和getFragmentViewBounds其实是在后面定义的
         if (isGameDead() == "crashed") {
             log("游戏已经闪退,放弃点击");
             return;
@@ -1775,12 +1776,18 @@ function algo_init() {
             y = point.y;
         }
         // limit range
-        var sz = getWindowSize();
-        if (x >= sz.x) {
-            x = sz.x - 1;
+        var sz = getFragmentViewBounds();
+        if (x < sz.left) {
+            x = sz.left;
         }
-        if (y >= sz.y) {
-            y = sz.y - 1;
+        if (x >= sz.right) {
+            x = sz.right - 1;
+        }
+        if (y < sz.top) {
+            y = sz.top;
+        }
+        if (y >= sz.bottom) {
+            y = sz.bottom - 1;
         }
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
@@ -1801,6 +1808,7 @@ function algo_init() {
     }
 
     function swipe(x1, y1, x2, y2, duration) {
+        //isGameDead和getFragmentViewBounds其实是在后面定义的
         if (isGameDead() == "crashed") {
             log("游戏已经闪退,放弃滑动");
             return;
@@ -1837,18 +1845,30 @@ function algo_init() {
         y2 = points[1].y;
 
         // limit range
-        var sz = getWindowSize();
-        if (x1 >= sz.x) {
-            x1 = sz.x - 1;
+        var sz = getFragmentViewBounds();
+        if (x1 < sz.left) {
+            x1 = sz.left;
         }
-        if (y1 >= sz.y) {
-            y1 = sz.y - 1;
+        if (x1 >= sz.right) {
+            x1 = sz.right - 1;
         }
-        if (x2 >= sz.x) {
-            x2 = sz.x - 1;
+        if (y1 < sz.top) {
+            y1 = sz.top;
         }
-        if (y2 >= sz.y) {
-            y2 = sz.y - 1;
+        if (y1 >= sz.bottom) {
+            y1 = sz.bottom - 1;
+        }
+        if (x2 < sz.left) {
+            x2 = sz.left;
+        }
+        if (x2 >= sz.right) {
+            x2 = sz.right - 1;
+        }
+        if (y2 < sz.top) {
+            y2 = sz.top;
+        }
+        if (y2 >= sz.bottom) {
+            y2 = sz.bottom - 1;
         }
 
         // system version higher than Android 7.0
@@ -2043,7 +2063,8 @@ function algo_init() {
             element: null,
             title: "",
             close: {
-                x: getWindowSize().x - 1,
+                //getFragmentViewBounds其实是在后面定义的
+                x: getFragmentViewBounds().right - 1,
                 y: 0
             }
         };
@@ -2783,6 +2804,34 @@ function algo_init() {
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
 
         return false;
+    }
+
+    function getFragmentViewBounds() {
+        if (string == null || string.package_name == null || string.package_name == "") {
+            try {
+                throw new Error("getFragmentViewBounds: null/empty string.package_name");
+            } catch (e) {
+                logException(e);
+            }
+            let sz = getWindowSize();
+            return new android.graphics.Rect(0, 0, sz.x, sz.y);
+        }
+        let bounds = null;
+        try {
+            bounds = selector()
+                .packageName(string.package_name)
+                .className("android.widget.EditText")
+                .algorithm("BFS")
+                .findOnce()
+                .parent()
+                .bounds();
+        } catch (e) {
+            logException(e);
+            log("getFragmentViewBounds出错,使用getWindowSize作为替代");
+            let sz = getWindowSize();
+            return new android.graphics.Rect(0, 0, sz.x, sz.y);
+        }
+        return bounds;
     }
 
     var screen = {width: 0, height: 0, type: "normal"};
