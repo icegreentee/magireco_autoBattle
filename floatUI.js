@@ -158,6 +158,7 @@ var monitoredTask = null;
 var syncedReplaceCurrentTask = sync(function(runnable) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
+        try {openedDialogsLock.unlock();} catch (e) {logException(e);}//万一停止线程时正好刚刚加锁、还没来得及解锁
         toastLog("已停止之前的脚本");
     }
     if (monitoredTask != null && monitoredTask.isAlive()) {
@@ -173,14 +174,29 @@ var syncedReplaceCurrentTask = sync(function(runnable) {
             currentTask.join();
             lockUI(false);
         }
-        //关闭所有对话框
-        openedDialogsLock.lock();
+        log("关闭所有无主对话框...");
+        openedDialogsLock.lock();//先加锁，dismiss会等待解锁后再开始删
         for (let key in openedDialogs) {
             if (key != "openedDialogCount") {
                 try {openedDialogs[key].node.dialog.dismiss();} catch (e) {logException(e);};
             }
         }
         openedDialogsLock.unlock();
+        //等待dismiss删完，如果不等删完的话，下一次启动的脚本调用对话框又会死锁
+        log("等待无主对话框全部清空...");
+        while (true) {
+            let remaining = 0;
+            openedDialogsLock.lock();
+            for (let key in openedDialogs) {
+                if (key != "openedDialogCount") {
+                    remaining++;
+                }
+            }
+            openedDialogsLock.unlock();
+            if (remaining == 0) break;
+            sleep(100);
+        }
+        log("无主对话框已全部清空");
     });
     monitoredTask.waitFor();
 });
