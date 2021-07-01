@@ -2434,10 +2434,10 @@ function algo_init() {
                     dialogParams["negative"] = "取消";
                     dialogParams["content"] = content;
                     break;
-                case "rawInput":
                 case "rawInputWithContent":
-                    if (callback2 != null) dialogParams["negative"] = "取消";
                     if (content != null && content != "") dialogParams["content"] = content;
+                case "rawInput":
+                    if (callback2 != null) dialogParams["negative"] = "取消";
                     dialogParams["inputPrefill"] = prefill;
                     break;
             }
@@ -2470,8 +2470,8 @@ function algo_init() {
                         deleteDialogAndSetResult(openedDialogsNode, false);
                     });
                     break;
-                case "rawInput":
                 case "rawInputWithContent":
+                case "rawInput":
                     newDialog = newDialog.on("input", (input) => {
                         if (callback1 != null) callback1();
                         //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
