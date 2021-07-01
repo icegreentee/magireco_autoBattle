@@ -2410,9 +2410,9 @@ function algo_init() {
 
         let count = openedDialogsNode.count;
         openedDialogsLock.lock();
-        openedDialogsNode.dialogResult.setAndNotify(result);
         delete openedDialogs[""+count];
         openedDialogsLock.unlock();
+        openedDialogsNode.dialogResult.setAndNotify(result);
     }
     var dialogs = {
         buildAndShow: function () {
