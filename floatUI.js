@@ -74,8 +74,12 @@ var getEUID = () => { };
 var requestShellPrivilege = () => { };
 var requestShellPrivilegeThread = null;
 // 嗑药数量限制和统计
+//绿药或红药，每次消耗1个
+//魔法石，每次碎5钻
+const drugCosts = [1, 1, 5, 1];
 var updateDrugLimit = () => { };
 var updateDrugConsumingStats = () => { };
+var isDrugEnough = () => { };
 // 周回数统计
 var updateCycleCount = () => { };
 
@@ -1040,6 +1044,33 @@ floatUI.main = function () {
             //实际上嗑药数量设置会不断扣减，这里没有更新显示
             ui["running_stats_status_text"].setText(getStatusText());
         });
+    }
+
+    isDrugEnough = function (index, count) {
+        if (index < 0 || index > 3) throw new Error("index out of range");
+
+        //从游戏界面上读取剩余回复药个数后，作为count传入进来
+        let remainingnum = parseInt(count);
+        let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
+        log(
+        "\n第"+(index+1)+"种回复药"
+        +"\n"+(limit["drug"+(index+1)]?"已启用":"已禁用")
+        +"\n剩余:    "+remainingnum+"个"
+        +"\n个数限制:"+limitnum+"个"
+        );
+
+        //如果未启用则直接返回false
+        if (!limit["drug"+(index+1)]) return false;
+
+        //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
+        if (limitnum < drugCosts[index]) return false;
+
+        //BP蓝药数量暂时还不能检测，当作数量足够
+        if (index == 3) {
+            return true;
+        } else if (remainingnum < drugCosts[index]) return false;
+
+        return true;
     }
 
     updateCycleCount = function () {
@@ -2923,37 +2954,6 @@ function algo_init() {
             gamebounds = detected_screen_params.gamebounds;
             gameoffset = detected_screen_params.gameoffset;
         }
-    }
-
-    //绿药或红药，每次消耗1个
-    //魔法石，每次碎5钻
-    const drugCosts = [1, 1, 5, 1];
-
-    function isDrugEnough(index, count) {
-        if (index < 0 || index > 3) throw new Error("index out of range");
-
-        //从游戏界面上读取剩余回复药个数后，作为count传入进来
-        let remainingnum = parseInt(count);
-        let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
-        log(
-        "\n第"+(index+1)+"种回复药"
-        +"\n"+(limit["drug"+(index+1)]?"已启用":"已禁用")
-        +"\n剩余:    "+remainingnum+"个"
-        +"\n个数限制:"+limitnum+"个"
-        );
-
-        //如果未启用则直接返回false
-        if (!limit["drug"+(index+1)]) return false;
-
-        //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
-        if (limitnum < drugCosts[index]) return false;
-
-        //BP蓝药数量暂时还不能检测，当作数量足够
-        if (index == 3) {
-            return true;
-        } else if (remainingnum < drugCosts[index]) return false;
-
-        return true;
     }
 
     function refillAP() {
