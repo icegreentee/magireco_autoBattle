@@ -25,8 +25,10 @@ ui.layout(
         <appbar id="appbar" w="*">
             <toolbar id="toolbar" bg="#ff4fb3ff" title="{{appName}}" />
         </appbar>
-        <vertical id="running_stats" visibility="gone" w="fill_parent" h="fill_parent" gravity="center">
-            <text id="running_stats_text" text="脚本运行中" textColor="#000000" textSize="20" w="wrap_content" h="wrap_content"/>
+        <vertical id="running_stats" visibility="gone" w="fill_parent" h="fill_parent" layout_below="appbar" gravity="center_horizontal">
+            <text id="running_stats_title" text="脚本运行中" textColor="#000000" textSize="20" w="wrap_content" h="wrap_content"/>
+            <text id="running_stats_status_text" marginLeft="5" layout_gravity="center_vertical" text="" w="wrap_content" h="wrap_content"/>
+            <text id="running_stats_params_text" marginLeft="5" layout_gravity="center_vertical" text="" w="wrap_content" h="wrap_content"/>
         </vertical>
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout id="swipe" layout_below="appbar">
             <ScrollView id="content">
