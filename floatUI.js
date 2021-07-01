@@ -1057,7 +1057,7 @@ floatUI.main = function () {
         if (currentTaskDrugConsumed["drug"+(index+1)] == null) {
             currentTaskDrugConsumed["drug"+(index+1)] = 0;
         }
-        currentTaskDrugConsumed["drug"+(index+1)]++;
+        currentTaskDrugConsumed["drug"+(index+1)] += drugCosts[index];
         log("drug"+(index+1)+"已经磕了"+currentTaskDrugConsumed["drug"+(index+1)]+"个");
         ui.run(function () {
             //实际上嗑药数量设置会不断扣减，这里没有更新显示
