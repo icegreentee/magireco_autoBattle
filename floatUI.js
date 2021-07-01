@@ -2399,7 +2399,7 @@ function algo_init() {
         openedDialogsLock.unlock();
     }
     var dialogs = {
-        buildAndShow: function (dialogType, title, content, callback1, callback2) {
+        buildAndShow: function () {
             openedDialogsLock.lock();
 
             let count = ++openedDialogs.openedDialogCount;
@@ -2407,11 +2407,16 @@ function algo_init() {
             let openedDialogsNode = openedDialogs[""+count].node;
             openedDialogsNode.count = count;
 
+            var dialogType = arguments[0];
+            var title = arguments[1];
+            var content = arguments[2];
             var prefill = content;
+            var callback1 = arguments[3];
+            var callback2 = arguments[4];
             if (dialogType == "rawInputWithContent") {
-                callback2 = arguments[5];
-                callback1 = arguments[4];
                 prefill = arguments[3];
+                callback1 = arguments[4];
+                callback2 = arguments[5];
             }
 
             openedDialogsNode.dialogResult = threads.disposable();
