@@ -2959,7 +2959,7 @@ function algo_init() {
         }
         var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
         toastLog("强关游戏...");
-        if (limit.privilege) {
+        if (limit.privilege && limit.rootForceStop) {
             log("使用am force-stop命令...");
             while (true) {
                 privShell("am force-stop "+name);
