@@ -138,11 +138,8 @@ var openedDialogsLock = threads.lock();
 
 //运行脚本时隐藏UI控件，防止误触
 var menuItems = [];
-var menuItemsLock = threads.lock();
 function lockUI(isLocked) {
     ui.run(() => {
-        menuItemsLock.lock();
-
         //隐藏或显示设置界面
         ui["swipe"].setVisibility(isLocked?View.GONE:View.VISIBLE);
         ui["running_stats"].setVisibility(isLocked?View.VISIBLE:View.GONE);
@@ -154,17 +151,17 @@ function lockUI(isLocked) {
             menu.clear();
         } else {
             menu.clear();
-            for (let i=0; i<menuItems.length; i++)
-                menu.add(menuItems[i].getTitle())
-                    .setIcon(menuItems[i].getIcon())
+            while (menuItems.length > 0) {
+                menu.add(menuItems[0].getTitle())
+                    .setIcon(menuItems[0].getIcon())
                     .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+                menuItems.splice(0, 1);
+            }
         }
 
         //更新状态监控文字
         ui["running_stats_params_text"].setText(getParamsText());//实际上嗑药数量设置会不断扣减，这里没有更新显示
         ui["running_stats_status_text"].setText(getStatusText());
-
-        menuItemsLock.unlock();
     });
 }
 function getUIContent(key) {
