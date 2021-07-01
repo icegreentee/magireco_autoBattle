@@ -44,9 +44,10 @@ function logException(e) {
 }
 
 var origFunc = {
-    click: function () {click.apply(this, arguments)},
-    swipe: function () {swipe.apply(this, arguments)},
-    press: function () {press.apply(this, arguments)},
+    click: function () {return click.apply(this, arguments)},
+    swipe: function () {return swipe.apply(this, arguments)},
+    press: function () {return press.apply(this, arguments)},
+    buildDialog: function() {return dialogs.build.apply(this, arguments)},
 }
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -72,6 +73,12 @@ var normalShell = () => { };
 var getEUID = () => { };
 var requestShellPrivilege = () => { };
 var requestShellPrivilegeThread = null;
+// 嗑药数量限制和统计
+var updateDrugLimit = () => { };
+var updateDrugConsumingStats = () => { };
+// 周回数统计
+var updateCycleCount = () => { };
+
 // available script list
 floatUI.scripts = [
     {
@@ -120,6 +127,210 @@ floatUI.scripts = [
     }
 ];
 
+//当前正在运行的线程
+var currentTask = null;
+var currentTaskName = "未运行任何脚本";
+var currentTaskCycles = 0;
+var currentTaskDrugConsumed = {};
+//被打开的所有对话框（用于在线程退出时dismiss）
+var openedDialogs = {openedDialogCount: 0};
+var openedDialogsLock = threads.lock();
+
+//运行脚本时隐藏UI控件，防止误触
+var menuItems = [];
+var menuItemsLock = threads.lock();
+function lockUI(isLocked) {
+    ui.run(() => {
+        menuItemsLock.lock();
+
+        //隐藏或显示设置界面
+        ui["swipe"].setVisibility(isLocked?View.GONE:View.VISIBLE);
+        ui["running_stats"].setVisibility(isLocked?View.VISIBLE:View.GONE);
+        activity.setSupportActionBar(isLocked?null:ui.toolbar);
+        let menu = ui["toolbar"].getMenu();
+        menu.close();
+        if (isLocked) {
+            for (let i=0; i<menu.size(); i++) menuItems.push(menu.getItem(i));
+            menu.clear();
+        } else {
+            menu.clear();
+            for (let i=0; i<menuItems.length; i++)
+                menu.add(menuItems[i].getTitle())
+                    .setIcon(menuItems[i].getIcon())
+                    .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+        }
+
+        //更新状态监控文字
+        ui["running_stats_params_text"].setText(getParamsText());//实际上嗑药数量设置会不断扣减，这里没有更新显示
+        ui["running_stats_status_text"].setText(getStatusText());
+
+        menuItemsLock.unlock();
+    });
+}
+function getUIContent(key) {
+    switch (ui[key].getClass().getSimpleName()) {
+        case "JsEditText":
+            return ui[key].getText() + "";
+        case "Switch":
+        case "CheckBox":
+            return ui[key].isChecked()?"已启用":"已停用";
+        case "JsSpinner":
+            return ui[key].getSelectedItemPosition();
+        case "RadioGroup": {
+            let name = "";
+            let id = ui[key].getCheckedRadioButtonId();
+            if (id >= 0)
+                name = idmap[ui[key].getCheckedRadioButtonId()];
+            return name;
+        }
+    }
+}
+function getParamsText() {
+    if (!ui.isUiThread()) throw new Error("getParamsText not in UI thread");
+    let result = "";
+
+    let drugnumarr = [];
+    for (let i=1; i<=4; i++) {
+        let drugName = ui["drug"+i].text;
+        let drugNum = ui["drug"+i+"num"].getText();
+        let ischecked = ui["drug"+i].isChecked();
+        drugnumarr.push("<font color='#"+(ischecked?"000000'>":"808080'>")+" "+drugName+" "+(ischecked?"已启用":"已停用")+" 个数限制"+drugNum+"</font>");
+    }
+    result += drugnumarr.join("<br>");
+
+    const globalTaskParams = {
+        justNPC: "只使用NPC",
+        autoReconnect: "防断线模式",
+    };
+    const defTaskParams = {
+        useAuto: "优先使用官方自动续战",
+        apmul: "嗑药至AP上限倍数",
+        breakAutoCycleDuration: "每隔多少秒打断官方自动续战",
+        forceStopTimeout: "假死检测超时秒数",
+        rootForceStop: "优先使用root或adb权限杀进程",
+    };
+    let bakTaskParams = {
+        battleNo: "活动周回关卡选择",
+    };
+    let extraTaskParams = {};
+    switch (currentTaskName) {
+        case "副本周回（剧情，活动通用）":
+            extraTaskParams = defTaskParams;
+            break;
+        case "副本周回2（备用可选）":
+        case "活动周回2（备用可选）":
+            extraTaskParams = bakTaskParams;
+            break;
+    }
+    let taskparamarr = [];
+    for (let taskParams of [globalTaskParams, extraTaskParams]) {
+        for (let key in taskParams) {
+            let name = taskParams[key];
+            let content = getUIContent(key);
+            let isdisabled = (content=="" || content=="已停用");
+            content = content==""?ui[key].hint:content;
+            taskparamarr.push("<font color='#"+(!isdisabled?"000000'>":"808080'>")+" "+name+" "+content+"</font>");
+        }
+    }
+    result += taskparamarr.join("<br>");
+
+    return android.text.Html.fromHtml(result);
+}
+function getStatusText() {
+    if (!ui.isUiThread()) throw new Error("getStatusText not in UI thread");
+    let result = "";
+
+    switch (currentTaskName) {
+        case "副本周回（剧情，活动通用）":
+        case "镜层周回":
+            break;
+        default:
+            //其他脚本暂不支持统计数字
+            return android.text.Html.fromHtml(result);;
+    }
+
+    result += "<font color='#000000'>";
+
+    result += "已运行周回数(可能不准确): "+currentTaskCycles;
+    result += "<br>"
+    result += "已磕药数: ";
+    const drugnames = {
+        drug1: "绿药",
+        drug2: "红药",
+        drug3: "魔法石",
+        drug4: "蓝药",
+    };
+    let consumedarr = [];
+    for (let key in drugnames) {
+        let consumed = currentTaskDrugConsumed[key];
+        consumed = consumed==null ? 0 : consumed;
+        consumedarr.push(drugnames[key]+":"+consumed+"个");
+    }
+    result += consumedarr.join("  ");
+
+    result += "</font>";
+
+    return android.text.Html.fromHtml(result);
+}
+
+//监视当前任务的线程
+var monitoredTask = null;
+
+var syncedReplaceCurrentTask = sync(function(taskItem) {
+    if (currentTask != null && currentTask.isAlive()) {
+        stopThread(currentTask);
+        toastLog("已停止之前的脚本");
+    }
+    if (monitoredTask != null && monitoredTask.isAlive()) {
+        monitoredTask.join();
+    }
+    monitoredTask = threads.start(function () {
+        try {
+            currentTaskName = taskItem.name;
+            currentTask = threads.start(taskItem.fn);
+            currentTask.waitFor();
+        } catch (e) {logException(e);}
+        if (currentTask != null && currentTask.isAlive()) {
+            lockUI(true);
+            currentTask.join();
+            lockUI(false);
+        }
+        log("关闭所有无主对话框...");
+        openedDialogsLock.lock();//先加锁，dismiss会等待解锁后再开始删
+        for (let key in openedDialogs) {
+            if (key != "openedDialogCount") {
+                try {openedDialogs[key].node.dialog.dismiss();} catch (e) {logException(e);};
+            }
+        }
+        openedDialogsLock.unlock();
+        //等待dismiss删完，如果不等删完的话，下一次启动的脚本调用对话框又会死锁
+        log("等待无主对话框全部清空...");
+        while (true) {
+            let remaining = 0;
+            openedDialogsLock.lock();
+            for (let key in openedDialogs) {
+                if (key != "openedDialogCount") {
+                    remaining++;
+                }
+            }
+            openedDialogsLock.unlock();
+            if (remaining == 0) break;
+            sleep(100);
+        }
+        log("无主对话框已全部清空");
+    });
+    monitoredTask.waitFor();
+});
+//syncedReplaceCurrentTask函数也需要新开一个线程来执行，
+//如果在UI线程直接调用，第二次调用就会卡在monitoredTask.join()这里
+function replaceCurrentTask(taskItem) {
+    threads.start(function () {syncedReplaceCurrentTask(taskItem);}).waitFor();
+}
+function replaceSelfCurrentTask(taskItem) {
+    replaceCurrentTask(taskItem);
+    stopThread();
+}
+
 floatUI.main = function () {
     // space between buttons compare to button size
     var space_factor = 1.5;
@@ -127,8 +338,6 @@ floatUI.main = function () {
     var logo_factor = 7.0 / 11;
     // button size in dp
     var button_size = 44;
-    // current running thread
-    var currentTask = null;
 
     // submenu definition
     var menu_list = [
@@ -211,12 +420,8 @@ floatUI.main = function () {
     }
 
     function defaultWrap() {
-        if (currentTask && currentTask.isAlive()) {
-            toastLog("停止之前的脚本");
-            stopThread(currentTask);
-        }
         toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
-        currentTask = threads.start(floatUI.scripts[limit.default].fn);
+        replaceCurrentTask(floatUI.scripts[limit.default]);
     }
 
     function taskWrap() {
@@ -227,7 +432,7 @@ floatUI.main = function () {
 
     function cancelWrap() {
         toastLog("停止脚本");
-        if (currentTask && currentTask.isAlive()) stopThread(currentTask);
+        replaceCurrentTask({name:"未运行任何脚本", fn: function () {}});
     }
 
     // get to main activity
@@ -281,12 +486,8 @@ floatUI.main = function () {
         task_popup.container.setVisibility(View.INVISIBLE);
         task_popup.setTouchable(false);
         if (item.fn) {
-            if (currentTask && currentTask.isAlive()) {
-                toastLog("停止之前的脚本");
-                stopThread(currentTask);
-            }
             toastLog("执行 " + item.name + " 脚本");
-            currentTask = threads.start(item.fn);
+            replaceCurrentTask(item);
         }
     });
     task_popup.close_button.click(() => {
@@ -785,6 +986,55 @@ floatUI.main = function () {
         }
     }
 
+    //嗑药后，更新设置中的嗑药个数限制
+    updateDrugLimit = function (index) {
+        if (index < 0 || index > 3) throw new Error("index out of range");
+        let drugnum = parseInt(limit["drug"+(index+1)+"num"]);
+        //parseInt("") == NaN，NaN视为无限大处理（所以不需要更新数值）
+        if (!isNaN(drugnum)) {
+            if (drugnum >= drugCosts[index]) {
+                drugnum -= drugCosts[index];
+                limit["drug"+(index+1)+"num"] = ""+drugnum;
+                if (drugnum < drugCosts[index]) {
+                    limit["drug"+(index+1)] = false;
+                }
+                ui.run(() => {
+                    //注意,这里会受到main.js里注册的listener影响
+                    ui["drug"+(index+1)+"num"].setText(limit["drug"+(index+1)+"num"]);
+                    let drugcheckbox = ui["drug"+(index+1)];
+                    let newvalue = limit["drug"+(index+1)];
+                    if (drugcheckbox.isChecked() != newvalue) drugcheckbox.setChecked(newvalue);
+                });
+            } else {
+                //正常情况下应该首先是药的数量还够，才会继续嗑药，然后才会更新嗑药个数限制，所以不应该走到这里
+                log("limit.drug"+(index+1)+"num", limit["drug"+(index+1)+"num"]);
+                log("index", index);
+                throw new Error("limit.drug"+(index+1)+"num exhausted");
+            }
+        }
+    }
+    //嗑药后，更新嗑药个数统计
+    updateDrugConsumingStats = function (index) {
+        if (index < 0 || index > 3) throw new Error("index out of range");
+        if (currentTaskDrugConsumed["drug"+(index+1)] == null) {
+            currentTaskDrugConsumed["drug"+(index+1)] = 0;
+        }
+        currentTaskDrugConsumed["drug"+(index+1)]++;
+        log("drug"+(index+1)+"已经磕了"+currentTaskDrugConsumed["drug"+(index+1)]+"个");
+        ui.run(function () {
+            //实际上嗑药数量设置会不断扣减，这里没有更新显示
+            ui["running_stats_status_text"].setText(getStatusText());
+        });
+    }
+
+    updateCycleCount = function () {
+        currentTaskCycles++;
+        log("周回数增加到", currentTaskCycles);
+        ui.run(function () {
+            ui["running_stats_status_text"].setText(getStatusText());
+        });
+    }
+
 };
 // ------------主要逻辑--------------------
 var langNow = "zh"
@@ -1148,8 +1398,7 @@ function jingMain() {
             click(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                let count = parseInt(limit.drug4num);
-                if (limit.drug4 && (isNaN(count) || count > 0)) {
+                if (isDrugEnough(3)) {
                     while (!id("BpCureWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)
@@ -1162,7 +1411,12 @@ function jingMain() {
                         screenutilClick(clickSets.bphuiok)
                         sleep(1500)
                     }
-                    limit.drug4num = '' + (count - 1);
+
+                    //更新嗑药个数限制数值，减去用掉的数量
+                    updateDrugLimit(3);
+
+                    //更新嗑药个数统计
+                    updateDrugConsumingStats(3);
                 } else {
                     screenutilClick(clickSets.bpclose)
                     log("jjc结束")
@@ -2324,6 +2578,121 @@ function algo_init() {
         ],
     };
 
+    function deleteDialogAndSetResult(openedDialogsNode, result) {
+        //调用origFunc.buildDialog时貌似又会触发一次dismiss，然后造成openedDialogsLock死锁，所以这里return来避免这个死锁
+        if (openedDialogsNode.alreadyDeleted.getAndIncrement() != 0) return;
+
+        let count = openedDialogsNode.count;
+
+        openedDialogsLock.lock();
+        delete openedDialogs[""+count];
+        openedDialogsLock.unlock();
+
+        openedDialogsNode.dialogResult.setAndNotify(result);
+    }
+    var dialogs = {
+        buildAndShow: function () {
+            openedDialogsLock.lock();
+
+            let count = ++openedDialogs.openedDialogCount;
+            openedDialogs[""+count] = {node: {}};
+            let openedDialogsNode = openedDialogs[""+count].node;
+            openedDialogsNode.count = count;
+
+            var dialogType = arguments[0];
+            var title = arguments[1];
+            var content = arguments[2];
+            var prefill = content;
+            var callback1 = arguments[3];
+            var callback2 = arguments[4];
+            if (dialogType == "rawInputWithContent") {
+                prefill = arguments[3];
+                callback1 = arguments[4];
+                callback2 = arguments[5];
+            }
+
+            openedDialogsNode.dialogResult = threads.disposable();
+
+            let dialogParams = {title: title, positive: "确定"};
+            switch (dialogType) {
+                case "alert":
+                    dialogParams["content"] = content;
+                    break;
+                case "select":
+                    if (callback2 != null) dialogParams["negative"] = "取消";
+                    dialogParams["items"] = content;
+                    break;
+                case "confirm":
+                    dialogParams["negative"] = "取消";
+                    dialogParams["content"] = content;
+                    break;
+                case "rawInputWithContent":
+                    if (content != null && content != "") dialogParams["content"] = content;
+                case "rawInput":
+                    if (callback2 != null) dialogParams["negative"] = "取消";
+                    dialogParams["inputPrefill"] = prefill;
+                    break;
+            }
+
+            let newDialog = origFunc.buildDialog(dialogParams);
+
+            openedDialogsNode.alreadyDeleted = threads.atomic(0);
+            newDialog = newDialog.on("dismiss", () => {
+                //dismiss应该在positive/negative/input之后，所以应该不会有总是传回null的问题
+                //其中，positive/input之后应该不会继续触发dismiss，只有negative才会
+                deleteDialogAndSetResult(openedDialogsNode, null);
+            });
+
+            if (dialogType != "rawInput" && dialogType != "rawInputWithContent") {
+                newDialog = newDialog.on("positive", () => {
+                    if (callback1 != null) callback1();
+                    //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                    deleteDialogAndSetResult(openedDialogsNode, true);
+                });
+            }
+
+            switch (dialogType) {
+                case "alert":
+                    break;
+                case "select":
+                case "confirm":
+                    newDialog = newDialog.on("negative", () => {
+                        if (callback2 != null) callback2();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, false);
+                    });
+                    break;
+                case "rawInputWithContent":
+                case "rawInput":
+                    newDialog = newDialog.on("input", (input) => {
+                        if (callback1 != null) callback1();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, input);
+                    });
+                    newDialog = newDialog.on("negative", () => {
+                        if (callback2 != null) callback2();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, null);
+                    });
+                    break;
+            }
+
+            openedDialogsNode.dialog = newDialog;
+
+            openedDialogsLock.unlock();
+
+            newDialog.show();
+
+            let result = openedDialogsNode.dialogResult.blockedGet();
+            return result;
+        },
+        alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
+        select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
+        confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
+        rawInput: function(title, prefill, callback1, callback2) {return this.buildAndShow("rawInput", title, prefill, callback1, callback2)},
+        rawInputWithContent: function(title, content, prefill, callback1, callback2) {return this.buildAndShow("rawInputWithContent", title, content, prefill, callback1, callback2)},
+    };
+
     var string = {};
     var last_alive_lang = null; //用于游戏闪退重启
 
@@ -2542,10 +2911,10 @@ function algo_init() {
 
     //绿药或红药，每次消耗1个
     //魔法石，每次碎5钻
-    const drugCosts = [1, 1, 5];
+    const drugCosts = [1, 1, 5, 1];
 
     function isDrugEnough(index, count) {
-        if (index < 0 || index > 2) throw new Error("index out of range");
+        if (index < 0 || index > 3) throw new Error("index out of range");
 
         //从游戏界面上读取剩余回复药个数后，作为count传入进来
         let remainingnum = parseInt(count);
@@ -2562,36 +2931,13 @@ function algo_init() {
 
         //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
         if (limitnum < drugCosts[index]) return false;
-        if (remainingnum < drugCosts[index]) return false;
-        return true;
-    }
 
-    //嗑药后，更新设置中的嗑药个数限制
-    function updateDrugLimit(index) {
-        if (index < 0 || index > 2) throw new Error("index out of range");
-        let drugnum = parseInt(limit["drug"+(index+1)+"num"]);
-        //parseInt("") == NaN，NaN视为无限大处理（所以不需要更新数值）
-        if (!isNaN(drugnum)) {
-            if (drugnum >= drugCosts[index]) {
-                drugnum -= drugCosts[index];
-                limit["drug"+(index+1)+"num"] = ""+drugnum;
-                if (drugnum < drugCosts[index]) {
-                    limit["drug"+(index+1)] = false;
-                }
-                ui.run(() => {
-                    //注意,这里会受到main.js里注册的listener影响
-                    ui["drug"+(index+1)+"num"].setText(limit["drug"+(index+1)+"num"]);
-                    let drugcheckbox = ui["drug"+(index+1)];
-                    let newvalue = limit["drug"+(index+1)];
-                    if (drugcheckbox.isChecked() != newvalue) drugcheckbox.setChecked(newvalue);
-                });
-            } else {
-                //正常情况下应该首先是药的数量还够，才会继续嗑药，然后才会更新嗑药个数限制，所以不应该走到这里
-                log("limit.drug"+(index+1)+"num", limit["drug"+(index+1)+"num"]);
-                log("index", index);
-                throw new Error("limit.drug"+(index+1)+"num exhausted");
-            }
-        }
+        //BP蓝药数量暂时还不能检测，当作数量足够
+        if (index == 3) {
+            return true;
+        } else if (remainingnum < drugCosts[index]) return false;
+
+        return true;
     }
 
     function refillAP() {
@@ -2723,6 +3069,9 @@ function algo_init() {
 
                         //更新嗑药个数限制数值，减去用掉的数量
                         updateDrugLimit(i);
+
+                        //更新嗑药个数统计
+                        updateDrugConsumingStats(i);
 
                         break; //防止一次连续磕到三种不同的药
                     } else {
@@ -3651,17 +4000,8 @@ function algo_init() {
                 activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
                 toast("内容已复制到剪贴板");
             });
-            dialogs.build({
-                title: "导出选关动作",
-                content: "您可以 全选=>复制 以下内容，然后在别处粘贴保存。",
-                inputPrefill: lastOpListStringified
-            }).on("dismiss", () => {
-                dialogs.build({
-                    title: "提示",
-                    content: "导出完成！\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。",
-                    positive: "确定"
-                }).show();
-            }).show();
+            dialogs.rawInputWithContent("导出选关动作", "您可以 全选=>复制 以下内容，然后在别处粘贴保存。", lastOpListStringified);
+            dialogs.alert("提示", "导出完成！\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。");
         } else {
             toastLog("没有录下来的动作可供导出");
         }
@@ -3676,17 +4016,20 @@ function algo_init() {
 
         initialize(); //如果游戏不在前台则无法检验导入进来的动作录制数据
 
-        dialogs.build({
-            title: "导入选关动作",
-            content: "您可以把之前录制并保存下来的动作重新导入进来。",
-            inputPrefill: "",
-            positive: "确定",
-            negative: "取消"
-        }).on("input", (op_list_string) => {
+        let input = dialogs.rawInputWithContent(
+            "导入选关动作",
+            "您可以把之前录制并保存下来的动作重新导入进来。",
+            "",
+            function () {},
+            function () {
+                toastLog("取消导入动作录制数据");
+            }
+        );
+        if (input != null) {
             log("确定导入动作录制数据");
             let importedOpList = null;
             try {
-                importedOpList = JSON.parse(op_list_string);
+                importedOpList = JSON.parse(input);
             } catch (e) {
                 logException(e);
                 importedOpList = null;
@@ -3701,25 +4044,20 @@ function algo_init() {
                     toastLog("导入失败\n动作录制数据无效");
                 }
             }
-        }).on("negative", (dialog) => {
-            toastLog("取消导入动作录制数据");
-        }).show();
+        }
     }
 
     function clearOpList() {
-        dialogs.build({
-            title: "清除选关动作录制数据",
-            content: "确定要清除么？",
-            positive: "确定",
-            negative: "取消"
-        }).on("positive", () => {
+        dialogs.confirm("清除选关动作录制数据", "确定要清除么？", () => {
             lastOpList = null;
             if (!files.remove(savedLastOpListPath)) {
                 toastLog("删除动作录制数据文件失败");
                 return;
             }
             toastLog("已清除选关动作数据");
-        }).show();
+        }, () => {
+            toastLog("未清除选关动作数据");
+        });
     }
 
     var is_support_picking_tested = false;
@@ -3875,9 +4213,7 @@ function algo_init() {
                 "安装这个版本以来还没有测试过助战自动选择是否可以正常工作。"
                 +"\n要测试吗？"))
             {
-                currentTask = threads.start(testSupportPicking);
-                toastLog("已停止当前脚本");
-                stopThread();
+                replaceSelfCurrentTask(floatUI.scripts.find((val) => val.name == "测试助战自动选择"));
                 //测试完再写入文件，来记录是否曾经测试过
             } else {
                 files.create(supportPickingTestRecordPath);
@@ -3932,6 +4268,10 @@ function algo_init() {
         var stuckatreward = false;
         var rewardtime = null;
         */
+
+        //统计周回数，开始前先归零
+        currentTaskCycles = 0;
+
         while (true) {
             //首先，检测游戏是否闪退或掉线
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
@@ -3953,7 +4293,14 @@ function algo_init() {
                     }
                 }
             }
+
+            //统计周回数(可能不准确)
+            if (state != last_state && last_state == STATE_BATTLE) {
+                updateCycleCount();
+            }
+
             last_state = state;
+
             //打断官方自动周回的计时点
             switch(state) {
                 case STATE_BATTLE:
