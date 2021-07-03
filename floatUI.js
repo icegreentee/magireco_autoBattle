@@ -136,6 +136,12 @@ var currentTask = null;
 var currentTaskName = "未运行任何脚本";
 var currentTaskCycles = 0;
 var currentTaskDrugConsumed = {};
+const TASK_STOPPED = 0;
+const TASK_RUNNING = 1;
+const TASK_PAUSING = 2;
+const TASK_PAUSED = 3;
+const TASK_RESUMING = 4;
+var isCurrentTaskPaused = threads.atomic(TASK_STOPPED);
 //被打开的所有对话框（用于在线程退出时dismiss）
 var openedDialogs = {openedDialogCount: 0};
 var openedDialogsLock = threads.lock();
@@ -280,6 +286,7 @@ var monitoredTask = null;
 var syncedReplaceCurrentTask = sync(function(taskItem) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
+        isCurrentTaskPaused.set(TASK_STOPPED);
         toastLog("已停止之前的脚本");
     }
     if (monitoredTask != null && monitoredTask.isAlive()) {
@@ -290,10 +297,13 @@ var syncedReplaceCurrentTask = sync(function(taskItem) {
             currentTaskName = taskItem.name;
             currentTask = threads.start(taskItem.fn);
             currentTask.waitFor();
+            //由被运行的脚本线程自己执行isCurrentTaskPaused.set(TASK_RUNNING)
+            //如果被运行的脚本不（需要）支持暂停，那就不设置TASK_RUNNING
         } catch (e) {logException(e);}
         if (currentTask != null && currentTask.isAlive()) {
             lockUI(true);
             currentTask.join();
+            isCurrentTaskPaused.set(TASK_STOPPED);
             lockUI(false);
         }
         log("关闭所有无主对话框...");
@@ -455,9 +465,91 @@ floatUI.main = function () {
     }
 
     // get to main activity
-    function settingsWrap() {
-        backtoMain();
+    function settingsScrollToTop(isPaused) {
+        //scrollview内容有变动时滚动回顶端
+        ui.run(function() {
+            for (let i=100; i<=900; i+=200) {
+                ui["content"].postDelayed(function () {
+                    ui["content"].smoothScrollTo(0, 0);
+                }, i);
+            }
+            if (isPaused) {
+                ui["task_paused_vertical"].setVisibility(View.VISIBLE);
+            }
+            ui["content"].smoothScrollTo(0, 0);//单靠这一句会出现滚动没到最顶端的问题
+        });
     }
+    function openSettingsRunnable() {
+        if (!isCurrentTaskPaused.compareAndSet(TASK_RUNNING, TASK_PAUSING)) {
+            toastLog("打开脚本设置\n(没有脚本正在运行中)");
+            backtoMain();
+            settingsScrollToTop(false);
+            return;
+        }
+        toastLog("正在暂停脚本...");
+        let lastTime = new Date().getTime();
+        while (true) {
+            let breakLoop = false;
+            switch (isCurrentTaskPaused.get()) {
+                case TASK_PAUSING:
+                    sleep(200);
+                    if (new Date().getTime() > lastTime + 4000) {
+                        toast("小提示:\n有对话框时,无法暂停脚本");
+                        lastTime = new Date().getTime();
+                    }
+                    break;
+                case TASK_PAUSED:
+                    breakLoop = true;
+                    break;
+                default:
+                    toastLog("遇到意外情况,无法暂停脚本");
+                    return;
+            }
+            if (breakLoop) break;
+        }
+        toastLog("脚本已暂停");
+        lockUI(false);
+        settingsScrollToTop(true);
+        backtoMain();
+        while (true) {
+            switch (isCurrentTaskPaused.get()) {
+                case TASK_PAUSED:
+                case TASK_RESUMING:
+                    sleep(200);
+                    break;
+                case TASK_RUNNING:
+                    toastLog("继续运行脚本");
+                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    lockUI(true);
+                    return;
+                    break;
+                case TASK_STOPPED:
+                    log("脚本已停止运行");
+                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    //monitoredTask会执行lockUI(false)
+                    return;
+                    break;
+                default:
+                    toastLog("遇到意外情况,无法暂停脚本");
+                    return;
+            }
+        }
+    }
+    var openSettingsThread = null;
+    function settingsWrap() {sync(function () {
+        if (openSettingsThread != null && openSettingsThread.isAlive()) {
+            if (isCurrentTaskPaused.get() == TASK_PAUSED) {
+                toastLog("打开脚本设置\n(脚本已暂停)");
+                backtoMain();
+                settingsScrollToTop(true);
+            } else {
+                toastLog("脚本尚未暂停\n请稍后再试");
+                return;
+            }
+        } else {
+            openSettingsThread = threads.start(openSettingsRunnable);
+        }
+    })();};
 
     var task_popup = floaty.rawWindow(
         <frame id="container" w="*" h="*">
@@ -4174,6 +4266,16 @@ function algo_init() {
         });
     }
 
+    //返回游戏并继续运行脚本
+    floatUI.backToGame = function () {
+        if (isCurrentTaskPaused.compareAndSet(TASK_PAUSED, TASK_RESUMING)) {
+            threads.start(reLaunchGame);//避免在UI线程运行
+        } else {
+            toastLog("脚本未处于暂停状态");
+            return;
+        }
+    };
+
     var is_support_picking_tested = false;
 
     function getCurrentVersion() {
@@ -4338,6 +4440,8 @@ function algo_init() {
     }
 
     function taskDefault() {
+        isCurrentTaskPaused.set(TASK_RUNNING);//其他暂不（需要）支持暂停的脚本不需要加这一句
+
         initialize();
 
         if (lastOpList == null) {
@@ -4388,7 +4492,25 @@ function algo_init() {
         currentTaskCycles = 0;
 
         while (true) {
-            //首先，检测游戏是否闪退或掉线
+            //先检查是否暂停
+            if (isCurrentTaskPaused.compareAndSet(TASK_PAUSING, TASK_PAUSED)) {
+                log("脚本已暂停运行");
+                continue;
+            } else if (isCurrentTaskPaused.compareAndSet(TASK_RESUMING, TASK_RUNNING)) {
+                log("脚本已恢复运行");
+                continue;
+            } else switch (isCurrentTaskPaused.get()) {
+                case TASK_RUNNING:
+                    break;
+                case TASK_PAUSED:
+                    sleep(200);
+                    continue;
+                    break;
+                default:
+                    throw new Error("Unknown isCurrentTaskPaused value");
+            }
+
+            //然后检测游戏是否闪退或掉线
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
                 if (lastOpList != null) {
                     state = STATE_CRASHED;

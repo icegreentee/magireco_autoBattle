@@ -36,13 +36,17 @@ ui.layout(
             <toolbar id="toolbar" bg="#ff4fb3ff" title="{{appName}}" />
         </appbar>
         <vertical id="running_stats" visibility="gone" w="fill_parent" h="fill_parent" layout_below="appbar" gravity="center_horizontal">
-            <text id="running_stats_title" text="脚本运行中" textColor="#000000" textSize="20" w="wrap_content" h="wrap_content"/>
+            <text id="running_stats_title" text="脚本运行中" textColor="#00D000" textSize="20" w="wrap_content" h="wrap_content"/>
             <text id="running_stats_status_text" marginLeft="5" layout_gravity="center_vertical" text="" w="wrap_content" h="wrap_content"/>
             <text id="running_stats_params_text" marginLeft="5" layout_gravity="center_vertical" text="" w="wrap_content" h="wrap_content"/>
         </vertical>
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout id="swipe" layout_below="appbar">
             <ScrollView id="content">
                 <vertical gravity="center" layout_weight="1">
+                    <vertical id="task_paused_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
+                        <text id="task_paused_title" text="脚本已暂停" textColor="#FFCC00" textSize="20" w="wrap_content" h="wrap_content"/>
+                        <button id="task_paused_button" text="返回游戏并继续运行脚本" textColor="#000000" textSize="16" w="wrap_content" h="wrap_content"/>
+                    </vertical>
 
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
@@ -602,6 +606,13 @@ getInputType: function() {
 getAcceptedChars: function () {
     return ['0', '1', '2', '3', '4'];
 }
+}));
+
+//返回游戏并继续运行脚本按钮点击事件
+ui["task_paused_button"].setOnClickListener(new android.view.View.OnClickListener({
+    onClick: function (view) {
+        floatUI.backToGame();
+    }
 }));
 
 //版本获取
