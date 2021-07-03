@@ -2138,15 +2138,15 @@ function algo_init() {
                         "最高Pt加成:"
                     + "\n  "+HighestPt
                     + "\n助战总数:"
-                    + "\n  "+AllPtIndices.length
-                    + "\n    NPC个数:"
-                    + "\n      "+NPCPtIndices.length
-                    + "\n    玩家总数:"
-                    + "\n      "+PlayerPtIndices.length
-                    + "\n        互关好友个数:"
-                    + "\n          "+PlayerHighPtIndices.length
-                    + "\n        单FO或路人个数:"
-                    + "\n          "+(PlayerPtIndices.length-PlayerHighPtIndices.length);
+                    + "\n |"+AllPtIndices.length
+                    + "\n +--NPC个数:"
+                    + "\n |    "+NPCPtIndices.length
+                    + "\n |--玩家总数:"
+                    + "\n     |"+PlayerPtIndices.length
+                    + "\n     +--互关好友个数:"
+                    + "\n     |    "+PlayerHighPtIndices.length
+                    + "\n     +--单FO或路人个数:"
+                    + "\n     |    "+(PlayerPtIndices.length-PlayerHighPtIndices.length);
             } else {
                 testOutputString = null;
             }
