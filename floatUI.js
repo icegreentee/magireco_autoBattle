@@ -2282,7 +2282,6 @@ function algo_init() {
     const ptDistanceY = 243.75;
 
     function pickSupportWithMostPt(isTestMode) {
-        toast("请勿拖动助战列表!\n自动选择助战...");
         var hasError = false;
         //Lv/ATK/DEF/HP [Rank] 玩家名 [最终登录] Pt
         //Lv/ATK/DEF/HP 玩家名 [Rank] [最终登录] Pt
@@ -2481,15 +2480,15 @@ function algo_init() {
                         "最高Pt加成:"
                     + "\n  "+HighestPt
                     + "\n助战总数:"
-                    + "\n |"+AllPtIndices.length
-                    + "\n +--NPC个数:"
-                    + "\n |    "+NPCPtIndices.length
-                    + "\n |--玩家总数:"
-                    + "\n     |"+PlayerPtIndices.length
-                    + "\n     +--互关好友个数:"
-                    + "\n     |    "+PlayerHighPtIndices.length
-                    + "\n     +--单FO或路人个数:"
-                    + "\n     |    "+(PlayerPtIndices.length-PlayerHighPtIndices.length);
+                    + "\n| "+AllPtIndices.length
+                    + "\n+---NPC个数:"
+                    + "\n|     "+NPCPtIndices.length
+                    + "\n+---玩家总数:"
+                    + "\n    | "+PlayerPtIndices.length
+                    + "\n    +---互关好友个数:"
+                    + "\n    |     "+PlayerHighPtIndices.length
+                    + "\n    +---单FO或路人个数:"
+                    + "\n          "+(PlayerPtIndices.length-PlayerHighPtIndices.length);
             } else {
                 testOutputString = null;
             }
@@ -4233,6 +4232,7 @@ function algo_init() {
                     sleep(8000);
                     toastLog("2秒后将会自动点击助战...");
                     sleep(2000);
+                    toast("请勿拖动助战列表!\n自动点击助战...");
                     click(result.point);
                 } else {
                     toastLog("助战选择测试结束");
@@ -4639,6 +4639,7 @@ function algo_init() {
                     let pt_point = pickSupportWithMostPt();
                     if (pt_point != null) pt_point = pt_point.point;
                     if (pt_point != null) {
+                        toast("请勿拖动助战列表!\n自动点击助战...");
                         click(pt_point);
                         // wait for start button for 5 seconds
                         findID("nextPageBtn", parseInt(limit.timeout));
