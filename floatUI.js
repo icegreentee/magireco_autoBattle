@@ -2481,15 +2481,15 @@ function algo_init() {
                         "最高Pt加成:"
                     + "\n  "+HighestPt
                     + "\n助战总数:"
-                    + "\n  "+AllPtIndices.length
-                    + "\n    NPC个数:"
-                    + "\n      "+NPCPtIndices.length
-                    + "\n    玩家总数:"
-                    + "\n      "+PlayerPtIndices.length
-                    + "\n        互关好友个数:"
-                    + "\n          "+PlayerHighPtIndices.length
-                    + "\n        单FO或路人个数:"
-                    + "\n          "+(PlayerPtIndices.length-PlayerHighPtIndices.length);
+                    + "\n |"+AllPtIndices.length
+                    + "\n +--NPC个数:"
+                    + "\n |    "+NPCPtIndices.length
+                    + "\n |--玩家总数:"
+                    + "\n     |"+PlayerPtIndices.length
+                    + "\n     +--互关好友个数:"
+                    + "\n     |    "+PlayerHighPtIndices.length
+                    + "\n     +--单FO或路人个数:"
+                    + "\n     |    "+(PlayerPtIndices.length-PlayerHighPtIndices.length);
             } else {
                 testOutputString = null;
             }
@@ -2498,12 +2498,12 @@ function algo_init() {
         //间接推算坐标，而不是直接读取坐标
 
         if (hasError) {
-            log("助战选择过程中出错,返回第一个助战");
+            toastLog("助战选择过程中出错,返回第一个助战");
             return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
         }
 
         if (AllPtIndices.length == 0) {
-            log("没有助战可供选择");
+            toastLog("没有助战可供选择");
             return {point: null, testdata: testOutputString};
         }
 
@@ -2512,11 +2512,11 @@ function algo_init() {
                 log("仅使用NPC已开启,选择第一个助战(即第一个NPC)");
                 return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
             } else if (PlayerPtIndices.length > 0) {
-                log("仅使用NPC已开启,但是没有NPC,选择第一个助战(即第一个玩家)");
-                return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+                toastLog("仅使用NPC已开启,但是没有NPC,所以没有助战可供选择");
+                return {point: null, testdata: testOutputString};
             } else {
                 //不应该走到这里
-                log("没有助战可供选择");
+                toastLog("没有助战可供选择");
                 return {point: null, testdata: testOutputString};
             }
         }
@@ -2542,7 +2542,7 @@ function algo_init() {
             return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
         } else {
             //不应该走到这里
-            log("没有助战可供选择");
+            toastLog("没有助战可供选择");
             return {point: null, testdata: testOutputString};
         }
     }
@@ -4644,7 +4644,7 @@ function algo_init() {
                         findID("nextPageBtn", parseInt(limit.timeout));
                         break;
                     } else {
-                        log("助战选择失败,点击返回重试");
+                        toastLog("助战选择失败,点击返回重试");
                         click(convertCoords(clickSets.back));
                         //点击后等待默认最多5秒(可配置)
                         waitAny(
