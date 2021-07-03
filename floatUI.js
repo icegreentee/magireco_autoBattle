@@ -197,7 +197,7 @@ function getParamsText() {
         let ischecked = ui["drug"+i].isChecked();
         drugnumarr.push("<font color='#"+(ischecked?"000000'>":"808080'>")+" "+drugName+" "+(ischecked?"已启用":"已停用")+" 个数限制"+drugNum+"</font>");
     }
-    result += drugnumarr.join("<br>");
+    result += drugnumarr.join("<br>")+"<br>";
 
     const globalTaskParams = {
         justNPC: "只使用NPC",
@@ -233,7 +233,7 @@ function getParamsText() {
             taskparamarr.push("<font color='#"+(!isdisabled?"000000'>":"808080'>")+" "+name+" "+content+"</font>");
         }
     }
-    result += taskparamarr.join("<br>");
+    result += taskparamarr.join("<br>")+"<br>";
 
     return android.text.Html.fromHtml(result);
 }
