@@ -1789,13 +1789,15 @@ function algo_init() {
 
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
     function findPopupInfoDetailTitle(title_to_find, wait) {
+        let default_x = getFragmentViewBounds().right - 1;
+        let default_y = 0;
         let result = {
             element: null,
             title: "",
             close: {
                 //getFragmentViewBounds其实是在后面定义的
-                x: getFragmentViewBounds().right - 1,
-                y: 0
+                x: default_x,
+                y: default_y
             }
         };
 
@@ -1832,7 +1834,10 @@ function algo_init() {
         if (title_to_find != null && result.title != title_to_find) return null;
 
         let half_height = parseInt(element.bounds().height() / 2);
-        //result.close.x -= half_height; //刘海屏也许会出问题，先注释掉
+        if (result.title != null && element.bounds().width > result.title.length * (half_height * 2)) {
+            let close_x = element.bounds().right + (half_height * 2);
+            if (close_x <= default_x) result.close.x = close_x;
+        }
         result.close.y = element.bounds().top - half_height;
         if (result.close.y < 0) result.close.y = half_height;
 
