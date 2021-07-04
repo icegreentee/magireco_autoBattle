@@ -1834,7 +1834,7 @@ function algo_init() {
         if (title_to_find != null && result.title != title_to_find) return null;
 
         let half_height = parseInt(element.bounds().height() / 2);
-        if (result.title != null && element.bounds().width > result.title.length * (half_height * 2)) {
+        if (result.title != null && element.bounds().width() > result.title.length * (half_height * 2)) {
             let close_x = element.bounds().right + (half_height * 2);
             if (close_x <= default_x) result.close.x = close_x;
         }
