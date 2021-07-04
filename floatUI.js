@@ -2502,7 +2502,7 @@ function algo_init() {
     }
 
     function initialize(dontStopOnError) {
-        if (auto.root == null) {
+        if (!auto.service) {
             toastLog("未开启无障碍服务");
             selector().depth(0).findOnce();//弹出申请开启无障碍服务的弹窗
         }
