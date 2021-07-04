@@ -468,11 +468,11 @@ floatUI.main = function () {
     function settingsScrollToTop(isPaused) {
         //scrollview内容有变动时滚动回顶端
         ui.run(function() {
-            for (let i=100; i<=900; i+=200) {
-                ui["content"].postDelayed(function () {
-                    ui["content"].smoothScrollTo(0, 0);
-                }, i);
-            }
+            //尝试过OnGlobalLayoutListener，但仍然没解决问题；
+            //可能是这个事件被触发过很多次，然后就不知道应该在第几次触发时注销Listener
+            ui["content"].postDelayed(function () {
+                ui["content"].smoothScrollTo(0, 0);
+            }, 600);
             if (isPaused) {
                 ui["task_paused_vertical"].setVisibility(View.VISIBLE);
             }
