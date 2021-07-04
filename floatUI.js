@@ -283,11 +283,14 @@ function getStatusText() {
 //监视当前任务的线程
 var monitoredTask = null;
 
-var syncedReplaceCurrentTask = sync(function(taskItem) {
+var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
         isCurrentTaskPaused.set(TASK_STOPPED);
         toastLog("已停止之前的脚本");
+        if (callback != null) {
+            threads.start(callback);
+        }
     }
     if (monitoredTask != null && monitoredTask.isAlive()) {
         monitoredTask.join();
@@ -346,11 +349,12 @@ var syncedReplaceCurrentTask = sync(function(taskItem) {
 });
 //syncedReplaceCurrentTask函数也需要新开一个线程来执行，
 //如果在UI线程直接调用，第二次调用就会卡在monitoredTask.join()这里
-function replaceCurrentTask(taskItem) {
-    threads.start(function () {syncedReplaceCurrentTask(taskItem);}).waitFor();
+function replaceCurrentTask(taskItem, callback) {
+    //前一个脚本停下后会执行callback
+    threads.start(function () {syncedReplaceCurrentTask(taskItem, callback);}).waitFor();
 }
-function replaceSelfCurrentTask(taskItem) {
-    replaceCurrentTask(taskItem);
+function replaceSelfCurrentTask(taskItem, callback) {
+    replaceCurrentTask(taskItem, callback);
     stopThread();
 }
 
@@ -481,9 +485,15 @@ floatUI.main = function () {
     }
     function openSettingsRunnable() {
         if (!isCurrentTaskPaused.compareAndSet(TASK_RUNNING, TASK_PAUSING)) {
-            toastLog("打开脚本设置\n(没有脚本正在运行中)");
-            backtoMain();
-            settingsScrollToTop(false);
+            replaceCurrentTask(
+                {name:"未运行任何脚本", fn: function () {}},
+                function () {
+                    //停止之前的脚本后才会继续执行这个回调
+                    toastLog("打开脚本设置\n(没有脚本正在运行中)");
+                    backtoMain();
+                    settingsScrollToTop(false);
+                }
+            );
             return;
         }
         toastLog("正在暂停脚本...");
@@ -4398,8 +4408,8 @@ function algo_init() {
                 log("脚本已暂停运行");
                 continue;
             } else if (isCurrentTaskPaused.compareAndSet(TASK_RESUMING, TASK_RUNNING)) {
-                log("1秒后恢复脚本运行...");//等待游戏重现回到前台
-                sleep(1000);
+                log("3秒后恢复脚本运行...");//等待游戏重现回到前台
+                sleep(3000);
                 log("脚本已恢复运行");
                 continue;
             } else switch (isCurrentTaskPaused.get()) {
