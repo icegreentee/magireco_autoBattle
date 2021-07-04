@@ -288,9 +288,10 @@ var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
         stopThread(currentTask);
         isCurrentTaskPaused.set(TASK_STOPPED);
         toastLog("已停止之前的脚本");
-        if (callback != null) {
-            threads.start(callback);
-        }
+    }
+    //确保之前的脚本已经停下后新开一个线程执行callback
+    if (callback != null) {
+        threads.start(callback);
     }
     if (monitoredTask != null && monitoredTask.isAlive()) {
         monitoredTask.join();
@@ -350,7 +351,7 @@ var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
 //syncedReplaceCurrentTask函数也需要新开一个线程来执行，
 //如果在UI线程直接调用，第二次调用就会卡在monitoredTask.join()这里
 function replaceCurrentTask(taskItem, callback) {
-    //前一个脚本停下后会执行callback
+    //确保前一个脚本停下后会新开一个线程执行callback
     threads.start(function () {syncedReplaceCurrentTask(taskItem, callback);}).waitFor();
 }
 function replaceSelfCurrentTask(taskItem, callback) {
@@ -488,7 +489,7 @@ floatUI.main = function () {
             replaceCurrentTask(
                 {name:"未运行任何脚本", fn: function () {}},
                 function () {
-                    //停止之前的脚本后才会继续执行这个回调
+                    //确保之前的脚本停下来后才会新开一个线程执行这个回调
                     toastLog("打开脚本设置\n(没有脚本正在运行中)");
                     backtoMain();
                     settingsScrollToTop(false);
