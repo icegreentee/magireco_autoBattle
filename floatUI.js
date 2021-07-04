@@ -4398,6 +4398,8 @@ function algo_init() {
                 log("脚本已暂停运行");
                 continue;
             } else if (isCurrentTaskPaused.compareAndSet(TASK_RESUMING, TASK_RUNNING)) {
+                log("1秒后恢复脚本运行...");//等待游戏重现回到前台
+                sleep(1000);
                 log("脚本已恢复运行");
                 continue;
             } else switch (isCurrentTaskPaused.get()) {
