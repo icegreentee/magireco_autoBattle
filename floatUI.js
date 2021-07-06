@@ -44,9 +44,10 @@ function logException(e) {
 }
 
 var origFunc = {
-    click: function () {click.apply(this, arguments)},
-    swipe: function () {swipe.apply(this, arguments)},
-    press: function () {press.apply(this, arguments)},
+    click: function () {return click.apply(this, arguments)},
+    swipe: function () {return swipe.apply(this, arguments)},
+    press: function () {return press.apply(this, arguments)},
+    buildDialog: function() {return dialogs.build.apply(this, arguments)},
 }
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -72,6 +73,16 @@ var normalShell = () => { };
 var getEUID = () => { };
 var requestShellPrivilege = () => { };
 var requestShellPrivilegeThread = null;
+// 嗑药数量限制和统计
+//绿药或红药，每次消耗1个
+//魔法石，每次碎5钻
+const drugCosts = [1, 1, 5, 1];
+var updateDrugLimit = () => { };
+var updateDrugConsumingStats = () => { };
+var isDrugEnough = () => { };
+// 周回数统计
+var updateCycleCount = () => { };
+
 // available script list
 floatUI.scripts = [
     {
@@ -120,6 +131,234 @@ floatUI.scripts = [
     }
 ];
 
+//当前正在运行的线程
+var currentTask = null;
+var currentTaskName = "未运行任何脚本";
+var currentTaskCycles = 0;
+var currentTaskDrugConsumed = {};
+const TASK_STOPPED = 0;
+const TASK_RUNNING = 1;
+const TASK_PAUSING = 2;
+const TASK_PAUSED = 3;
+const TASK_RESUMING = 4;
+var isCurrentTaskPaused = threads.atomic(TASK_STOPPED);
+//被打开的所有对话框（用于在线程退出时dismiss）
+var openedDialogs = {openedDialogCount: 0};
+var openedDialogsLock = threads.lock();
+
+//运行脚本时隐藏UI控件，防止误触
+var menuItems = [];
+function lockUI(isLocked) {
+    ui.run(() => {
+        //隐藏或显示设置界面
+        ui["swipe"].setVisibility(isLocked?View.GONE:View.VISIBLE);
+        ui["running_stats"].setVisibility(isLocked?View.VISIBLE:View.GONE);
+        activity.setSupportActionBar(isLocked?null:ui.toolbar);
+        let menu = ui["toolbar"].getMenu();
+        menu.close();
+        if (isLocked) {
+            for (let i=0; i<menu.size(); i++) menuItems.push(menu.getItem(i));
+            menu.clear();
+        } else {
+            menu.clear();
+            while (menuItems.length > 0) {
+                menu.add(menuItems[0].getTitle())
+                    .setIcon(menuItems[0].getIcon())
+                    .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+                menuItems.splice(0, 1);
+            }
+        }
+
+        //更新状态监控文字
+        ui["running_stats_params_text"].setText(getParamsText());//实际上嗑药数量设置会不断扣减，这里没有更新显示
+        ui["running_stats_status_text"].setText(getStatusText());
+    });
+}
+function getUIContent(key) {
+    switch (ui[key].getClass().getSimpleName()) {
+        case "JsEditText":
+            return ui[key].getText() + "";
+        case "Switch":
+        case "CheckBox":
+            return ui[key].isChecked()?"已启用":"已停用";
+        case "JsSpinner":
+            return ui[key].getSelectedItemPosition();
+        case "RadioGroup": {
+            let name = "";
+            let id = ui[key].getCheckedRadioButtonId();
+            if (id >= 0)
+                name = idmap[ui[key].getCheckedRadioButtonId()];
+            return name;
+        }
+    }
+}
+function getParamsText() {
+    if (!ui.isUiThread()) throw new Error("getParamsText not in UI thread");
+    let result = "";
+
+    let drugnumarr = [];
+    for (let i=1; i<=4; i++) {
+        let drugName = ui["drug"+i].text;
+        let drugNum = ui["drug"+i+"num"].getText();
+        let ischecked = ui["drug"+i].isChecked();
+        drugnumarr.push("<font color='#"+(ischecked?"000000'>":"808080'>")+" "+drugName+" "+(ischecked?"已启用":"已停用")+" 个数限制"+drugNum+"</font>");
+    }
+    result += drugnumarr.join("<br>")+"<br>";
+
+    const globalTaskParams = {
+        justNPC: "只使用NPC",
+        autoReconnect: "防断线模式",
+    };
+    const defTaskParams = {
+        useAuto: "优先使用官方自动续战",
+        apmul: "嗑药至AP上限倍数",
+        breakAutoCycleDuration: "每隔多少秒打断官方自动续战",
+        forceStopTimeout: "假死检测超时秒数",
+        rootForceStop: "优先使用root或adb权限杀进程",
+    };
+    let bakTaskParams = {
+        battleNo: "活动周回关卡选择",
+    };
+    let extraTaskParams = {};
+    switch (currentTaskName) {
+        case "副本周回（剧情，活动通用）":
+            extraTaskParams = defTaskParams;
+            break;
+        case "副本周回2（备用可选）":
+        case "活动周回2（备用可选）":
+            extraTaskParams = bakTaskParams;
+            break;
+    }
+    let taskparamarr = [];
+    for (let taskParams of [globalTaskParams, extraTaskParams]) {
+        for (let key in taskParams) {
+            let name = taskParams[key];
+            let content = getUIContent(key);
+            let isdisabled = (content=="" || content=="已停用");
+            content = content==""?ui[key].hint:content;
+            taskparamarr.push("<font color='#"+(!isdisabled?"000000'>":"808080'>")+" "+name+" "+content+"</font>");
+        }
+    }
+    result += taskparamarr.join("<br>")+"<br>";
+
+    return android.text.Html.fromHtml(result);
+}
+function getStatusText() {
+    if (!ui.isUiThread()) throw new Error("getStatusText not in UI thread");
+    let result = "";
+
+    switch (currentTaskName) {
+        case "副本周回（剧情，活动通用）":
+        case "镜层周回":
+            break;
+        default:
+            //其他脚本暂不支持统计数字
+            return android.text.Html.fromHtml(result);;
+    }
+
+    result += "<font color='#000000'>";
+
+    result += "已运行周回数(可能不准确): "+currentTaskCycles;
+    result += "<br>"
+    result += "已磕药数: ";
+    const drugnames = {
+        drug1: "绿药",
+        drug2: "红药",
+        drug3: "魔法石",
+        drug4: "蓝药",
+    };
+    let consumedarr = [];
+    for (let key in drugnames) {
+        let consumed = currentTaskDrugConsumed[key];
+        consumed = consumed==null ? 0 : consumed;
+        consumedarr.push(drugnames[key]+":"+consumed+"个");
+    }
+    result += consumedarr.join("  ");
+
+    result += "</font>";
+
+    return android.text.Html.fromHtml(result);
+}
+
+//监视当前任务的线程
+var monitoredTask = null;
+
+var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
+    if (currentTask != null && currentTask.isAlive()) {
+        stopThread(currentTask);
+        isCurrentTaskPaused.set(TASK_STOPPED);
+        toastLog("已停止之前的脚本");
+    }
+    //确保之前的脚本已经停下后新开一个线程执行callback
+    if (callback != null) {
+        threads.start(callback);
+    }
+    if (monitoredTask != null && monitoredTask.isAlive()) {
+        monitoredTask.join();
+    }
+    monitoredTask = threads.start(function () {
+        try {
+            currentTaskName = taskItem.name;
+            currentTask = threads.start(taskItem.fn);
+            currentTask.waitFor();
+            //由被运行的脚本线程自己执行isCurrentTaskPaused.set(TASK_RUNNING)
+            //如果被运行的脚本不（需要）支持暂停，那就不设置TASK_RUNNING
+        } catch (e) {logException(e);}
+        if (currentTask != null && currentTask.isAlive()) {
+            lockUI(true);
+            currentTask.join();
+            isCurrentTaskPaused.set(TASK_STOPPED);
+            lockUI(false);
+        }
+        log("关闭所有无主对话框...");
+        try {
+            openedDialogsLock.lock();//先加锁，dismiss会等待解锁后再开始删
+            for (let key in openedDialogs) {
+                if (key != "openedDialogCount") {
+                    openedDialogs[key].node.dialog.dismiss();
+                }
+            }
+        } catch (e) {
+            logException(e);
+            throw e;
+        } finally {
+            openedDialogsLock.unlock();
+        }
+        //等待dismiss删完，如果不等删完的话，下一次启动的脚本调用对话框又会死锁
+        log("等待无主对话框全部清空...");
+        while (true) {
+            let remaining = 0;
+            try {
+                openedDialogsLock.lock();
+                for (let key in openedDialogs) {
+                    if (key != "openedDialogCount") {
+                        remaining++;
+                    }
+                }
+            } catch (e) {
+                logException(e);
+                throw e;
+            } finally {
+                openedDialogsLock.unlock();
+            }
+            if (remaining == 0) break;
+            sleep(100);
+        }
+        log("无主对话框已全部清空");
+    });
+    monitoredTask.waitFor();
+});
+//syncedReplaceCurrentTask函数也需要新开一个线程来执行，
+//如果在UI线程直接调用，第二次调用就会卡在monitoredTask.join()这里
+function replaceCurrentTask(taskItem, callback) {
+    //确保前一个脚本停下后会新开一个线程执行callback
+    threads.start(function () {syncedReplaceCurrentTask(taskItem, callback);}).waitFor();
+}
+function replaceSelfCurrentTask(taskItem, callback) {
+    replaceCurrentTask(taskItem, callback);
+    stopThread();
+}
+
 floatUI.main = function () {
     // space between buttons compare to button size
     var space_factor = 1.5;
@@ -127,8 +366,6 @@ floatUI.main = function () {
     var logo_factor = 7.0 / 11;
     // button size in dp
     var button_size = 44;
-    // current running thread
-    var currentTask = null;
 
     // submenu definition
     var menu_list = [
@@ -165,11 +402,17 @@ floatUI.main = function () {
             thread = threads.currentThread();
             isSelf = true;
         }
-        //while循环也会阻塞执行，防止继续运行下去产生误操作
-        //为防止 isAlive() 不靠谱（虽然还没有这方面的迹象），停止自己的线程时用 isSelf 短路，直接死循环
-        while (isSelf || (thread != null && thread.isAlive())) {
-            try {thread.interrupt();} catch (e) {}
-            //因为可能在UI线程调用，所以不能sleep
+        if (ui.isUiThread()) {
+            if (isSelf) {
+                log("不能停止UI线程!");
+            } else threads.start(function () {
+                stopThread(thread);
+            });
+        } else {
+            while (isSelf || (thread != null && thread.isAlive())) {
+                try {thread.interrupt();} catch (e) {};
+                sleep(200);
+            }
         }
     }
 
@@ -211,12 +454,8 @@ floatUI.main = function () {
     }
 
     function defaultWrap() {
-        if (currentTask && currentTask.isAlive()) {
-            toastLog("停止之前的脚本");
-            stopThread(currentTask);
-        }
         toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
-        currentTask = threads.start(floatUI.scripts[limit.default].fn);
+        replaceCurrentTask(floatUI.scripts[limit.default]);
     }
 
     function taskWrap() {
@@ -227,13 +466,101 @@ floatUI.main = function () {
 
     function cancelWrap() {
         toastLog("停止脚本");
-        if (currentTask && currentTask.isAlive()) stopThread(currentTask);
+        replaceCurrentTask({name:"未运行任何脚本", fn: function () {}});
     }
 
     // get to main activity
-    function settingsWrap() {
-        backtoMain();
+    function settingsScrollToTop(isPaused) {
+        //scrollview内容有变动时滚动回顶端
+        ui.run(function() {
+            //尝试过OnGlobalLayoutListener，但仍然没解决问题；
+            //可能是这个事件被触发过很多次，然后就不知道应该在第几次触发时注销Listener
+            ui["content"].postDelayed(function () {
+                ui["content"].smoothScrollTo(0, 0);
+            }, 600);
+            if (isPaused) {
+                ui["task_paused_vertical"].setVisibility(View.VISIBLE);
+            }
+            ui["content"].smoothScrollTo(0, 0);//单靠这一句会出现滚动没到最顶端的问题
+        });
     }
+    function openSettingsRunnable() {
+        if (!isCurrentTaskPaused.compareAndSet(TASK_RUNNING, TASK_PAUSING)) {
+            replaceCurrentTask(
+                {name:"未运行任何脚本", fn: function () {}},
+                function () {
+                    //确保之前的脚本停下来后才会新开一个线程执行这个回调
+                    toastLog("打开脚本设置\n(没有脚本正在运行中)");
+                    backtoMain();
+                    settingsScrollToTop(false);
+                }
+            );
+            return;
+        }
+        toastLog("正在暂停脚本...");
+        let lastTime = new Date().getTime();
+        while (true) {
+            let breakLoop = false;
+            switch (isCurrentTaskPaused.get()) {
+                case TASK_PAUSING:
+                    sleep(200);
+                    if (new Date().getTime() > lastTime + 4000) {
+                        toast("小提示:\n有对话框时,无法暂停脚本");
+                        lastTime = new Date().getTime();
+                    }
+                    break;
+                case TASK_PAUSED:
+                    breakLoop = true;
+                    break;
+                default:
+                    toastLog("遇到意外情况,无法暂停脚本");
+                    return;
+            }
+            if (breakLoop) break;
+        }
+        toastLog("脚本已暂停");
+        lockUI(false);
+        settingsScrollToTop(true);
+        backtoMain();
+        while (true) {
+            switch (isCurrentTaskPaused.get()) {
+                case TASK_PAUSED:
+                case TASK_RESUMING:
+                    sleep(200);
+                    break;
+                case TASK_RUNNING:
+                    toastLog("继续运行脚本");
+                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    lockUI(true);
+                    return;
+                    break;
+                case TASK_STOPPED:
+                    log("脚本已停止运行");
+                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    //monitoredTask会执行lockUI(false)
+                    return;
+                    break;
+                default:
+                    toastLog("遇到意外情况,无法暂停脚本");
+                    return;
+            }
+        }
+    }
+    var openSettingsThread = null;
+    function settingsWrap() {sync(function () {
+        if (openSettingsThread != null && openSettingsThread.isAlive()) {
+            if (isCurrentTaskPaused.get() == TASK_PAUSED) {
+                toastLog("打开脚本设置\n(脚本已暂停)");
+                backtoMain();
+                settingsScrollToTop(true);
+            } else {
+                toastLog("脚本尚未暂停\n请稍后再试");
+                return;
+            }
+        } else {
+            openSettingsThread = threads.start(openSettingsRunnable);
+        }
+    })();};
 
     var task_popup = floaty.rawWindow(
         <frame id="container" w="*" h="*">
@@ -281,12 +608,8 @@ floatUI.main = function () {
         task_popup.container.setVisibility(View.INVISIBLE);
         task_popup.setTouchable(false);
         if (item.fn) {
-            if (currentTask && currentTask.isAlive()) {
-                toastLog("停止之前的脚本");
-                stopThread(currentTask);
-            }
             toastLog("执行 " + item.name + " 脚本");
-            currentTask = threads.start(item.fn);
+            replaceCurrentTask(item);
         }
     });
     task_popup.close_button.click(() => {
@@ -651,8 +974,27 @@ floatUI.main = function () {
             limit.cutoutParams = cutoutParams;
         }
     }
-    //脚本启动时检测一次
-    adjustCutoutParams();
+    //脚本启动时反复尝试检测,4秒后停止尝试
+    threads.start(function () {
+        //Android 8.1或以下没有刘海屏API,无法检测
+        if (device.sdkInt < 28) return;
+
+        try {
+            cutoutParamsLock.lock();
+            var startTime = new Date().getTime();
+            do {
+                try {adjustCutoutParams();} catch (e) {logException(e);};
+                if (limit.cutoutParams != null && limit.cutoutParams.cutout != null) break;
+                sleep(500);
+            } while (new Date().getTime() < startTime + 4000);
+        } catch (e) {
+            logException(e);
+            throw e;
+        } finally {
+            cutoutParamsLock.unlock();
+        }
+        log("limit.cutoutParams", limit.cutoutParams);
+    });
 
     //使用Shizuku执行shell命令
     shizukuShell = function (shellcmd, logstring) {
@@ -785,6 +1127,82 @@ floatUI.main = function () {
         }
     }
 
+    //嗑药后，更新设置中的嗑药个数限制
+    updateDrugLimit = function (index) {
+        if (index < 0 || index > 3) throw new Error("index out of range");
+        let drugnum = parseInt(limit["drug"+(index+1)+"num"]);
+        //parseInt("") == NaN，NaN视为无限大处理（所以不需要更新数值）
+        if (!isNaN(drugnum)) {
+            if (drugnum >= drugCosts[index]) {
+                drugnum -= drugCosts[index];
+                limit["drug"+(index+1)+"num"] = ""+drugnum;
+                if (drugnum < drugCosts[index]) {
+                    limit["drug"+(index+1)] = false;
+                }
+                ui.run(() => {
+                    //注意,这里会受到main.js里注册的listener影响
+                    ui["drug"+(index+1)+"num"].setText(limit["drug"+(index+1)+"num"]);
+                    let drugcheckbox = ui["drug"+(index+1)];
+                    let newvalue = limit["drug"+(index+1)];
+                    if (drugcheckbox.isChecked() != newvalue) drugcheckbox.setChecked(newvalue);
+                });
+            } else {
+                //正常情况下应该首先是药的数量还够，才会继续嗑药，然后才会更新嗑药个数限制，所以不应该走到这里
+                log("limit.drug"+(index+1)+"num", limit["drug"+(index+1)+"num"]);
+                log("index", index);
+                throw new Error("limit.drug"+(index+1)+"num exhausted");
+            }
+        }
+    }
+    //嗑药后，更新嗑药个数统计
+    updateDrugConsumingStats = function (index) {
+        if (index < 0 || index > 3) throw new Error("index out of range");
+        if (currentTaskDrugConsumed["drug"+(index+1)] == null) {
+            currentTaskDrugConsumed["drug"+(index+1)] = 0;
+        }
+        currentTaskDrugConsumed["drug"+(index+1)] += drugCosts[index];
+        log("drug"+(index+1)+"已经磕了"+currentTaskDrugConsumed["drug"+(index+1)]+"个");
+        ui.run(function () {
+            //实际上嗑药数量设置会不断扣减，这里没有更新显示
+            ui["running_stats_status_text"].setText(getStatusText());
+        });
+    }
+
+    isDrugEnough = function (index, count) {
+        if (index < 0 || index > 3) throw new Error("index out of range");
+
+        //从游戏界面上读取剩余回复药个数后，作为count传入进来
+        let remainingnum = parseInt(count);
+        let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
+        log(
+        "\n第"+(index+1)+"种回复药"
+        +"\n"+(limit["drug"+(index+1)]?"已启用":"已禁用")
+        +"\n剩余:    "+remainingnum+"个"
+        +"\n个数限制:"+limitnum+"个"
+        );
+
+        //如果未启用则直接返回false
+        if (!limit["drug"+(index+1)]) return false;
+
+        //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
+        if (limitnum < drugCosts[index]) return false;
+
+        //BP蓝药数量暂时还不能检测，当作数量足够
+        if (index == 3) {
+            return true;
+        } else if (remainingnum < drugCosts[index]) return false;
+
+        return true;
+    }
+
+    updateCycleCount = function () {
+        currentTaskCycles++;
+        log("周回数增加到", currentTaskCycles);
+        ui.run(function () {
+            ui["running_stats_status_text"].setText(getStatusText());
+        });
+    }
+
 };
 // ------------主要逻辑--------------------
 var langNow = "zh"
@@ -820,6 +1238,9 @@ var limit = {
     firstRequestPrivilege: true,
     privilege: null
 }
+
+var cutoutParamsLock = threads.lock();
+
 var clickSets = {
     ap: {
         x: 1000,
@@ -1148,8 +1569,7 @@ function jingMain() {
             click(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                let count = parseInt(limit.drug4num);
-                if (limit.drug4 && (isNaN(count) || count > 0)) {
+                if (isDrugEnough(3)) {
                     while (!id("BpCureWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)
@@ -1162,7 +1582,12 @@ function jingMain() {
                         screenutilClick(clickSets.bphuiok)
                         sleep(1500)
                     }
-                    limit.drug4num = '' + (count - 1);
+
+                    //更新嗑药个数限制数值，减去用掉的数量
+                    updateDrugLimit(3);
+
+                    //更新嗑药个数统计
+                    updateDrugConsumingStats(3);
                 } else {
                     screenutilClick(clickSets.bpclose)
                     log("jjc结束")
@@ -1495,6 +1920,7 @@ function algo_init() {
     }
 
     function click(x, y) {
+        //isGameDead和getFragmentViewBounds其实是在后面定义的
         if (isGameDead() == "crashed") {
             log("游戏已经闪退,放弃点击");
             return;
@@ -1505,12 +1931,18 @@ function algo_init() {
             y = point.y;
         }
         // limit range
-        var sz = getWindowSize();
-        if (x >= sz.x) {
-            x = sz.x - 1;
+        var sz = getFragmentViewBounds();
+        if (x < sz.left) {
+            x = sz.left;
         }
-        if (y >= sz.y) {
-            y = sz.y - 1;
+        if (x >= sz.right) {
+            x = sz.right - 1;
+        }
+        if (y < sz.top) {
+            y = sz.top;
+        }
+        if (y >= sz.bottom) {
+            y = sz.bottom - 1;
         }
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
@@ -1531,6 +1963,7 @@ function algo_init() {
     }
 
     function swipe(x1, y1, x2, y2, duration) {
+        //isGameDead和getFragmentViewBounds其实是在后面定义的
         if (isGameDead() == "crashed") {
             log("游戏已经闪退,放弃滑动");
             return;
@@ -1567,18 +2000,30 @@ function algo_init() {
         y2 = points[1].y;
 
         // limit range
-        var sz = getWindowSize();
-        if (x1 >= sz.x) {
-            x1 = sz.x - 1;
+        var sz = getFragmentViewBounds();
+        if (x1 < sz.left) {
+            x1 = sz.left;
         }
-        if (y1 >= sz.y) {
-            y1 = sz.y - 1;
+        if (x1 >= sz.right) {
+            x1 = sz.right - 1;
         }
-        if (x2 >= sz.x) {
-            x2 = sz.x - 1;
+        if (y1 < sz.top) {
+            y1 = sz.top;
         }
-        if (y2 >= sz.y) {
-            y2 = sz.y - 1;
+        if (y1 >= sz.bottom) {
+            y1 = sz.bottom - 1;
+        }
+        if (x2 < sz.left) {
+            x2 = sz.left;
+        }
+        if (x2 >= sz.right) {
+            x2 = sz.right - 1;
+        }
+        if (y2 < sz.top) {
+            y2 = sz.top;
+        }
+        if (y2 >= sz.bottom) {
+            y2 = sz.bottom - 1;
         }
 
         // system version higher than Android 7.0
@@ -1769,12 +2214,15 @@ function algo_init() {
 
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
     function findPopupInfoDetailTitle(title_to_find, wait) {
+        let default_x = getFragmentViewBounds().right - 1;
+        let default_y = 0;
         let result = {
             element: null,
             title: "",
             close: {
-                x: getWindowSize().x - 1,
-                y: 0
+                //getFragmentViewBounds其实是在后面定义的
+                x: default_x,
+                y: default_y
             }
         };
 
@@ -1811,7 +2259,10 @@ function algo_init() {
         if (title_to_find != null && result.title != title_to_find) return null;
 
         let half_height = parseInt(element.bounds().height() / 2);
-        //result.close.x -= half_height; //刘海屏也许会出问题，先注释掉
+        if (result.title != null && element.bounds().width() > result.title.length * (half_height * 2)) {
+            let close_x = element.bounds().right + (half_height * 2);
+            if (close_x <= default_x) result.close.x = close_x;
+        }
         result.close.y = element.bounds().top - half_height;
         if (result.close.y < 0) result.close.y = half_height;
 
@@ -1939,10 +2390,9 @@ function algo_init() {
     const ptDistanceY = 243.75;
 
     function pickSupportWithMostPt(isTestMode) {
-        toast("请勿拖动助战列表!\n自动选择助战...");
         var hasError = false;
-        //Lv [Rank] 玩家名 [最终登录] Pt
-        //Lv 玩家名 [Rank] [最终登录] Pt
+        //Lv/ATK/DEF/HP [Rank] 玩家名 [最终登录] Pt
+        //Lv/ATK/DEF/HP 玩家名 [Rank] [最终登录] Pt
         let AllElements = [];
         let uicollection = packageName(string.package_name).find();
         for (let i=0; i<uicollection.length; i++) {
@@ -1961,7 +2411,7 @@ function algo_init() {
 
         let LvLikeIndices = [];
         AllElements.forEach(function (val, i) {
-            if (getContent(val).match(/^Lv\d*$/)) LvLikeIndices.push(i)
+            if (getContent(val).match(/^((Lv|ATK|DEF|HP)\d*)$/)) LvLikeIndices.push(i)
         });
         let RankLikeIndices = [];
         AllElements.forEach(function (val, i) {
@@ -1976,17 +2426,17 @@ function algo_init() {
             if (getContent(val).match(/^\+\d*$/)) PtLikeIndices.push(i)
         });
         log("\n匹配到:"
-            +"\n  类似Lv的控件个数:       "+LvLikeIndices.length
-            +"\n  类似Rank的控件个数:     "+RankLikeIndices.length
-            +"\n  类似上次登录的控件个数: "+LastLoginLikeIndices.length
-            +"\n  类似Pt的控件个数:       "+PtLikeIndices.length);
+            +"\n  类似Lv/ATK/DEF/HP的控件个数: "+LvLikeIndices.length
+            +"\n  类似Rank的控件个数:          "+RankLikeIndices.length
+            +"\n  类似上次登录的控件个数:      "+LastLoginLikeIndices.length
+            +"\n  类似Pt的控件个数:            "+PtLikeIndices.length);
 
         let AllLvIndices = [];
         let PlayerLvIndices = [];
         let NPCLvIndices = [];
-        //倒着从后往前搜寻，这样才会先碰到和Lv混淆的恶搞玩家名，从而排除，而不会误排除真正的Lv
+        //倒着从后往前搜寻，这样才会先碰到和Lv/ATK/DEF/HP混淆的恶搞玩家名，从而排除，而不会误排除真正的Lv/ATK/DEF/HP
         LvLikeIndices.reverse().forEach(function (index, i, arr) {
-            //第一个(序号0)在颠倒前就是最后一个，因为后面已经没有下一个Lv控件了，用finalIndex
+            //第一个(序号0)在颠倒前就是最后一个，因为后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex
             //第二个(序号1)和后续的在颠倒前就是倒数第二个和之前的，往前推一个对应颠倒前往后推一个
             let nextIndex = i == 0 ? finalIndex : arr[i-1];
 
@@ -1994,23 +2444,23 @@ function algo_init() {
             let lastLoginIndex = LastLoginLikeIndices.find((val) => val > index && val < nextIndex);
 
             if (rankIndex != null && lastLoginIndex != null) {
-                //在Lv后找到Rank和上次登录，就是玩家的Lv；否则是NPC或恶搞玩家名
+                //在Lv/ATK/DEF/HP后找到Rank和上次登录，就是玩家的Lv/ATK/DEF/HP；否则是NPC或恶搞玩家名
                 PlayerLvIndices.push(index);
                 AllLvIndices.push(index);
                 return
             }
             if (rankIndex != null && lastLoginIndex == null) {
-                log("在第"+(arr.length-i)+"个Lv控件后,找到了Rank,却没找到上次登录");
+                log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank,却没找到上次登录");
                 return;
             }
             if (rankIndex == null && lastLoginIndex != null) {
-                log("在第"+(arr.length-i)+"个Lv控件后,没找到Rank,却找到上次登录");
+                log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,没找到Rank,却找到上次登录");
                 return;
             }
             if (rankIndex == null && lastLoginIndex == null) {
                 //NPC一定是没有Rank也没有上次登录
                 //但是，不知道是不是有些环境下，玩家名后面本来就既没有Rank也没有上次登录
-                //预想在这种情况下，会把和Lv相似的恶搞玩家名误判为NPC
+                //预想在这种情况下，会把和Lv/ATK/DEF/HP相似的恶搞玩家名误判为NPC
                 NPCLvIndices.push(index);
                 AllLvIndices.push(index);
                 return;
@@ -2023,28 +2473,28 @@ function algo_init() {
         NPCLvIndices.reverse();
         log("玩家助战总数: "+PlayerLvIndices.length);
 
-        //从NPC的Lv里排除和Lv相似的恶搞玩家名
-        //这里的假设是玩家名肯定在Lv和Pt之间——如果还有更奇葩的环境不满足这个假设就没辙了
-        //假Lv前面肯定还有真Lv（所以需要倒着从后往前搜才能先碰到假的）
+        //从NPC的Lv/ATK/DEF/HP里排除和Lv/ATK/DEF/HP相似的恶搞玩家名
+        //这里的假设是玩家名肯定在Lv/ATK/DEF/HP和Pt之间——如果还有更奇葩的环境不满足这个假设就没辙了
+        //假Lv/ATK/DEF/HP前面肯定还有真Lv/ATK/DEF/HP（所以需要倒着从后往前搜才能先碰到假的）
         NPCLvIndices = NPCLvIndices.reverse().filter(function (index, i, arr) {
-            //当前Lv控件在AllLvIndices中的序号
+            //当前Lv/ATK/DEF/HP控件在AllLvIndices中的序号
             let i_index = AllLvIndices.findIndex((val) => val == index);
-            //已经是第一个Lv控件(序号0)了，不可能是假的
+            //已经是第一个Lv/ATK/DEF/HP控件(序号0)了，不可能是假的
             if (i_index == 0) return true;
-            //找到前一个Lv控件
+            //找到前一个Lv/ATK/DEF/HP控件
             let prevIndex = AllLvIndices[i_index-1];
 
             let PtIndex = PtLikeIndices.find((val) => val > prevIndex && val < index);
 
             if (PtIndex == null) {
-                //假Lv和真Lv之间肯定没有Pt
+                //假Lv/ATK/DEF/HP和真Lv/ATK/DEF/HP之间肯定没有Pt
                 let delete_i = AllLvIndices.findIndex((val) => val == index);
-                log("第"+(delete_i+1)+"个Lv控件是恶搞玩家名,排除");
+                log("第"+(delete_i+1)+"个Lv/ATK/DEF/HP控件是恶搞玩家名,排除");
                 AllLvIndices.splice(delete_i, 1);
                 return false;
             }
             if (PtIndex != null) {
-                //真Lv之前要么已经没有更前面的Lv，如果有（无论真假），和前一个Lv之间肯定有Pt
+                //真Lv/ATK/DEF/HP之前要么已经没有更前面的Lv，如果有（无论真假），和前一个Lv/ATK/DEF/HP之间肯定有Pt
                 return true;
             }
         });
@@ -2064,7 +2514,7 @@ function algo_init() {
         let PlayerPtIndices = [];
         //可以不用颠倒过来了
         AllLvIndices.forEach(function (index, i, arr) {
-            //最后一个Lv控件后面已经没有下一个Lv控件了，用finalIndex；其余的往后推一个即可
+            //最后一个Lv/ATK/DEF/HP控件后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex；其余的往后推一个即可
             let nextIndex = i >= arr.length - 1 ? finalIndex : arr[i+1];
 
             //倒过来从后往前搜Pt控件，防止碰到类似Pt的恶搞玩家名
@@ -2081,7 +2531,7 @@ function algo_init() {
                     Pt = parseInt(PtContent);
                 }
                 if (isNaN(Pt)) {
-                    log("助战选择出错,在第"+(i+1)+"个Lv控件后无法读取Pt数值");
+                    log("助战选择出错,在第"+(i+1)+"个Lv/ATK/DEF/HP控件后无法读取Pt数值");
                     hasError = true;
                     return;
                 }
@@ -2095,13 +2545,13 @@ function algo_init() {
                 AllPtIndices.push(ptIndex);
 
                 if (Pt > HighestPt) {
-                    log("在第"+(i+1)+"个Lv控件后找到了更高的Pt加成: "+Pt);
+                    log("在第"+(i+1)+"个Lv/ATK/DEF/HP控件后找到了更高的Pt加成: "+Pt);
                     HighestPt = Pt;
                 }
                 return;
             }
             if (ptIndex == null) {
-                log("助战选择出错,在第"+(i+1)+"个Lv控件后,找不到Pt控件");
+                log("助战选择出错,在第"+(i+1)+"个Lv/ATK/DEF/HP控件后,找不到Pt控件");
                 hasError = true;
                 return;
             }
@@ -2110,15 +2560,15 @@ function algo_init() {
 
         if (NPCPtIndices.length != NPCLvIndices.length) {
             hasError = true;
-            log("助战选择出错,NPCPt控件数!=NPCLv控件数");
+            log("助战选择出错,NPCPt控件数!=NPCLv/ATK/DEF/HP控件数");
         }
         if (PlayerPtIndices.length != PlayerLvIndices.length) {
             hasError = true;
-            log("助战选择出错,玩家Pt控件数!=玩家Lv控件数");
+            log("助战选择出错,玩家Pt控件数!=玩家Lv/ATK/DEF/HP控件数");
         }
         if (AllPtIndices.length != AllLvIndices.length) {
             hashError = true;
-            log("助战选择出错,Pt控件总数!=Lv控件总数");
+            log("助战选择出错,Pt控件总数!=Lv/ATK/DEF/HP控件总数");
         }
 
         let AllHighPtIndices = AllPtIndices.filter((index) => parseInt(getContent(AllElements[index])) == HighestPt);
@@ -2138,14 +2588,14 @@ function algo_init() {
                         "最高Pt加成:"
                     + "\n  "+HighestPt
                     + "\n助战总数:"
-                    + "\n  "+AllPtIndices.length
-                    + "\n    NPC个数:"
-                    + "\n      "+NPCPtIndices.length
-                    + "\n    玩家总数:"
-                    + "\n      "+PlayerPtIndices.length
-                    + "\n        互关好友个数:"
-                    + "\n          "+PlayerHighPtIndices.length
-                    + "\n        单FO或路人个数:"
+                    + "\n| "+AllPtIndices.length
+                    + "\n+---NPC个数:"
+                    + "\n|     "+NPCPtIndices.length
+                    + "\n+---玩家总数:"
+                    + "\n    | "+PlayerPtIndices.length
+                    + "\n    +---互关好友个数:"
+                    + "\n    |     "+PlayerHighPtIndices.length
+                    + "\n    +---单FO或路人个数:"
                     + "\n          "+(PlayerPtIndices.length-PlayerHighPtIndices.length);
             } else {
                 testOutputString = null;
@@ -2155,12 +2605,12 @@ function algo_init() {
         //间接推算坐标，而不是直接读取坐标
 
         if (hasError) {
-            log("助战选择过程中出错,返回第一个助战");
+            toastLog("助战选择过程中出错,返回第一个助战");
             return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
         }
 
         if (AllPtIndices.length == 0) {
-            log("没有助战可供选择");
+            toastLog("没有助战可供选择");
             return {point: null, testdata: testOutputString};
         }
 
@@ -2169,11 +2619,11 @@ function algo_init() {
                 log("仅使用NPC已开启,选择第一个助战(即第一个NPC)");
                 return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
             } else if (PlayerPtIndices.length > 0) {
-                log("仅使用NPC已开启,但是没有NPC,选择第一个助战(即第一个玩家)");
-                return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+                toastLog("仅使用NPC已开启,但是没有NPC,所以没有助战可供选择");
+                return {point: null, testdata: testOutputString};
             } else {
                 //不应该走到这里
-                log("没有助战可供选择");
+                toastLog("没有助战可供选择");
                 return {point: null, testdata: testOutputString};
             }
         }
@@ -2199,7 +2649,7 @@ function algo_init() {
             return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
         } else {
             //不应该走到这里
-            log("没有助战可供选择");
+            toastLog("没有助战可供选择");
             return {point: null, testdata: testOutputString};
         }
     }
@@ -2324,6 +2774,126 @@ function algo_init() {
         ],
     };
 
+    function deleteDialogAndSetResult(openedDialogsNode, result) {
+        //调用origFunc.buildDialog时貌似又会触发一次dismiss，然后造成openedDialogsLock死锁，所以这里return来避免这个死锁
+        if (openedDialogsNode.alreadyDeleted.getAndIncrement() != 0) return;
+
+        let count = openedDialogsNode.count;
+
+        try {
+            openedDialogsLock.lock();
+            delete openedDialogs[""+count];
+        } catch (e) {
+            logException(e);
+            throw e;
+        } finally {
+            openedDialogsLock.unlock();
+        }
+
+        openedDialogsNode.dialogResult.setAndNotify(result);
+    }
+    var dialogs = {
+        buildAndShow: function () { let openedDialogsNode = {}; try {
+            openedDialogsLock.lock();
+
+            let count = ++openedDialogs.openedDialogCount;
+            openedDialogs[""+count] = {node: openedDialogsNode};
+            openedDialogsNode.count = count;
+
+            var dialogType = arguments[0];
+            var title = arguments[1];
+            var content = arguments[2];
+            var prefill = content;
+            var callback1 = arguments[3];
+            var callback2 = arguments[4];
+            if (dialogType == "rawInputWithContent") {
+                prefill = arguments[3];
+                callback1 = arguments[4];
+                callback2 = arguments[5];
+            }
+
+            openedDialogsNode.dialogResult = threads.disposable();
+
+            let dialogParams = {title: title, positive: "确定"};
+            switch (dialogType) {
+                case "alert":
+                    dialogParams["content"] = content;
+                    break;
+                case "select":
+                    if (callback2 != null) dialogParams["negative"] = "取消";
+                    dialogParams["items"] = content;
+                    break;
+                case "confirm":
+                    dialogParams["negative"] = "取消";
+                    dialogParams["content"] = content;
+                    break;
+                case "rawInputWithContent":
+                    if (content != null && content != "") dialogParams["content"] = content;
+                case "rawInput":
+                    if (callback2 != null) dialogParams["negative"] = "取消";
+                    dialogParams["inputPrefill"] = prefill;
+                    break;
+            }
+
+            let newDialog = origFunc.buildDialog(dialogParams);
+
+            openedDialogsNode.alreadyDeleted = threads.atomic(0);
+            newDialog = newDialog.on("dismiss", () => {
+                //dismiss应该在positive/negative/input之后，所以应该不会有总是传回null的问题
+                //其中，positive/input之后应该不会继续触发dismiss，只有negative才会
+                deleteDialogAndSetResult(openedDialogsNode, null);
+            });
+
+            if (dialogType != "rawInput" && dialogType != "rawInputWithContent") {
+                newDialog = newDialog.on("positive", () => {
+                    if (callback1 != null) callback1();
+                    //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                    deleteDialogAndSetResult(openedDialogsNode, true);
+                });
+            }
+
+            switch (dialogType) {
+                case "alert":
+                    break;
+                case "select":
+                case "confirm":
+                    newDialog = newDialog.on("negative", () => {
+                        if (callback2 != null) callback2();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, false);
+                    });
+                    break;
+                case "rawInputWithContent":
+                case "rawInput":
+                    newDialog = newDialog.on("input", (input) => {
+                        if (callback1 != null) callback1();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, input);
+                    });
+                    newDialog = newDialog.on("negative", () => {
+                        if (callback2 != null) callback2();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, null);
+                    });
+                    break;
+            }
+
+            openedDialogsNode.dialog = newDialog;
+
+            newDialog.show();
+        } catch (e) {
+            logException(e);
+            throw e;
+        } finally {
+            openedDialogsLock.unlock();
+        } return openedDialogsNode.dialogResult.blockedGet(); },
+        alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
+        select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
+        confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
+        rawInput: function(title, prefill, callback1, callback2) {return this.buildAndShow("rawInput", title, prefill, callback1, callback2)},
+        rawInputWithContent: function(title, content, prefill, callback1, callback2) {return this.buildAndShow("rawInputWithContent", title, content, prefill, callback1, callback2)},
+    };
+
     var string = {};
     var last_alive_lang = null; //用于游戏闪退重启
 
@@ -2400,6 +2970,34 @@ function algo_init() {
         return false;
     }
 
+    function getFragmentViewBounds() {
+        if (string == null || string.package_name == null || string.package_name == "") {
+            try {
+                throw new Error("getFragmentViewBounds: null/empty string.package_name");
+            } catch (e) {
+                logException(e);
+            }
+            let sz = getWindowSize();
+            return new android.graphics.Rect(0, 0, sz.x, sz.y);
+        }
+        let bounds = null;
+        try {
+            bounds = selector()
+                .packageName(string.package_name)
+                .className("android.widget.EditText")
+                .algorithm("BFS")
+                .findOnce()
+                .parent()
+                .bounds();
+        } catch (e) {
+            logException(e);
+            log("getFragmentViewBounds出错,使用getWindowSize作为替代");
+            let sz = getWindowSize();
+            return new android.graphics.Rect(0, 0, sz.x, sz.y);
+        }
+        return bounds;
+    }
+
     var screen = {width: 0, height: 0, type: "normal"};
     var gamebounds = null;
     var gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
@@ -2447,8 +3045,17 @@ function algo_init() {
         if (device.sdkInt >= 28) {
             //Android 9或以上有原生的刘海屏API
             //处理转屏
-            if (limit.cutoutParams != null && limit.cutoutParams.cutout != null) {
-                let initialRotation = limit.cutoutParams.rotation;
+            try {
+                cutoutParamsLock.lock();
+                var initialRotation = limit.cutoutParams != null ? limit.cutoutParams.rotation : null;
+                var initialCutout = limit.cutoutParams != null ? limit.cutoutParams.cutout : null;
+            } catch (e) {
+                logException(e);
+                throw e;
+            } finally {
+                cutoutParamsLock.unlock();
+            }
+            if (initialRotation != null && initialCutout != null) {
                 let display = context.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
                 let currentRotation = display.getRotation();
                 log("currentRotation", currentRotation, "initialRotation", initialRotation);
@@ -2462,7 +3069,7 @@ function algo_init() {
 
                     let safeInsets = {};
                     for (let key of ["Left", "Top", "Right", "Bottom"]) {
-                        safeInsets[key] = limit.cutoutParams.cutout["getSafeInset"+key]();
+                        safeInsets[key] = initialCutout["getSafeInset"+key]();
                     }
                     log("safeInsets before rotation", safeInsets);
 
@@ -2502,9 +3109,24 @@ function algo_init() {
     }
 
     function initialize(dontStopOnError) {
-        if (auto.root == null) {
+        if (!auto.service) {
             toastLog("未开启无障碍服务");
             selector().depth(0).findOnce();//弹出申请开启无障碍服务的弹窗
+        }
+
+        if ($settings.isEnabled("stable_mode")) {
+            toastLog("警告: 发现AutoJS的无障碍服务\"稳定模式\"被开启!\n\"稳定模式\"会干扰控件信息抓取!\n尝试关闭...");
+            $settings.setEnabled("stable_mode", false);
+            if (device.sdkInt >= 24) {
+                auto.service.disableSelf();
+                toastLog("为了关闭\"稳定模式\",已停用无障碍服务\n请重新启用无障碍服务后继续");
+            } else {
+                toastLog("为了关闭\"稳定模式\",\nAndroid 6.0或以下,请到系统设置里:\n先停用无障碍服务,再重新启用");
+            }
+            app.startActivity({
+                action: "android.settings.ACCESSIBILITY_SETTINGS"
+            });
+            stopThread();
         }
 
         //检测区服
@@ -2527,66 +3149,16 @@ function algo_init() {
             detected_screen_params = null;
         }
         if (detected_screen_params == null) {
-            log("检测屏幕参数没有返回结果");
-            if (!dontStopOnError) stopThread();
+            if (!dontStopOnError) {
+                toastLog("检测屏幕参数失败\n请再试一次");
+                stopThread();
+            } else {
+                log("检测屏幕参数没有返回结果");
+            }
         } else {
             screen = detected_screen_params.screen;
             gamebounds = detected_screen_params.gamebounds;
             gameoffset = detected_screen_params.gameoffset;
-        }
-    }
-
-    //绿药或红药，每次消耗1个
-    //魔法石，每次碎5钻
-    const drugCosts = [1, 1, 5];
-
-    function isDrugEnough(index, count) {
-        if (index < 0 || index > 2) throw new Error("index out of range");
-
-        //从游戏界面上读取剩余回复药个数后，作为count传入进来
-        let remainingnum = parseInt(count);
-        let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
-        log(
-        "\n第"+(index+1)+"种回复药"
-        +"\n"+(limit["drug"+(index+1)]?"已启用":"已禁用")
-        +"\n剩余:    "+remainingnum+"个"
-        +"\n个数限制:"+limitnum+"个"
-        );
-
-        //如果未启用则直接返回false
-        if (!limit["drug"+(index+1)]) return false;
-
-        //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
-        if (limitnum < drugCosts[index]) return false;
-        if (remainingnum < drugCosts[index]) return false;
-        return true;
-    }
-
-    //嗑药后，更新设置中的嗑药个数限制
-    function updateDrugLimit(index) {
-        if (index < 0 || index > 2) throw new Error("index out of range");
-        let drugnum = parseInt(limit["drug"+(index+1)+"num"]);
-        //parseInt("") == NaN，NaN视为无限大处理（所以不需要更新数值）
-        if (!isNaN(drugnum)) {
-            if (drugnum >= drugCosts[index]) {
-                drugnum -= drugCosts[index];
-                limit["drug"+(index+1)+"num"] = ""+drugnum;
-                if (drugnum < drugCosts[index]) {
-                    limit["drug"+(index+1)] = false;
-                }
-                ui.run(() => {
-                    //注意,这里会受到main.js里注册的listener影响
-                    ui["drug"+(index+1)+"num"].setText(limit["drug"+(index+1)+"num"]);
-                    let drugcheckbox = ui["drug"+(index+1)];
-                    let newvalue = limit["drug"+(index+1)];
-                    if (drugcheckbox.isChecked() != newvalue) drugcheckbox.setChecked(newvalue);
-                });
-            } else {
-                //正常情况下应该首先是药的数量还够，才会继续嗑药，然后才会更新嗑药个数限制，所以不应该走到这里
-                log("limit.drug"+(index+1)+"num", limit["drug"+(index+1)+"num"]);
-                log("index", index);
-                throw new Error("limit.drug"+(index+1)+"num exhausted");
-            }
         }
     }
 
@@ -2719,6 +3291,9 @@ function algo_init() {
 
                         //更新嗑药个数限制数值，减去用掉的数量
                         updateDrugLimit(i);
+
+                        //更新嗑药个数统计
+                        updateDrugConsumingStats(i);
 
                         break; //防止一次连续磕到三种不同的药
                     } else {
@@ -2955,7 +3530,7 @@ function algo_init() {
         }
         var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
         toastLog("强关游戏...");
-        if (limit.privilege) {
+        if (limit.privilege && limit.rootForceStop) {
             log("使用am force-stop命令...");
             while (true) {
                 privShell("am force-stop "+name);
@@ -3018,10 +3593,10 @@ function algo_init() {
                 let matched_title = expected_titles.find((val) => val == found_popup.title);
                 if (matched_title != null) {
                     log("弹窗标题\""+matched_title+"\",没有关闭按钮,只有回首页按钮,点击回首页...");
-                    if (isGameDead() != "crashed") click(convertCoords(clickSets.backToHomepage));
+                    click(convertCoords(clickSets.backToHomepage));
                 } else {
                     log("弹窗标题为\""+found_popup.title+"\",尝试关闭...");
-                    if (isGameDead() != "crashed") click(found_popup.close);
+                    click(found_popup.close);
                 }
                 log("等待2秒...");
                 sleep(2000);
@@ -3056,7 +3631,7 @@ function algo_init() {
             //“恢复战斗”按钮和断线重连的“否”重合，很蛋疼，但是没有控件可以检测，没办法
             //不过恢复战斗又掉线的几率并不高，而且即便又断线了，点“否”后游戏会重新登录，然后还是可以再点一次“恢复战斗”
             log("点击恢复战斗按钮区域...");
-            if (isGameDead() != "crashed") click(convertCoords(clickSets.recover_battle));
+            click(convertCoords(clickSets.recover_battle));
             log("点击恢复战斗按钮区域完成,等待1秒...");
             sleep(1000);
         }
@@ -3647,17 +4222,8 @@ function algo_init() {
                 activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
                 toast("内容已复制到剪贴板");
             });
-            dialogs.build({
-                title: "导出选关动作",
-                content: "您可以 全选=>复制 以下内容，然后在别处粘贴保存。",
-                inputPrefill: lastOpListStringified
-            }).on("dismiss", () => {
-                dialogs.build({
-                    title: "提示",
-                    content: "导出完成！\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。",
-                    positive: "确定"
-                }).show();
-            }).show();
+            dialogs.rawInputWithContent("导出选关动作", "您可以 全选=>复制 以下内容，然后在别处粘贴保存。", lastOpListStringified);
+            dialogs.alert("提示", "导出完成！\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。");
         } else {
             toastLog("没有录下来的动作可供导出");
         }
@@ -3672,17 +4238,20 @@ function algo_init() {
 
         initialize(); //如果游戏不在前台则无法检验导入进来的动作录制数据
 
-        dialogs.build({
-            title: "导入选关动作",
-            content: "您可以把之前录制并保存下来的动作重新导入进来。",
-            inputPrefill: "",
-            positive: "确定",
-            negative: "取消"
-        }).on("input", (op_list_string) => {
+        let input = dialogs.rawInputWithContent(
+            "导入选关动作",
+            "您可以把之前录制并保存下来的动作重新导入进来。",
+            "",
+            function () {},
+            function () {
+                toastLog("取消导入动作录制数据");
+            }
+        );
+        if (input != null) {
             log("确定导入动作录制数据");
             let importedOpList = null;
             try {
-                importedOpList = JSON.parse(op_list_string);
+                importedOpList = JSON.parse(input);
             } catch (e) {
                 logException(e);
                 importedOpList = null;
@@ -3697,26 +4266,31 @@ function algo_init() {
                     toastLog("导入失败\n动作录制数据无效");
                 }
             }
-        }).on("negative", (dialog) => {
-            toastLog("取消导入动作录制数据");
-        }).show();
+        }
     }
 
     function clearOpList() {
-        dialogs.build({
-            title: "清除选关动作录制数据",
-            content: "确定要清除么？",
-            positive: "确定",
-            negative: "取消"
-        }).on("positive", () => {
+        dialogs.confirm("清除选关动作录制数据", "确定要清除么？", () => {
             lastOpList = null;
             if (!files.remove(savedLastOpListPath)) {
                 toastLog("删除动作录制数据文件失败");
                 return;
             }
             toastLog("已清除选关动作数据");
-        }).show();
+        }, () => {
+            toastLog("未清除选关动作数据");
+        });
     }
+
+    //返回游戏并继续运行脚本
+    floatUI.backToGame = function () {
+        if (isCurrentTaskPaused.compareAndSet(TASK_PAUSED, TASK_RESUMING)) {
+            threads.start(reLaunchGame);//避免在UI线程运行
+        } else {
+            toastLog("脚本未处于暂停状态");
+            return;
+        }
+    };
 
     var is_support_picking_tested = false;
 
@@ -3776,6 +4350,7 @@ function algo_init() {
                     sleep(8000);
                     toastLog("2秒后将会自动点击助战...");
                     sleep(2000);
+                    toast("请勿拖动助战列表!\n自动点击助战...");
                     click(result.point);
                 } else {
                     toastLog("助战选择测试结束");
@@ -3871,9 +4446,7 @@ function algo_init() {
                 "安装这个版本以来还没有测试过助战自动选择是否可以正常工作。"
                 +"\n要测试吗？"))
             {
-                currentTask = threads.start(testSupportPicking);
-                toastLog("已停止当前脚本");
-                stopThread();
+                replaceSelfCurrentTask(floatUI.scripts.find((val) => val.name == "测试助战自动选择"));
                 //测试完再写入文件，来记录是否曾经测试过
             } else {
                 files.create(supportPickingTestRecordPath);
@@ -3883,6 +4456,8 @@ function algo_init() {
     }
 
     function taskDefault() {
+        isCurrentTaskPaused.set(TASK_RUNNING);//其他暂不（需要）支持暂停的脚本不需要加这一句
+
         initialize();
 
         if (lastOpList == null) {
@@ -3928,12 +4503,41 @@ function algo_init() {
         var stuckatreward = false;
         var rewardtime = null;
         */
+
+        //统计周回数，开始前先归零
+        currentTaskCycles = 0;
+
         while (true) {
-            //首先，检测游戏是否闪退或掉线
-            if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
-                state = STATE_CRASHED;
-                log("进入闪退/登出重启");
+            //先检查是否暂停
+            if (isCurrentTaskPaused.compareAndSet(TASK_PAUSING, TASK_PAUSED)) {
+                log("脚本已暂停运行");
                 continue;
+            } else if (isCurrentTaskPaused.compareAndSet(TASK_RESUMING, TASK_RUNNING)) {
+                log("3秒后恢复脚本运行...");//等待游戏重现回到前台
+                sleep(3000);
+                log("脚本已恢复运行");
+                continue;
+            } else switch (isCurrentTaskPaused.get()) {
+                case TASK_RUNNING:
+                    break;
+                case TASK_PAUSED:
+                    sleep(200);
+                    continue;
+                    break;
+                default:
+                    throw new Error("Unknown isCurrentTaskPaused value");
+            }
+
+            //然后检测游戏是否闪退或掉线
+            if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
+                if (lastOpList != null) {
+                    state = STATE_CRASHED;
+                    log("进入闪退/登出重启");
+                    continue;
+                } else {
+                    log("没有动作录制数据,不进入闪退/登出重启\n停止运行");
+                    stopThread();
+                }
             }
 
             //假死超时自动重开的计时点
@@ -3943,13 +4547,25 @@ function algo_init() {
                 } else if (!isNaN(parseInt(limit.forceStopTimeout))) {
                     let state_stuck_timeout = 1000 * parseInt(limit.forceStopTimeout);
                     if (new Date().getTime() > stuckStartTime + state_stuck_timeout) {
-                        toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n杀进程重开...");
-                        killGame(limit.package_name);
-                        state = STATE_CRASHED;
+                        if (lastOpList != null) {
+                            toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n杀进程重开...");
+                            killGame(limit.package_name);
+                            state = STATE_CRASHED;
+                        } else {
+                            toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n等待10秒...");
+                            sleep(10000);
+                        }
                     }
                 }
             }
+
+            //统计周回数(可能不准确)
+            if (state != last_state && last_state == STATE_BATTLE) {
+                updateCycleCount();
+            }
+
             last_state = state;
+
             //打断官方自动周回的计时点
             switch(state) {
                 case STATE_BATTLE:
@@ -3967,6 +4583,11 @@ function algo_init() {
             //然后，再继续自动周回处理
             switch (state) {
                 case STATE_CRASHED: {
+                    if (lastOpList == null) {
+                        toastLog("没有动作录制数据,退出");
+                        stopThread();
+                        break;
+                    }
                     switch (isGameDead(2000)) {
                         case "crashed":
                             log("等待5秒后重启游戏...");
@@ -3987,6 +4608,11 @@ function algo_init() {
                     break;
                 }
                 case STATE_LOGIN: {
+                    if (lastOpList == null) {
+                        toastLog("没有动作录制数据,退出");
+                        stopThread();
+                        break;
+                    }
                     if (isGameDead(2000) == "crashed") {
                         state = STATE_CRASHED;
                         break;
@@ -4153,12 +4779,13 @@ function algo_init() {
                     let pt_point = pickSupportWithMostPt();
                     if (pt_point != null) pt_point = pt_point.point;
                     if (pt_point != null) {
+                        toast("请勿拖动助战列表!\n自动点击助战...");
                         click(pt_point);
                         // wait for start button for 5 seconds
                         findID("nextPageBtn", parseInt(limit.timeout));
                         break;
                     } else {
-                        log("助战选择失败,点击返回重试");
+                        toastLog("助战选择失败,点击返回重试");
                         click(convertCoords(clickSets.back));
                         //点击后等待默认最多5秒(可配置)
                         waitAny(
