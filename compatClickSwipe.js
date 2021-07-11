@@ -156,7 +156,6 @@ function compatSwipe(x1, y1, x2, y2, duration) {
 compatClickSwipe.swipe = compatSwipe;
 
 function compatPress(x, y, duration) {
-    // system version higher than Android 7.0
     log("使用滑动模拟按住");
     compatSwipe(x, y, x, y, duration);
 }
