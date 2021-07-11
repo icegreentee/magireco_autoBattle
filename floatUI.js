@@ -3757,6 +3757,20 @@ function algo_init() {
         }
         toastLog("请务必先回到首页再开始录制！");
         sleep(2000);
+
+        while (true) {
+            let is_generic = dialogs.confirm("要兼容其他分辨率吗？", "要兼容其他分辨率,就需要在录制时标记每个坐标点的类型,分为 顶端/居中/底端 三种");
+            switch (is_generic) {
+                case true:
+                case false:
+                    result.isGeneric = is_generic;
+                    toastLog(is_generic ? "录制成兼容其他分辨率" : "录制成仅兼容本机型");
+                    break;
+                default:
+                    toast("请点击\"确定\"或\"取消\"");
+            }
+        }
+
         let new_sleep_time = -1;
         do {
             new_sleep_time = dialogs.rawInput("每一步操作之间的默认等待时长设为多少毫秒？（除了强制要求的500毫秒安全检查之外）", "1500");
