@@ -1931,6 +1931,10 @@ function algo_init() {
             y = point.y;
         }
         // limit range
+
+        let xy = {};
+        xy.orig = {x: x, y: y};
+
         var sz = getFragmentViewBounds();
         if (x < sz.left) {
             x = sz.left;
@@ -1944,6 +1948,12 @@ function algo_init() {
         if (y >= sz.bottom) {
             y = sz.bottom - 1;
         }
+
+        let xy.clamped = {x: x, y: y};
+        for (let axis of ["x", "y"])
+            if (xy.clamped[axis] != xy.orig[axis])
+                log("点击坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
+
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             // now accessibility gesture APIs are available
@@ -2000,6 +2010,10 @@ function algo_init() {
         y2 = points[1].y;
 
         // limit range
+
+        let xy = {};
+        xy.orig = {x1: x1, y1: y1, x2: x2, y2: y2};
+
         var sz = getFragmentViewBounds();
         if (x1 < sz.left) {
             x1 = sz.left;
@@ -2025,6 +2039,11 @@ function algo_init() {
         if (y2 >= sz.bottom) {
             y2 = sz.bottom - 1;
         }
+
+        let xy.clamped = {x1: x1, y1: y1, x2: x2, y2: y2};
+        for (let axis of ["x1", "y1", "x2", "y2"])
+            if (xy.clamped[axis] != xy.orig[axis])
+                log("滑动坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
 
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
