@@ -76,6 +76,9 @@ compatClickSwipe.shellCmd = shellCmd;
 var shellScreenCap = require("shellScreenCap.js");
 shellScreenCap.shellCmd = shellCmd;
 
+// 识图自动战斗模块
+var CVAutoBattle = require("CVAutoBattle.js");
+
 // 嗑药数量限制和统计
 //绿药或红药，每次消耗1个
 //魔法石，每次碎5钻
@@ -4587,7 +4590,6 @@ function algo_init() {
         }
     }
 
-    var CVAutoBattle = require("CVAutoBattle.js");
     function taskMirrors() {
         //TODO
     }
