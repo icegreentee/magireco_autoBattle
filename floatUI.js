@@ -43,13 +43,6 @@ function logException(e) {
     }
 }
 
-var origFunc = {
-    click: function () {return click.apply(this, arguments)},
-    swipe: function () {return swipe.apply(this, arguments)},
-    press: function () {return press.apply(this, arguments)},
-    buildDialog: function() {return dialogs.build.apply(this, arguments)},
-}
-
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
@@ -64,15 +57,25 @@ var tasks = algo_init();
 var capture = () => { };
 // 停止脚本线程，尤其是防止停止自己的时候仍然继续往下执行少许语句（同上，会在main函数中初始化）
 var stopThread = () => { };
-// （不）使用Shizuku/root执行shell命令
-var shizukuShell = () => { };
-var rootShell = () => { };
-var privShell = () => { };
-var normalShell = () => { };
-// 检查root或adb权限
-var getEUID = () => { };
-var requestShellPrivilege = () => { };
-var requestShellPrivilegeThread = null;
+
+// dialogsManager模块，用于避免线程停了、对话框却不消除的问题
+var dialogsManager = require("dialogsManager.js");
+
+// shell命令模块，包括使用root或shizuku adb权限
+var shellCmd = require("shellCmd.js");
+var shizukuShell = shellCmd.shizukuShell;
+var rootShell = shellCmd.rootShell;
+var privShell = shellCmd.privShell;
+var normalShell = shellCmd.normalShell;
+
+// 兼容Android 7以下的点击模块
+var compatClickSwipe = require("compatClickSwipe.js");
+compatClickSwipe.shellCmd = shellCmd;
+
+// 截屏模块
+var shellScreenCap = require("shellScreenCap.js");
+shellScreenCap.shellCmd = shellCmd;
+
 // 嗑药数量限制和统计
 //绿药或红药，每次消耗1个
 //魔法石，每次碎5钻
@@ -91,7 +94,7 @@ floatUI.scripts = [
     },
     {
         name: "镜层周回",
-        fn: jingMain,
+        fn: tasks.mirrors,
     },
     {
         name: "副本周回2（备用可选）",
@@ -100,6 +103,10 @@ floatUI.scripts = [
     {
         name: "活动周回2（备用可选）",
         fn: autoMainver1,
+    },
+    {
+        name: "镜层周回（备用可选）",
+        fn: jingMain,
     },
     {
         name: "每小时自动重开，刷剧情1",
@@ -142,9 +149,6 @@ const TASK_PAUSING = 2;
 const TASK_PAUSED = 3;
 const TASK_RESUMING = 4;
 var isCurrentTaskPaused = threads.atomic(TASK_STOPPED);
-//被打开的所有对话框（用于在线程退出时dismiss）
-var openedDialogs = {openedDialogCount: 0};
-var openedDialogsLock = threads.lock();
 
 //运行脚本时隐藏UI控件，防止误触
 var menuItems = [];
@@ -310,41 +314,8 @@ var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
             isCurrentTaskPaused.set(TASK_STOPPED);
             lockUI(false);
         }
-        log("关闭所有无主对话框...");
-        try {
-            openedDialogsLock.lock();//先加锁，dismiss会等待解锁后再开始删
-            for (let key in openedDialogs) {
-                if (key != "openedDialogCount") {
-                    openedDialogs[key].node.dialog.dismiss();
-                }
-            }
-        } catch (e) {
-            logException(e);
-            throw e;
-        } finally {
-            openedDialogsLock.unlock();
-        }
-        //等待dismiss删完，如果不等删完的话，下一次启动的脚本调用对话框又会死锁
-        log("等待无主对话框全部清空...");
-        while (true) {
-            let remaining = 0;
-            try {
-                openedDialogsLock.lock();
-                for (let key in openedDialogs) {
-                    if (key != "openedDialogCount") {
-                        remaining++;
-                    }
-                }
-            } catch (e) {
-                logException(e);
-                throw e;
-            } finally {
-                openedDialogsLock.unlock();
-            }
-            if (remaining == 0) break;
-            sleep(100);
-        }
-        log("无主对话框已全部清空");
+        //关闭所有无主对话框
+        dialogsManager.waitForDismissAll();
     });
     monitoredTask.waitFor();
 });
@@ -996,135 +967,9 @@ floatUI.main = function () {
         log("limit.cutoutParams", limit.cutoutParams);
     });
 
-    //使用Shizuku执行shell命令
-    shizukuShell = function (shellcmd, logstring) {
-        if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "执行shell命令: ["+shellcmd+"]";
-        if (logstring !== false) log("使用Shizuku"+logstring);
-        $shell.setDefaultOptions({adb: true});
-        let result = $shell(shellcmd);
-        $shell.setDefaultOptions({adb: false});
-        if (logstring !== false) log("使用Shizuku"+logstring+" 完成");
-        return result;
-    };
-    //直接使用root权限执行shell命令
-    rootShell = function (shellcmd, logstring) {
-        if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "执行shell命令: ["+shellcmd+"]";
-        if (logstring !== false) log("直接使用root权限"+logstring);
-        $shell.setDefaultOptions({adb: false});
-        if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
-        return $shell(shellcmd, true);
-    };
-    //根据情况使用Shizuku还是直接使用root执行shell命令
-    privShell = function (shellcmd, logstring) {
-        if (limit.privilege) {
-            if (limit.privilege.shizuku) {
-                return shizukuShell(shellcmd, logstring);
-            } else {
-                return rootShell(shellcmd, logstring);
-            }
-        } else {
-            if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
-                toastLog("已经在尝试申请root或adb权限了\n请稍后重试,或彻底退出脚本后重试");
-            } else {
-                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-            }
-            throw new Error("没有root或adb权限");
-        }
-    }
-    //不使用特权执行shell命令
-    normalShell = function (shellcmd, logstring) {
-        if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "执行shell命令: ["+shellcmd+"]";
-        if (logstring !== false) log("不使用特权"+logstring);
-        $shell.setDefaultOptions({adb: false});
-        if (logstring !== false) log("不使用特权"+logstring+" 完成");
-        return $shell(shellcmd);
-    }
-
-    //检查并申请root或adb权限
-    getEUID = function (procStatusContent) {
-        let matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
-        if (matched != null) {
-            matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
-        }
-        if (matched != null) {
-            return parseInt(matched[0]);
-        } else {
-            return -1;
-        }
-    }
-    requestShellPrivilege = function () {
-        if (limit.privilege) {
-            log("已经获取到root或adb权限了");
-            return limit.privilege;
-        }
-
-        let rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
-
-        let shellcmd = "cat /proc/self/status";
-        let result = null;
-        try {
-            result = shizukuShell(shellcmd);
-        } catch (e) {
-            result = {code: 1, result: "-1", err: ""};
-            logException(e);
-        }
-        let euid = -1;
-        if (result.code == 0) {
-            euid = getEUID(result.result);
-            switch (euid) {
-            case 0:
-                log("Shizuku有root权限");
-                limit.privilege = {shizuku: {uid: euid}};
-                break;
-            case 2000:
-                log("Shizuku有adb shell权限");
-                limit.privilege = {shizuku: {uid: euid}};
-                break;
-            default:
-                log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
-                limit.privilege = null;
-            }
-        }
-
-        if (limit.privilege != null) return;
-
-        if (!files.isFile(rootMarkerPath)) {
-            toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
-            sleep(2500);
-            toastLog("请务必选择“永久”授权，而不是一次性授权！");
-        } else {
-            log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
-        }
-        result = rootShell(shellcmd);
-        if (result.code == 0) euid = getEUID(result.result);
-        if (euid == 0) {
-            log("直接获取root权限成功");
-            limit.privilege = {shizuku: null};
-            files.create(rootMarkerPath);
-        } else {
-            toastLog("直接获取root权限失败！");
-            sleep(2500);
-            limit.privilege = null;
-            files.remove(rootMarkerPath);
-            if (device.sdkInt >= 23) {
-                toastLog("请下载安装Shizuku,并按照说明启动它\n然后在Shizuku中给本应用授权");
-                $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
-            } else {
-                toastLog("Android版本低于6，Shizuku不能使用最新版\n请安装并启动Shizuku 3.6.1，并给本应用授权");
-                $app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
-            }
-        }
-
-        return limit.privilege;
-    }
-
     if (device.sdkInt < 24) {
-        if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
-            requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-        }
+        //Android 7以下无障碍服务无法按坐标点击
+        shellCmd.requestShellPrivilege();
     }
 
     //嗑药后，更新设置中的嗑药个数限制
@@ -1236,7 +1081,6 @@ var limit = {
     rootScreencap: false,
     rootForceStop: false,
     firstRequestPrivilege: true,
-    privilege: null
 }
 
 var cutoutParamsLock = threads.lock();
@@ -1885,156 +1729,22 @@ floatUI.adjust = function (key, value) {
         let isPrivNeeded = false;
         if (key == "rootForceStop" && value) isPrivNeeded = true;
         if (key == "rootScreencap" && value) isPrivNeeded = true;
-        if (!limit.privilege && isPrivNeeded) {
-            if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
-                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-            }
+        if (!shellCmd.privilege && isPrivNeeded) {
+            shellCmd.requestShellPrivilege();
         }
     }
 }
 
 floatUI.logParams = function () {
     log("\n参数:\n", limit);
+    log("\n特权:\n", shellCmd.privilege);
 }
 
 // compatible action closure
 function algo_init() {
-
-    //虽然函数名里有Root，实际上用的可能还是adb shell权限
-    function clickOrSwipeRoot(x1, y1, x2, y2, duration) {
-        var shellcmd = null;
-        var logString = null;
-        switch (arguments.length) {
-            case 5:
-                shellcmd = "input swipe "+x1+" "+y1+" "+x2+" "+y2+(duration==null?"":(" "+duration));
-                logString = "模拟滑动: ["+x1+","+y1+" => "+x2+","+y2+"]"+(duration==null?"":(" ("+duration+"ms)"));
-                break;
-            case 2:
-                shellcmd = "input tap "+x1+" "+y1;
-                logString = "模拟点击: ["+x1+","+y1+"]";
-                break;
-            default:
-                throw new Error("clickOrSwipeRoot: invalid argument count");
-        }
-        privShell(shellcmd, logString);
-    }
-
-    function click(x, y) {
-        //isGameDead和getFragmentViewBounds其实是在后面定义的
-        if (isGameDead() == "crashed") {
-            log("游戏已经闪退,放弃点击");
-            return;
-        }
-        if (y == null) {
-            var point = x;
-            x = point.x;
-            y = point.y;
-        }
-        // limit range
-        var sz = getFragmentViewBounds();
-        if (x < sz.left) {
-            x = sz.left;
-        }
-        if (x >= sz.right) {
-            x = sz.right - 1;
-        }
-        if (y < sz.top) {
-            y = sz.top;
-        }
-        if (y >= sz.bottom) {
-            y = sz.bottom - 1;
-        }
-        // system version higher than Android 7.0
-        if (device.sdkInt >= 24) {
-            // now accessibility gesture APIs are available
-            log("使用无障碍服务模拟点击坐标 "+x+","+y);
-            origFunc.click(x, y);
-            log("点击完成");
-        } else {
-            clickOrSwipeRoot(x, y);
-        }
-    }
-
-    function getDefaultSwipeDuration(x1, x2, y1, y2) {
-        // 默认滑动时间计算，距离越长时间越长
-        let swipe_distance = Math.sqrt(Math.pow((x2 - x1), 2) + Math.pow((y2 - y1), 2));
-        let screen_diagonal = Math.sqrt(Math.pow((device.width), 2) + Math.pow((device.height), 2));
-        return parseInt(1500 + 3000 * (swipe_distance / screen_diagonal));
-    }
-
-    function swipe(x1, y1, x2, y2, duration) {
-        //isGameDead和getFragmentViewBounds其实是在后面定义的
-        if (isGameDead() == "crashed") {
-            log("游戏已经闪退,放弃滑动");
-            return;
-        }
-        // 解析参数
-        var points = [];
-        if (arguments.length > 5) throw new Error("compatSwipe: incorrect argument count");
-        for (let i=0; i<arguments.length; i++) {
-            if (isNaN(parseInt(arguments[i]))) {
-                //参数本身就（可能）是一个坐标点对象
-                points.push(arguments[i]);
-            } else {
-                //参数应该是坐标X值或滑动时长
-                if (i < arguments.length-1) {
-                    //存在下一个参数，则把这个参数视为坐标X值，下一个参数视为坐标Y值
-                    points.push({x: parseInt(arguments[i]), y: parseInt(arguments[i+1])});
-                    i++;
-                } else {
-                    //不存在下一个参数，这个参数应该是滑动时长
-                    duration = parseInt(arguments[i]);
-                }
-            }
-            //坐标X、Y值应该都是数字
-            if (isNaN(points[points.length-1].x) || isNaN(points[points.length-1].y))
-                throw new Error("compatSwipe: invalid arguments (invalid point)");
-            //又一个坐标点被加入，最多加入2个点，不允许加入第3个点
-            if (points.length > 2) {
-                throw new Error("compatSwipe invalid arguments (added more than 2 points)");
-            }
-        }
-        x1 = points[0].x;
-        y1 = points[0].y;
-        x2 = points[1].x;
-        y2 = points[1].y;
-
-        // limit range
-        var sz = getFragmentViewBounds();
-        if (x1 < sz.left) {
-            x1 = sz.left;
-        }
-        if (x1 >= sz.right) {
-            x1 = sz.right - 1;
-        }
-        if (y1 < sz.top) {
-            y1 = sz.top;
-        }
-        if (y1 >= sz.bottom) {
-            y1 = sz.bottom - 1;
-        }
-        if (x2 < sz.left) {
-            x2 = sz.left;
-        }
-        if (x2 >= sz.right) {
-            x2 = sz.right - 1;
-        }
-        if (y2 < sz.top) {
-            y2 = sz.top;
-        }
-        if (y2 >= sz.bottom) {
-            y2 = sz.bottom - 1;
-        }
-
-        // system version higher than Android 7.0
-        if (device.sdkInt >= 24) {
-            log("使用无障碍服务模拟滑动 "+x1+","+y1+" => "+x2+","+y2+(duration==null?"":(" ("+duration+"ms)")));
-            origFunc.swipe(x1, y1, x2, y2, duration != null ? duration : getDefaultSwipeDuration(x1, x2, y1, y2)); //最后一个参数不能缺省
-            log("滑动完成");
-        } else {
-            clickOrSwipeRoot(x1, y1, x2, y2, duration != null ? duration : getDefaultSwipeDuration(x1, x2, y1, y2));
-        }
-    }
+    //覆盖click和swipe两个函数
+    var click = compatClickSwipe.click;
+    var swipe = compatClickSwipe.swipe;
 
     // find first element using regex
     function match(reg, wait) {
@@ -2774,126 +2484,6 @@ function algo_init() {
         ],
     };
 
-    function deleteDialogAndSetResult(openedDialogsNode, result) {
-        //调用origFunc.buildDialog时貌似又会触发一次dismiss，然后造成openedDialogsLock死锁，所以这里return来避免这个死锁
-        if (openedDialogsNode.alreadyDeleted.getAndIncrement() != 0) return;
-
-        let count = openedDialogsNode.count;
-
-        try {
-            openedDialogsLock.lock();
-            delete openedDialogs[""+count];
-        } catch (e) {
-            logException(e);
-            throw e;
-        } finally {
-            openedDialogsLock.unlock();
-        }
-
-        openedDialogsNode.dialogResult.setAndNotify(result);
-    }
-    var dialogs = {
-        buildAndShow: function () { let openedDialogsNode = {}; try {
-            openedDialogsLock.lock();
-
-            let count = ++openedDialogs.openedDialogCount;
-            openedDialogs[""+count] = {node: openedDialogsNode};
-            openedDialogsNode.count = count;
-
-            var dialogType = arguments[0];
-            var title = arguments[1];
-            var content = arguments[2];
-            var prefill = content;
-            var callback1 = arguments[3];
-            var callback2 = arguments[4];
-            if (dialogType == "rawInputWithContent") {
-                prefill = arguments[3];
-                callback1 = arguments[4];
-                callback2 = arguments[5];
-            }
-
-            openedDialogsNode.dialogResult = threads.disposable();
-
-            let dialogParams = {title: title, positive: "确定"};
-            switch (dialogType) {
-                case "alert":
-                    dialogParams["content"] = content;
-                    break;
-                case "select":
-                    if (callback2 != null) dialogParams["negative"] = "取消";
-                    dialogParams["items"] = content;
-                    break;
-                case "confirm":
-                    dialogParams["negative"] = "取消";
-                    dialogParams["content"] = content;
-                    break;
-                case "rawInputWithContent":
-                    if (content != null && content != "") dialogParams["content"] = content;
-                case "rawInput":
-                    if (callback2 != null) dialogParams["negative"] = "取消";
-                    dialogParams["inputPrefill"] = prefill;
-                    break;
-            }
-
-            let newDialog = origFunc.buildDialog(dialogParams);
-
-            openedDialogsNode.alreadyDeleted = threads.atomic(0);
-            newDialog = newDialog.on("dismiss", () => {
-                //dismiss应该在positive/negative/input之后，所以应该不会有总是传回null的问题
-                //其中，positive/input之后应该不会继续触发dismiss，只有negative才会
-                deleteDialogAndSetResult(openedDialogsNode, null);
-            });
-
-            if (dialogType != "rawInput" && dialogType != "rawInputWithContent") {
-                newDialog = newDialog.on("positive", () => {
-                    if (callback1 != null) callback1();
-                    //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                    deleteDialogAndSetResult(openedDialogsNode, true);
-                });
-            }
-
-            switch (dialogType) {
-                case "alert":
-                    break;
-                case "select":
-                case "confirm":
-                    newDialog = newDialog.on("negative", () => {
-                        if (callback2 != null) callback2();
-                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                        deleteDialogAndSetResult(openedDialogsNode, false);
-                    });
-                    break;
-                case "rawInputWithContent":
-                case "rawInput":
-                    newDialog = newDialog.on("input", (input) => {
-                        if (callback1 != null) callback1();
-                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                        deleteDialogAndSetResult(openedDialogsNode, input);
-                    });
-                    newDialog = newDialog.on("negative", () => {
-                        if (callback2 != null) callback2();
-                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                        deleteDialogAndSetResult(openedDialogsNode, null);
-                    });
-                    break;
-            }
-
-            openedDialogsNode.dialog = newDialog;
-
-            newDialog.show();
-        } catch (e) {
-            logException(e);
-            throw e;
-        } finally {
-            openedDialogsLock.unlock();
-        } return openedDialogsNode.dialogResult.blockedGet(); },
-        alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
-        select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
-        confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
-        rawInput: function(title, prefill, callback1, callback2) {return this.buildAndShow("rawInput", title, prefill, callback1, callback2)},
-        rawInputWithContent: function(title, content, prefill, callback1, callback2) {return this.buildAndShow("rawInputWithContent", title, content, prefill, callback1, callback2)},
-    };
-
     var string = {};
     var last_alive_lang = null; //用于游戏闪退重启
 
@@ -3530,7 +3120,7 @@ function algo_init() {
         }
         var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
         toastLog("强关游戏...");
-        if (limit.privilege && limit.rootForceStop) {
+        if (shellCmd.privilege && limit.rootForceStop) {
             log("使用am force-stop命令...");
             while (true) {
                 privShell("am force-stop "+name);
@@ -3644,21 +3234,17 @@ function algo_init() {
     }
 
     function requestPrivilegeIfNeeded() {
-        if (limit.privilege) return true;
+        if (shellCmd.privilege) return true;
 
         if (limit.rootForceStop || limit.firstRequestPrivilege) {
             limit.firstRequestPrivilege = false;
-            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
+            if (dialogsManager.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
             {
                 limit.firstRequestPrivilege = true;//如果这次没申请到权限，下次还会提醒
                 ui.run(() => {
                     ui["rootForceStop"].setChecked(true);
                 });
-                if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
-                    toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
-                } else {
-                    requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-                }
+                shellCmd.requestShellPrivilege();
                 return false;//等到权限获取完再重试
             } else {
                 limit.firstRequestPrivilege = false;//下次不会提醒了
@@ -3725,7 +3311,7 @@ function algo_init() {
     function chooseAction(step) {
         var result = null;
         let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
-        let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
+        let selected = dialogsManager.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
         let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", null];
         result = actions[selected];
         return result;
@@ -3759,7 +3345,7 @@ function algo_init() {
         sleep(2000);
         let new_sleep_time = -1;
         do {
-            new_sleep_time = dialogs.rawInput("每一步操作之间的默认等待时长设为多少毫秒？（除了强制要求的500毫秒安全检查之外）", "1500");
+            new_sleep_time = dialogsManager.rawInput("每一步操作之间的默认等待时长设为多少毫秒？（除了强制要求的500毫秒安全检查之外）", "1500");
             new_sleep_time = parseInt(new_sleep_time);
             if (isNaN(new_sleep_time) || new_sleep_time <= 0) {
                 toastLog("请输入一个正整数");
@@ -3814,7 +3400,7 @@ function algo_init() {
                     op.sleep = {};
                     let sleep_ms = 0;
                     do {
-                        sleep_ms = dialogs.rawInput("录制第"+(step+1)+"步操作\n要等待多少毫秒", "3000");
+                        sleep_ms = dialogsManager.rawInput("录制第"+(step+1)+"步操作\n要等待多少毫秒", "3000");
                         sleep_ms = parseInt(sleep_ms);
                         if (isNaN(sleep_ms) || sleep_ms <= 0) {
                             toastLog("请输入一个正整数");
@@ -3858,14 +3444,14 @@ function algo_init() {
                                 selected = 0;
                                 break;
                             default:
-                                selected = dialogs.select("录制第"+(step+1)+"步操作\n在点击位置检测到多个含有文字的控件,请选择:", all_text);
+                                selected = dialogsManager.select("录制第"+(step+1)+"步操作\n在点击位置检测到多个含有文字的控件,请选择:", all_text);
                         }
                     }
                     op.checkText.text = all_text[selected];
                     toastLog("录制第"+(step+1)+"步操作\n要检测的文字是\""+op.checkText.text+"\"");
 
                     dialog_options = ["横纵坐标都检测", "只检测横坐标X", "只检测纵坐标Y", "横纵坐标都不检测"];
-                    dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n是否要检测文字\""+op.checkText.text+"\"在屏幕出现的位置和现在是否一致?", dialog_options);
+                    dialog_selected = dialogsManager.select("录制第"+(step+1)+"步操作\n是否要检测文字\""+op.checkText.text+"\"在屏幕出现的位置和现在是否一致?", dialog_options);
                     if (dialog_selected == 0 || dialog_selected == 1) {
                         op.checkText.centerX = check_text_point.x;
                     }
@@ -3878,7 +3464,7 @@ function algo_init() {
                         op.checkText[found_or_not_found] = {};
                         op.checkText[found_or_not_found].kill = false;
                         dialog_options = ["什么也不做,继续执行", "报告成功并结束", "报告失败并结束", "先强关游戏再报告成功并结束", "先强关游戏再报告失败并结束"];
-                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字\""+op.checkText.text+"\"时要做什么?", dialog_options);
+                        dialog_selected = dialogsManager.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字\""+op.checkText.text+"\"时要做什么?", dialog_options);
                         switch (dialog_selected) {
                             case 0:
                                 op.checkText[found_or_not_found].nextAction = "ignore";
@@ -3909,7 +3495,7 @@ function algo_init() {
                     break;
                 case "exit":
                     if (result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null)) {
-                        dialog_selected = dialogs.confirm(
+                        dialog_selected = dialogsManager.confirm(
                             "警告", "您没有录制文字检测动作！\n"
                             +"您确定 不需要 检测文字么？\n"
                             +"重放时未必可以一次成功，点错并不是稀奇事。\n"
@@ -3929,7 +3515,7 @@ function algo_init() {
                     op.exit = {};
                     op.exit.kill = false;
                     dialog_options = ["报告成功", "报告失败", "先强关游戏再报告成功", "先强关游戏再报告失败"];
-                    dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", dialog_options);
+                    dialog_selected = dialogsManager.select("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", dialog_options);
                     switch (dialog_selected) {
                         case 2:
                             op.exit.kill = true;//不break
@@ -4222,8 +3808,8 @@ function algo_init() {
                 activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
                 toast("内容已复制到剪贴板");
             });
-            dialogs.rawInputWithContent("导出选关动作", "您可以 全选=>复制 以下内容，然后在别处粘贴保存。", lastOpListStringified);
-            dialogs.alert("提示", "导出完成！\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。");
+            dialogsManager.rawInputWithContent("导出选关动作", "您可以 全选=>复制 以下内容，然后在别处粘贴保存。", lastOpListStringified);
+            dialogsManager.alert("提示", "导出完成！\n不过很遗憾，目前只支持在同一台设备上重新导入，不支持在屏幕参数不一样的另一台设备上导入运行。");
         } else {
             toastLog("没有录下来的动作可供导出");
         }
@@ -4238,7 +3824,7 @@ function algo_init() {
 
         initialize(); //如果游戏不在前台则无法检验导入进来的动作录制数据
 
-        let input = dialogs.rawInputWithContent(
+        let input = dialogsManager.rawInputWithContent(
             "导入选关动作",
             "您可以把之前录制并保存下来的动作重新导入进来。",
             "",
@@ -4270,7 +3856,7 @@ function algo_init() {
     }
 
     function clearOpList() {
-        dialogs.confirm("清除选关动作录制数据", "确定要清除么？", () => {
+        dialogsManager.confirm("清除选关动作录制数据", "确定要清除么？", () => {
             lastOpList = null;
             if (!files.remove(savedLastOpListPath)) {
                 toastLog("删除动作录制数据文件失败");
@@ -4328,7 +3914,7 @@ function algo_init() {
             sleep(2000);
             stopThread();
         } else {
-            while (dialogs.confirm(
+            while (dialogsManager.confirm(
                 "测试助战自动选择",
                 "请检查游戏中实际显示的助战数目是否和下面的结果一致。"
                 +"\n如果发现结果不对，请在助战选择界面拍一张快照，然后回到脚本主界面，点击右上角菜单里的\"报告问题\"，谢谢！"
@@ -4342,7 +3928,7 @@ function algo_init() {
             };
 
             if (result.point != null) {
-                if (dialogs.confirm(
+                if (dialogsManager.confirm(
                     "测试助战自动选择",
                     "要继续让脚本点击自动选择的助战么？如果是，请在点击\"确定\"后，拖动助战列表，使其回到初始状态，让第一个助战显示在顶部。"
                 )) {
@@ -4356,7 +3942,7 @@ function algo_init() {
                     toastLog("助战选择测试结束");
                     return;
                 }
-                while (dialogs.confirm(
+                while (dialogsManager.confirm(
                     "测试助战自动选择",
                     "请检查游戏中实际出现在队伍里的助战角色是否正确。"
                     +"\n如果发现结果不对，请在助战选择界面拍一张快照，然后回到脚本主界面，点击右上角菜单里的\"报告问题\"，谢谢！"
@@ -4442,7 +4028,7 @@ function algo_init() {
             is_support_picking_tested = false;
         }
         if (!is_support_picking_tested) {
-            if (dialogs.confirm("测试助战自动选择",
+            if (dialogsManager.confirm("测试助战自动选择",
                 "安装这个版本以来还没有测试过助战自动选择是否可以正常工作。"
                 +"\n要测试吗？"))
             {
@@ -4462,10 +4048,10 @@ function algo_init() {
 
         if (lastOpList == null) {
             if (files.isFile(savedLastOpListPath)) {
-                if (dialogs.confirm("自动选关", "要加载之前保存的选关动作录制数据吗?")) {
+                if (dialogsManager.confirm("自动选关", "要加载之前保存的选关动作录制数据吗?")) {
                     lastOpList = loadOpList();
                 } else {
-                    if (dialogs.confirm("自动选关", "要删除保存选关动作录制数据的文件么?")) {
+                    if (dialogsManager.confirm("自动选关", "要删除保存选关动作录制数据的文件么?")) {
                         if (!files.remove(savedLastOpListPath)) {
                             toastLog("删除动作录制数据文件失败");
                         } else {
@@ -5001,8 +4587,14 @@ function algo_init() {
         }
     }
 
+    var CVAutoBattle = require("CVAutoBattle.js");
+    function taskMirrors() {
+        //TODO
+    }
+
     return {
         default: taskDefault,
+        mirrors: taskMirrors,
         reopen: enterLoop,
         recordSteps: recordOperations,
         replaySteps: replayOperations,
