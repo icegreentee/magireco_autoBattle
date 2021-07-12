@@ -91,7 +91,7 @@ floatUI.scripts = [
     },
     {
         name: "镜层周回",
-        fn: jingMain,
+        fn: tasks.mirrors,
     },
     {
         name: "副本周回2（备用可选）",
@@ -100,6 +100,10 @@ floatUI.scripts = [
     {
         name: "活动周回2（备用可选）",
         fn: autoMainver1,
+    },
+    {
+        name: "镜层周回（备用可选）",
+        fn: jingMain,
     },
     {
         name: "每小时自动重开，刷剧情1",
@@ -5001,8 +5005,13 @@ function algo_init() {
         }
     }
 
+    function taskMirrors() {
+        
+    }
+
     return {
         default: taskDefault,
+        mirrors: taskMirrors,
         reopen: enterLoop,
         recordSteps: recordOperations,
         replaySteps: replayOperations,
