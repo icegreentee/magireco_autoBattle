@@ -12,74 +12,8 @@ function logException(e) {
 
 var shellCmd = {};
 
-//使用Shizuku执行shell命令
-function shizukuShell(cmd, logstring) {
-    if (logstring === true || (logstring !== false && logstring == null))
-        logstring = "执行shell命令: ["+cmd+"]";
-    if (logstring !== false) log("使用Shizuku"+logstring);
-    $shell.setDefaultOptions({adb: true});
-    let result = $shell(cmd);
-    $shell.setDefaultOptions({adb: false});
-    if (logstring !== false) log("使用Shizuku"+logstring+" 完成");
-    return result;
-};
-shellCmd.shizukuShell = shizukuShell;
-
-//直接使用root权限执行shell命令
-function rootShell(cmd, logstring) {
-    if (logstring === true || (logstring !== false && logstring == null))
-        logstring = "执行shell命令: ["+cmd+"]";
-    if (logstring !== false) log("直接使用root权限"+logstring);
-    $shell.setDefaultOptions({adb: false});
-    if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
-    return $shell(cmd, true);
-};
-shellCmd.rootShell = rootShell;
-
-//根据情况使用Shizuku还是直接使用root执行shell命令
-function privShell(cmd, logstring) {
-    if (shellCmd.privilege) {
-        if (shellCmd.privilege.shizuku) {
-            return shizukuShell(cmd, logstring);
-        } else {
-            return rootShell(cmd, logstring);
-        }
-    } else {
-        if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
-            toastLog("已经在尝试申请root或adb权限了\n请稍后重试,或彻底退出脚本后重试");
-        } else {
-            requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-        }
-        throw new Error("没有root或adb权限");
-    }
-}
-shellCmd.privShell = privShell;
-
-//不使用特权执行shell命令
-function normalShell(cmd, logstring) {
-    if (logstring === true || (logstring !== false && logstring == null))
-        logstring = "执行shell命令: ["+cmd+"]";
-    if (logstring !== false) log("不使用特权"+logstring);
-    $shell.setDefaultOptions({adb: false});
-    if (logstring !== false) log("不使用特权"+logstring+" 完成");
-    return $shell(cmd);
-}
-shellCmd.normalShell = normalShell;
-
-//检查并申请root或adb权限
-function getEUID(procStatusContent) {
-    let matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
-    if (matched != null) {
-        matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
-    }
-    if (matched != null) {
-        return parseInt(matched[0]);
-    } else {
-        return -1;
-    }
-}
-shellCmd.getEUID = getEUID;
-
+//申请权限
+var requestShellPrivilegeThread = null;
 function requestShellPrivilege() {
     if (shellCmd.privilege) {
         log("已经获取到root或adb权限了");
@@ -152,5 +86,69 @@ shellCmd.requestShellPrivilege = sync(function () {
         requestShellPrivilegeThread = threads.start(requestShellPrivilege);
     }
 });
+
+//使用Shizuku执行shell命令
+function shizukuShell(cmd, logstring) {
+    if (logstring === true || (logstring !== false && logstring == null))
+        logstring = "执行shell命令: ["+cmd+"]";
+    if (logstring !== false) log("使用Shizuku"+logstring);
+    $shell.setDefaultOptions({adb: true});
+    let result = $shell(cmd);
+    $shell.setDefaultOptions({adb: false});
+    if (logstring !== false) log("使用Shizuku"+logstring+" 完成");
+    return result;
+};
+shellCmd.shizukuShell = shizukuShell;
+
+//直接使用root权限执行shell命令
+function rootShell(cmd, logstring) {
+    if (logstring === true || (logstring !== false && logstring == null))
+        logstring = "执行shell命令: ["+cmd+"]";
+    if (logstring !== false) log("直接使用root权限"+logstring);
+    $shell.setDefaultOptions({adb: false});
+    if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
+    return $shell(cmd, true);
+};
+shellCmd.rootShell = rootShell;
+
+//根据情况使用Shizuku还是直接使用root执行shell命令
+function privShell(cmd, logstring) {
+    if (shellCmd.privilege) {
+        if (shellCmd.privilege.shizuku) {
+            return shizukuShell(cmd, logstring);
+        } else {
+            return rootShell(cmd, logstring);
+        }
+    } else {
+        shellCmd.requestShellPrivilege();
+        throw new Error("没有root或adb权限");
+    }
+}
+shellCmd.privShell = privShell;
+
+//不使用特权执行shell命令
+function normalShell(cmd, logstring) {
+    if (logstring === true || (logstring !== false && logstring == null))
+        logstring = "执行shell命令: ["+cmd+"]";
+    if (logstring !== false) log("不使用特权"+logstring);
+    $shell.setDefaultOptions({adb: false});
+    if (logstring !== false) log("不使用特权"+logstring+" 完成");
+    return $shell(cmd);
+}
+shellCmd.normalShell = normalShell;
+
+//检查并申请root或adb权限
+function getEUID(procStatusContent) {
+    let matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
+    if (matched != null) {
+        matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
+    }
+    if (matched != null) {
+        return parseInt(matched[0]);
+    } else {
+        return -1;
+    }
+}
+shellCmd.getEUID = getEUID;
 
 module.exports = shellCmd;

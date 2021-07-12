@@ -53,6 +53,8 @@ function buildAndShow() { let dialogNode = {}; try {
         callback1 = arguments[4];
         callback2 = arguments[5];
     }
+    if (content == null) content = "";
+    if (prefill == null) prefill = "";
 
     dialogNode.dialogResult = threads.disposable();
 
@@ -193,6 +195,6 @@ function waitForDismissAll() {
     }
     log("无主对话框已全部清空");
 }
-dialogsManager.waitForDismissAll = waitForDismissAll();
+dialogsManager.waitForDismissAll = waitForDismissAll;
 
 module.exports = dialogsManager;

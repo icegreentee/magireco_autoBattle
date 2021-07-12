@@ -11,6 +11,9 @@ var Name = "AutoBattle";
 var version = "4.1.0";
 var appName = Name + " v" + version;
 
+//开发模式下，模块哈希值检查不通过时仍然照常加载
+const isDevMode = false;
+
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
@@ -27,7 +30,37 @@ function logException(e) {
     }
 }
 
+//加载模块
+//不知道是不是AutoJS的bug，在floatUI.js里require会报错文件找不到，所有只能放在这里
+var loadedModules = {};
+
+//先加载在线更新模块
+var onlineUpdate = require("modules/onlineUpdate/onlineUpdate.js");
+onlineUpdate.currentVersion = version;
+loadedModules.onlineUpdate = onlineUpdate;
+
+//检查主程序哈希值
+var isMainJSHashMatch = onlineUpdate.verifyModule("");
+
+//加载所有模块
+const allModuleNames = ["onlineUpdate", "dialogsManager", "shellCmd", "compatClickSwipe", "CVAutoBattle"];
+var moduleUpdateList = [];
+for (let moduleName of allModuleNames) {
+    let isModuleValid = onlineUpdate.verifyModule(moduleName, false);
+    if (isModuleValid || isDevMode) {
+        //开发模式下即便哈希值检查不通过也仍然照常加载
+
+        //在线更新模块已经加载过了，所有只要检查一下哈希值即可，无需再次加载
+        if (moduleName == "onlineUpdate") continue;
+
+        loadedModules[moduleName] = require("modules/"+moduleName+"/"+moduleName+".js");
+    } else {
+        moduleUpdateList.push(moduleName);
+    }
+}
+
 var floatUI = require('floatUI.js');
+floatUI.loadedModules = loadedModules; //会在floatUI.main()里初始化
 
 ui.statusBarColor("#FF4FB3FF")
 ui.layout(
@@ -406,8 +439,18 @@ ui.emitter.on("resume", () => {
 //监听刷新事件
 ui.swipe.setOnRefreshListener({
     onRefresh: function () {
-        //为了看效果延迟一下
-        toUpdate()
+        onlineUpdate.currentVersion = version; //必须先传入当前的版本
+        let latestVersion = onlineUpdate.getLatestVersion();
+        if (latestVersion.upgradable) {
+            toastLog("更新主程序...");
+            if (onlineUpdate.updateModuleToVersion("", latestVersion.newVersion)) {
+                //升级主程序成功，重启
+                //模块由新版主程序负责更新
+                onlineUpdate.restart("主程序更新完毕");
+            } else {
+                toastLog("升级出错,请稍后再试");
+            }
+        }
         ui.swipe.setRefreshing(false);
     },
 });
@@ -616,69 +659,22 @@ ui["task_paused_button"].setOnClickListener(new android.view.View.OnClickListene
 }));
 
 //版本获取
-http.__okhttp__.setTimeout(5000);
-try {
-    let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
-    if (res.statusCode != 200) {
-        log("请求失败: " + res.statusCode + " " + res.statusMessage);
+let latestVersion = onlineUpdate.getLatestVersion();
+if (!latestVersion.upgradable) {
+    if (latestVersion.hasError) {
         ui.run(function () {
-            ui.versionMsg.setText("获取失败")
-            ui.versionMsg.setTextColor(colors.parseColor("#666666"))
-        })
+            ui.versionMsg.setText("获取失败");
+            ui.versionMsg.setTextColor(colors.parseColor("#666666"));
+        });
     } else {
-        let resJson = res.body.json();
-        if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
-            ui.run(function () {
-                ui.versionMsg.setText("当前无需更新")
-                ui.versionMsg.setTextColor(colors.parseColor("#666666"))
-            });
-        } else {
-            ui.run(function () {
-                ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
-                ui.versionMsg.setTextColor(colors.RED)
-            });
-        }
+        ui.run(function () {
+            ui.versionMsg.setText("当前无需更新");
+            ui.versionMsg.setTextColor(colors.parseColor("#666666"));
+        });
     }
-} catch (e) {
+} else {
     ui.run(function () {
-        ui.versionMsg.setText("请求超时")
-        ui.versionMsg.setTextColor(colors.parseColor("#666666"))
-    })
-}
-
-//版本更新
-function toUpdate() {
-    try {
-        let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
-        if (res.statusCode != 200) {
-            toastLog("请求超时")
-        } else {
-            let resJson = res.body.json();
-            if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
-                toastLog("无需更新")
-            } else {
-                let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/main.js");
-                let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/floatUI.js");
-                if (main_script.statusCode == 200 && float_script.statusCode == 200) {
-                    toastLog("更新加载中");
-                    let mainjs = main_script.body.string();
-                    let floatjs = float_script.body.string();
-                    files.write(engines.myEngine().cwd() + "/main.js", mainjs)
-                    files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
-                    events.on("exit", function () {
-                        //通过execScriptFile好像会有问题，比如点击悬浮窗QB=>齿轮然后就出现两个QB
-                        //engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
-                        app.launch(context.getPackageName())
-                        toast("更新完毕")
-                    })
-                    engines.stopAll()
-                } else {
-                    toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessage);
-                }
-            }
-        }
-
-    } catch (error) {
-        toastLog("请求超时，可再一次尝试")
-    }
+        ui.versionMsg.setText("最新版本为"+latestVersion.newVersion+",下拉进行更新");
+        ui.versionMsg.setTextColor(colors.RED);
+    });
 }

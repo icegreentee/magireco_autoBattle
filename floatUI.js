@@ -52,32 +52,29 @@ function getProjectVersion() {
 //记录当前版本是否测试过助战的文件
 var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
 
+//各种模块，都需要在main里初始化
+floatUI.loadedModules = {};
+// dialogsManager模块，用于避免线程停了、对话框却不消除的问题
+var dialogsManager = null;
+// shell命令模块，包括使用root或shizuku adb权限
+var shellCmd = null;
+function shizukuShell() {return shellCmd.shizukuShell.apply(this, arguments);};
+function rootShell() {return shellCmd.rootShell.apply(this, arguments);};
+function privShell() {return shellCmd.privShell.apply(this, arguments);};
+function normalShell() {return shellCmd.normalShell.apply(this, arguments);};
+// 兼容Android 7以下的点击模块
+var compatClickSwipe = null;
+// 截屏模块
+var shellScreenCap = null;
+// 识图自动战斗模块
+var CVAutoBattle = null;
+
 var tasks = algo_init();
+
 // touch capture, will be initialized in main
 var capture = () => { };
 // 停止脚本线程，尤其是防止停止自己的时候仍然继续往下执行少许语句（同上，会在main函数中初始化）
 var stopThread = () => { };
-
-// dialogsManager模块，用于避免线程停了、对话框却不消除的问题
-var dialogsManager = require("dialogsManager.js");
-
-// shell命令模块，包括使用root或shizuku adb权限
-var shellCmd = require("shellCmd.js");
-var shizukuShell = shellCmd.shizukuShell;
-var rootShell = shellCmd.rootShell;
-var privShell = shellCmd.privShell;
-var normalShell = shellCmd.normalShell;
-
-// 兼容Android 7以下的点击模块
-var compatClickSwipe = require("compatClickSwipe.js");
-compatClickSwipe.shellCmd = shellCmd;
-
-// 截屏模块
-var shellScreenCap = require("shellScreenCap.js");
-shellScreenCap.shellCmd = shellCmd;
-
-// 识图自动战斗模块
-var CVAutoBattle = require("CVAutoBattle.js");
 
 // 嗑药数量限制和统计
 //绿药或红药，每次消耗1个
@@ -334,6 +331,14 @@ function replaceSelfCurrentTask(taskItem, callback) {
 }
 
 floatUI.main = function () {
+    //初始化各种模块（后面会用到）
+    dialogsManager = floatUI.loadedModules.dialogsManager;
+    shellCmd = floatUI.loadedModules.shellCmd;
+    compatClickSwipe = floatUI.loadedModules.compatClickSwipe;
+    compatClickSwipe.shellCmd = shellCmd;
+    CVAutoBattle = floatUI.loadedModules.CVAutoBattle;
+    CVAutoBattle.shellCmd = shellCmd;
+
     // space between buttons compare to button size
     var space_factor = 1.5;
     // size for icon compare to button size
@@ -1746,8 +1751,104 @@ floatUI.logParams = function () {
 // compatible action closure
 function algo_init() {
     //覆盖click和swipe两个函数
-    var click = compatClickSwipe.click;
-    var swipe = compatClickSwipe.swipe;
+    function click(x, y) {
+        //isGameDead和getFragmentViewBounds其实是在后面定义的
+        if (isGameDead() == "crashed") {
+            log("游戏已经闪退,放弃点击");
+            return;
+        }
+
+        if (y == null) {
+            var point = x;
+            x = point.x;
+            y = point.y;
+        }
+
+        // limit range
+        var sz = getFragmentViewBounds();
+        if (x < sz.left) {
+            x = sz.left;
+        }
+        if (x >= sz.right) {
+            x = sz.right - 1;
+        }
+        if (y < sz.top) {
+            y = sz.top;
+        }
+        if (y >= sz.bottom) {
+            y = sz.bottom - 1;
+        }
+
+        compatClickSwipe.click(x, y)
+    }
+
+    function swipe(x1, y1, x2, y2, duration) {
+        //isGameDead和getFragmentViewBounds其实是在后面定义的
+        if (isGameDead() == "crashed") {
+            log("游戏已经闪退,放弃滑动");
+            return;
+        }
+
+        //解析参数
+        var points = [];
+        if (arguments.length > 5) throw new Error("compatSwipe: incorrect argument count");
+        for (let i=0; i<arguments.length; i++) {
+            if (isNaN(parseInt(arguments[i]))) {
+                //参数本身就（可能）是一个坐标点对象
+                points.push(arguments[i]);
+            } else {
+                //参数应该是坐标X值或滑动时长
+                if (i < arguments.length-1) {
+                    //存在下一个参数，则把这个参数视为坐标X值，下一个参数视为坐标Y值
+                    points.push({x: parseInt(arguments[i]), y: parseInt(arguments[i+1])});
+                    i++;
+                } else {
+                    //不存在下一个参数，这个参数应该是滑动时长
+                    duration = parseInt(arguments[i]);
+                }
+            }
+            //坐标X、Y值应该都是数字
+            if (isNaN(points[points.length-1].x) || isNaN(points[points.length-1].y))
+                throw new Error("compatSwipe: invalid arguments (invalid point)");
+            //又一个坐标点被加入，最多加入2个点，不允许加入第3个点
+            if (points.length > 2) {
+                throw new Error("compatSwipe invalid arguments (added more than 2 points)");
+            }
+        }
+        x1 = points[0].x;
+        y1 = points[0].y;
+        x2 = points[1].x;
+        y2 = points[1].y;
+
+        // limit range
+        var sz = getFragmentViewBounds();
+        if (x1 < sz.left) {
+            x1 = sz.left;
+        }
+        if (x1 >= sz.right) {
+            x1 = sz.right - 1;
+        }
+        if (y1 < sz.top) {
+            y1 = sz.top;
+        }
+        if (y1 >= sz.bottom) {
+            y1 = sz.bottom - 1;
+        }
+        if (x2 < sz.left) {
+            x2 = sz.left;
+        }
+        if (x2 >= sz.right) {
+            x2 = sz.right - 1;
+        }
+        if (y2 < sz.top) {
+            y2 = sz.top;
+        }
+        if (y2 >= sz.bottom) {
+            y2 = sz.bottom - 1;
+        }
+
+        compatClickSwipe.swipe(x1, y1, x2, y2, duration);
+    }
 
     // find first element using regex
     function match(reg, wait) {

@@ -13,8 +13,6 @@ function logException(e) {
 var shellScreenCap = {};
 shellScreenCap.shellCmd = null;//需要外部传入
 
-var pkgName = context.getPackageName();
-
 function shizukuShell() {
     if (shellScreenCap.shellCmd == null) {
         throw new Error("shellCmd module not passed in");
@@ -43,6 +41,98 @@ function normalShell() {
         shellScreenCap.shellCmd.normalShell.apply(this, arguments);
     }
 }
+
+
+//脚本包名
+var pkgName = context.getPackageName();
+//脚本所在目录路径
+var dataDir = engines.myEngine().cwd();
+
+//安装scrcap2bmp二进制文件
+
+var binarySetupDone = false;
+
+//检测CPU ABI
+var shellABI = null;
+function detectABI() {
+    if (shellABI != null) return shellABI;//之前已经检测过了
+
+    let cmd = "getprop ro.product.cpu.abi"
+    let result = normalShell(cmd);
+    let ABIStr = "";
+    if (result.code == 0) ABIStr += result.result;
+    ABIStr = ABIStr.toLowerCase();
+    if (ABIStr.startsWith("arm64")) {
+        shellABI = "arm64";
+    } else if (ABIStr.startsWith("arm")) {
+        shellABI = "arm";
+    } else if (ABIStr.startsWith("x86_64")) {
+        shellABI = "x86_64";
+    } else if (ABIStr.startsWith("x86")) {
+        shellABI = "x86";
+    } else {
+        throw new Error("Unknown ABI");
+    }
+    return shellABI;
+}
+
+var binariesInfo = [
+    {fileHash: "10f99a556a7ef84ec5f4082f60e9bd2c994fb79d7a2c6e38125ef9dbeae51099", fileName: "scrcap2bmp-arm"},
+    {fileHash: "7955cc0a9b7523df4e9c29541c7a77e03d045d7c3d7a798f69faef2175972a68", fileName: "scrcap2bmp-arm64"},
+    {fileHash: "99709c1284a7aef4018ca640090892202429dee56af55312c6ce8d6d09c44fe8", fileName: "scrcap2bmp-x86"},
+    {fileHash: "ec2920bcb7497582f5cff281dd79cdfab1e299be0825b5a024af39334c6890f8", fileName: "scrcap2bmp-x86_64"},
+];
+
+function setupBinaries() {
+    setupBinary("scrcap2bmp");
+}
+shellScreenCap.setupBinaries = setupBinaries;
+
+function setupBinary(binaryFileName) {
+    let binaryCopyToPath = "/data/local/tmp/"+pkgName+"/sbin/"+binaryFileName;
+    detectABI();
+    if (files.isFile(binaryCopyToPath)) {
+        log("setupBinary 文件 "+binaryFileName+" 已存在");
+        let existingFileBytes = files.readBytes(binaryCopyToPath);
+        let fileHashCalc = $crypto.digest(existingFileBytes, "SHA-256", { input: "bytes", output: "hex" }).toLowerCase();
+        for (let i=0; i<binariesInfo.length; i++) {
+            let binaryInfo = binariesInfo[i];
+            if (binaryInfo.fileName == "bin/"+binaryFileName+"-"+shellABI) {
+                if (binaryInfo.fileHash == fileHashCalc) {
+                    log("setupBinary 文件 "+binaryFileName+" hash值相符");
+                    return;
+                }
+                log("setupBinary 文件 "+binaryFileName+" hash值不符");
+                files.remove(binaryCopyToPath);
+                break;
+            }
+        }
+    }
+    if (!files.isFile(dataDir+"/bin/"+binaryFileName+"-"+shellABI)) {
+        toastLog("找不到自带的"+binaryFileName+"，请下载新版安装包");
+        sleep(2000);
+        exit();
+    }
+    //adb shell的权限并不能修改APP数据目录的权限，所以先要用APP自己的身份来改权限
+    normalShellCmd("chmod a+x "+dataDir+"/../../"); // pkgname/
+    normalShellCmd("chmod a+x "+dataDir+"/../");    // pkgname/files/
+    normalShellCmd("chmod a+x "+dataDir);           // pkgname/files/project/
+    normalShellCmd("chmod a+x "+dataDir+"/bin");
+
+    let binaryCopyFromPath = dataDir+"/bin/"+binaryFileName+"-"+shellABI;
+    normalShellCmd("chmod a+r "+binaryCopyFromPath);
+
+    privilegedShellCmd("mkdir "+"/data/local/tmp/"+pkgName);
+    privilegedShellCmd("mkdir "+"/data/local/tmp/"+pkgName+"/sbin");
+    privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName);
+    privilegedShellCmd("chmod 755 "+"/data/local/tmp/"+pkgName+"/sbin");
+
+    privilegedShellCmd("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
+    privilegedShellCmd("chmod 755 "+binaryCopyToPath);
+
+    binarySetupDone = true;
+}
+
 
 //申请截屏权限
 //可能是AutoJSPro本身的问题，截图权限可能会突然丢失，logcat可见：
@@ -80,17 +170,13 @@ function startScreenCapture() {
 
     return;
 }
+shellScreenCap.startScreenCapture = startScreenCapture;
 
-//用shizuku adb/root权限，或者直接用root权限截屏
-var screencapShellCmdThread = null;
-var screencapLength = -1;
+//找到可以监听的端口号
 var localHttpListenPort = -1;
-function detectScreencapLength() {
-    let result = privShell("screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a -l");
-    if (result.code == 0) return parseInt(result.error);
-    throw new Error("detectScreencapLengthFailed");
-}
 function findListenPort() {
+    if (localHttpListenPort > 0) return localHttpListenPort;//之前已经检测过了
+
     for (let i=11023; i<65535; i+=16) {
         let cmd = "/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -t"+i;
         let result = privShell(cmd);
@@ -99,10 +185,31 @@ function findListenPort() {
             return i;
         }
     }
+
     log("找不到可用监听端口");
     throw new Error("cannotFindAvailablePort");
 }
 
+//检测截屏数据大小
+var screencapLength = -1;
+function detectScreencapLength() {
+    if (screencapLength >= 0) return screencapLength;//之前已经检测过了
+
+    let result = privShell("screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a -l");
+    if (result.code == 0) {
+        screencapLength = parseInt(result.error);
+        if (screencapLength <= 0) {
+            log("错误: 截屏数据大小为0或负数");
+            throw new Error("detectScreencapLength: screencapLength <= 0");
+        } else {
+            return screencapLength;
+        }
+    }
+
+    throw new Error("detectScreencapLengthFailed");
+}
+
+//还没回收的图片
 var imgRecycleMap = {};
 
 //每次更新图片，就把旧图片回收
@@ -161,20 +268,21 @@ function recycleAllImages() {
     }
 }
 
+
+//使用shell命令 screencap 截图
+var screencapShellCmdThread = null;
 var screencap = sync(function () {
-    //使用shell命令 screencap 截图
     try {screencapShellCmdThread.interrupt();} catch (e) {};
-    if (localHttpListenPort<0) localHttpListenPort = findListenPort();
-    if (screencapLength < 0) screencapLength = detectScreencapLength();
-    if (screencapLength <= 0) {
-        log("screencapLength="+screencapLength+"<= 0, exit");
-        exit();
-    }
+
+    findListenPort();
+
+    detectScreencapLength();
+
     let screenshot = null;
     for (let i=0; i<10; i++) {
         screencapShellCmdThread = threads.start(function() {
             let cmd = "screencap | "+"/data/local/tmp/"+pkgName+"/sbin/scrcap2bmp -a -w5 -p"+localHttpListenPort;
-            let result = privShell(cmd, false);
+            let result = privShell(cmd, false);//这条命令不打log
         });
         sleep(100);
         for (let j=0; j<5; j++) {
