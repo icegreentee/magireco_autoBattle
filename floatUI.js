@@ -6737,27 +6737,37 @@ function algo_init() {
         initialize();
 
         //简单镜层自动战斗
-        while (!id("matchingWrap").findOnce()) {
+        while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) {
             /*
             if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
             */
-            if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce() && /*镜层结算*/
-                !id("ResultWrap").findOnce() && !id("charaWrap").findOnce() && /*副本结算*/
-                !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
-                click(convertCoords(clickSetsMod.battlePan1))
-                sleep(1000)
-            }
-            if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce() && /*镜层结算*/
-                !id("ResultWrap").findOnce() && !id("charaWrap").findOnce() && /*副本结算*/
-                !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
-                click(convertCoords(clickSetsMod.battlePan2))
-                sleep(1000)
-            }
-            if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce() && /*镜层结算*/
-                !id("ResultWrap").findOnce() && !id("charaWrap").findOnce() && /*副本结算*/
-                !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
-                click(convertCoords(clickSetsMod.battlePan3))
-                sleep(1000)
+            for (let n=0; n<8; n++) {
+                log("n="+n);
+                let isDiskClickable = [(n&4)==0, (n&2)==0, (n&1)==0];
+                let breakable = false;
+                for (let pass=1; pass<=4; pass++) {
+                    for (let i=1; i<=3; i++) {
+                        let isBattleEnded = false;
+                        let endBattleIDs = ["ArenaResult", "enemyBtn", "ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
+                        endBattleIDs.forEach(function (val) {
+                            if (findID(val, false) != null) {
+                                log("找到", val);
+                                isBattleEnded = true;
+                            }
+                        });
+                        if (!isBattleEnded) {
+                            if (isDiskClickable[i-1] || (pass >= 1 && pass <= 2)) {
+                                click(convertCoords(clickSetsMod["battlePan"+i]));
+                                sleep(1000);
+                            }
+                        } else {
+                            breakable = true;
+                            break;
+                        }
+                    }
+                    if (breakable) break;
+                }
+                if (breakable) break;
             }
 
             //点掉镜层结算页面
