@@ -94,6 +94,14 @@ floatUI.scripts = [
         fn: tasks.mirrors,
     },
     {
+        name: "识图自动战斗",
+        fn: tasks.CVAutoBattle,
+    },
+    {
+        name: "简单自动战斗(无脑点第1/2/3盘)",
+        fn: tasks.simpleAutoBattle,
+    },
+    {
         name: "副本周回2（备用可选）",
         fn: autoMain,
     },
@@ -219,6 +227,7 @@ function getParamsText() {
         breakAutoCycleDuration: "每隔多少秒打断官方自动续战",
         forceStopTimeout: "假死检测超时秒数",
         rootForceStop: "优先使用root或adb权限杀进程",
+        rootScreencap: "使用root或adb权限截屏",
     };
     let bakTaskParams = {
         battleNo: "活动周回关卡选择",
@@ -1237,8 +1246,9 @@ var limit = {
     forceStopTimeout: "",
     apmul: "",
     timeout: "5000",
-    rootScreencap: false,
     rootForceStop: false,
+    rootScreencap: false,
+    useCVAutoBattle: false,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -5061,10 +5071,374 @@ function algo_init() {
         }
     }
 
+    /* ~~~~~~~~ 截图兼容模块 开始 ~~~~~~~~ */
+    var AutoJSPkgName = context.getPackageName();
+    var dataDir = files.cwd();
+
+    //检测CPU ABI
+    var shellABI = null;
+    function detectABI() {
+        if (shellABI != null) return shellABI;
+        let cmd = "getprop ro.product.cpu.abi"
+        let result = normalShell(cmd);
+        let ABIStr = "";
+        if (result.code == 0) ABIStr += result.result;
+        ABIStr = ABIStr.toLowerCase();
+        if (ABIStr.startsWith("arm64")) {
+            shellABI = "arm64";
+        } else if (ABIStr.startsWith("arm")) {
+            shellABI = "arm";
+        } else if (ABIStr.startsWith("x86_64")) {
+            shellABI = "x86_64";
+        } else if (ABIStr.startsWith("x86")) {
+            shellABI = "x86";
+        }
+        return shellABI;
+    }
+    //在/data/local/tmp/下安装scrcap2bmp
+    var binarySetupDone = false;
+    const binURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle@2.4.35";
+    function setupBinary() {
+        if (binarySetupDone) return binarySetupDone;
+
+        let binaryFileName = "scrcap2bmp";
+        let binaryCopyToPath = "/data/local/tmp/"+AutoJSPkgName+"/sbin/"+binaryFileName;
+        detectABI();
+
+        let binaryBytes = null;
+        try {
+            let url = binURLBase+"/bin/"+binaryFileName+"-"+shellABI;
+            let response = http.get(url);
+            if (response.statusCode == 200) {
+                binaryBytes = response.body.bytes();
+            }
+        } catch (e) {return;}
+        if (binaryBytes == null) return;
+        files.ensureDir(dataDir+"/bin/");
+        let binaryCopyFromPath = dataDir+"/bin/"+binaryFileName+"-"+shellABI;
+        files.create(binaryCopyFromPath);
+        files.writeBytes(binaryCopyFromPath, binaryBytes);
+        if (!files.isFile(binaryCopyFromPath)) return;
+
+        //adb shell的权限并不能修改APP数据目录的权限，所以先要用APP自己的身份来改权限
+        normalShell("chmod a+x "+dataDir+"/../../"); // pkgname/
+        normalShell("chmod a+x "+dataDir+"/../");    // pkgname/files/
+        normalShell("chmod a+x "+dataDir);           // pkgname/files/project/
+        normalShell("chmod a+x "+dataDir+"/bin");
+
+        normalShell("chmod a+r "+binaryCopyFromPath);
+
+        privShell("mkdir "+"/data/local/tmp/"+AutoJSPkgName);
+        privShell("mkdir "+"/data/local/tmp/"+AutoJSPkgName+"/sbin");
+        privShell("chmod 755 "+"/data/local/tmp/"+AutoJSPkgName);
+        privShell("chmod 755 "+"/data/local/tmp/"+AutoJSPkgName+"/sbin");
+
+        privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
+        privShell("chmod 755 "+binaryCopyToPath);
+
+        binarySetupDone = true;
+    }
+
+    //申请截屏权限
+    //可能是AutoJSPro本身的问题，截图权限可能会突然丢失，logcat可见：
+    //VirtualDisplayAdapter: Virtual display device released because application token died: top.momoe.auto
+    //应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
+    //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
+    var canCaptureScreen = false;
+    function startScreenCapture() {
+        if (canCaptureScreen) {
+            log("已经获取到截图权限了");
+            return;
+        }
+
+        $settings.setEnabled("stop_all_on_volume_up", false);
+        $settings.setEnabled("foreground_service", true);
+        sleep(500);
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            let screencap_landscape = true;
+            if (requestScreenCapture(screencap_landscape)) {
+                sleep(500);
+                toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
+                sleep(3000);
+                toastLog("转屏可能导致截屏失败，请务必不要转屏，也不要切换出游戏×2");
+                sleep(3000);
+                canCaptureScreen = true;
+                break;
+            } else {
+                log("第", attempt, "次获取截图权限失败");
+                sleep(1000);
+            }
+        }
+
+        if (!canCaptureScreen) {
+            log("截图权限获取失败，退出");
+            stopThread();
+        }
+
+        return;
+    }
+
+    //用shizuku adb/root权限，或者直接用root权限截屏
+    var screencapShellCmdThread = null;
+    var screencapLength = -1;
+    var localHttpListenPort = -1;
+    function detectScreencapLength() {
+        let result = privShell("screencap | "+"/data/local/tmp/"+AutoJSPkgName+"/sbin/scrcap2bmp -a -l");
+        if (result.code == 0) return parseInt(result.error);
+        throw "detectScreencapLengthFailed"
+    }
+    function findListenPort() {
+        for (let i=11023; i<65535; i+=16) {
+            let cmd = "/data/local/tmp/"+AutoJSPkgName+"/sbin/scrcap2bmp -t"+i;
+            let result = privShell(cmd);
+            if (result.code == 0 && result.error.includes("Port "+i+" is available")) {
+                log("可用监听端口", i);
+                return i;
+            }
+        }
+        log("找不到可用监听端口");
+        throw "cannotFindAvailablePort"
+    }
+
+    //每次更新图片，就把旧图片回收
+    var imgRecycleMap = {};
+    function renewImage() {
+        let imageObj = null;
+        let tag = "";
+        let tagOnly = false;
+        let key = "";
+
+        switch (arguments.length) {
+        case 3:
+            tagOnly = arguments[2];
+        case 2:
+            tag = "TAG"+arguments[1];
+        case 1:
+            imageObj = arguments[0];
+            break;
+        default:
+            throw "renewImageIncorrectArgc"
+        }
+
+        if (!tagOnly) {
+            try { throw new Error(""); } catch (e) {
+                Error.captureStackTrace(e, renewImage); //不知道AutoJS的Rhino是什么版本，不captureStackTrace的话，e.stack == null
+                let splitted = e.stack.toString().split("\n");
+                for (let i=0; i<splitted.length; i++) {
+                    if (splitted[i].match(/:\d+/) && !splitted[i].match(/renewImage/)) {
+                        //含有行号，且不是renewImage
+                        key += splitted[i];
+                    }
+                }
+            }
+            if (key == null || key == "") throw "renewImageNullKey";
+        }
+
+        key += tag;
+
+        if (imgRecycleMap[key] != null) {
+            try {imgRecycleMap[key].recycle();} catch (e) {log("renewImage", e)};
+            imgRecycleMap[key] = null;
+        }
+
+        imgRecycleMap[key] = imageObj;
+
+        return imageObj;
+    }
+    //回收所有图片
+    function recycleAllImages() {
+        for (let i in imgRecycleMap) {
+            if (imgRecycleMap[i] != null) {
+                renewImage(null);
+                log("recycleAllImages: recycled image used at:")
+                log(i);
+            }
+        }
+    }
+
+
+    var compatCaptureScreen = sync(function () {
+        if (limit.rootScreencap) {
+            //使用shell命令 screencap 截图
+            try {screencapShellCmdThread.interrupt();} catch (e) {};
+            if (localHttpListenPort<0) localHttpListenPort = findListenPort();
+            if (screencapLength < 0) screencapLength = detectScreencapLength();
+            if (screencapLength <= 0) {
+                log("screencapLength="+screencapLength+"<= 0, exit");
+                stopThread();
+            }
+            let screenshot = null;
+            for (let i=0; i<10; i++) {
+                screencapShellCmdThread = threads.start(function() {
+                    let cmd = "screencap | "+"/data/local/tmp/"+AutoJSPkgName+"/sbin/scrcap2bmp -a -w5 -p"+localHttpListenPort;
+                    let result = privShell(cmd, false);
+                });
+                sleep(100);
+                for (let j=0; j<5; j++) {
+                    try { screenshot = images.load("http://127.0.0.1:"+localHttpListenPort+"/screencap.bmp"); } catch (e) {log(e)};
+                    if (screenshot != null) break;
+                    sleep(200);
+                }
+                try {screencapShellCmdThread.interrupt();} catch (e) {};
+                if (screenshot != null) break;
+                sleep(100);
+            }
+            if (screenshot == null) log("截图失败");
+            let tagOnly = true;
+            return renewImage(screenshot, "screenshot", tagOnly); //回收旧图片
+        } else {
+            //使用AutoJS默认提供的录屏API截图
+            return captureScreen.apply(this, arguments);
+        }
+    });
+    /* ~~~~~~~~ 截图兼容模块 结束 ~~~~~~~~ */
+
     /* ~~~~~~~~ 镜界自动战斗 开始 ~~~~~~~~ */
+    var clickSetsMod = {
+        ap: {
+            x: 1000,
+            y: 50,
+            pos: "top"
+        },
+        apDrug50: {
+            x: 400,
+            y: 900,
+            pos: "center"
+        },
+        apDrugFull: {
+            x: 900,
+            y: 900,
+            pos: "center"
+        },
+        apMoney: {
+            x: 1500,
+            y: 900,
+            pos: "center"
+        },
+        apConfirm: {
+            x: 1160,
+            y: 730,
+            pos: "center"
+        },
+        apclose: {
+            x: 1900,
+            y: 20,
+            pos: "center"
+        },
+        start: {
+            x: 1800,
+            y: 1000,
+            pos: "bottom"
+        },
+        startAutoRestart: {
+            x: 1800,
+            y: 750,
+            pos: "bottom"
+        },
+        levelup: {
+            x: 960,
+            y: 870,
+            pos: "center"
+        },
+        restart: {
+            x: 1800,
+            y: 1000,
+            pos: "bottom"
+        },
+        reconnectYes: {
+            x: 700,
+            y: 750,
+            pos: "center"
+        },
+        followConfirm: {
+            x: 1220,
+            y: 860,
+            pos: "center"
+        },
+        followClose: {
+            x: 950,
+            y: 820,
+            pos: "center"
+        },
+        skip: {
+            x: 1870,
+            y: 50,
+            pos: "top"
+        },
+        huodongok: {
+            x: 1600,
+            y: 800,
+            pos: "center"
+        },
+        bpExhaustToBpDrug: {
+            x: 1180,
+            y: 830,
+            pos: "center"
+        },
+        bpDrugConfirm: {
+            x: 960,
+            y: 880,
+            pos: "center"
+        },
+        bpDrugRefilledOK: {
+            x: 960,
+            y: 900,
+            pos: "center"
+        },
+        bpClose: {
+            x: 750,
+            y: 830,
+            pos: "center"
+        },
+        battlePan1: {
+            x: 400,
+            y: 950,
+            pos: "bottom"
+        },
+        battlePan2: {
+            x: 700,
+            y: 950,
+            pos: "bottom"
+        },
+        battlePan3: {
+            x: 1000,
+            y: 950,
+            pos: "bottom"
+        },
+        mirrorsStartBtn: {
+            x: 1423,
+            y: 900,
+            pos: "center"
+        },
+        mirrorsOpponent1: {
+            x: 1113,
+            y: 303,
+            pos: "center"
+        },
+        mirrorsOpponent2: {
+            x: 1113,
+            y: 585,
+            pos: "center"
+        },
+        mirrorsOpponent3: {
+            x: 1113,
+            y: 866,
+            pos: "center"
+        },
+        mirrorsCloseOpponentInfo: {
+            x: 1858,
+            y: 65,
+            pos: "center"
+        },
+        back: {
+            x: 100,
+            y: 50,
+            pos: "top"
+        }
+    }
 
     //已知参照图像，包括A/B/C盘等
-    var ImgURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle@2.4.35";
+    const ImgURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle@2.4.35";
     var knownImgs = {};
     const knownImgURLs = {
         accel: ImgURLBase+"/images/accel.png",
@@ -5085,21 +5459,25 @@ function algo_init() {
         mirrorsWinLetterI: ImgURLBase+"/images/mirrorsWinLetterI.png",
         mirrorsLose: ImgURLBase+"/images/mirrorsLose.png",
     };
-    while (true) {
-        let hasNull = false;
-        for (let key in knownImgURLs) {
-            if (knownImgs[key] == null) {
-                hasNull = true;
-                knownImgs[key] = images.load(knownImgURLs[key]);
+    threads.start(function () {
+        while (true) {
+            let hasNull = false;
+            for (let key in knownImgURLs) {
+                if (knownImgs[key] == null) {
+                    log("下载图片 "+knownImgURLs[key]+" ...");
+                    knownImgs[key] = images.load(knownImgURLs[key]);
+                    if (knownImgs[key] == null) hasNull = true;
+                }
+            }
+            if (!hasNull) {
+                log("全部图片下载完成");
+                break;
+            } else {
+                log("有图片没下载成功,2秒后重试...");
+                sleep(2000);
             }
         }
-        if (!hasNull) {
-            break;
-        } else {
-            log("有图片没下载成功,2秒后重试...");
-            sleep(2000);
-        }
-    }
+    });
 
 
     //矩形参数计算，宽度、高度、中心坐标等等
@@ -6065,7 +6443,7 @@ function algo_init() {
         }
         if (!disk.down) {
             log("点了", clickAttemptMax, "次都没反应，可能遇到问题，退出");
-            exit();
+            stopThread();
         } else {
             log("点击动作完成");
             clickedDisksCount++;
@@ -6199,7 +6577,7 @@ function algo_init() {
             }
             if(cycles>300*5) {
                 log("等待己方回合已经超过10分钟，结束运行");
-                exit();
+                stopThread();
             }
             sleep(333);
         }
@@ -6355,16 +6733,7 @@ function algo_init() {
 
 
     function mirrorsSimpleAutoBattleMain() {
-        if (!verifyFiles(limit.version)) {
-            toastLog("更新尚未完成，不能开始");
-            return;
-        }
-        //强制必须先把游戏切换到前台再开始运行脚本，否则退出
-        if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
-        if (limit.useInputShellCmd) if (!checkShellPrivilege()) return;
-
-        //Android 8.1或以下检测刘海屏比较麻烦
-        if (device.sdkInt < 28) ui.run(detectCutoutParams);
+        initialize();
 
         //简单镜层自动战斗
         while (!id("matchingWrap").findOnce()) {
@@ -6374,25 +6743,25 @@ function algo_init() {
             if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce() && /*镜层结算*/
                 !id("ResultWrap").findOnce() && !id("charaWrap").findOnce() && /*副本结算*/
                 !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
-                click(convertCoords(clickSets.battlePan1))
+                click(convertCoords(clickSetsMod.battlePan1))
                 sleep(1000)
             }
             if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce() && /*镜层结算*/
                 !id("ResultWrap").findOnce() && !id("charaWrap").findOnce() && /*副本结算*/
                 !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
-                click(convertCoords(clickSets.battlePan2))
+                click(convertCoords(clickSetsMod.battlePan2))
                 sleep(1000)
             }
             if (!id("ArenaResult").findOnce() && !id("enemyBtn").findOnce() && /*镜层结算*/
                 !id("ResultWrap").findOnce() && !id("charaWrap").findOnce() && /*副本结算*/
                 !id("retryWrap").findOnce() && !id("hasTotalRiche").findOnce()) {
-                click(convertCoords(clickSets.battlePan3))
+                click(convertCoords(clickSetsMod.battlePan3))
                 sleep(1000)
             }
 
             //点掉镜层结算页面
             if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce()) {
-                click(convertCoords(clickSets.levelup))
+                click(convertCoords(clickSetsMod.levelup))
             }
             sleep(3000)
 
@@ -6405,17 +6774,27 @@ function algo_init() {
     }
 
     function mirrorsAutoBattleMain() {
-        if (!verifyFiles(limit.version)) {
-            toastLog("更新尚未完成，不能开始");
+        if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
+            toastLog("需要root或shizuku adb权限");
+            if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
+                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+            }
             return;
         }
-        //强制必须先把游戏切换到前台再开始运行脚本，否则退出
-        if (!waitForGameForeground()) return; //注意，函数里还有游戏区服的识别
-        if (limit.useScreencapShellCmd || limit.useInputShellCmd) if (!checkShellPrivilege()) return;
-        if (limit.mirrorsUseScreenCapture && (!limit.useScreencapShellCmd)) startScreenCapture();
 
-        //Android 8.1或以下检测刘海屏比较麻烦
-        if (device.sdkInt < 28) ui.run(detectCutoutParams);
+        initialize();
+
+        if (limit.useCVAutoBattle && limit.rootScreencap) {
+            while (true) {
+                log("setupBinary...");
+                setupBinary();
+                if (binarySetupDone) break;
+                log("setupBinary失败,3秒后重试...");
+                sleep(3000);
+            }
+        } else if (limit.useCVAutoBattle && (!limit.rootScreencap)) {
+            startScreenCapture();
+        }
 
         //利用截屏识图进行稍复杂的自动战斗（比如连携）
         //开始一次镜界自动战斗
@@ -6536,6 +6915,7 @@ function algo_init() {
         for (let i=0; i<uiObjArr.length; i++) {
             let uiObj = uiObjArr[i];
             let score = parseInt(getContent(uiObj));
+            if (isNaN(score)) continue;
             log("getMirrorsScoreAt position", position, "score", score);
             return score;
         }
@@ -6555,7 +6935,7 @@ function algo_init() {
         for (let i=0; i<uiObjArr.length; i++) {
             let uiObj = uiObjArr[i];
             let score = parseInt(getContent(uiObj));
-            if (score != null) {
+            if (score != null && !isNaN(score)) {
                 log("getMirrorsSelfScore score", score);
                 return score;
             }
@@ -6589,7 +6969,7 @@ function algo_init() {
         for (let i=0; i<uiObjArr.length; i++) {
             let uiObj = uiObjArr[i];
             let lv = parseInt(getContent(uiObj));
-            if (lv != null) {
+            if (lv != null && !isNaN(lv)) {
                 log("getMirrorsLvAt rowNum", rowNum, "columnNum", columnNum, "lv", lv);
                 return lv;
             }
@@ -6646,7 +7026,7 @@ function algo_init() {
             //演习模式下直接点最上面第一个对手
             while (id("matchingList").findOnce()) { //如果不小心点到战斗开始，就退出循环
                 if (getMirrorsAverageScore(totalScore[1]) > 0) break; //如果已经打开了一个对手，直接战斗开始
-                click(convertCoords(clickSets["mirrorsOpponent"+"1"]));
+                click(convertCoords(clickSetsMod["mirrorsOpponent"+"1"]));
                 sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
             }
             return true;
@@ -6655,7 +7035,7 @@ function algo_init() {
         //如果已经打开了信息面板，先关掉
         for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
             if (getMirrorsAverageScore(99999999) <= 0) break; //如果没有打开队伍信息面板，那就直接退出循环，避免点到MENU
-            if (attempt % 5 == 0) click(convertCoords(clickSets["mirrorsCloseOpponentInfo"]));
+            if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
             sleep(1000);
         }
 
@@ -6683,7 +7063,7 @@ function algo_init() {
         if (lowestTotalScore < selfScore / 6) {
             log("找到了战力低于我方六分之一的对手", lowestScorePosition, totalScore[lowestScorePosition]);
             while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
-                click(convertCoords(clickSets["mirrorsOpponent"+lowestScorePosition]));
+                click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
                 sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
                 if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
             }
@@ -6693,7 +7073,7 @@ function algo_init() {
         //找平均战力最低的
         for (let position=1; position<=3; position++) {
             while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
-                click(convertCoords(clickSets["mirrorsOpponent"+position]));
+                click(convertCoords(clickSetsMod["mirrorsOpponent"+position]));
                 sleep(2000); //等待对手队伍信息出现（avgScore<=0表示对手队伍信息还没出现）
                 avgScore[position] = getMirrorsAverageScore(totalScore[position]);
                 if (avgScore[position] > 0) {
@@ -6708,7 +7088,7 @@ function algo_init() {
             //关闭信息面板
             for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
                 if (position == 3) break; //第3个对手也有可能是最弱的，暂时不关面板
-                if (attempt % 5 == 0) click(convertCoords(clickSets["mirrorsCloseOpponentInfo"]));
+                if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
                 sleep(1000);
                 if (getMirrorsAverageScore(totalScore[position]) <= 0) break;
             }
@@ -6720,14 +7100,14 @@ function algo_init() {
 
         //最弱的不是第3个对手，先关掉第3个对手的队伍信息面板
         for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
-            if (attempt % 5 == 0) click(convertCoords(clickSets["mirrorsCloseOpponentInfo"]));
+            if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
             sleep(1000);
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) <= 0) break;
         }
 
         //重新打开平均战力最低队伍的队伍信息面板
         while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
-            click(convertCoords(clickSets["mirrorsOpponent"+lowestScorePosition]));
+            click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
             sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) return true;
         }
@@ -6736,7 +7116,7 @@ function algo_init() {
     }
 
     function taskMirrors() {
-        if (!limit.privilege && limit.rootScreencap) {
+        if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
             toastLog("需要root或shizuku adb权限");
             if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
                 requestShellPrivilegeThread = threads.start(requestShellPrivilege);
@@ -6745,6 +7125,18 @@ function algo_init() {
         }
 
         initialize();
+
+        if (limit.useCVAutoBattle && limit.rootScreencap) {
+            while (true) {
+                log("setupBinary...");
+                setupBinary();
+                if (binarySetupDone) break;
+                log("setupBinary失败,3秒后重试...");
+                sleep(3000);
+            }
+        } else if (limit.useCVAutoBattle && (!limit.rootScreencap)) {
+            startScreenCapture();
+        }
 
         while (true) {
             //挑选最弱的对手
@@ -6755,7 +7147,7 @@ function algo_init() {
 
             while (id("matchingWrap").findOnce() || id("matchingList").findOnce()) {
                 sleep(1000)
-                click(convertCoords(clickSets.mirrorsStartBtn));
+                click(convertCoords(clickSetsMod.mirrorsStartBtn));
                 sleep(1000)
                 if (id("popupInfoDetailTitle").findOnce()) {
                     if (id("matchingList").findOnce()) {
@@ -6765,20 +7157,20 @@ function algo_init() {
                         return;
                     } else if (isDrugEnough(3)) {
                         while (!id("bpTextWrap").findOnce()) {
-                            click(convertCoords(clickSets.bpExhaustToBpDrug))
+                            click(convertCoords(clickSetsMod.bpExhaustToBpDrug))
                             sleep(1500)
                         }
                         while (id("bpTextWrap").findOnce()) {
-                            click(convertCoords(clickSets.bpDrugConfirm))
+                            click(convertCoords(clickSetsMod.bpDrugConfirm))
                             sleep(1500)
                         }
                         while (id("popupInfoDetailTitle").findOnce()) {
-                            click(convertCoords(clickSets.bpDrugRefilledOK))
+                            click(convertCoords(clickSetsMod.bpDrugRefilledOK))
                             sleep(1500)
                         }
                         updateDrugLimit(3);
                     } else {
-                        click(convertCoords(clickSets.bpClose))
+                        click(convertCoords(clickSetsMod.bpClose))
                         log("镜层周回结束")
                         return;
                     }
@@ -6786,7 +7178,7 @@ function algo_init() {
                 sleep(1000)
             }
             log("进入战斗")
-            if (limit.rootScreencap) {
+            if (limit.useCVAutoBattle) {
                 //利用截屏识图进行稍复杂的自动战斗（比如连携）
                 log("镜层周回 - 自动战斗开始：使用截屏识图");
                 mirrorsAutoBattleMain();
@@ -6803,6 +7195,8 @@ function algo_init() {
     return {
         default: taskDefault,
         mirrors: taskMirrors,
+        CVAutoBattle: mirrorsAutoBattleMain,
+        simpleAutoBattle: mirrorsSimpleAutoBattleMain,
         reopen: enterLoop,
         recordSteps: recordOperations,
         replaySteps: replayOperations,
