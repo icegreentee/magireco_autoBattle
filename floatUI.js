@@ -2811,6 +2811,9 @@ function algo_init() {
                 callback1 = arguments[4];
                 callback2 = arguments[5];
             }
+            if (title == null) title = "";
+            if (content == null) content = "";
+            if (prefill == null) prefill = "";
 
             openedDialogsNode.dialogResult = threads.disposable();
 
