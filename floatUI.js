@@ -7063,7 +7063,8 @@ function algo_init() {
                 sleep(100);
             }
             if (totalScore[position] <= 0) {
-                toastLog("获取位置", position, "的总战力失败，请尝试退出镜层后重新进入");
+                toastLog("获取某个对手的总战力失败\n请尝试退出镜层后重新进入");
+                log("获取第"+position+"个对手的总战力失败");
                 return false;
             }
             if (totalScore[position] < lowestTotalScore) {
@@ -7154,9 +7155,9 @@ function algo_init() {
 
         while (true) {
             //挑选最弱的对手
-            if (!mirrorsPickWeakestOpponent()) {
-                log("挑选镜层最弱对手时出错");
-                return;
+            while (!mirrorsPickWeakestOpponent()) {
+                toastLog("挑选镜层最弱对手时出错\n5秒后重试...");
+                sleep(5000);
             }
 
             while (id("matchingWrap").findOnce() || id("matchingList").findOnce()) {
