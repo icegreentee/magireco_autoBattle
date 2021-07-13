@@ -428,6 +428,10 @@ ui.emitter.on("resume", () => {
         floatUI.main()
         floatIsActive = true;
     }
+    if ($settings.isEnabled('foreground_service') != ui.foreground.isChecked())
+        ui.foreground.setChecked($settings.isEnabled('foreground_service'));
+    if ($settings.isEnabled('stop_all_on_volume_up') != ui.stopOnVolUp.isChecked())
+        ui.stopOnVolUp.setChecked($settings.isEnabled('stop_all_on_volume_up'));
 });
 
 //监听刷新事件
