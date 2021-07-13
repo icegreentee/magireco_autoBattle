@@ -1949,7 +1949,7 @@ function algo_init() {
             y = sz.bottom - 1;
         }
 
-        let xy.clamped = {x: x, y: y};
+        xy.clamped = {x: x, y: y};
         for (let axis of ["x", "y"])
             if (xy.clamped[axis] != xy.orig[axis])
                 log("点击坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
@@ -2040,7 +2040,7 @@ function algo_init() {
             y2 = sz.bottom - 1;
         }
 
-        let xy.clamped = {x1: x1, y1: y1, x2: x2, y2: y2};
+        xy.clamped = {x1: x1, y1: y1, x2: x2, y2: y2};
         for (let axis of ["x1", "y1", "x2", "y2"])
             if (xy.clamped[axis] != xy.orig[axis])
                 log("滑动坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
