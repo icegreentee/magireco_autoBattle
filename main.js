@@ -56,6 +56,7 @@ ui.layout(
                         <text id="fixOPPOtext3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#666666" />
                         <text id="fixOPPOtext4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#666666" />
                         <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务（常被鲨进程可以开启，按需）" />
+                        <Switch id="stopOnVolUp" margin="0 3" w="*" textColor="#000000" text="按音量上键完全退出脚本" />
                     </vertical>
 
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -413,6 +414,11 @@ ui.foreground.setChecked($settings.isEnabled('foreground_service'));
 ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('foreground_service', checked);
 });
+//按音量上键完全退出脚本
+ui.stopOnVolUp.setChecked($settings.isEnabled('stop_all_on_volume_up'));
+ui.stopOnVolUp.setOnCheckedChangeListener(function (widget, checked) {
+    $settings.setEnabled('stop_all_on_volume_up', checked);
+});
 
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {
@@ -474,7 +480,7 @@ if (!$floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "breakAutoCycleDuration", "forceStopTimeout", "timeout", "rootForceStop", "rootScreencap", "useCVAutoBattle"]
+const persistParamList = ["foreground", "stopOnVolUp", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "breakAutoCycleDuration", "forceStopTimeout", "timeout", "rootForceStop", "rootScreencap", "useCVAutoBattle"]
 const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
 
 var idmap = {};
@@ -587,6 +593,7 @@ afterTextChanged: function (s) {
 
 for (let key of persistParamList) {
     if (key == "foreground") continue;
+    if (key == "stopOnVolUp") continue;
     let value = storage.get(key);
     setOnChangeListener(key); //先设置listener
     syncValue(key, value);    //如果储存了超出取值范围之外的数据则会被listener重置
