@@ -5480,7 +5480,7 @@ function algo_init() {
             }
         }
     });
-    threads.start(downloadAllImages);
+    threads.start(function () {downloadAllImages();});
 
     //矩形参数计算，宽度、高度、中心坐标等等
     function getAreaWidth_(topLeft, bottomRight) {
