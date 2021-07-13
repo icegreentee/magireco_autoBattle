@@ -50,6 +50,11 @@ ui.layout(
 
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
+                        <Switch id="exitOnServiceSettings" margin="0 3" w="*" checked="false" textColor="#666666" text="修正OPPO手机拒绝开启无障碍服务" />
+                        <text id="fixOPPOtext1" visibility="gone" textSize="12" text="如果不是OPPO则不建议打开这个选项" textColor="#666666" />
+                        <text id="fixOPPOtext2" visibility="gone" textSize="12" text="OPPO等部分品牌的手机在有悬浮窗(比如“加速球”)存在时会拒绝开启无障碍服务" textColor="#666666" />
+                        <text id="fixOPPOtext3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#666666" />
+                        <text id="fixOPPOtext4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#666666" />
                         <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务（常被鲨进程可以开启，按需）" />
                     </vertical>
 
@@ -382,6 +387,11 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
         app.startActivity({
             action: "android.settings.ACCESSIBILITY_SETTINGS"
         });
+        //部分品牌的手机在有悬浮窗的情况下拒绝开启无障碍服务（目前只发现OPPO是这样）
+        //为了关闭悬浮窗，最简单的办法就是退出脚本
+        ui.run(function () {
+            if (ui["exitOnServiceSettings"].isChecked()) exit();
+        });
     }
     if (!checked && auto.service) {
         if (device.sdkInt >= 24) {
@@ -394,6 +404,9 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
         }
     }
     ui.autoService.setChecked(auto.service != null)
+});
+ui.exitOnServiceSettings.setOnCheckedChangeListener(function (widget, checked) {
+    for (let i=1; i<=4; i++) ui["fixOPPOtext"+i].setVisibility(checked?View.VISIBLE:View.GONE);
 });
 //前台服务
 ui.foreground.setChecked($settings.isEnabled('foreground_service'));
