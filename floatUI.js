@@ -2814,7 +2814,9 @@ function algo_init() {
 
             openedDialogsNode.dialogResult = threads.disposable();
 
-            let dialogParams = {title: title, positive: "确定"};
+            let dialogParams = {title: title};
+            if (dialogType != "select") dialogParams.positive = "确定";
+
             switch (dialogType) {
                 case "alert":
                     dialogParams["content"] = content;
@@ -2844,7 +2846,7 @@ function algo_init() {
                 deleteDialogAndSetResult(openedDialogsNode, null);
             });
 
-            if (dialogType != "rawInput" && dialogType != "rawInputWithContent") {
+            if (dialogType != "rawInput" && dialogType != "rawInputWithContent" && dialogType != "select") {
                 newDialog = newDialog.on("positive", () => {
                     if (callback1 != null) callback1();
                     //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
