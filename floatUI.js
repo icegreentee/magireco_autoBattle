@@ -3768,7 +3768,7 @@ function algo_init() {
                 toastLog("请输入一个正整数");
                 continue;
             }
-        } while (new_sleep_time <= 0);
+        } while (new_sleep_time <= 0 || isNaN(new_sleep_time));
         result.defaultSleepTime = new_sleep_time;
         toastLog("每一步操作之间将会等待"+result.defaultSleepTime+"毫秒");
 
@@ -3824,7 +3824,7 @@ function algo_init() {
                             toastLog("请输入一个正整数");
                             continue;
                         }
-                    } while (sleep_ms <= 0);
+                    } while (sleep_ms <= 0 || isNaN(sleep_ms));
                     op.sleep.sleepTime = sleep_ms;
                     result.steps.push(op);
                     toastLog("录制第"+(step+1)+"步操作\n已记录等待动作,时间为"+op.sleep.sleepTime+"毫秒");
