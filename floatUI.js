@@ -3832,6 +3832,8 @@ function algo_init() {
         while (true) {
             let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
             let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
+            selected = parseInt(selected);
+            if (isNaN(selected)) continue;
             let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", "abandon"];
             result = actions[selected];
             if (result != null) break;
@@ -3968,6 +3970,7 @@ function algo_init() {
                                 break;
                             default:
                                 selected = dialogs.select("录制第"+(step+1)+"步操作\n在点击位置检测到多个含有文字的控件,请选择:", all_text);
+                                selected = parseInt(selected);
                                 if (isNaN(selected)) selected = -1;
                         }
                     }
@@ -3977,6 +3980,7 @@ function algo_init() {
                     dialog_options = ["横纵坐标都检测", "只检测横坐标X", "只检测纵坐标Y", "横纵坐标都不检测"];
                     do {
                         dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n是否要检测文字\""+op.checkText.text+"\"在屏幕出现的位置和现在是否一致?", dialog_options);
+                        dialog_selected = parseInt(dialog_selected);
                         if (isNaN(dialog_selected)) dialog_selected = -1;
                     } while (dialog_selected < 0);
                     if (dialog_selected == 0 || dialog_selected == 1) {
@@ -3993,6 +3997,7 @@ function algo_init() {
                         dialog_options = ["什么也不做,继续执行", "报告成功并结束", "报告失败并结束", "先强关游戏再报告成功并结束", "先强关游戏再报告失败并结束"];
                         do {
                             dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字\""+op.checkText.text+"\"时要做什么?", dialog_options);
+                            dialog_selected = parseInt(dialog_selected);
                             if (isNaN(dialog_selected)) dialog_selected = -1;
                         } while (dialog_selected < 0);
                         switch (dialog_selected) {
@@ -4047,6 +4052,7 @@ function algo_init() {
                     dialog_options = ["报告成功", "报告失败", "先强关游戏再报告成功", "先强关游戏再报告失败"];
                     do {
                         dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", dialog_options);
+                        dialog_selected = parseInt(dialog_selected);
                         if (isNaN(dialog_selected)) dialog_selected = -1;
                     } while (dialog_selected < 0);
                     switch (dialog_selected) {
