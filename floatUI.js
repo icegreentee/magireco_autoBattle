@@ -957,6 +957,9 @@ floatUI.main = function () {
         return {pos_down: touch_down_pos, pos_up: touch_up_pos, duration: swipe_duration};
     };
 
+    //初始化getWindowSize()
+    detectInitialWindowSize();
+
     //检测刘海屏参数
     function adjustCutoutParams() {
         if (device.sdkInt >= 28) {
@@ -5014,10 +5017,31 @@ function algo_init() {
 }
 
 //global utility functions
+var initialWindowSize = {};
+function detectInitialWindowSize() {
+    let display = context.getSystemService(context.WINDOW_SERVICE).getDefaultDisplay();
+
+    let pt = new Point();
+    display.getSize(pt);
+
+    let rotation = display.getRotation();
+
+    initialWindowSize = {size: pt, rotation: rotation};
+}
 function getWindowSize() {
-    var wm = context.getSystemService(context.WINDOW_SERVICE);
-    var pt = new Point();
-    wm.getDefaultDisplay().getSize(pt);
+    let display = context.getSystemService(context.WINDOW_SERVICE).getDefaultDisplay();
+    let currentRotation = display.getRotation();
+    let relativeRotation = (4 + currentRotation - initialWindowSize.rotation) % 4;
+
+    let x = initialWindowSize.size.x;
+    let y = initialWindowSize.size.y;
+    if (relativeRotation % 2 == 1) {
+        let temp = x;
+        x = y;
+        y = temp;
+    }
+
+    let pt = new Point(x, y);
     return pt;
 }
 
