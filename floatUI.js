@@ -3823,10 +3823,13 @@ function algo_init() {
 
     function chooseAction(step) {
         var result = null;
-        let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
-        let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
-        let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", null];
-        result = actions[selected];
+        while (true) {
+            let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
+            let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
+            let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", null];
+            result = actions[selected];
+            if (result != null) break;
+        }
         return result;
     }
 
@@ -3862,6 +3865,7 @@ function algo_init() {
             new_sleep_time = parseInt(new_sleep_time);
             if (isNaN(new_sleep_time) || new_sleep_time <= 0) {
                 toastLog("请输入一个正整数");
+                continue;
             }
         } while (new_sleep_time <= 0);
         result.defaultSleepTime = new_sleep_time;
@@ -3958,13 +3962,17 @@ function algo_init() {
                                 break;
                             default:
                                 selected = dialogs.select("录制第"+(step+1)+"步操作\n在点击位置检测到多个含有文字的控件,请选择:", all_text);
+                                if (isNaN(selected)) selected = -1;
                         }
                     }
                     op.checkText.text = all_text[selected];
                     toastLog("录制第"+(step+1)+"步操作\n要检测的文字是\""+op.checkText.text+"\"");
 
                     dialog_options = ["横纵坐标都检测", "只检测横坐标X", "只检测纵坐标Y", "横纵坐标都不检测"];
-                    dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n是否要检测文字\""+op.checkText.text+"\"在屏幕出现的位置和现在是否一致?", dialog_options);
+                    do {
+                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n是否要检测文字\""+op.checkText.text+"\"在屏幕出现的位置和现在是否一致?", dialog_options);
+                        if (isNaN(dialog_selected)) dialog_selected = -1;
+                    } while (dialog_selected < 0);
                     if (dialog_selected == 0 || dialog_selected == 1) {
                         op.checkText.centerX = check_text_point.x;
                     }
@@ -3977,7 +3985,10 @@ function algo_init() {
                         op.checkText[found_or_not_found] = {};
                         op.checkText[found_or_not_found].kill = false;
                         dialog_options = ["什么也不做,继续执行", "报告成功并结束", "报告失败并结束", "先强关游戏再报告成功并结束", "先强关游戏再报告失败并结束"];
-                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字\""+op.checkText.text+"\"时要做什么?", dialog_options);
+                        do {
+                            dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字\""+op.checkText.text+"\"时要做什么?", dialog_options);
+                            if (isNaN(dialog_selected)) dialog_selected = -1;
+                        } while (dialog_selected < 0);
                         switch (dialog_selected) {
                             case 0:
                                 op.checkText[found_or_not_found].nextAction = "ignore";
@@ -4028,7 +4039,10 @@ function algo_init() {
                     op.exit = {};
                     op.exit.kill = false;
                     dialog_options = ["报告成功", "报告失败", "先强关游戏再报告成功", "先强关游戏再报告失败"];
-                    dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", dialog_options);
+                    do {
+                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", dialog_options);
+                        if (isNaN(dialog_selected)) dialog_selected = -1;
+                    } while (dialog_selected < 0);
                     switch (dialog_selected) {
                         case 2:
                             op.exit.kill = true;//不break
