@@ -352,7 +352,11 @@ var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
 //如果在UI线程直接调用，第二次调用就会卡在monitoredTask.join()这里
 function replaceCurrentTask(taskItem, callback) {
     //确保前一个脚本停下后会新开一个线程执行callback
-    threads.start(function () {syncedReplaceCurrentTask(taskItem, callback);}).waitFor();
+    try {
+        threads.start(function () {syncedReplaceCurrentTask(taskItem, callback);}).waitFor();
+    } catch (e) {
+        logException(e);
+    }
 }
 function replaceSelfCurrentTask(taskItem, callback) {
     replaceCurrentTask(taskItem, callback);
