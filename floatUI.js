@@ -3826,7 +3826,7 @@ function algo_init() {
         while (true) {
             let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
             let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
-            let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", null];
+            let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", "abandon"];
             result = actions[selected];
             if (result != null) break;
         }
@@ -4090,6 +4090,7 @@ function algo_init() {
                     step--;//这一步没录，所以需要再-1
                     break;
                 case null:
+                case "abandon":
                     result = null;
                     toastLog("放弃录制");
                     stopThread();//lastOpList不会被重新赋值为null
