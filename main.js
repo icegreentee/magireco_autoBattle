@@ -51,6 +51,7 @@ ui.layout(
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
                         <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务（常被鲨进程可以开启，按需）" />
+                        <Switch id="stopOnVolUp" margin="0 3" w="*" textColor="#000000" text="按音量上键完全退出脚本" />
                     </vertical>
 
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -392,6 +393,11 @@ ui.foreground.setChecked($settings.isEnabled('foreground_service'));
 ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('foreground_service', checked);
 });
+//按音量上键完全退出脚本
+ui.stopOnVolUp.setChecked($settings.isEnabled('stop_all_on_volume_up'));
+ui.stopOnVolUp.setOnCheckedChangeListener(function (widget, checked) {
+    $settings.setEnabled('stop_all_on_volume_up', checked);
+});
 
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {
@@ -453,7 +459,7 @@ if (!$floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "breakAutoCycleDuration", "forceStopTimeout", "timeout", "rootForceStop"]
+const persistParamList = ["foreground", "stopOnVolUp", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "breakAutoCycleDuration", "forceStopTimeout", "timeout", "rootForceStop"]
 const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
 
 var idmap = {};
@@ -566,6 +572,7 @@ afterTextChanged: function (s) {
 
 for (let key of persistParamList) {
     if (key == "foreground") continue;
+    if (key == "stopOnVolUp") continue;
     let value = storage.get(key);
     setOnChangeListener(key); //先设置listener
     syncValue(key, value);    //如果储存了超出取值范围之外的数据则会被listener重置
