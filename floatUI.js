@@ -5482,7 +5482,8 @@ function algo_init() {
         mirrorsWinLetterI: ImgURLBase+"/images/mirrorsWinLetterI.png",
         mirrorsLose: ImgURLBase+"/images/mirrorsLose.png",
     };
-    threads.start(function () {
+
+    var downloadAllImages = sync(function () {
         while (true) {
             let hasNull = false;
             for (let key in knownImgURLs) {
@@ -5501,7 +5502,7 @@ function algo_init() {
             }
         }
     });
-
+    threads.start(downloadAllImages);
 
     //矩形参数计算，宽度、高度、中心坐标等等
     function getAreaWidth_(topLeft, bottomRight) {
@@ -6814,6 +6815,8 @@ function algo_init() {
             }
             return;
         }
+
+        downloadAllImages();
 
         initialize();
 
