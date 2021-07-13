@@ -2859,6 +2859,7 @@ function algo_init() {
                 case "select":
                     if (callback2 != null) dialogParams["negative"] = "取消";
                     dialogParams["items"] = content;
+                    dialogParams["itemsSelectMode"] = "select";
                     break;
                 case "confirm":
                     dialogParams["negative"] = "取消";
@@ -2893,6 +2894,11 @@ function algo_init() {
                 case "alert":
                     break;
                 case "select":
+                    newDialog = newDialog.on("item_select", (index, item, dialog) => {
+                        if (callback1 != null) callback1();
+                        deleteDialogAndSetResult(openedDialogsNode, index);
+                    });
+                    //不break
                 case "confirm":
                     newDialog = newDialog.on("negative", () => {
                         if (callback2 != null) callback2();
