@@ -164,7 +164,7 @@ ui.layout(
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings1" visibility="gone" padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="rootScreencap" w="*" margin="0 3" checked="false" textColor="#000000" text="使用root或adb权限截屏" />
-                                <text text="部分环境下截屏权限会在一段时间后丢失,或者出现截屏后处理数据时报错崩溃的问题。这些情况下可以开启这个选项,但这种截图效率较低" textColor="#000000" />
+                                <text text="部分环境下截屏权限会在一段时间后丢失,或者出现截屏后处理数据时报错崩溃的问题。这些情况下可以开启这个选项,但开启后截图效率会下降" textColor="#000000" />
                                 <text text="注意!超级用户授权通知会遮挡屏幕、干扰截屏识图,所以务必要关掉这个通知(对模拟器来说,一般可以在系统设置里找到超级用户设置)。也可以改用不会弹出通知的Shizuku来授权" textColor="#FF0000" />
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings2" visibility="gone" padding="0 8 0 6" w="*" h="auto">
