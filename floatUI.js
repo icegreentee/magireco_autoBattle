@@ -7148,8 +7148,15 @@ function algo_init() {
     }
 
     //在镜层自动挑选最弱的对手
-    function mirrorsPickWeakestOpponent() {
+    function mirrorsPickWeakestOpponentRunnable() {
         toast("挑选最弱的镜层对手...");
+
+        //刷新auto.root（也许只有心理安慰作用？）
+        for (let attempt=0; attempt<10; attempt++) {
+            try {if (auto.root != null && auto.root.refresh()) break;} catch (e) {};
+            sleep(100);
+        }
+
         let lowestTotalScore = Number.MAX_SAFE_INTEGER;
         let lowestAvgScore = Number.MAX_SAFE_INTEGER;
         //数组第1个元素（下标0）仅用来占位
@@ -7254,6 +7261,25 @@ function algo_init() {
         log("id(\"matchingWrap\").findOnce() == null");
         return true;
     }
+    function mirrorsPickWeakestOpponent() {
+        var result = false;
+        let t1 = threads.start(function () {
+            result = mirrorsPickWeakestOpponentRunnable();
+        });
+        try {
+            t1.waitFor();
+            t1.join(60 * 1000); //等待最多一分钟
+            while (t1.isAlive()) {
+                t1.interrupt();
+                sleep(100);
+            }
+        } catch (e) {
+            log("挑选最弱的镜层对手时出错");
+            logException(e);
+            return false;
+        }
+        return result;
+    }
 
     function mirrorsPick3rdOpponent() {
         toastLog("挑选第3个镜层对手...");
@@ -7295,7 +7321,7 @@ function algo_init() {
             var pickedWeakest = false;
             if (limit.smartMirrorsPick) {
                 //挑选最弱的对手
-                let pickWeakestAttemptMax = 5;
+                let pickWeakestAttemptMax = 2;
                 for (let attempt=0; attempt<pickWeakestAttemptMax; attempt++) {
                     if (mirrorsPickWeakestOpponent()) {
                         pickedWeakest = true;
