@@ -6641,7 +6641,7 @@ function algo_init() {
         let area = {};
         for (let corner of ["topLeft", "bottomRight"]) {
             area[corner].pos = "bottom";
-            for (let axis of ["x", "y"] {
+            for (let axis of ["x", "y"]) {
                 if (isFull) {
                     area[corner][axis] = knownFirstSkillFullCoords[corner][axis];
                 } else {
