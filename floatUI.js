@@ -7163,6 +7163,9 @@ function algo_init() {
     }
     //在对手队伍信息中获取等级信息，用来计算人均战力
     function getMirrorsAverageScore(totalScore) {
+        //刷新auto.root（也许只有心理安慰作用？）
+        try {if (auto.root != null && auto.root.refresh()) break;} catch (e) {}; //只刷新一次
+
         if (totalScore == null) return 0;
         log("getMirrorsAverageScore totalScore", totalScore);
         let totalSqrtLv = 0;
@@ -7196,14 +7199,24 @@ function algo_init() {
     }
 
     //在镜层自动挑选最弱的对手
-    function mirrorsPickWeakestOpponentRunnable() {
+    function mirrorsPickWeakestOpponent() {
         toast("挑选最弱的镜层对手...");
+
+        var startTime = new Date().getTime();
+        var deadlineTime = startTime + 60 * 1000; //最多等待一分钟
+        var stopTime = new Date().getTime() + 5000;
 
         //刷新auto.root（也许只有心理安慰作用？）
         for (let attempt=0; attempt<10; attempt++) {
             try {if (auto.root != null && auto.root.refresh()) break;} catch (e) {};
             sleep(100);
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("等待auto.root刷新时间过长");
+                return false;
+            }
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         let lowestTotalScore = Number.MAX_SAFE_INTEGER;
         let lowestAvgScore = Number.MAX_SAFE_INTEGER;
@@ -7212,7 +7225,16 @@ function algo_init() {
         let avgScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
         let lowestScorePosition = 3;
 
-        while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) sleep(1000); //等待
+        while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) {
+            log("等待对手列表出现...");
+            sleep(1000);
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到对手列表控件matchingWrap或matchingList出现,无法智能挑选最弱对手");
+                return false;
+            }
+        }
+
+        stopTime = new Date().getTime() + 5000;
 
         if (id("matchingList").findOnce()) {
             toastLog("当前处于演习模式");
@@ -7221,16 +7243,27 @@ function algo_init() {
                 if (getMirrorsAverageScore(totalScore[1]) > 0) break; //如果已经打开了一个对手，直接战斗开始
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+"1"]));
                 sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到镜层对手队伍信息出现(也可能是虽然已经出现,但getMirrorsAverageScore没检测到导致的)");
+                }
             }
             return true;
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         //如果已经打开了信息面板，先关掉
         for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
             if (getMirrorsAverageScore(99999999) <= 0) break; //如果没有打开队伍信息面板，那就直接退出循环，避免点到MENU
             if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
             sleep(1000);
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到镜层对手队伍信息面板消失");
+                return false;
+            }
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         let selfScore = getMirrorsSelfScore();
 
@@ -7240,6 +7273,10 @@ function algo_init() {
                 totalScore[position] = getMirrorsScoreAt(position);
                 if (totalScore[position] > 0) break;
                 sleep(100);
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到第"+position+"个镜层对手的队伍信息出现(也可能是虽然已经出现,但getMirrorsAverageScore没检测到导致的)");
+                    return false;
+                }
             }
             if (totalScore[position] <= 0) {
                 toastLog("获取某个对手的总战力失败\n请尝试退出镜层后重新进入");
@@ -7252,6 +7289,8 @@ function algo_init() {
             }
         }
 
+        stopTime = new Date().getTime() + 5000;
+
         //福利队
         //因为队伍最多5人，所以总战力比我方总战力六分之一还少应该就是福利队
         if (lowestTotalScore < selfScore / 6) {
@@ -7260,9 +7299,15 @@ function algo_init() {
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
                 sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
                 if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到镜层对手(福利队)的队伍信息出现");
+                    return false;
+                }
             }
             return true;
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         //找平均战力最低的
         for (let position=1; position<=3; position++) {
@@ -7278,6 +7323,10 @@ function algo_init() {
                     }
                     break;
                 }
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到第"+position+"个镜层对手的队伍信息出现");
+                    return false;
+                }
             }
 
             //关闭信息面板
@@ -7286,8 +7335,14 @@ function algo_init() {
                 if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
                 sleep(1000);
                 if (getMirrorsAverageScore(totalScore[position]) <= 0) break;
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到第"+position+"个镜层对手的队伍信息出现");
+                    return false;
+                }
             }
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         log("找到平均战力最低的对手", lowestScorePosition, totalScore[lowestScorePosition], avgScore[lowestScorePosition]);
 
@@ -7298,35 +7353,26 @@ function algo_init() {
             if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
             sleep(1000);
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) <= 0) break;
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到第3个镜层对手(不是最弱)的队伍信息消失");
+                return false;
+            }
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         //重新打开平均战力最低队伍的队伍信息面板
         while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
             click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
             sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) return true;
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到第"+lowestScorePosition+"个镜层对手(最弱)的队伍信息出现");
+                return false;
+            }
         }
         log("id(\"matchingWrap\").findOnce() == null");
         return true;
-    }
-    function mirrorsPickWeakestOpponent() {
-        var result = false;
-        let t1 = threads.start(function () {
-            result = mirrorsPickWeakestOpponentRunnable();
-        });
-        try {
-            t1.waitFor();
-            t1.join(60 * 1000); //等待最多一分钟
-            while (t1.isAlive()) {
-                t1.interrupt();
-                sleep(100);
-            }
-        } catch (e) {
-            log("挑选最弱的镜层对手时出错");
-            logException(e);
-            return false;
-        }
-        return result;
     }
 
     function mirrorsPick3rdOpponent() {
