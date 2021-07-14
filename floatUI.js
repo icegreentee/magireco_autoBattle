@@ -6637,6 +6637,7 @@ function algo_init() {
                 log("识图自动战斗已启用调试模式");
                 let snapshotDir = files.join(files.getSdcardPath(), "auto_magireco/");
                 let screenshotDir = files.join(snapshotDir, "screenshots/");
+                files.ensureDir(screenshotDir);
                 if (img != null) {
                     log("保存第一个盘的动作图片...");
                     let imgPath = files.join(screenshotDir, "firstDisk.png");
