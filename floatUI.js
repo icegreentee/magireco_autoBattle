@@ -7115,6 +7115,9 @@ function algo_init() {
     }
     //在对手队伍信息中获取等级信息，用来计算人均战力
     function getMirrorsAverageScore(totalScore) {
+        //刷新auto.root（也许只有心理安慰作用？）
+        try {if (auto.root != null && auto.root.refresh()) break;} catch (e) {}; //只刷新一次
+
         if (totalScore == null) return 0;
         log("getMirrorsAverageScore totalScore", totalScore);
         let totalSqrtLv = 0;
