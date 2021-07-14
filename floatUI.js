@@ -1256,6 +1256,7 @@ var limit = {
     rootForceStop: false,
     rootScreencap: false,
     useCVAutoBattle: false,
+    CVAutoBattleDebug: false,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -6631,6 +6632,25 @@ function algo_init() {
             } else {
                 log("未出现我方行动盘");
                 diskAppearedCount = 0;
+            }
+            if (limit.CVAutoBattleDebug) {
+                log("识图自动战斗已启用调试模式");
+                let snapshotDir = files.join(files.getSdcardPath(), "auto_magireco/");
+                let screenshotDir = files.join(snapshotDir, "screenshots/");
+                if (img != null) {
+                    log("保存第一个盘的动作图片...");
+                    let imgPath = files.join(screenshotDir, "firstDisk.png");
+                    images.save(img, imgPath, "png");
+                    log("保存第一个盘的动作图片完成");
+                    for (let action of ["accel", "blast", "charge"]) {
+                        log("保存用于参考的"+action+"盘的动作图片...");
+                        let refImgPath = files.join(screenshotDir, action+".png");
+                        images.save(knownImgs[action], refImgPath, "png");
+                        log("保存用于参考的"+action+"盘的动作图片完成");
+                    }
+                }
+                log("已保存图片,退出识图自动战斗");
+                stopThread();
             }
             if (diskAppearedCount >= 3) {
                 result = true;

@@ -143,6 +143,10 @@ ui.layout(
                                 <Switch id="useCVAutoBattle" w="*" margin="0 3" checked="false" textColor="#000000" text="镜层使用识图自动战斗" />
                                 <text text="不开启此项,则镜层默认使用简单无脑点第1/2/3个盘来自动完成战斗。开启此项后,可以自动完成连携,但暂不支持使用主动技能" textColor="#000000" />
                             </vertical>
+                            <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="CVAutoBattleDebug" w="*" margin="0 3" checked="false" textColor="#000000" text="识图自动战斗启用调试模式" />
+                                <text text="开启后,识图自动战斗将会在保存一些图片后结束运行,以方便排查bug" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -484,8 +488,35 @@ if (!$floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "stopOnVolUp", "default", "autoReconnect", "justNPC", "helpx", "helpy", "battleNo", "useAuto", "breakAutoCycleDuration", "forceStopTimeout", "timeout", "rootForceStop", "rootScreencap", "useCVAutoBattle"]
-const tempParamList = ["drug1", "drug2", "drug3", "drug4", "drug1num", "drug2num", "drug3num", "drug4num", "apmul"]
+const persistParamList = [
+    "foreground",
+    "stopOnVolUp",
+    "default",
+    "autoReconnect",
+    "justNPC",
+    "helpx",
+    "helpy",
+    "battleNo",
+    "useAuto",
+    "breakAutoCycleDuration",
+    "forceStopTimeout",
+    "timeout",
+    "rootForceStop",
+    "rootScreencap",
+    "useCVAutoBattle",
+    "CVAutoBattleDebug",
+];
+const tempParamList = [
+    "drug1",
+    "drug2",
+    "drug3",
+    "drug4",
+    "drug1num",
+    "drug2num",
+    "drug3num",
+    "drug4num",
+    "apmul",
+];
 
 var idmap = {};
 var field = (new Ids()).getClass().getDeclaredField("ids");
