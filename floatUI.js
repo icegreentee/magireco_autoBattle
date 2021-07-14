@@ -6641,6 +6641,7 @@ function algo_init() {
     function getSkillArea(diskPos, skillNo, isFull) {
         let area = {};
         for (let corner of ["topLeft", "bottomRight"]) {
+            area[corner] = {};
             area[corner].pos = "bottom";
             for (let axis of ["x", "y"]) {
                 if (isFull) {
