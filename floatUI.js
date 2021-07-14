@@ -6745,7 +6745,8 @@ function algo_init() {
         if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
             id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
             log("匹配到副本结算控件");
-            clickResult();
+            //clickResult();
+            toastLog("战斗已结束进入结算");
         }
     }
 
@@ -6795,26 +6796,36 @@ function algo_init() {
     function mirrorsSimpleAutoBattleMain() {
         initialize();
 
+        var battleResultIDs = ["ArenaResult", "enemyBtn", "ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
+        var isBattleResult = false;
+
+        var battleEndIDs = ["matchingWrap", "matchingList"];
+
         //简单镜层自动战斗
-        while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) {
-            /*
-            if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
-            */
+        while (true) {
+            for (let resID of battleEndIDs) {
+                if (findID(resID)) {
+                    log("找到", resID, ", 结束简单镜层自动战斗");
+                    break;
+                } else {
+                    log("未找到", resID);
+                }
+            }
+
             for (let n=0; n<8; n++) {
                 log("n="+n);
                 let isDiskClickable = [(n&4)==0, (n&2)==0, (n&1)==0];
                 let breakable = false;
                 for (let pass=1; pass<=4; pass++) {
                     for (let i=1; i<=3; i++) {
-                        let isBattleEnded = false;
-                        let endBattleIDs = ["ArenaResult", "enemyBtn", "ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
-                        endBattleIDs.forEach(function (val) {
+                        isBattleResult = false;
+                        battleResultIDs.forEach(function (val) {
                             if (findID(val, false) != null) {
                                 log("找到", val);
-                                isBattleEnded = true;
+                                isBattleResult = true;
                             }
                         });
-                        if (!isBattleEnded) {
+                        if (!isBattleResult) {
                             if (isDiskClickable[i-1] || (pass >= 1 && pass <= 2)) {
                                 click(convertCoords(clickSetsMod["battlePan"+i]));
                                 sleep(1000);
@@ -6830,15 +6841,24 @@ function algo_init() {
             }
 
             //点掉镜层结算页面
-            if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce()) {
-                click(convertCoords(clickSetsMod.levelup))
+            isBattleResult = false;
+            battleResultIDs.forEach(function (val) {
+                if (findID(val, false) != null) {
+                    log("找到", val);
+                    isBattleResult = true;
+                }
+            });
+            if (isBattleResult) {
+                click(convertCoords(clickSetsMod.levelup));
             }
-            sleep(3000)
+            sleep(3000);
 
             //点掉副本结算页面（如果用在副本而不是镜层中）
             if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
                 id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
-                clickResult();
+                //clickResult();
+                toastLog("战斗已结束进入结算");
+                break;
             }
         }
     }
