@@ -6976,6 +6976,8 @@ function algo_init() {
                 knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
             } else if (imgName == "connectIndicatorBtnDown") {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
+            } else if (imgName == "skillLocked" || imgName.startsWith("skillEmpty")) {
+                knownArea = knownFirstSkillCoords[imgName];
             } else {
                 knownArea = knownFirstStandPointCoords.our[imgName];
                 if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
