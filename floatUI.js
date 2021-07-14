@@ -6659,7 +6659,7 @@ function algo_init() {
                             log("保存用于参考的"+action+"盘的动作图片完成");
                         }
                     }
-                    log("已保存图片,退出识图自动战斗");
+                    toastLog("调试模式下已保存图片,退出识图自动战斗");
                     stopThread();
                 }
             }
