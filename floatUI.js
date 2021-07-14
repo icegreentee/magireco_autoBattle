@@ -5537,6 +5537,9 @@ function algo_init() {
             }
             if (!hasNull) {
                 log("全部图片下载完成");
+                log("缩放图片...");
+                resizeKnownImgs();
+                log("图片缩放完成");
                 break;
             } else {
                 log("有图片没下载成功,2秒后重试...");
