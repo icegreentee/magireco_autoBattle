@@ -5218,6 +5218,9 @@ function algo_init() {
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
             if (requestScreenCapture(screencap_landscape)) {
+                //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
+                initializeScreenCaptureFix();
+
                 sleep(500);
                 toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
                 sleep(3000);
@@ -5237,6 +5240,23 @@ function algo_init() {
         }
 
         return;
+    }
+
+    //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
+    var needScreenCaptureFix = false;
+    function initializeScreenCaptureFix() {
+        try {
+            let screenshot = captureScreen();
+            let x = screenshot.getWidth();
+            let y = screenshot.getHeight();
+            if (x < y) {
+                //这里不考虑本来就要截屏竖屏的情况
+                log("检测到横屏强制转竖屏的截屏");
+                needScreenCaptureFix = true;
+            }
+        } catch (e) {
+            logException(e);
+        }
     }
 
     //用shizuku adb/root权限，或者直接用root权限截屏
@@ -5353,7 +5373,35 @@ function algo_init() {
             return renewImage(screenshot, "screenshot", tagOnly); //回收旧图片
         } else {
             //使用AutoJS默认提供的录屏API截图
-            return captureScreen.apply(this, arguments);
+            let screenshot = captureScreen.apply(this, arguments);
+            if (needScreenCaptureFix) {
+                //检测到横屏强制转竖屏的截屏，需要修正
+
+                //获取截屏尺寸
+                let imgX = screenshot.getWidth();
+                let imgY = screenshot.getHeight();
+
+                //获取屏幕尺寸（如果参数是竖屏就转换成横屏参数）
+                let screenX = device.width;
+                let screenY = device.height;
+                if (screenX < screenY) {
+                    let temp = screenX;
+                    screenX = screenY;
+                    screenY = temp;
+                }
+
+                //假设真正的图像位于居中部位，将其裁剪出来
+                let croppedX = imgX;
+                let croppedY = imgX / screenX * screenY;
+                let tagOnly = true;
+                let croppedImg = renewImage(images.clip(screenshot, 0, (imgY - croppedY) / 2, croppedX, croppedY), "croppedScreenshot", tagOnly);
+
+                //把裁剪出来的图像重新放大回屏幕尺寸
+                let resizedImg = images.resize(croppedImg, [screenX, screenY]);
+                return renewImage(resizedImg, "fixedScreenshot", tagOnly);
+            } else {
+                return screenshot;
+            }
         }
     });
     /* ~~~~~~~~ 截图兼容模块 结束 ~~~~~~~~ */
