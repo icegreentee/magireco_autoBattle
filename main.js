@@ -419,7 +419,7 @@ function detectAutoJSVersion() {
             currentVersionCode = NaN;
         }
         if (isNaN(currentVersionCode)) {
-            ui.autojs_ver_text.setText("无法检测AutoJS Pro 引擎版本");
+            ui.autojs_ver_text.setText("无法检测 AutoJS Pro 引擎版本\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新");
             ui.autojs_ver_vertical.setVisibility(View.VISIBLE);
             return;
         }
