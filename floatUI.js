@@ -7087,7 +7087,12 @@ function algo_init() {
         let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
         for (let i=0; i<uiObjArr.length; i++) {
             let uiObj = uiObjArr[i];
-            let lv = parseInt(getContent(uiObj));
+            let content = getContent(uiObj);
+            if (content != null) {
+                let matched = content.match(/\d+/);
+                if (matched != null) content = matched[0];
+            }
+            lv = parseInt(content);
             if (lv != null && !isNaN(lv)) {
                 log("getMirrorsLvAt rowNum", rowNum, "columnNum", columnNum, "lv", lv);
                 return lv;
