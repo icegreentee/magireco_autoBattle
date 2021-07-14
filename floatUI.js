@@ -1258,6 +1258,7 @@ var limit = {
     smartMirrorsPick: true,
     useCVAutoBattle: true,
     CVAutoBattleDebug: false,
+    CVAutoBattleClickAllSkills: true,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -7107,10 +7108,12 @@ function algo_init() {
             //我的回合，抽盘
             turn++;
 
-            //一般在第3回合后主动技能才冷却完毕
-            //闭着眼放出所有主动技能
-            if (turn >= 3) {
-                clickAllSkills();
+            if (limit.CVAutoBattleClickAllSkills) {
+                if (turn >= 3) {
+                    //一般在第3回合后主动技能才冷却完毕
+                    //闭着眼放出所有主动技能
+                    clickAllSkills();
+                }
             }
 
             //扫描行动盘和战场信息
