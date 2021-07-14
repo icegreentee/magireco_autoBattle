@@ -5158,7 +5158,7 @@ function algo_init() {
     }
     //在/data/local/tmp/下安装scrcap2bmp
     var binarySetupDone = false;
-    const binURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle@2.4.35";
+    const binURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.4.0";
     function setupBinary() {
         if (binarySetupDone) return binarySetupDone;
 
@@ -5499,11 +5499,21 @@ function algo_init() {
             x: 100,
             y: 50,
             pos: "top"
+        },
+        recover_battle: {
+            x: 1230,
+            y: 730,
+            pos: "center"
+        },
+        skillPanelSwitch: {
+            x: 1773,
+            y: 927,
+            pos: "bottom"
         }
     }
 
     //已知参照图像，包括A/B/C盘等
-    const ImgURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle@2.4.35";
+    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.4.0";
     var knownImgs = {};
     const knownImgURLs = {
         accel: ImgURLBase+"/images/accel.png",
@@ -5523,6 +5533,10 @@ function algo_init() {
         woodBtnDown: ImgURLBase+"/images/woodBtnDown.png",
         mirrorsWinLetterI: ImgURLBase+"/images/mirrorsWinLetterI.png",
         mirrorsLose: ImgURLBase+"/images/mirrorsLose.png",
+        skillLocked: ImgURLBase+"/images/skillLocked.png",
+        skillEmptyCHS: ImgURLBase+"/images/skillEmptyCHS.png",
+        skillEmptyCHT: ImgURLBase+"/images/skillEmptyCHT.png",
+        skillEmptyJP: ImgURLBase+"/images/skillEmptyJP.png",
     };
 
     var downloadAllImages = sync(function () {
@@ -6594,31 +6608,31 @@ function algo_init() {
 
     //检测和使用主动技能
 
-    const skillCharaDistance = ;
-    const skillDistance = ;
+    const skillCharaDistance = 328;
+    const skillDistance = 155;
 
     var knownFirstSkillCoords = {
         topLeft: {
-            x: ,
-            y: ,
+            x: 31,
+            y: 978,
             pos: "bottom"
         },
         bottomRight: {
-            x: ,
-            y: ,
+            x: 163,
+            y: 1015,
             pos: "bottom"
         }
     }
 
     var knownFirstSkillFullCoords = {
         topLeft: {
-            x: ,
-            y: ,
+            x: 22,
+            y: 920,
             pos: "bottom"
         },
         bottomRight: {
-            x: ,
-            y: ,
+            x: 172,
+            y: 1071,
             pos: "bottom"
         }
     }
@@ -6680,8 +6694,14 @@ function algo_init() {
                 if (gaussianY % 2 == 0) gaussianY += 1;
                 let gaussianSize = [gaussianX, gaussianY];
                 let imgA = renewImage(images.gaussianBlur(skillImg, gaussianSize));
-                let imgB = renewImage(images.gaussianBlur(knownImgs["skillLock"], gaussianSize));
-                similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
+                similarity = -1;
+                for (let imgName of ["skillLocked", "skillEmptyCHS", "skillEmptyCHT", "skillEmptyJP"]) {
+                    let imgB = renewImage(images.gaussianBlur(knownImgs[imgName], gaussianSize));
+                    let s = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
+                    if (s > similarity) {
+                        similarity = s;
+                    }
+                }
                 if (similarity > 2.1) {
                     log("第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能不存在(小锁图标)");
                     return false;
@@ -6832,7 +6852,6 @@ function algo_init() {
         }
         return result;
     }
-
 
     //判断是否胜利
     var knownMirrorsWinLoseCoords = {
