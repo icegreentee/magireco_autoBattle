@@ -6795,7 +6795,6 @@ function algo_init() {
     //放缩参考图像以适配当前屏幕分辨率
     var resizeKnownImgsDone = false;
     function resizeKnownImgs() {
-        if (!ui.isUiThread()) return;
         if (resizeKnownImgsDone) return;
         let hasError = false;
         for (let imgName in knownImgs) {
