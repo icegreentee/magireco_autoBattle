@@ -6833,6 +6833,7 @@ function algo_init() {
                         log("点击确认按钮使用技能");
                         click(convertCoords(clickSetsMod.recover_battle));
                         sleep(4000);
+                        toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
                     }
                 }
             }
