@@ -5206,10 +5206,16 @@ function algo_init() {
     //应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
     //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
     var canCaptureScreen = false;
+    var hasScreenCaptureError = false;
     function startScreenCapture() {
         if (canCaptureScreen) {
             log("已经获取到截图权限了");
             return;
+        }
+
+        if (hasScreenCaptureError) {
+            toastLog("通过录屏API截图时出错\n请使用root或adb权限截屏");
+            stopThread();
         }
 
         $settings.setEnabled("stop_all_on_volume_up", false);
@@ -5265,6 +5271,7 @@ function algo_init() {
                 needScreenCaptureFix = true;
             }
         } catch (e) {
+            hasScreenCaptureError = true;
             toastLog("通过录屏API截图时出错\n请使用root或adb权限截屏");
             logException(e);
             stopThread();
