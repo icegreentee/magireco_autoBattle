@@ -6636,7 +6636,7 @@ function algo_init() {
             }
             if (limit.CVAutoBattleDebug) {
                 if (cycles < 30) {
-                    toastLog("识图自动战斗已启用调试模式,将会在保存图片后退出");
+                    if (cycles == 1) toastLog("识图自动战斗已启用调试模式,将会在保存图片后退出");
                 } else {
                     toastLog("开始保存图片...");
                     let snapshotDir = files.join(files.getSdcardPath(), "auto_magireco/");
