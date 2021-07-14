@@ -5309,13 +5309,16 @@ function algo_init() {
     //回收所有图片
     function recycleAllImages() {
         log("recycleAllImages...");
+        var count = 0;
         for (let i in imgRecycleMap) {
             if (imgRecycleMap[i] != null) {
                 renewImage(null);
+                count++;
                 //log("recycleAllImages: recycled image used at:")
                 //log(i);
             }
         }
+        log("recycleAllImages done, recycled "+count+" images");
     }
 
 
