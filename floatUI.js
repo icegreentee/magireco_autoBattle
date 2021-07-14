@@ -7397,10 +7397,10 @@ function algo_init() {
     function mirrorsPick3rdOpponent() {
         toastLog("挑选第3个镜层对手...");
         let matchWrap = id("matchingWrap").findOne().bounds()
-        while (!id("battleStartBtn").findOnce()) {
-            sleep(1000);
+        for (let attempt=0; attempt<3; attempt++) {
+            if (id("battleStartBtn").findOnce()) break; //MuMu等控件树残缺环境下永远也找不到battleStartBtn（虽然实际上有战斗开始按钮）
             click(matchWrap.centerX(), matchWrap.bottom - 50);
-            sleep(2000);
+            sleep(1500);
         }
         log("挑选第3个镜层对手完成");
     }
