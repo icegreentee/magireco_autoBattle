@@ -253,7 +253,7 @@ function reportBug() {
 
     var snapshotDir = files.join(files.getSdcardPath(), "auto_magireco");
     var listedFilenames = files.listDir(snapshotDir, function (filename) {
-        return filename.match(/^\d+-\d+-\d+_\d+-\d+-\d+\.xml$/) && files.isFile(files.join(snapshotDir, filename));
+        return filename.match(/^\d+-\d+-\d+_\d+-\d+-\d+\.xml$/) != null && files.isFile(files.join(snapshotDir, filename));
     });
     var latest = [0,0,0,0,0,0];
     if (listedFilenames != null) {
