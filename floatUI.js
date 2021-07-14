@@ -5537,9 +5537,6 @@ function algo_init() {
             }
             if (!hasNull) {
                 log("全部图片下载完成");
-                log("缩放图片...");
-                resizeKnownImgs();
-                log("图片缩放完成");
                 break;
             } else {
                 log("有图片没下载成功,2秒后重试...");
@@ -6914,6 +6911,10 @@ function algo_init() {
         downloadAllImages();
 
         initialize();
+
+        log("缩放图片...");
+        resizeKnownImgs();//必须放在initialize后面
+        log("图片缩放完成");
 
         if (limit.useCVAutoBattle && limit.rootScreencap) {
             while (true) {
