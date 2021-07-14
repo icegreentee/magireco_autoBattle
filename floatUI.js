@@ -6841,7 +6841,7 @@ function algo_init() {
             for (let resID of battleEndIDs) {
                 if (findID(resID)) {
                     log("找到", resID, ", 结束简单镜层自动战斗");
-                    break;
+                    return;
                 } else {
                     log("未找到", resID);
                 }
