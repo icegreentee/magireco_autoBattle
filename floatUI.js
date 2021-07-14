@@ -6638,6 +6638,11 @@ function algo_init() {
                 let snapshotDir = files.join(files.getSdcardPath(), "auto_magireco/");
                 let screenshotDir = files.join(snapshotDir, "screenshots/");
                 if (img != null) {
+                    log("保存完整屏幕截图...");
+                    let screenshotPath = files.join(screenshotDir, "screenshot.png");
+                    files.ensureDir(screenshotPath);
+                    images.save(screenshot, screenshotPath, "png");
+                    log("保存完整屏幕截图完成");
                     log("保存第一个盘的动作图片...");
                     let imgPath = files.join(screenshotDir, "firstDisk.png");
                     files.ensureDir(imgPath);
