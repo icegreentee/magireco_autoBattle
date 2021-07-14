@@ -135,14 +135,28 @@ ui.layout(
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
                                 <text text="部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
                             </vertical>
+                        </vertical>
+                    </vertical>
+                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
+                        <text text="镜层周回脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
+                        <vertical padding="10 6 0 6" w="*" h="auto">
+                            <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="smartMirrorsPick" w="*" margin="0 3" checked="true" textColor="#000000" text="智能挑选最弱对手" />
+                                <text text="开启此项后会先找总战力低于我方六分之一的弱队,如果找不到就挨个点开队伍详情计算平均战力,从而找到最弱对手。如果碰到问题可以关闭这个选项,然后就只会挑选第3个对手" textColor="#000000" />
+                            </vertical>
+                            <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="useCVAutoBattle" w="*" margin="0 3" checked="true" textColor="#000000" text="在周回中使用识图自动战斗" />
+                                <text text="不开启此项,则镜层周回默认使用简单无脑点第1/2/3个盘来自动完成战斗。开启此项后,可以自动完成连携,但暂不支持使用主动技能" textColor="#000000" />
+                            </vertical>
                             <vertical padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="rootScreencap" w="*" margin="0 3" checked="false" textColor="#000000" text="使用root或adb权限截屏" />
                                 <text text="部分环境下截屏权限会在一段时间后丢失,或者出现截屏后处理数据时报错崩溃的问题。这些情况下可以开启这个选项,但这种截图效率较低" textColor="#000000" />
                             </vertical>
-                            <vertical padding="0 8 0 6" w="*" h="auto">
-                                <Switch id="useCVAutoBattle" w="*" margin="0 3" checked="true" textColor="#000000" text="镜层周回使用识图自动战斗" />
-                                <text text="不开启此项,则镜层周回默认使用简单无脑点第1/2/3个盘来自动完成战斗。开启此项后,可以自动完成连携,但暂不支持使用主动技能" textColor="#000000" />
-                            </vertical>
+                        </vertical>
+                    </vertical>
+                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
+                        <text text="识图自动战斗(自动点击行动盘(识图,连携))脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
+                        <vertical padding="10 6 0 6" w="*" h="auto">
                             <vertical padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleDebug" w="*" margin="0 3" checked="false" textColor="#000000" text="识图自动战斗启用调试模式" />
                                 <text text="开启后,识图自动战斗将会在保存一些图片后结束运行,以方便排查bug" textColor="#000000" />
@@ -503,6 +517,7 @@ const persistParamList = [
     "timeout",
     "rootForceStop",
     "rootScreencap",
+    "smartMirrorsPick",
     "useCVAutoBattle",
     "CVAutoBattleDebug",
 ];

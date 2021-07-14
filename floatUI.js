@@ -1255,6 +1255,7 @@ var limit = {
     timeout: "5000",
     rootForceStop: false,
     rootScreencap: false,
+    smartMirrorsPick: true,
     useCVAutoBattle: true,
     CVAutoBattleDebug: false,
     firstRequestPrivilege: true,
@@ -7279,19 +7280,23 @@ function algo_init() {
         }
 
         while (true) {
-            //挑选最弱的对手
-            let pickWeakestAttemptMax = 5;
-            let pickedWeakest = false;
-            for (let attempt=0; attempt<pickWeakestAttemptMax; attempt++) {
-                if (mirrorsPickWeakestOpponent()) {
-                    pickedWeakest = true;
-                    break;
+            var pickedWeakest = false;
+            if (limit.smartMirrorsPick) {
+                //挑选最弱的对手
+                let pickWeakestAttemptMax = 5;
+                for (let attempt=0; attempt<pickWeakestAttemptMax; attempt++) {
+                    if (mirrorsPickWeakestOpponent()) {
+                        pickedWeakest = true;
+                        break;
+                    }
+                    toastLog("挑选镜层最弱对手时出错\n3秒后重试...");
+                    sleep(3000);
                 }
-                toastLog("挑选镜层最弱对手时出错\n3秒后重试...");
-                sleep(3000);
+                if (!pickedWeakest) {
+                    toastLog("多次尝试挑选镜层最弱对手时出错,回退到挑选第3个镜层对手...");
+                }
             }
-            if (!pickedWeakest) {
-                toastLog("多次尝试挑选镜层最弱对手时出错,回退到挑选第3个镜层对手...");
+            if (!limit.smartMirrorsPick || !pickedWeakest) {
                 mirrorsPick3rdOpponent();
             }
 
