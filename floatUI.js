@@ -86,7 +86,7 @@ var updateCycleCount = () => { };
 // available script list
 floatUI.scripts = [
     {
-        name: "副本周回（剧情，活动通用）",
+        name: "副本周回(剧情/活动通用)",
         fn: tasks.default,
     },
     {
@@ -94,23 +94,23 @@ floatUI.scripts = [
         fn: tasks.mirrors,
     },
     {
-        name: "识图自动战斗",
+        name: "自动点击行动盘(识图,连携)",
         fn: tasks.CVAutoBattle,
     },
     {
-        name: "简单自动战斗(无脑点第1/2/3盘)",
+        name: "自动点击行动盘(无脑123盘)",
         fn: tasks.simpleAutoBattle,
     },
     {
-        name: "副本周回2（备用可选）",
+        name: "副本周回2(备用可选)",
         fn: autoMain,
     },
     {
-        name: "活动周回2（备用可选）",
+        name: "活动周回2(备用可选)",
         fn: autoMainver1,
     },
     {
-        name: "镜层周回（备用可选）",
+        name: "镜层周回2(备用,无脑123盘)",
         fn: jingMain,
     },
     {
@@ -1255,7 +1255,9 @@ var limit = {
     timeout: "5000",
     rootForceStop: false,
     rootScreencap: false,
-    useCVAutoBattle: false,
+    smartMirrorsPick: true,
+    useCVAutoBattle: true,
+    CVAutoBattleDebug: false,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -5173,8 +5175,8 @@ function algo_init() {
             }
         } catch (e) {return;}
         if (binaryBytes == null) return;
-        files.ensureDir(dataDir+"/bin/");
         let binaryCopyFromPath = dataDir+"/bin/"+binaryFileName+"-"+shellABI;
+        files.ensureDir(binaryCopyFromPath);
         files.create(binaryCopyFromPath);
         files.writeBytes(binaryCopyFromPath, binaryBytes);
         if (!files.isFile(binaryCopyFromPath)) return;
@@ -5306,13 +5308,17 @@ function algo_init() {
     }
     //回收所有图片
     function recycleAllImages() {
+        log("recycleAllImages...");
+        var count = 0;
         for (let i in imgRecycleMap) {
             if (imgRecycleMap[i] != null) {
                 renewImage(null);
-                log("recycleAllImages: recycled image used at:")
-                log(i);
+                count++;
+                //log("recycleAllImages: recycled image used at:")
+                //log(i);
             }
         }
+        log("recycleAllImages done, recycled "+count+" images");
     }
 
 
@@ -6631,9 +6637,41 @@ function algo_init() {
                 log("未出现我方行动盘");
                 diskAppearedCount = 0;
             }
+            if (limit.CVAutoBattleDebug) {
+                if (cycles < 30) {
+                    if (cycles == 1) toastLog("识图自动战斗已启用调试模式,将会在保存图片后退出");
+                } else {
+                    toastLog("开始保存图片...");
+                    let snapshotDir = files.join(files.getSdcardPath(), "auto_magireco/");
+                    let screenshotDir = files.join(snapshotDir, "screenshots/");
+                    if (img != null) {
+                        log("保存完整屏幕截图...");
+                        let screenshotPath = files.join(screenshotDir, "screenshot.png");
+                        files.ensureDir(screenshotPath);
+                        images.save(screenshot, screenshotPath, "png");
+                        log("保存完整屏幕截图完成");
+                        log("保存第一个盘的动作图片...");
+                        let imgPath = files.join(screenshotDir, "firstDisk.png");
+                        files.ensureDir(imgPath);
+                        images.save(img, imgPath, "png");
+                        log("保存第一个盘的动作图片完成");
+                        for (let action of ["accel", "blast", "charge"]) {
+                            log("保存用于参考的"+action+"盘的动作图片...");
+                            let refImgPath = files.join(screenshotDir, action+".png");
+                            images.save(knownImgs[action], refImgPath, "png");
+                            log("保存用于参考的"+action+"盘的动作图片完成");
+                        }
+                    }
+                    toastLog("调试模式下已保存图片,退出识图自动战斗");
+                    stopThread();
+                }
+            }
             if (diskAppearedCount >= 3) {
-                result = true;
-                break;
+                if (!limit.CVAutoBattleDebug) {
+                    //为保证调试模式有机会保存图片，调试模式开启时不break
+                    result = true;
+                    break;
+                }
             }
             if(cycles>300*5) {
                 log("等待己方回合已经超过10分钟，结束运行");
@@ -6745,7 +6783,8 @@ function algo_init() {
         if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
             id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
             log("匹配到副本结算控件");
-            clickResult();
+            //clickResult();
+            toastLog("战斗已结束进入结算");
         }
     }
 
@@ -6753,7 +6792,6 @@ function algo_init() {
     //放缩参考图像以适配当前屏幕分辨率
     var resizeKnownImgsDone = false;
     function resizeKnownImgs() {
-        if (!ui.isUiThread()) return;
         if (resizeKnownImgsDone) return;
         let hasError = false;
         for (let imgName in knownImgs) {
@@ -6795,26 +6833,35 @@ function algo_init() {
     function mirrorsSimpleAutoBattleMain() {
         initialize();
 
+        var battleResultIDs = ["ArenaResult", "enemyBtn", "ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
+        var isBattleResult = false;
+
+        var battleEndIDs = ["matchingWrap", "matchingList"];
+
         //简单镜层自动战斗
-        while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) {
-            /*
-            if (!id("ArenaResult").findOnce() && (!id("enemyBtn").findOnce()) && (!id("rankMark").findOnce())) {
-            */
+        while (true) {
             for (let n=0; n<8; n++) {
                 log("n="+n);
                 let isDiskClickable = [(n&4)==0, (n&2)==0, (n&1)==0];
                 let breakable = false;
                 for (let pass=1; pass<=4; pass++) {
                     for (let i=1; i<=3; i++) {
-                        let isBattleEnded = false;
-                        let endBattleIDs = ["ArenaResult", "enemyBtn", "ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
-                        endBattleIDs.forEach(function (val) {
+                        for (let resID of battleEndIDs) {
+                            if (findID(resID)) {
+                                log("找到", resID, ", 结束简单镜层自动战斗");
+                                return;
+                            } else {
+                                log("未找到", resID);
+                            }
+                        }
+                        isBattleResult = false;
+                        battleResultIDs.forEach(function (val) {
                             if (findID(val, false) != null) {
                                 log("找到", val);
-                                isBattleEnded = true;
+                                isBattleResult = true;
                             }
                         });
-                        if (!isBattleEnded) {
+                        if (!isBattleResult) {
                             if (isDiskClickable[i-1] || (pass >= 1 && pass <= 2)) {
                                 click(convertCoords(clickSetsMod["battlePan"+i]));
                                 sleep(1000);
@@ -6830,15 +6877,24 @@ function algo_init() {
             }
 
             //点掉镜层结算页面
-            if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce()) {
-                click(convertCoords(clickSetsMod.levelup))
+            isBattleResult = false;
+            battleResultIDs.forEach(function (val) {
+                if (findID(val, false) != null) {
+                    log("找到", val);
+                    isBattleResult = true;
+                }
+            });
+            if (isBattleResult) {
+                click(convertCoords(clickSetsMod.levelup));
             }
-            sleep(3000)
+            sleep(3000);
 
             //点掉副本结算页面（如果用在副本而不是镜层中）
             if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
                 id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
-                clickResult();
+                //clickResult();
+                toastLog("战斗已结束进入结算");
+                break;
             }
         }
     }
@@ -6855,6 +6911,10 @@ function algo_init() {
         downloadAllImages();
 
         initialize();
+
+        log("缩放图片...");
+        resizeKnownImgs();//必须放在initialize后面
+        log("图片缩放完成");
 
         if (limit.useCVAutoBattle && limit.rootScreencap) {
             while (true) {
@@ -7040,7 +7100,12 @@ function algo_init() {
         let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
         for (let i=0; i<uiObjArr.length; i++) {
             let uiObj = uiObjArr[i];
-            let lv = parseInt(getContent(uiObj));
+            let content = getContent(uiObj);
+            if (content != null) {
+                let matched = content.match(/\d+/);
+                if (matched != null) content = matched[0];
+            }
+            lv = parseInt(content);
             if (lv != null && !isNaN(lv)) {
                 log("getMirrorsLvAt rowNum", rowNum, "columnNum", columnNum, "lv", lv);
                 return lv;
@@ -7083,7 +7148,15 @@ function algo_init() {
     }
 
     //在镜层自动挑选最弱的对手
-    function mirrorsPickWeakestOpponent() {
+    function mirrorsPickWeakestOpponentRunnable() {
+        toast("挑选最弱的镜层对手...");
+
+        //刷新auto.root（也许只有心理安慰作用？）
+        for (let attempt=0; attempt<10; attempt++) {
+            try {if (auto.root != null && auto.root.refresh()) break;} catch (e) {};
+            sleep(100);
+        }
+
         let lowestTotalScore = Number.MAX_SAFE_INTEGER;
         let lowestAvgScore = Number.MAX_SAFE_INTEGER;
         //数组第1个元素（下标0）仅用来占位
@@ -7094,7 +7167,7 @@ function algo_init() {
         while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) sleep(1000); //等待
 
         if (id("matchingList").findOnce()) {
-            log("当前处于演习模式");
+            toastLog("当前处于演习模式");
             //演习模式下直接点最上面第一个对手
             while (id("matchingList").findOnce()) { //如果不小心点到战斗开始，就退出循环
                 if (getMirrorsAverageScore(totalScore[1]) > 0) break; //如果已经打开了一个对手，直接战斗开始
@@ -7134,7 +7207,7 @@ function algo_init() {
         //福利队
         //因为队伍最多5人，所以总战力比我方总战力六分之一还少应该就是福利队
         if (lowestTotalScore < selfScore / 6) {
-            log("找到了战力低于我方六分之一的对手", lowestScorePosition, totalScore[lowestScorePosition]);
+            toastLog("找到了战力低于我方六分之一的对手\n位于第"+lowestScorePosition+"个,战力="+totalScore[lowestScorePosition]);
             while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
                 sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
@@ -7145,6 +7218,7 @@ function algo_init() {
 
         //找平均战力最低的
         for (let position=1; position<=3; position++) {
+            toast("检查第"+position+"个镜层对手的队伍情况...");
             while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+position]));
                 sleep(2000); //等待对手队伍信息出现（avgScore<=0表示对手队伍信息还没出现）
@@ -7187,8 +7261,40 @@ function algo_init() {
         log("id(\"matchingWrap\").findOnce() == null");
         return true;
     }
+    function mirrorsPickWeakestOpponent() {
+        var result = false;
+        let t1 = threads.start(function () {
+            result = mirrorsPickWeakestOpponentRunnable();
+        });
+        try {
+            t1.waitFor();
+            t1.join(60 * 1000); //等待最多一分钟
+            while (t1.isAlive()) {
+                t1.interrupt();
+                sleep(100);
+            }
+        } catch (e) {
+            log("挑选最弱的镜层对手时出错");
+            logException(e);
+            return false;
+        }
+        return result;
+    }
+
+    function mirrorsPick3rdOpponent() {
+        toastLog("挑选第3个镜层对手...");
+        let matchWrap = id("matchingWrap").findOne().bounds()
+        while (!id("battleStartBtn").findOnce()) {
+            sleep(1000);
+            click(matchWrap.centerX(), matchWrap.bottom - 50);
+            sleep(2000);
+        }
+        log("挑选第3个镜层对手完成");
+    }
 
     function taskMirrors() {
+        toast("镜层周回\n自动战斗策略:"+(limit.useCVAutoBattle?"识图":"无脑123盘"));
+
         if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
             toastLog("需要root或shizuku adb权限");
             if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
@@ -7212,10 +7318,24 @@ function algo_init() {
         }
 
         while (true) {
-            //挑选最弱的对手
-            while (!mirrorsPickWeakestOpponent()) {
-                toastLog("挑选镜层最弱对手时出错\n5秒后重试...");
-                sleep(5000);
+            var pickedWeakest = false;
+            if (limit.smartMirrorsPick) {
+                //挑选最弱的对手
+                let pickWeakestAttemptMax = 2;
+                for (let attempt=0; attempt<pickWeakestAttemptMax; attempt++) {
+                    if (mirrorsPickWeakestOpponent()) {
+                        pickedWeakest = true;
+                        break;
+                    }
+                    toastLog("挑选镜层最弱对手时出错\n3秒后重试...");
+                    sleep(3000);
+                }
+                if (!pickedWeakest) {
+                    toastLog("多次尝试挑选镜层最弱对手时出错,回退到挑选第3个镜层对手...");
+                }
+            }
+            if (!limit.smartMirrorsPick || !pickedWeakest) {
+                mirrorsPick3rdOpponent();
             }
 
             while (id("matchingWrap").findOnce() || id("matchingList").findOnce()) {
