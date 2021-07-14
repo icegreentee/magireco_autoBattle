@@ -86,7 +86,7 @@ var updateCycleCount = () => { };
 // available script list
 floatUI.scripts = [
     {
-        name: "副本周回（剧情，活动通用）",
+        name: "副本周回(剧情/活动通用)",
         fn: tasks.default,
     },
     {
@@ -94,23 +94,23 @@ floatUI.scripts = [
         fn: tasks.mirrors,
     },
     {
-        name: "识图自动战斗",
+        name: "自动点击行动盘(识图,连携)",
         fn: tasks.CVAutoBattle,
     },
     {
-        name: "简单自动战斗(无脑点第1/2/3盘)",
+        name: "自动点击行动盘(无脑123盘)",
         fn: tasks.simpleAutoBattle,
     },
     {
-        name: "副本周回2（备用可选）",
+        name: "副本周回2(备用可选)",
         fn: autoMain,
     },
     {
-        name: "活动周回2（备用可选）",
+        name: "活动周回2(备用可选)",
         fn: autoMainver1,
     },
     {
-        name: "镜层周回（备用可选）",
+        name: "镜层周回2(备用,无脑123盘)",
         fn: jingMain,
     },
     {
@@ -1255,7 +1255,7 @@ var limit = {
     timeout: "5000",
     rootForceStop: false,
     rootScreencap: false,
-    useCVAutoBattle: false,
+    useCVAutoBattle: true,
     CVAutoBattleDebug: false,
     firstRequestPrivilege: true,
     privilege: null
@@ -7125,6 +7125,7 @@ function algo_init() {
 
     //在镜层自动挑选最弱的对手
     function mirrorsPickWeakestOpponent() {
+        toast("挑选最弱的镜层对手...");
         let lowestTotalScore = Number.MAX_SAFE_INTEGER;
         let lowestAvgScore = Number.MAX_SAFE_INTEGER;
         //数组第1个元素（下标0）仅用来占位
@@ -7135,7 +7136,7 @@ function algo_init() {
         while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) sleep(1000); //等待
 
         if (id("matchingList").findOnce()) {
-            log("当前处于演习模式");
+            toastLog("当前处于演习模式");
             //演习模式下直接点最上面第一个对手
             while (id("matchingList").findOnce()) { //如果不小心点到战斗开始，就退出循环
                 if (getMirrorsAverageScore(totalScore[1]) > 0) break; //如果已经打开了一个对手，直接战斗开始
@@ -7175,7 +7176,7 @@ function algo_init() {
         //福利队
         //因为队伍最多5人，所以总战力比我方总战力六分之一还少应该就是福利队
         if (lowestTotalScore < selfScore / 6) {
-            log("找到了战力低于我方六分之一的对手", lowestScorePosition, totalScore[lowestScorePosition]);
+            toastLog("找到了战力低于我方六分之一的对手\n位于第"+lowestScorePosition+"个,战力="+totalScore[lowestScorePosition]);
             while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
                 sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
@@ -7186,6 +7187,7 @@ function algo_init() {
 
         //找平均战力最低的
         for (let position=1; position<=3; position++) {
+            toast("检查第"+position+"个镜层对手的队伍情况...");
             while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+position]));
                 sleep(2000); //等待对手队伍信息出现（avgScore<=0表示对手队伍信息还没出现）
@@ -7230,6 +7232,8 @@ function algo_init() {
     }
 
     function taskMirrors() {
+        toast("镜层周回\n自动战斗策略:"+(limit.useCVAutoBattle?"识图":"无脑123盘"));
+
         if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
             toastLog("需要root或shizuku adb权限");
             if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {

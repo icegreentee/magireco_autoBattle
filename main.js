@@ -140,8 +140,8 @@ ui.layout(
                                 <text text="部分环境下截屏权限会在一段时间后丢失,或者出现截屏后处理数据时报错崩溃的问题。这些情况下可以开启这个选项,但这种截图效率较低" textColor="#000000" />
                             </vertical>
                             <vertical padding="0 8 0 6" w="*" h="auto">
-                                <Switch id="useCVAutoBattle" w="*" margin="0 3" checked="false" textColor="#000000" text="镜层使用识图自动战斗" />
-                                <text text="不开启此项,则镜层默认使用简单无脑点第1/2/3个盘来自动完成战斗。开启此项后,可以自动完成连携,但暂不支持使用主动技能" textColor="#000000" />
+                                <Switch id="useCVAutoBattle" w="*" margin="0 3" checked="true" textColor="#000000" text="镜层周回使用识图自动战斗" />
+                                <text text="不开启此项,则镜层周回默认使用简单无脑点第1/2/3个盘来自动完成战斗。开启此项后,可以自动完成连携,但暂不支持使用主动技能" textColor="#000000" />
                             </vertical>
                             <vertical padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleDebug" w="*" margin="0 3" checked="false" textColor="#000000" text="识图自动战斗启用调试模式" />
