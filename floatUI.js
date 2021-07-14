@@ -6838,21 +6838,20 @@ function algo_init() {
 
         //简单镜层自动战斗
         while (true) {
-            for (let resID of battleEndIDs) {
-                if (findID(resID)) {
-                    log("找到", resID, ", 结束简单镜层自动战斗");
-                    return;
-                } else {
-                    log("未找到", resID);
-                }
-            }
-
             for (let n=0; n<8; n++) {
                 log("n="+n);
                 let isDiskClickable = [(n&4)==0, (n&2)==0, (n&1)==0];
                 let breakable = false;
                 for (let pass=1; pass<=4; pass++) {
                     for (let i=1; i<=3; i++) {
+                        for (let resID of battleEndIDs) {
+                            if (findID(resID)) {
+                                log("找到", resID, ", 结束简单镜层自动战斗");
+                                return;
+                            } else {
+                                log("未找到", resID);
+                            }
+                        }
                         isBattleResult = false;
                         battleResultIDs.forEach(function (val) {
                             if (findID(val, false) != null) {
