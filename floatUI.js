@@ -5174,8 +5174,8 @@ function algo_init() {
             }
         } catch (e) {return;}
         if (binaryBytes == null) return;
-        files.ensureDir(dataDir+"/bin/");
         let binaryCopyFromPath = dataDir+"/bin/"+binaryFileName+"-"+shellABI;
+        files.ensureDir(binaryCopyFromPath);
         files.create(binaryCopyFromPath);
         files.writeBytes(binaryCopyFromPath, binaryBytes);
         if (!files.isFile(binaryCopyFromPath)) return;
@@ -6634,13 +6634,13 @@ function algo_init() {
                 diskAppearedCount = 0;
             }
             if (limit.CVAutoBattleDebug) {
-                log("识图自动战斗已启用调试模式");
+                toastLog("识图自动战斗已启用调试模式,将会在保存图片后退出");
                 let snapshotDir = files.join(files.getSdcardPath(), "auto_magireco/");
                 let screenshotDir = files.join(snapshotDir, "screenshots/");
-                files.ensureDir(screenshotDir);
                 if (img != null) {
                     log("保存第一个盘的动作图片...");
                     let imgPath = files.join(screenshotDir, "firstDisk.png");
+                    files.ensureDir(imgPath);
                     images.save(img, imgPath, "png");
                     log("保存第一个盘的动作图片完成");
                     for (let action of ["accel", "blast", "charge"]) {
