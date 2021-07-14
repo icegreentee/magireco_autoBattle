@@ -108,6 +108,9 @@ ui.layout(
                                 <text text="注意:嗑药至AP上限倍数不会永久保存,脚本完全退出后会被重置!" textColor="#666666" />
                             </vertical>
                             <vertical padding="0 8 0 0" w="*" h="auto">
+                                <Switch id="toggleDefaultExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
+                            </vertical>
+                            <vertical id="DefaultExtraSettings1" visibility="gone" padding="0 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="每隔" textColor="#000000" />
                                     <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打断" text="" textSize="14" inputType="number|none" />
@@ -115,7 +118,7 @@ ui.layout(
                                 </linear>
                                 <text text="经过设定的秒数后,长按打断官方自动周回" textColor="#000000" />
                             </vertical>
-                            <vertical padding="0 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings2" visibility="gone" padding="0 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="假死检测超时" textColor="#000000" />
                                     <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
@@ -123,7 +126,7 @@ ui.layout(
                                 </linear>
                                 <text text="如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开" textColor="#000000" />
                             </vertical>
-                            <vertical padding="0 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="0 8 0 0" w="*" h="auto">
                                 <linear padding="0 0 0 0" w="*" h="auto">
                                     <text text="等待控件超时" textColor="#000000" />
                                     <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
@@ -131,7 +134,7 @@ ui.layout(
                                 </linear>
                                 <text text="修改“等待控件超时”并不能让脚本变快,数值太小反而可能出错。如果不是机器特别卡(这种情况也要把这个值改得更大,而不是更小)请不要改,退格可自动恢复默认(5000毫秒)" textColor="#000000" />
                             </vertical>
-                            <vertical padding="0 8 0 6" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings4" visibility="gone" padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
                                 <text text="部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
                             </vertical>
@@ -141,10 +144,13 @@ ui.layout(
                         <text text="镜层周回脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="toggleMirrorsExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
+                            </vertical>
+                            <vertical id="MirrorsExtraSettings1" visibility="gone" padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="smartMirrorsPick" w="*" margin="0 3" checked="true" textColor="#000000" text="智能挑选最弱对手" />
                                 <text text="开启此项后会先找总战力低于我方六分之一的弱队,如果找不到就挨个点开队伍详情计算平均战力,从而找到最弱对手。如果碰到问题可以关闭这个选项,然后就只会挑选第3个对手" textColor="#000000" />
                             </vertical>
-                            <vertical padding="0 8 0 6" w="*" h="auto">
+                            <vertical id="MirrorsExtraSettings2" visibility="gone" padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="useCVAutoBattle" w="*" margin="0 3" checked="true" textColor="#000000" text="在周回中使用识图自动战斗" />
                                 <text text="不开启此项,则镜层周回默认使用简单无脑点第1/2/3个盘来自动完成战斗。开启此项后,可以自动完成连携,但暂不支持使用主动技能" textColor="#000000" />
                             </vertical>
@@ -154,11 +160,14 @@ ui.layout(
                         <text text="识图自动战斗(自动点击行动盘(识图,连携))脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="toggleCVAutoBattleExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
+                            </vertical>
+                            <vertical id="CVAutoBattleExtraSettings1" visibility="gone" padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="rootScreencap" w="*" margin="0 3" checked="false" textColor="#000000" text="使用root或adb权限截屏" />
                                 <text text="部分环境下截屏权限会在一段时间后丢失,或者出现截屏后处理数据时报错崩溃的问题。这些情况下可以开启这个选项,但这种截图效率较低" textColor="#000000" />
                                 <text text="注意!超级用户授权通知会遮挡屏幕、干扰截屏识图,所以务必要关掉这个通知(对模拟器来说,一般可以在系统设置里找到超级用户设置)。也可以改用不会弹出通知的Shizuku来授权" textColor="#FF0000" />
                             </vertical>
-                            <vertical padding="0 8 0 6" w="*" h="auto">
+                            <vertical id="CVAutoBattleExtraSettings2" visibility="gone" padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleDebug" w="*" margin="0 3" checked="false" textColor="#000000" text="识图自动战斗启用调试模式" />
                                 <text text="开启后,识图自动战斗将会在保存一些图片后结束运行,以方便排查bug" textColor="#000000" />
                             </vertical>
@@ -438,6 +447,18 @@ ui.stopOnVolUp.setChecked($settings.isEnabled('stop_all_on_volume_up'));
 ui.stopOnVolUp.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('stop_all_on_volume_up', checked);
 });
+
+//显示更多选项
+function setToggleListener(key) {
+    ui["toggle"+key+"ExtraSettings"].setOnCheckedChangeListener(function (widget, checked) {
+        for (let i=1; ui[key+"ExtraSettings"+i] != null; i++) {
+            ui[key+"ExtraSettings"+i].setVisibility(checked?View.VISIBLE:View.GONE);
+        }
+    });
+}
+for (let key of ["Default", "Mirrors", "CVAutoBattle"]) {
+    setToggleListener(key);
+}
 
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {
