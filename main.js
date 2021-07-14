@@ -175,6 +175,10 @@ ui.layout(
                                 <Switch id="CVAutoBattleDebug" w="*" margin="0 3" checked="false" textColor="#000000" text="识图自动战斗启用调试模式" />
                                 <text text="开启后,识图自动战斗将会在保存一些图片后结束运行,以方便排查bug" textColor="#000000" />
                             </vertical>
+                            <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
+                                <text text="开启后,从第3回合开始,会放出所有可用的主动技能" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -574,6 +578,7 @@ const persistParamList = [
     "smartMirrorsPick",
     "useCVAutoBattle",
     "CVAutoBattleDebug",
+    "CVAutoBattleClickAllSkills",
 ];
 const tempParamList = [
     "drug1",
