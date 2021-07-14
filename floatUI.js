@@ -7231,6 +7231,17 @@ function algo_init() {
         return true;
     }
 
+    function mirrorsPick3rdOpponent() {
+        toastLog("挑选第3个镜层对手...");
+        let matchWrap = id("matchingWrap").findOne().bounds()
+        while (!id("battleStartBtn").findOnce()) {
+            sleep(1000);
+            click(matchWrap.centerX(), matchWrap.bottom - 50);
+            sleep(2000);
+        }
+        log("挑选第3个镜层对手完成");
+    }
+
     function taskMirrors() {
         toast("镜层周回\n自动战斗策略:"+(limit.useCVAutoBattle?"识图":"无脑123盘"));
 
@@ -7258,9 +7269,19 @@ function algo_init() {
 
         while (true) {
             //挑选最弱的对手
-            while (!mirrorsPickWeakestOpponent()) {
-                toastLog("挑选镜层最弱对手时出错\n5秒后重试...");
-                sleep(5000);
+            let pickWeakestAttemptMax = 5;
+            let pickedWeakest = false;
+            for (let attempt=0; attempt<pickWeakestAttemptMax; attempt++) {
+                if (mirrorsPickWeakestOpponent()) {
+                    pickedWeakest = true;
+                    break;
+                }
+                toastLog("挑选镜层最弱对手时出错\n3秒后重试...");
+                sleep(3000);
+            }
+            if (!pickedWeakest) {
+                toastLog("多次尝试挑选镜层最弱对手时出错,回退到挑选第3个镜层对手...");
+                mirrorsPick3rdOpponent();
             }
 
             while (id("matchingWrap").findOnce() || id("matchingList").findOnce()) {
