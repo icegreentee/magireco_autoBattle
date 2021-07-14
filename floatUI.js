@@ -5246,16 +5246,28 @@ function algo_init() {
     var needScreenCaptureFix = false;
     function initializeScreenCaptureFix() {
         try {
+            log("测试录屏API是否可用...");
             let screenshot = captureScreen();
             let x = screenshot.getWidth();
             let y = screenshot.getHeight();
+            log("通过录屏API得到截图,大小:"+x+"x"+y);
+            log("测试对截图进行裁剪...");
+            let img = images.clip(screenshot, parseInt(x/4), parseInt(x/4), parseInt(x/2), parseInt(x/2));
+            img.recycle();
+            log("测试对截图进行裁剪完成");
+            log("测试对截图进行缩放...");
+            img = images.resize(screenshot, [parseInt(x/2), parseInt(x/2)]);
+            img.recycle();
+            log("测试对截图进行缩放完成");
             if (x < y) {
                 //这里不考虑本来就要截屏竖屏的情况
                 log("检测到横屏强制转竖屏的截屏");
                 needScreenCaptureFix = true;
             }
         } catch (e) {
+            toastLog("通过录屏API截图时出错\n请使用root或adb权限截屏");
             logException(e);
+            stopThread();
         }
     }
 
