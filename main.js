@@ -163,7 +163,7 @@ ui.layout(
                             </vertical>
                             <vertical padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
-                                <text text="开启后,从第3回合开始,会放出所有可用的主动技能" textColor="#000000" />
+                                <text text="开启后,从第3回合开始,会放出所有可用的主动技能。如果遇到问题可以关闭" textColor="#000000" />
                             </vertical>
                         </vertical>
                     </vertical>
