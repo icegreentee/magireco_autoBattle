@@ -6849,7 +6849,7 @@ function algo_init() {
 
     //检测返回按钮是否出现
     function isBackButtonAppearing(screenshot) {
-        let point = convertCoordsNoCutout(knownBackButtonPoint);
+        let point = convertCoords(knownBackButtonPoint);
         if (images.detectsColor(screenshot, colors.WHITE, point.x, point.y, 32, "diff")) {
             log("似乎出现了返回按钮");
             return true;
