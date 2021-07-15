@@ -173,7 +173,7 @@ ui.layout(
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings2" visibility="gone" padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleDebug" w="*" margin="0 3" checked="false" textColor="#000000" text="识图自动战斗启用调试模式" />
-                                <text text="开启后,识图自动战斗将会在保存一些图片后结束运行,以方便排查bug" textColor="#000000" />
+                                <text text="开启后,识图自动战斗将不会点击行动盘,只会在保存一些图片后结束运行,以方便排查bug" textColor="#000000" />
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings3" visibility="gone" padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
