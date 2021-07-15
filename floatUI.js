@@ -1258,6 +1258,7 @@ var limit = {
     smartMirrorsPick: true,
     useCVAutoBattle: true,
     CVAutoBattleDebug: false,
+    CVAutoBattleClickAllSkills: true,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -5158,7 +5159,7 @@ function algo_init() {
     }
     //在/data/local/tmp/下安装scrcap2bmp
     var binarySetupDone = false;
-    const binURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle@2.4.35";
+    const binURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.4.0";
     function setupBinary() {
         if (binarySetupDone) return binarySetupDone;
 
@@ -5206,10 +5207,16 @@ function algo_init() {
     //应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
     //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
     var canCaptureScreen = false;
+    var hasScreenCaptureError = false;
     function startScreenCapture() {
         if (canCaptureScreen) {
             log("已经获取到截图权限了");
             return;
+        }
+
+        if (hasScreenCaptureError) {
+            toastLog("通过录屏API截图时出错\n请使用root或adb权限截屏");
+            stopThread();
         }
 
         $settings.setEnabled("stop_all_on_volume_up", false);
@@ -5218,6 +5225,9 @@ function algo_init() {
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
             if (requestScreenCapture(screencap_landscape)) {
+                //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
+                initializeScreenCaptureFix();
+
                 sleep(500);
                 toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
                 sleep(3000);
@@ -5237,6 +5247,36 @@ function algo_init() {
         }
 
         return;
+    }
+
+    //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
+    var needScreenCaptureFix = false;
+    function initializeScreenCaptureFix() {
+        try {
+            log("测试录屏API是否可用...");
+            let screenshot = captureScreen();
+            let x = screenshot.getWidth();
+            let y = screenshot.getHeight();
+            log("通过录屏API得到截图,大小:"+x+"x"+y);
+            log("测试对截图进行裁剪...");
+            let img = images.clip(screenshot, parseInt(x/4), parseInt(x/4), parseInt(x/2), parseInt(x/2));
+            img.recycle();
+            log("测试对截图进行裁剪完成");
+            log("测试对截图进行缩放...");
+            img = images.resize(screenshot, [parseInt(x/2), parseInt(x/2)]);
+            img.recycle();
+            log("测试对截图进行缩放完成");
+            if (x < y) {
+                //这里不考虑本来就要截屏竖屏的情况
+                log("检测到横屏强制转竖屏的截屏");
+                needScreenCaptureFix = true;
+            }
+        } catch (e) {
+            hasScreenCaptureError = true;
+            toastLog("通过录屏API截图时出错\n请使用root或adb权限截屏");
+            logException(e);
+            stopThread();
+        }
     }
 
     //用shizuku adb/root权限，或者直接用root权限截屏
@@ -5353,7 +5393,35 @@ function algo_init() {
             return renewImage(screenshot, "screenshot", tagOnly); //回收旧图片
         } else {
             //使用AutoJS默认提供的录屏API截图
-            return captureScreen.apply(this, arguments);
+            let screenshot = captureScreen.apply(this, arguments);
+            if (needScreenCaptureFix) {
+                //检测到横屏强制转竖屏的截屏，需要修正
+
+                //获取截屏尺寸
+                let imgX = screenshot.getWidth();
+                let imgY = screenshot.getHeight();
+
+                //获取屏幕尺寸（如果参数是竖屏就转换成横屏参数）
+                let screenX = device.width;
+                let screenY = device.height;
+                if (screenX < screenY) {
+                    let temp = screenX;
+                    screenX = screenY;
+                    screenY = temp;
+                }
+
+                //假设真正的图像位于居中部位，将其裁剪出来
+                let croppedX = imgX;
+                let croppedY = imgX / screenX * screenY;
+                let tagOnly = true;
+                let croppedImg = renewImage(images.clip(screenshot, 0, (imgY - croppedY) / 2, croppedX, croppedY), "croppedScreenshot", tagOnly);
+
+                //把裁剪出来的图像重新放大回屏幕尺寸
+                let resizedImg = images.resize(croppedImg, [screenX, screenY]);
+                return renewImage(resizedImg, "fixedScreenshot", tagOnly);
+            } else {
+                return screenshot;
+            }
         }
     });
     /* ~~~~~~~~ 截图兼容模块 结束 ~~~~~~~~ */
@@ -5499,11 +5567,21 @@ function algo_init() {
             x: 100,
             y: 50,
             pos: "top"
+        },
+        recover_battle: {
+            x: 1230,
+            y: 730,
+            pos: "center"
+        },
+        skillPanelSwitch: {
+            x: 1773,
+            y: 927,
+            pos: "bottom"
         }
     }
 
     //已知参照图像，包括A/B/C盘等
-    const ImgURLBase = "https://cdn.jsdelivr.net/gh/segfault-bilibili/magireco_autoBattle@2.4.35";
+    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.4.0";
     var knownImgs = {};
     const knownImgURLs = {
         accel: ImgURLBase+"/images/accel.png",
@@ -5523,6 +5601,10 @@ function algo_init() {
         woodBtnDown: ImgURLBase+"/images/woodBtnDown.png",
         mirrorsWinLetterI: ImgURLBase+"/images/mirrorsWinLetterI.png",
         mirrorsLose: ImgURLBase+"/images/mirrorsLose.png",
+        skillLocked: ImgURLBase+"/images/skillLocked.png",
+        skillEmptyCHS: ImgURLBase+"/images/skillEmptyCHS.png",
+        skillEmptyCHT: ImgURLBase+"/images/skillEmptyCHT.png",
+        skillEmptyJP: ImgURLBase+"/images/skillEmptyJP.png",
     };
 
     var downloadAllImages = sync(function () {
@@ -6592,6 +6674,226 @@ function algo_init() {
         return allActionDisks[max].charaID;
     }
 
+    //检测和使用主动技能
+
+    const skillCharaDistance = 328;
+    const skillDistance = 155;
+
+    var knownFirstSkillCoords = {
+        topLeft: {
+            x: 31,
+            y: 978,
+            pos: "bottom"
+        },
+        bottomRight: {
+            x: 163,
+            y: 1015,
+            pos: "bottom"
+        }
+    }
+
+    var knownFirstSkillFullCoords = {
+        topLeft: {
+            x: 22,
+            y: 920,
+            pos: "bottom"
+        },
+        bottomRight: {
+            x: 172,
+            y: 1071,
+            pos: "bottom"
+        }
+    }
+
+    function getSkillArea(diskPos, skillNo, isFull) {
+        let area = {};
+        for (let corner of ["topLeft", "bottomRight"]) {
+            area[corner] = {};
+            area[corner].pos = "bottom";
+            for (let axis of ["x", "y"]) {
+                if (isFull) {
+                    area[corner][axis] = knownFirstSkillFullCoords[corner][axis];
+                } else {
+                    area[corner][axis] = knownFirstSkillCoords[corner][axis];
+                }
+            }
+            area[corner].x += diskPos * skillCharaDistance;
+            area[corner].x += skillNo * skillDistance;
+        }
+        return getConvertedArea(area);
+    }
+
+    function getSkillFullArea(diskPos, skillNo) {
+        return getSkillArea(diskPos, skillNo, true);
+    }
+
+    function getSkillImg(screenshot, diskPos, skillNo) {
+        let area = getSkillArea(diskPos, skillNo);
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+
+    function getSkillFullImg(screenshot, diskPos, skillNo) {
+        let area = getSkillFullArea(diskPos, skillNo);
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+
+    //检测技能是否可用
+    function isSkillAvailable(screenshot, diskPos, skillNo) {
+        log("检测第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能是否可用...");
+        let skillImg = getSkillImg(screenshot, diskPos, skillNo);
+        let skillImgGRAY = renewImage(images.grayscale(skillImg));
+        let skillImgGray = renewImage(images.cvtColor(skillImgGRAY, "GRAY2BGRA"));
+        let skillImgBGRA = renewImage(images.cvtColor(skillImg, "BGR2BGRA"));
+        let similarity = images.getSimilarity(skillImgGray, skillImgBGRA, {"type": "MSSIM"});
+        log("技能按钮区域图像 去色前后的相似度 MSSIM=", similarity);
+        if (similarity > 2.9) {
+            let firstSkillArea = getSkillArea(0, 0);
+            let gaussianX = parseInt(getAreaWidth(firstSkillArea) * 8);
+            let gaussianY = parseInt(getAreaHeight(firstSkillArea) * 8);
+            if (gaussianX % 2 == 0) gaussianX += 1;
+            if (gaussianY % 2 == 0) gaussianY += 1;
+            let gaussianSize = [gaussianX, gaussianY];
+            let skillImgBlur = renewImage(images.gaussianBlur(skillImg, gaussianSize));
+            let skillImgOnePx = renewImage(images.resize(skillImgBlur, [1, 1], "LINEAR"));
+            if (images.detectsColor(skillImgOnePx, colors.WHITE, 0, 0, 8, "diff")) {
+                log("技能【可用】且闪光到全白");
+                return true;
+            } else {
+                log("技能不可用");
+                return false;
+            }
+        } else {
+            let skillFullImg = getSkillFullImg(screenshot, diskPos, skillNo);
+            let skillFullImgGray = renewImage(images.grayscale(skillFullImg));
+            let minRadius = parseInt(getAreaWidth(getSkillFullArea(0, 0)) * 0.33);
+            let foundCircles = images.findCircles(skillFullImgGray, {minRadius: minRadius});
+            log("找圆结果", foundCircles);
+            if (foundCircles != null && foundCircles.length > 0) {
+                let firstSkillArea = getSkillArea(0, 0);
+                let gaussianX = parseInt(getAreaWidth(firstSkillArea) / 4);
+                let gaussianY = parseInt(getAreaHeight(firstSkillArea) / 4);
+                if (gaussianX % 2 == 0) gaussianX += 1;
+                if (gaussianY % 2 == 0) gaussianY += 1;
+                let gaussianSize = [gaussianX, gaussianY];
+                let imgA = renewImage(images.gaussianBlur(skillImg, gaussianSize));
+                similarity = -1;
+                for (var imgName of ["skillLocked", "skillEmptyCHS", "skillEmptyCHT", "skillEmptyJP"]) {
+                    let imgB = renewImage(images.gaussianBlur(knownImgs[imgName], gaussianSize));
+                    let s = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
+                    if (s > similarity) {
+                        similarity = s;
+                    }
+                }
+                log("与小锁或未装备图标比对的最高相似度 MSSIM=", similarity);
+                if (similarity > 2.4) {
+                    log("技能不存在", imgName);
+                    return false;
+                } else {
+                    log("技能【可用】");
+                    return true;
+                }
+            } else {
+                log("技能不存在");
+                return false;
+            }
+        }
+    }
+
+    //是否有我方行动盘出现
+    function isDiskAppearing(screenshot) {
+        let img = getDiskImg(screenshot, 0, "action");
+        if (img != null) {
+            log("已截取第一个盘的动作图片");
+        } else {
+            log("截取第一个盘的动作图片时出现问题");
+        }
+        let diskAppeared = true;
+        try {
+            recognizeDisk(img, "action", 2.1);
+        } catch(e) {
+            if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+            diskAppeared = false;
+        }
+        return diskAppeared;
+    }
+
+    //打开或关闭技能面板
+    function toggleSkillPanel(open) {
+        log((open?"打开":"关闭")+"技能面板...");
+        for (let attempt=0; isDiskAppearing(compatCaptureScreen())==open; attempt++) {
+            if (attempt >= 10) {
+                log((open?"打开":"关闭")+"技能面板时出错");
+                stopThread();
+            }
+            if (attempt % 2 == 1) {
+                log("点击取消按钮");
+                click(convertCoords(clickSetsMod.reconnectYes));
+                sleep(500);
+                if (isBackButtonAppearing(compatCaptureScreen())) {
+                    log("误触打开了角色信息,点击返回关闭");
+                    click(convertCoords(clickSetsMod.back));
+                    sleep(500);
+                }
+            }
+            log("点击切换技能面板/行动盘面板");
+            click(convertCoords(clickSetsMod.skillPanelSwitch));
+            sleep(1000);
+        }
+    }
+
+    const knownBackButtonPoint = {
+        x: 57,
+        y: 64,
+        pos: "top"
+    };
+
+    //检测返回按钮是否出现
+    function isBackButtonAppearing(screenshot) {
+        let point = convertCoordsNoCutout(knownBackButtonPoint);
+        if (images.detectsColor(screenshot, colors.WHITE, point.x, point.y, 32, "diff")) {
+            log("似乎出现了返回按钮");
+            return true;
+        } else {
+            log("似乎没出现返回按钮");
+            return false;
+        }
+    }
+
+    //闭着眼放出所有主动技能
+    function clickAllSkills() {
+        //打开技能面板
+        toggleSkillPanel(true);
+
+        for (let pass=1; pass<=2; pass++) { //只循环2遍，防止被控的时候技能按钮总是亮着又发动不了
+            var hasAvailableSkill = false;
+            let screenshot = compatCaptureScreen();
+            for (let diskPos=0; diskPos<5; diskPos++) {
+                for (let skillNo=0; skillNo<2; skillNo++) {
+                    if (isSkillAvailable(screenshot, diskPos, skillNo)) {
+                        hasAvailableSkill = true;
+                        log("点击使用第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能");
+                        click(getAreaCenter(getSkillArea(diskPos, skillNo)));
+                        sleep(500);
+                        log("点击确认按钮使用技能");
+                        click(convertCoords(clickSetsMod.recover_battle));
+                        sleep(4000);
+                        while (isBackButtonAppearing(compatCaptureScreen())) {
+                            log("误触打开了角色信息,点击返回关闭");
+                            click(convertCoords(clickSetsMod.back));
+                            sleep(500);
+                        }
+                        toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
+                        screenshot = compatCaptureScreen(); //toggleSkillPanel回收了screenshot，所以需要重新截图赋值
+                    }
+                }
+            }
+            if (!hasAvailableSkill) break;
+        }
+
+        //关闭技能面板
+        toggleSkillPanel(false);
+        return false;
+    }
 
     //等待己方回合
     function waitForOurTurn() {
@@ -6617,19 +6919,7 @@ function algo_init() {
 
             //如果有技能可用，会先闪过我方行动盘，然后闪过技能面板，最后回到显示我方行动盘
             //所以，必须是连续多次看到我方行动盘，这样才能排除还在闪烁式切换界面的情况
-            let img = getDiskImg(screenshot, 0, "action");
-            if (img != null) {
-                log("已截取第一个盘的动作图片");
-            } else {
-                log("截取第一个盘的动作图片时出现问题");
-            }
-            let diskAppeared = true;
-            try {
-                recognizeDisk(img, "action", 2.1);
-            } catch(e) {
-                if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
-                diskAppeared = false;
-            }
+            let diskAppeared = isDiskAppearing(screenshot);
             if (diskAppeared) {
                 log("出现我方行动盘");
                 diskAppearedCount++;
@@ -6803,6 +7093,8 @@ function algo_init() {
                 knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
             } else if (imgName == "connectIndicatorBtnDown") {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
+            } else if (imgName == "skillLocked" || imgName.startsWith("skillEmpty")) {
+                knownArea = knownFirstSkillCoords[imgName];
             } else {
                 knownArea = knownFirstStandPointCoords.our[imgName];
                 if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
@@ -6935,6 +7227,14 @@ function algo_init() {
             if(!waitForOurTurn()) break;
             //我的回合，抽盘
             turn++;
+
+            if (limit.CVAutoBattleClickAllSkills) {
+                if (turn >= 3) {
+                    //一般在第3回合后主动技能才冷却完毕
+                    //闭着眼放出所有主动技能
+                    clickAllSkills();
+                }
+            }
 
             //扫描行动盘和战场信息
             scanDisks();
@@ -7115,6 +7415,9 @@ function algo_init() {
     }
     //在对手队伍信息中获取等级信息，用来计算人均战力
     function getMirrorsAverageScore(totalScore) {
+        //刷新auto.root（也许只有心理安慰作用？）
+        try { auto.root != null && auto.root.refresh(); } catch (e) {}; //只刷新一次
+
         if (totalScore == null) return 0;
         log("getMirrorsAverageScore totalScore", totalScore);
         let totalSqrtLv = 0;
@@ -7148,14 +7451,24 @@ function algo_init() {
     }
 
     //在镜层自动挑选最弱的对手
-    function mirrorsPickWeakestOpponentRunnable() {
+    function mirrorsPickWeakestOpponent() {
         toast("挑选最弱的镜层对手...");
+
+        var startTime = new Date().getTime();
+        var deadlineTime = startTime + 60 * 1000; //最多等待一分钟
+        var stopTime = new Date().getTime() + 5000;
 
         //刷新auto.root（也许只有心理安慰作用？）
         for (let attempt=0; attempt<10; attempt++) {
             try {if (auto.root != null && auto.root.refresh()) break;} catch (e) {};
             sleep(100);
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("等待auto.root刷新时间过长");
+                return false;
+            }
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         let lowestTotalScore = Number.MAX_SAFE_INTEGER;
         let lowestAvgScore = Number.MAX_SAFE_INTEGER;
@@ -7164,7 +7477,16 @@ function algo_init() {
         let avgScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
         let lowestScorePosition = 3;
 
-        while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) sleep(1000); //等待
+        while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) {
+            log("等待对手列表出现...");
+            sleep(1000);
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到对手列表控件matchingWrap或matchingList出现,无法智能挑选最弱对手");
+                return false;
+            }
+        }
+
+        stopTime = new Date().getTime() + 5000;
 
         if (id("matchingList").findOnce()) {
             toastLog("当前处于演习模式");
@@ -7173,16 +7495,27 @@ function algo_init() {
                 if (getMirrorsAverageScore(totalScore[1]) > 0) break; //如果已经打开了一个对手，直接战斗开始
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+"1"]));
                 sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到镜层对手队伍信息出现(也可能是虽然已经出现,但getMirrorsAverageScore没检测到导致的)");
+                }
             }
             return true;
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         //如果已经打开了信息面板，先关掉
         for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
             if (getMirrorsAverageScore(99999999) <= 0) break; //如果没有打开队伍信息面板，那就直接退出循环，避免点到MENU
             if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
             sleep(1000);
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到镜层对手队伍信息面板消失");
+                return false;
+            }
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         let selfScore = getMirrorsSelfScore();
 
@@ -7192,6 +7525,10 @@ function algo_init() {
                 totalScore[position] = getMirrorsScoreAt(position);
                 if (totalScore[position] > 0) break;
                 sleep(100);
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到第"+position+"个镜层对手的队伍信息出现(也可能是虽然已经出现,但getMirrorsAverageScore没检测到导致的)");
+                    return false;
+                }
             }
             if (totalScore[position] <= 0) {
                 toastLog("获取某个对手的总战力失败\n请尝试退出镜层后重新进入");
@@ -7204,6 +7541,8 @@ function algo_init() {
             }
         }
 
+        stopTime = new Date().getTime() + 5000;
+
         //福利队
         //因为队伍最多5人，所以总战力比我方总战力六分之一还少应该就是福利队
         if (lowestTotalScore < selfScore / 6) {
@@ -7212,9 +7551,15 @@ function algo_init() {
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
                 sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
                 if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到镜层对手(福利队)的队伍信息出现");
+                    return false;
+                }
             }
             return true;
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         //找平均战力最低的
         for (let position=1; position<=3; position++) {
@@ -7230,6 +7575,10 @@ function algo_init() {
                     }
                     break;
                 }
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到第"+position+"个镜层对手的队伍信息出现");
+                    return false;
+                }
             }
 
             //关闭信息面板
@@ -7238,8 +7587,14 @@ function algo_init() {
                 if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
                 sleep(1000);
                 if (getMirrorsAverageScore(totalScore[position]) <= 0) break;
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到第"+position+"个镜层对手的队伍信息出现");
+                    return false;
+                }
             }
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         log("找到平均战力最低的对手", lowestScorePosition, totalScore[lowestScorePosition], avgScore[lowestScorePosition]);
 
@@ -7250,44 +7605,35 @@ function algo_init() {
             if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
             sleep(1000);
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) <= 0) break;
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到第3个镜层对手(不是最弱)的队伍信息消失");
+                return false;
+            }
         }
+
+        stopTime = new Date().getTime() + 5000;
 
         //重新打开平均战力最低队伍的队伍信息面板
         while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
             click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
             sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) return true;
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到第"+lowestScorePosition+"个镜层对手(最弱)的队伍信息出现");
+                return false;
+            }
         }
         log("id(\"matchingWrap\").findOnce() == null");
         return true;
-    }
-    function mirrorsPickWeakestOpponent() {
-        var result = false;
-        let t1 = threads.start(function () {
-            result = mirrorsPickWeakestOpponentRunnable();
-        });
-        try {
-            t1.waitFor();
-            t1.join(60 * 1000); //等待最多一分钟
-            while (t1.isAlive()) {
-                t1.interrupt();
-                sleep(100);
-            }
-        } catch (e) {
-            log("挑选最弱的镜层对手时出错");
-            logException(e);
-            return false;
-        }
-        return result;
     }
 
     function mirrorsPick3rdOpponent() {
         toastLog("挑选第3个镜层对手...");
         let matchWrap = id("matchingWrap").findOne().bounds()
-        while (!id("battleStartBtn").findOnce()) {
-            sleep(1000);
+        for (let attempt=0; attempt<3; attempt++) {
+            if (id("battleStartBtn").findOnce()) break; //MuMu等控件树残缺环境下永远也找不到battleStartBtn（虽然实际上有战斗开始按钮）
             click(matchWrap.centerX(), matchWrap.bottom - 50);
-            sleep(2000);
+            sleep(1500);
         }
         log("挑选第3个镜层对手完成");
     }
