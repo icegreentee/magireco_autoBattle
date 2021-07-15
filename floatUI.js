@@ -5259,11 +5259,11 @@ function algo_init() {
             let y = screenshot.getHeight();
             log("通过录屏API得到截图,大小:"+x+"x"+y);
             log("测试对截图进行裁剪...");
-            let img = images.clip(screenshot, parseInt(x/4), parseInt(x/4), parseInt(x/2), parseInt(x/2));
+            let img = images.clip(screenshot, parseInt(x/4), parseInt(y/4), parseInt(x/2), parseInt(y/2));
             img.recycle();
             log("测试对截图进行裁剪完成");
             log("测试对截图进行缩放...");
-            img = images.resize(screenshot, [parseInt(x/2), parseInt(x/2)]);
+            img = images.resize(screenshot, [parseInt(x/2), parseInt(y/2)]);
             img.recycle();
             log("测试对截图进行缩放完成");
             if (x < y) {
