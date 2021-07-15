@@ -6829,11 +6829,11 @@ function algo_init() {
                 log("点击取消按钮");
                 click(convertCoords(clickSetsMod.reconnectYes));
                 sleep(500);
-                if (isBackButtonAppearing(compatCaptureScreen())) {
-                    log("误触打开了角色信息,点击返回关闭");
-                    click(convertCoords(clickSetsMod.back));
-                    sleep(500);
-                }
+            }
+            if (isBackButtonAppearing(compatCaptureScreen())) {
+                log("误触打开了角色信息,点击返回关闭");
+                click(convertCoords(clickSetsMod.back));
+                sleep(500);
             }
             log("点击切换技能面板/行动盘面板");
             click(convertCoords(clickSetsMod.skillPanelSwitch));
