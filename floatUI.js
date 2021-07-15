@@ -6864,7 +6864,7 @@ function algo_init() {
         //打开技能面板
         toggleSkillPanel(true);
 
-        while (true) {
+        for (let pass=1; pass<=2; pass++) { //只循环2遍，防止被控的时候技能按钮总是亮着又发动不了
             var hasAvailableSkill = false;
             let screenshot = compatCaptureScreen();
             for (let diskPos=0; diskPos<5; diskPos++) {
