@@ -5732,38 +5732,38 @@ function algo_init() {
     var battleField = {
         our: {
             topRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 2 }
             },
             middleRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 2 }
             },
             bottomRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 2 }
             }
         },
         their: {
             topRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 2 }
             },
             middleRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 2 }
             },
             bottomRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 2 }
             },
-            lastAimedAtEnemy: { occupied: true, attrib: "water", charaID: -1, rowNum: 0, columnNum: 0 }
+            lastAimedAtEnemy: { occupied: true, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 }
         }
     };
     var rows = ["topRow", "middleRow", "bottomRow"];
@@ -5852,7 +5852,7 @@ function algo_init() {
                     whichStandPoint.attrib = getStandPointAttrib(screenshot, whichSide, i, j);
                 } catch (e) {
                     if (e.toString() != "getStandPointAttribInconclusive") log(e);
-                    whichStandPoint.attrib = "water";
+                    whichStandPoint.attrib = "none";
                     whichStandPoint.occupied = false;
                 }
                 whichStandPoint.charaID = -1; //现在应该还不太能准确识别，所以统一填上无意义数值，在发动连携后会填上有意义的数值
@@ -5938,7 +5938,7 @@ function algo_init() {
             priority:    "first",
             down:        false,
             action:      "accel",
-            attrib:      "water",
+            attrib:      "none",
             charaImg:    null,
             charaID:     0,
             connectable: false,
@@ -5949,7 +5949,7 @@ function algo_init() {
             priority:    "second",
             down:        false,
             action:      "accel",
-            attrib:      "water",
+            attrib:      "none",
             charaImg:    null,
             charaID:     1,
             connectable: false,
@@ -5960,7 +5960,7 @@ function algo_init() {
             priority:    "third",
             down:        false,
             action:      "accel",
-            attrib:      "water",
+            attrib:      "none",
             img:         null,
             charaImg:    null,
             charaID:     2,
@@ -5972,7 +5972,7 @@ function algo_init() {
             priority:    "fourth",
             down:        false,
             action:      "accel",
-            attrib:      "water",
+            attrib:      "none",
             charaImg:    null,
             charaID:     3,
             connectable: false,
@@ -5983,7 +5983,7 @@ function algo_init() {
             priority:    "fifth",
             down:        false,
             action:      "accel",
-            attrib:      "water",
+            attrib:      "none",
             charaImg:    null,
             charaID:     4,
             connectable: false,
@@ -6164,8 +6164,8 @@ function algo_init() {
             return result;
         }
 
-        log("识别失败，当作没按下的水属性盘处理");
-        result.attrib = "water";
+        log("识别失败，当作没按下的无属性盘处理");
+        result.attrib = "none";
         result.down = false;
         return result;
     }
@@ -6278,7 +6278,7 @@ function algo_init() {
             allActionDisks[i].down = false;
             allActionDisks[i].action = "accel";
             allActionDisks[i].charaImg = null;
-            allActionDisks[i].attrib = "water";
+            allActionDisks[i].attrib = "none";
             allActionDisks[i].charaID = i;
             allActionDisks[i].connectable = false;
             allActionDisks[i].connectedTo = -1;
