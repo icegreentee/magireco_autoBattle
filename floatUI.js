@@ -7365,10 +7365,12 @@ function algo_init() {
                 //没有连携
                 //先找Puella Combo
                 let sameCharaDisks = findSameCharaDisks(allActionDisks);
-                prioritiseDisks(sameCharaDisks);
-                //Pcombo内尽量Blast Combo
-                let blastDisks = findSameActionDisks(sameCharaDisks, "blast");
-                prioritiseDisks(blastDisks);
+                if (sameCharaDisks.length >= 3) {
+                    prioritiseDisks(sameCharaDisks);
+                    //Pcombo内尽量Blast Combo
+                    let blastDisks = findSameActionDisks(sameCharaDisks, "blast");
+                    prioritiseDisks(blastDisks);
+                }
             }
 
             //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
