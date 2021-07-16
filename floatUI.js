@@ -6435,7 +6435,6 @@ function algo_init() {
             case "none":  result = [];        break;
             }
             break;
-        }
         case "neutral":
             switch(attrib) {
             case "light": result = ["none", "light"]; break;
@@ -6446,6 +6445,7 @@ function algo_init() {
             case "none":  result = ["none", "light", "dark", "water", "fire", "wood"]; break;
             }
             break;
+        }
         return result;
     }
 
