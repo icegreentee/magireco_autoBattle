@@ -5857,6 +5857,20 @@ function algo_init() {
         }
     }
 
+    //获取有存活角色的站位
+    function getAliveStandPoints(whichSide) {
+        let result = [];
+        for(let i=0; i<3; i++) {
+            for(let j=0; j<3; j++) {
+                let standPoint = battleField[whichSide][rows[i]][columns[j]];
+                if (standPoint.occupied) {
+                    result.push(standPoint);
+                }
+            }
+        }
+        return result;
+    }
+
 
     //获取行动盘信息
 
@@ -6390,13 +6404,13 @@ function algo_init() {
     }
 
     //获取我方弱点属性（对于水队来说就是木属性）
-    function getAdvDisadvAttribsOfDisks(disks, advOrDisadv) {
+    function getAdvDisadvAttribs(standPoints, advOrDisadv) {
         let result = [];
         let stats = {light: 0, dark: 0, water: 0, fire: 0, wood: 0};
         let maxCount = 0;
-        for (let i=0; i<disks.length; i++) {
-            let disk = disks[i];
-            let disadvAttrib = getAdvDisadvAttrib(disk.attrib, advOrDisadv);
+        for (let i=0; i<standPoints.length; i++) {
+            let standPoint = standPoints[i];
+            let disadvAttrib = getAdvDisadvAttrib(standPoint.attrib, advOrDisadv);
             if (disadvAttrib != null) {
                 stats[disadvAttrib]++;
                 if (stats[disadvAttrib] > maxCount) maxCount = stats[disadvAttrib];
@@ -6406,7 +6420,7 @@ function algo_init() {
             for (let attrib in stats) {
                 let count = stats[attrib];
                 if (count == i) {
-                    result.splice(0, 0, attrib);;
+                    result.splice(0, 0, attrib);
                     break;
                 }
             }
@@ -7243,7 +7257,7 @@ function algo_init() {
 
             //优先打能克制我方的属性
             let disadvAttribs = [];
-            disadvAttribs = getAdvDisadvAttribsOfDisks(allActionDisks, "disadv");
+            disadvAttribs = getAdvDisadvAttribs(getAliveStandPoints("our"), "disadv");
             let disadvAttrEnemies = [];
             if (disadvAttribs.length > 0) disadvAttrEnemies = getEnemiesByAttrib(disadvAttribs[0]);
             if (disadvAttrEnemies.length > 0) aimAtEnemy(disadvAttrEnemies[0]);
@@ -7251,7 +7265,7 @@ function algo_init() {
             if (disadvAttrEnemies.length == 0) {
                 //敌方没有能克制我方的属性，推后打被我方克制的属性
                 let advAttribs = [];
-                advAttribs = getAdvDisadvAttribsOfDisks(allActionDisks, "adv");
+                advAttribs = getAdvDisadvAttribs(getAliveStandPoints("our"), "adv");
                 let advAttrEnemies = [];
                 if (advAttribs.length > 0) advAttrEnemies = getEnemiesByAttrib(advAttribs[0]);
                 if (advAttrEnemies.length > 0) avoidAimAtEnemies(advAttrEnemies);
