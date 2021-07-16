@@ -6392,6 +6392,14 @@ function algo_init() {
                 advOrNeutralAttribDisks.forEach((disk) => result.push(disk));
             }
         }
+        //只留下不重复的
+        let resultDedup = [];
+        for (let disk of result) {
+            if (resultDedup.find((val) => disk.position == val.position) == null) {
+                resultDedup.push(disk);
+            }
+        }
+        result = resultDedup;
         return result;
     }
 
@@ -6407,7 +6415,7 @@ function algo_init() {
     function getAdvDisadvAttribs(attrib, advOrDisadv) {
         let result = [];
         switch (advOrDisadv) {
-        case "adv":
+        case "disadv":
             switch(attrib) {
             case "light": result = ["dark" ]; break;
             case "dark":  result = ["light"]; break;
@@ -6417,7 +6425,7 @@ function algo_init() {
             case "none":  result = [];        break;
             }
             break;
-        case "disadv":
+        case "adv":
             switch(attrib) {
             case "light": result = ["dark" ]; break;
             case "dark":  result = ["light"]; break;
@@ -6448,9 +6456,9 @@ function algo_init() {
         let maxCount = 0;
         for (let i=0; i<standPoints.length; i++) {
             let standPoint = standPoints[i];
-            let disadvAttribs = getAdvDisadvAttribs(standPoint.attrib, advOrDisadv);
-            if (disadvAttribs != null) {
-                disadvAttribs.forEach(function (attrib) {
+            let attribs = getAdvDisadvAttribs(standPoint.attrib, advOrDisadv);
+            if (attribs != null) {
+                attribs.forEach(function (attrib) {
                     stats[attrib]++;
                     if (stats[attrib] > maxCount) maxCount = stats[attrib];
                 });
@@ -7314,7 +7322,7 @@ function algo_init() {
 
             //优先打能克制我方的属性
             let disadvAttribs = [];
-            disadvAttribs = getAdvDisadvAttribsOfStandPoints(getAliveStandPoints("our"), "disadv");
+            disadvAttribs = getAdvDisadvAttribsOfStandPoints(getAliveStandPoints("our"), "adv");
             let disadvAttrEnemies = [];
             if (disadvAttribs.length > 0) disadvAttrEnemies = getEnemiesByAttrib(disadvAttribs[0]);
             if (disadvAttrEnemies.length > 0) aimAtEnemy(disadvAttrEnemies[0]);
@@ -7322,7 +7330,7 @@ function algo_init() {
             if (disadvAttrEnemies.length == 0) {
                 //敌方没有能克制我方的属性，推后打被我方克制的属性
                 let advAttribs = [];
-                advAttribs = getAdvDisadvAttribsOfStandPoints(getAliveStandPoints("our"), "adv");
+                advAttribs = getAdvDisadvAttribsOfStandPoints(getAliveStandPoints("our"), "disadv");
                 let advAttrEnemies = [];
                 if (advAttribs.length > 0) advAttrEnemies = getEnemiesByAttrib(advAttribs[0]);
                 if (advAttrEnemies.length > 0) avoidAimAtEnemies(advAttrEnemies);
