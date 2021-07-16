@@ -7094,7 +7094,7 @@ function algo_init() {
             } else if (imgName == "connectIndicatorBtnDown") {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
             } else if (imgName == "skillLocked" || imgName.startsWith("skillEmpty")) {
-                knownArea = knownFirstSkillCoords[imgName];
+                knownArea = knownFirstSkillCoords;
             } else {
                 knownArea = knownFirstStandPointCoords.our[imgName];
                 if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
