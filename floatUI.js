@@ -6616,9 +6616,9 @@ function algo_init() {
         for (let thisStandPoint of aliveStandPoints) {
             if (thisStandPoint.charaID != fromDisk.charaID) {
                 //找到有人、并且角色和连携发出角色不同的的站位
-                log("从", fromDisk.position+1, "盘向第", rowNum+1, "行第", columnNum+1, "列站位进行连携");
+                log("从", fromDisk.position+1, "盘向第", thisStandPoint.rowNum+1, "行第", thisStandPoint.columnNum+1, "列站位进行连携");
                 let src = getAreaCenter(getDiskArea(fromDisk.position, "charaImg"));
-                let dst = getAreaCenter(getStandPointArea("our", rowNum, columnNum, "floor"));
+                let dst = getAreaCenter(getStandPointArea("our", thisStandPoint.rowNum, thisStandPoint.columnNum, "floor"));
                 //连携划动
                 swipe(src.x, src.y, dst.x, dst.y, 1000);
                 sleep(1000);
