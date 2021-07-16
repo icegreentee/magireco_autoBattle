@@ -6934,6 +6934,7 @@ function algo_init() {
                     toastLog("开始保存图片...");
                     let snapshotDir = files.join(files.getSdcardPath(), "auto_magireco/");
                     let screenshotDir = files.join(snapshotDir, "screenshots/");
+                    let img = getDiskImg(screenshot, 0, "action");
                     if (img != null) {
                         log("保存完整屏幕截图...");
                         let screenshotPath = files.join(screenshotDir, "screenshot.png");
