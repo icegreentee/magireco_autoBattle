@@ -7370,6 +7370,14 @@ function algo_init() {
                     //Pcombo内尽量Blast Combo
                     let blastDisks = findSameActionDisks(sameCharaDisks, "blast");
                     prioritiseDisks(blastDisks);
+                } else {
+                    //随便挑个ACB
+                    let acbDisks = [];
+                    for (let action of ["accel", "charge", "blast"]) {
+                        let foundDisks = findSameActionDisks(sameCharaDisks, action);
+                        if (foundDisks.length > 0) acbDisks.push(foundDisks[0]);
+                    }
+                    if (acbDisks.length >= 3) prioritiseDisks(acbDisks);
                 }
             }
 
