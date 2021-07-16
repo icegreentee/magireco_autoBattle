@@ -7340,7 +7340,7 @@ function algo_init() {
             //这样一来，如果后面既没有接连携的角色更没有进一步（同角色）的Blast Combo
             //也没有无连携的Puella Combo和进一步（同角色）的Blast Combo
             //应该就会顺位选到它们
-            let nonDisadvAttribDisks = findNonDisadvAttribDisks(connectableDisks, [battleField["their"].lastAimedAtEnemy]);
+            let nonDisadvAttribDisks = findNonDisadvAttribDisks(allActionDisks, [battleField["their"].lastAimedAtEnemy]);
             prioritiseDisks(nonDisadvAttribDisks);
 
             //在所有盘中找第一个能连携的盘
