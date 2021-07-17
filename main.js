@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "4.4.0";
+var version = "4.5.0";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -156,7 +156,7 @@ ui.layout(
                             </vertical>
                             <vertical id="MirrorsExtraSettings2" visibility="gone" padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="useCVAutoBattle" w="*" margin="0 3" checked="true" textColor="#000000" text="在周回中使用识图自动战斗" />
-                                <text text="不开启此项,则镜层周回默认使用简单无脑点第1/2/3个盘来自动完成战斗。开启此项后,可以自动完成连携,但暂不支持使用主动技能" textColor="#000000" />
+                                <text text="开启此项,可以通过截屏识图自动完成连携。关闭此项,则镜层周回使用简单无脑点第1/2/3个盘来自动完成战斗" textColor="#000000" />
                             </vertical>
                         </vertical>
                     </vertical>
