@@ -7374,7 +7374,7 @@ function algo_init() {
                     //随便挑个ACB
                     let acbDisks = [];
                     for (let action of ["accel", "charge", "blast"]) {
-                        let foundDisks = findSameActionDisks(sameCharaDisks, action);
+                        let foundDisks = findSameActionDisks(allActionDisks, action);
                         if (foundDisks.length > 0) acbDisks.push(foundDisks[0]);
                     }
                     if (acbDisks.length >= 3) prioritiseDisks(acbDisks);
