@@ -6470,7 +6470,6 @@ function algo_init() {
                 let count = stats[attrib];
                 if (count == i) {
                     result.splice(0, 0, attrib);
-                    break;
                 }
             }
         }
