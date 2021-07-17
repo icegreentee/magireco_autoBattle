@@ -5594,11 +5594,13 @@ function algo_init() {
         water: ImgURLBase+"/images/water.png",
         fire: ImgURLBase+"/images/fire.png",
         wood: ImgURLBase+"/images/wood.png",
+        none: ImgURLBase+"/images/none.png",
         lightBtnDown: ImgURLBase+"/images/lightBtnDown.png",
         darkBtnDown: ImgURLBase+"/images/darkBtnDown.png",
         waterBtnDown: ImgURLBase+"/images/waterBtnDown.png",
         fireBtnDown: ImgURLBase+"/images/fireBtnDown.png",
         woodBtnDown: ImgURLBase+"/images/woodBtnDown.png",
+        noneBtnDown: ImgURLBase+"/images/noneBtnDown.png",
         mirrorsWinLetterI: ImgURLBase+"/images/mirrorsWinLetterI.png",
         mirrorsLose: ImgURLBase+"/images/mirrorsLose.png",
         skillLocked: ImgURLBase+"/images/skillLocked.png",
@@ -5730,37 +5732,38 @@ function algo_init() {
     var battleField = {
         our: {
             topRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 2 }
             },
             middleRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 2 }
             },
             bottomRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 2 }
             }
         },
         their: {
             topRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 0, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 2 }
             },
             middleRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 1, columnNum: 2 }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 2 }
             },
             bottomRow: {
-                left:   { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 0 },
-                middle: { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 1 },
-                right:  { occupied: false, attrib: "water", charaID: -1, rowNum: 2, columnNum: 2 }
-            }
+                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 0 },
+                middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 1 },
+                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 2 }
+            },
+            lastAimedAtEnemy: { occupied: true, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 }
         }
     };
     var rows = ["topRow", "middleRow", "bottomRow"];
@@ -5849,12 +5852,26 @@ function algo_init() {
                     whichStandPoint.attrib = getStandPointAttrib(screenshot, whichSide, i, j);
                 } catch (e) {
                     if (e.toString() != "getStandPointAttribInconclusive") log(e);
-                    whichStandPoint.attrib = "water";
+                    whichStandPoint.attrib = "none";
                     whichStandPoint.occupied = false;
                 }
                 whichStandPoint.charaID = -1; //现在应该还不太能准确识别，所以统一填上无意义数值，在发动连携后会填上有意义的数值
             }
         }
+    }
+
+    //获取有存活角色的站位
+    function getAliveStandPoints(whichSide) {
+        let result = [];
+        for(let i=0; i<3; i++) {
+            for(let j=0; j<3; j++) {
+                let standPoint = battleField[whichSide][rows[i]][columns[j]];
+                if (standPoint.occupied) {
+                    result.push(standPoint);
+                }
+            }
+        }
+        return result;
     }
 
 
@@ -5921,7 +5938,7 @@ function algo_init() {
             priority:    "first",
             down:        false,
             action:      "accel",
-            attrib:      "water",
+            attrib:      "none",
             charaImg:    null,
             charaID:     0,
             connectable: false,
@@ -5932,7 +5949,7 @@ function algo_init() {
             priority:    "second",
             down:        false,
             action:      "accel",
-            attrib:      "water",
+            attrib:      "none",
             charaImg:    null,
             charaID:     1,
             connectable: false,
@@ -5943,7 +5960,7 @@ function algo_init() {
             priority:    "third",
             down:        false,
             action:      "accel",
-            attrib:      "water",
+            attrib:      "none",
             img:         null,
             charaImg:    null,
             charaID:     2,
@@ -5955,7 +5972,7 @@ function algo_init() {
             priority:    "fourth",
             down:        false,
             action:      "accel",
-            attrib:      "water",
+            attrib:      "none",
             charaImg:    null,
             charaID:     3,
             connectable: false,
@@ -5966,7 +5983,7 @@ function algo_init() {
             priority:    "fifth",
             down:        false,
             action:      "accel",
-            attrib:      "water",
+            attrib:      "none",
             charaImg:    null,
             charaID:     4,
             connectable: false,
@@ -5978,7 +5995,7 @@ function algo_init() {
     var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
     var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
     var diskActions = ["accel", "blast", "charge"];
-    var diskAttribs = ["light", "dark", "water", "fire", "wood"];
+    var diskAttribs = ["light", "dark", "water", "fire", "wood", "none"];
     var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs.length; i++) { diskAttribsBtnDown.push(diskAttribs[i]+"BtnDown"); }
 
     function logDiskInfo(disk) {
@@ -6056,7 +6073,7 @@ function algo_init() {
                         possibilities.push(diskAttribsBtnDown[i]);
                     }
                 } else {
-                    // attrib_light/dark/water/fire/wood 只和光/暗/水/火/木属性比对
+                    // attrib_light/dark/water/fire/wood/none 只和光/暗/水/火/木/无属性比对
                     possibilities = [recogWhatArr[1], recogWhatArr[1]+"BtnDown"];
                 }
             }
@@ -6127,7 +6144,7 @@ function algo_init() {
     function getDiskAttribDown(screenshot, diskPos) {
         let result = {attrib: null, down: false};
         let attribImg = getDiskImg(screenshot, diskPos, "attrib");
-        log("识别第", diskPos+1, "盘的光/暗/水/火/木属性，以及盘是否被按下...");
+        log("识别第", diskPos+1, "盘的光/暗/水/火/木/无属性，以及盘是否被按下...");
         try {
             result.attrib = recognizeDisk(attribImg, "attrib_all", 2.1);
         } catch (e) {
@@ -6147,8 +6164,8 @@ function algo_init() {
             return result;
         }
 
-        log("识别失败，当作没按下的水属性盘处理");
-        result.attrib = "water";
+        log("识别失败，当作没按下的无属性盘处理");
+        result.attrib = "none";
         result.down = false;
         return result;
     }
@@ -6261,7 +6278,7 @@ function algo_init() {
             allActionDisks[i].down = false;
             allActionDisks[i].action = "accel";
             allActionDisks[i].charaImg = null;
-            allActionDisks[i].attrib = "water";
+            allActionDisks[i].attrib = "none";
             allActionDisks[i].charaID = i;
             allActionDisks[i].connectable = false;
             allActionDisks[i].connectedTo = -1;
@@ -6355,6 +6372,37 @@ function algo_init() {
         return result;
     }
 
+    //返回指定属性的盘（光/暗/水/火/木/无）
+    function findSameAttribDisks(disks, attrib) {
+        let result = [];
+        for (let i=0; i<disks.length; i++) {
+            var disk = disks[i];
+            if (disk.attrib == attrib) result.push(disk);
+        }
+        return result;
+    }
+
+    //获取不被对面克制属性的盘
+    function findNonDisadvAttribDisks(disks, enemies) {
+        let result = [];
+        for (let type of ["adv", "neutral"]) {
+            let advOrNeutralAttribs = getAdvDisadvAttribsOfStandPoints(enemies, type);
+            for (let attrib of advOrNeutralAttribs) {
+                let advOrNeutralAttribDisks = findSameAttribDisks(disks, attrib)
+                advOrNeutralAttribDisks.forEach((disk) => result.push(disk));
+            }
+        }
+        //只留下不重复的
+        let resultDedup = [];
+        for (let disk of result) {
+            if (resultDedup.find((val) => disk.position == val.position) == null) {
+                resultDedup.push(disk);
+            }
+        }
+        result = resultDedup;
+        return result;
+    }
+
     //返回优先第N个点击的盘
     function getDiskByPriority(disks, priority) {
         for (let i=0; i<disks.length; i++) {
@@ -6364,50 +6412,64 @@ function algo_init() {
     }
 
     //获取克制或被克制属性
-    function getAdvDisadvAttrib(attrib, advOrDisadv) {
-        let result = null;
+    function getAdvDisadvAttribs(attrib, advOrDisadv) {
+        let result = [];
         switch (advOrDisadv) {
-        case "adv":
-            switch(attrib) {
-            case "light": result = "dark";  break;
-            case "dark":  result = "light"; break;
-            case "water": result = "fire";  break;
-            case "fire":  result = "wood";  break;
-            case "wood":  result = "water"; break;
-            }
-            break;
         case "disadv":
             switch(attrib) {
-            case "light": result = "dark";  break;
-            case "dark":  result = "light"; break;
-            case "water": result = "wood";  break;
-            case "fire":  result = "water"; break;
-            case "wood":  result = "fire";  break;
+            case "light": result = ["dark" ]; break;
+            case "dark":  result = ["light"]; break;
+            case "water": result = ["fire" ]; break;
+            case "fire":  result = ["wood" ]; break;
+            case "wood":  result = ["water"]; break;
+            case "none":  result = [];        break;
+            }
+            break;
+        case "adv":
+            switch(attrib) {
+            case "light": result = ["dark" ]; break;
+            case "dark":  result = ["light"]; break;
+            case "water": result = ["wood" ]; break;
+            case "fire":  result = ["water"]; break;
+            case "wood":  result = ["fire" ]; break;
+            case "none":  result = [];        break;
+            }
+            break;
+        case "neutral":
+            switch(attrib) {
+            case "light": result = ["none", "light"]; break;
+            case "dark":  result = ["none", "dark" ]; break;
+            case "water": result = ["none", "water"]; break;
+            case "fire":  result = ["none", "fire" ]; break;
+            case "wood":  result = ["none", "wood" ]; break;
+            case "none":  result = ["none", "light", "dark", "water", "fire", "wood"]; break;
             }
             break;
         }
         return result;
     }
 
-    //获取我方弱点属性（对于水队来说就是木属性）
-    function getAdvDisadvAttribsOfDisks(disks, advOrDisadv) {
+    //获取我方克制/弱点/中立属性（对于水队来说弱点属性就是木属性）
+    function getAdvDisadvAttribsOfStandPoints(standPoints, advOrDisadv) {
         let result = [];
-        let stats = {light: 0, dark: 0, water: 0, fire: 0, wood: 0};
+        let stats = {light: 0, dark: 0, water: 0, fire: 0, wood: 0, none: 0};
         let maxCount = 0;
-        for (let i=0; i<disks.length; i++) {
-            let disk = disks[i];
-            let disadvAttrib = getAdvDisadvAttrib(disk.attrib, advOrDisadv);
-            if (disadvAttrib != null) {
-                stats[disadvAttrib]++;
-                if (stats[disadvAttrib] > maxCount) maxCount = stats[disadvAttrib];
+        for (let i=0; i<standPoints.length; i++) {
+            let standPoint = standPoints[i];
+            let attribs = getAdvDisadvAttribs(standPoint.attrib, advOrDisadv);
+            if (attribs != null) {
+                attribs.forEach(function (attrib) {
+                    stats[attrib]++;
+                    if (stats[attrib] > maxCount) maxCount = stats[attrib];
+                });
             }
         }
+        //把出现多的排到前面
         for (let i=1; i<=maxCount; i++) {
             for (let attrib in stats) {
                 let count = stats[attrib];
                 if (count == i) {
-                    result.splice(0, 0, attrib);;
-                    break;
+                    result.splice(0, 0, attrib);
                 }
             }
         }
@@ -6446,6 +6508,7 @@ function algo_init() {
         sleep(100);
         click(x, y);
         sleep(100);
+        battleField["their"].lastAimedAtEnemy = enemy;
     }
 
     //避免瞄准指定的敌人
@@ -6528,34 +6591,49 @@ function algo_init() {
 
     //进行连携
     function connectDisk(fromDisk) {
-        isConnectDone = false;
-        for (let rowNum=0; rowNum<3; rowNum++) {
-            for (let columnNum=0; columnNum<3; columnNum++) {
-                let thisStandPoint = battleField.our[rows[rowNum]][columns[columnNum]];
-                if (thisStandPoint.occupied && thisStandPoint.charaID != fromDisk.charaID) {
-                    //找到有人、并且角色和连携发出角色不同的的站位
-                    log("从", fromDisk.position+1, "盘向第", rowNum+1, "行第", columnNum+1, "列站位进行连携");
-                    let src = getAreaCenter(getDiskArea(fromDisk.position, "charaImg"));
-                    let dst = getAreaCenter(getStandPointArea("our", rowNum, columnNum, "floor"));
-                    //连携划动
-                    swipe(src.x, src.y, dst.x, dst.y, 1000);
-                    sleep(1000);
-                    let screenshot = compatCaptureScreen();
-                    let isConnectableDown = isDiskConnectableDown(screenshot, fromDisk.position);
-                    if (isConnectableDown.down) {
-                        log("连携动作完成");
-                        clickedDisksCount++;
-                        fromDisk.connectedTo = getConnectAcceptorCharaID(fromDisk, clickedDisksCount); //判断接连携的角色是谁
-                        thisStandPoint.charaID = fromDisk.connectedTo;
-                        isConnectDone = true;
-                        break;
-                    } else {
-                        log("连携动作失败，可能是因为连携到了自己身上");
-                        //以后也许可以改成根据按下连携盘后地板是否发亮来排除自己
+        //获取我方有人的站位
+        let aliveStandPoints = getAliveStandPoints("our");
+        //把不被克制的属性排在前面
+        for (let type of ["neutral", "adv"]) {
+            let attribs = getAdvDisadvAttribsOfStandPoints([battleField["their"].lastAimedAtEnemy], type);
+            attribs.reverse();
+            attribs.forEach(function (attrib) {
+                let foundIndices = [];
+                aliveStandPoints.forEach(function (standPoint, index) {
+                    if (standPoint.attrib == attrib) {
+                        foundIndices.push(index);
                     }
+                });
+                for (let i=0; i<foundIndices.length; i++) {
+                    let temp = aliveStandPoints[i];
+                    aliveStandPoints[i] = aliveStandPoints[foundIndices[i]];
+                    aliveStandPoints[foundIndices[i]] = temp;
+                }
+            });
+        }
+        //开始尝试连携
+        for (let thisStandPoint of aliveStandPoints) {
+            if (thisStandPoint.charaID != fromDisk.charaID) {
+                //找到有人、并且角色和连携发出角色不同的的站位
+                log("从", fromDisk.position+1, "盘向第", thisStandPoint.rowNum+1, "行第", thisStandPoint.columnNum+1, "列站位进行连携");
+                let src = getAreaCenter(getDiskArea(fromDisk.position, "charaImg"));
+                let dst = getAreaCenter(getStandPointArea("our", thisStandPoint.rowNum, thisStandPoint.columnNum, "floor"));
+                //连携划动
+                swipe(src.x, src.y, dst.x, dst.y, 1000);
+                sleep(1000);
+                let screenshot = compatCaptureScreen();
+                let isConnectableDown = isDiskConnectableDown(screenshot, fromDisk.position);
+                if (isConnectableDown.down) {
+                    log("连携动作完成");
+                    clickedDisksCount++;
+                    fromDisk.connectedTo = getConnectAcceptorCharaID(fromDisk, clickedDisksCount); //判断接连携的角色是谁
+                    thisStandPoint.charaID = fromDisk.connectedTo;
+                    break;
+                } else {
+                    log("连携动作失败，可能是因为连携到了自己身上");
+                    //以后也许可以改成根据按下连携盘后地板是否发亮来排除自己
                 }
             }
-            if (isConnectDone) break;
         }
     }
 
@@ -7089,7 +7167,7 @@ function algo_init() {
             let knownArea = null;
             if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
                 knownArea = knownFirstDiskCoords["action"];
-            } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood")) {
+            } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood") || imgName.startsWith("none")) {
                 knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
             } else if (imgName == "connectIndicatorBtnDown") {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
@@ -7243,19 +7321,120 @@ function algo_init() {
 
             //优先打能克制我方的属性
             let disadvAttribs = [];
-            disadvAttribs = getAdvDisadvAttribsOfDisks(allActionDisks, "disadv");
+            disadvAttribs = getAdvDisadvAttribsOfStandPoints(getAliveStandPoints("our"), "adv");
             let disadvAttrEnemies = [];
-            if (disadvAttribs.length > 0) disadvAttrEnemies = getEnemiesByAttrib(disadvAttribs[0]);
-            if (disadvAttrEnemies.length > 0) aimAtEnemy(disadvAttrEnemies[0]);
+            disadvAttribs.forEach((attrib) => getEnemiesByAttrib(attrib).forEach((enemy) => disadvAttrEnemies.push(enemy)));
+            if (disadvAttrEnemies.length > 0) {
+                let disadvAttribsOfEnemies = [];
+                disadvAttrEnemies.forEach(function (enemy) {
+                    if (disadvAttribsOfEnemies.find((attrib) => attrib == enemy.attrib) == null) {
+                        disadvAttribsOfEnemies.push(enemy.attrib);
+                    }
+                });
+                if (disadvAttribsOfEnemies.length == 1) {
+                    log("对面只有一种能克制我方的强势属性，优先集火");
+                    aimAtEnemy(disadvAttrEnemies[0]);
+                } else {
+                    log("对面不止一种能克制我方的强势属性");
+                    if (allActionDisks.find((disk) => disk.connectable) != null) {
+                        log("我方可以发动连携");
+                        let ourAttribs = [];
+                        getAliveStandPoints("our").forEach(function (standPoint) {
+                            if (ourAttribs.find((attrib) => attrib == standPoint.attrib) == null) {
+                                //不是重复的
+                                ourAttribs.push(standPoint.attrib);
+                            }
+                        });
+                        let ourDesiredAttribs = [];
+                        ourAttribs.forEach(function (attrib) {
+                            let attribs = getAdvDisadvAttribs(attrib, "disadv");
+                            if (attribs.length == 1) ourDesiredAttribs.push(attribs[0]);
+                        });
+                        let ourUndesiredAttribs = [];
+                        ourAttribs.forEach(function (attrib) {
+                            let attribs = getAdvDisadvAttribs(attrib, "adv");
+                            if (attribs.length == 1) ourUndesiredAttribs.push(attribs[0]);
+                        });
+                        log("寻找能被我方场上任意角色克制的敌人...");
+                        let desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                            ourDesiredAttribs.find((attrib) => attrib == enemy.attrib) != null
+                        );
+                        if (desiredEnemy != null) {
+                            log("找到能被我方场上任意角色克制的敌人");
+                            aimAtEnemy(desiredEnemy);
+                        } else {
+                            log("退而求其次，找至少不会克制我方的敌人...");
+                            let desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                                ourUndesiredAttribs.find((attrib) => attrib == enemy.attrib) == null
+                            );
+                            if (desiredEnemy != null) {
+                                log("找到至少不会克制我方的敌人");
+                                aimAtEnemy(desiredEnemy);
+                            } else {
+                                log("只有克制我方的敌人，没办法");
+                                aimAtEnemy(disadvAttrEnemies[0]);
+                            }
+                        }
+                    } else {
+                        log("我方没有连携可供发动");
+                        let sameCharaDisks = findSameCharaDisks(allActionDisks);
+                        let ourFirstDiskAttrib = null;
+                        if (sameCharaDisks.length >= 3) {
+                            log("我方可以选出Puella Combo盘");
+                            ourFirstDiskAttrib = sameCharaDisks[0].attrib;
+                        } else {
+                            log("我方选不出Puella Combo盘");
+                            let accelDisk = findSameActionDisks(allActionDisks, "accel");
+                            if (accelDisk != null) {
+                                log("没有连携也没有Puella Combo，Accel盘应会是第一个盘");
+                                ourFirstDiskAttrib = accelDisk.attrib;
+                            } else {
+                                log("连Accel盘也没有，就看顺位第一个盘吧");
+                                ourFirstDiskAttrib = allActionDisks[0].attrib;
+                            }
+                        }
+                        log("在对面找能被我方属性克制的敌人，或是至少不克制我方的...");
+                        let undesiredEnemyAttribs = getAdvDisadvAttribs(ourFirstDiskAttrib, "adv");
+                        let desiredEnemyAttribs = getAdvDisadvAttribs(ourFirstDiskAttrib, "disadv");
+                        log("寻找能被我方克制的敌人...");
+                        let desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                            desiredEnemyAttribs.find((attrib) => attrib == enemy.attrib) != null
+                        );
+                        if (desiredEnemy != null) {
+                            log("找到能被我方克制的敌人");
+                            aimAtEnemy(desiredEnemy);
+                        } else {
+                            log("退而求其次，不克制我方就行...");
+                            desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                                undesiredEnemyAttribs.find((attrib) => attrib == enemy.attrib) == null
+                            );
+                            if (desiredEnemy != null) {
+                                log("找到不克制我方的敌人");
+                                aimAtEnemy(desiredEnemy);
+                            } else {
+                                log("找不到，没办法，只能逆属性攻击了");
+                                aimAtEnemy(disadvAttrEnemies[0]);
+                            }
+                        }
+                    }
+                }
+            }
 
             if (disadvAttrEnemies.length == 0) {
                 //敌方没有能克制我方的属性，推后打被我方克制的属性
                 let advAttribs = [];
-                advAttribs = getAdvDisadvAttribsOfDisks(allActionDisks, "adv");
+                advAttribs = getAdvDisadvAttribsOfStandPoints(getAliveStandPoints("our"), "disadv");
                 let advAttrEnemies = [];
                 if (advAttribs.length > 0) advAttrEnemies = getEnemiesByAttrib(advAttribs[0]);
                 if (advAttrEnemies.length > 0) avoidAimAtEnemies(advAttrEnemies);
             }
+
+            //提前把不被克制的盘排到前面
+            //这样一来，如果后面既没有接连携的角色更没有进一步（同角色）的Blast Combo
+            //也没有无连携的Puella Combo和进一步（同角色）的Blast Combo
+            //应该就会顺位选到它们
+            let nonDisadvAttribDisks = findNonDisadvAttribDisks(allActionDisks, [battleField["their"].lastAimedAtEnemy]);
+            prioritiseDisks(nonDisadvAttribDisks);
 
             //在所有盘中找第一个能连携的盘
             let connectableDisks = [];
@@ -7278,11 +7457,43 @@ function algo_init() {
             } else {
                 //没有连携
                 //先找Puella Combo
+                let candidateDisks = allActionDisks;
                 let sameCharaDisks = findSameCharaDisks(allActionDisks);
-                prioritiseDisks(sameCharaDisks);
-                //Pcombo内尽量Blast Combo
-                let blastDisks = findSameActionDisks(sameCharaDisks, "blast");
-                prioritiseDisks(blastDisks);
+                if (sameCharaDisks.length >= 3) {
+                    candidateDisks = sameCharaDisks;
+                    prioritiseDisks(sameCharaDisks);
+                }
+                //再依次找Blast/Accel/Charge Combo
+                let comboDisks = [];
+                for (let action of ["blast", "accel", "charge"]) {
+                    comboDisks = findSameActionDisks(candidateDisks, action);
+                    if (comboDisks.length >= 3) {
+                        prioritiseDisks(comboDisks);
+                        break;
+                    }
+                }
+                let ACBDisks = [];
+                if (comboDisks.length < 3) {
+                    //再找ACB
+                    //先找Puella Combo内的ACB，再找混合ACB
+                    let ACBAttemptMax = sameCharaDisks.length >= 3 ? 2 : 1;
+                    candidateDisks = sameCharaDisks.length >= 3 ? sameCharaDisks : allActionDisks;
+                    for (let ACBAttempt=0; ACBAttempt<ACBAttemptMax; ACBAttempt++) {
+                        for (let action of ["accel", "charge", "blast"]) {
+                            let foundDisks = findSameActionDisks(candidateDisks, action);
+                            if (foundDisks.length > 0) ACBDisks.push(foundDisks[0]);
+                        }
+                        if (ACBDisks.length >= 3) {
+                            prioritiseDisks(ACBDisks);
+                            break;
+                        } else if (sameCharaDisks.length >= 3) {
+                            //有Puella Combo但Puella Combo内没有ACB，那就Puella Combo
+                            prioritiseDisks(sameCharaDisks);
+                            break;
+                        }
+                        candidateDisks = allActionDisks;
+                    }
+                }
             }
 
             //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
