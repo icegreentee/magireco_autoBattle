@@ -1,0 +1,26 @@
+[
+  {
+    "name": "onlineUpdate",
+    "deps": []
+  },
+  {
+    "name": "bugReporter",
+    "deps": []
+  },
+  {
+    "name": "shellCmd",
+    "deps": []
+  },
+  {
+    "name": "compatTouch",
+    "deps": ["shellCmd"]
+  },
+  {
+    "name": "floatUI",
+    "deps": ["compatTouch"]
+  },
+  {
+    "name": "settingsUI",
+    "deps": ["bugReporter", "floatUI", "onlineUpdate"]
+  }
+]

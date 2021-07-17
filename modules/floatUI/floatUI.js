@@ -1,6 +1,19 @@
-var floatUI = {}
+//悬浮窗模块
 
-//悬浮窗logo
+// 捕获异常时打log记录详细的调用栈
+function logException(e) {
+    try { throw e; } catch (caught) {
+        Error.captureStackTrace(caught, logException);
+        //log(e, caught.stack); //输出挤在一行里了，不好看
+        log(e);
+        log(caught.stack);
+    }
+}
+
+var floatUI = {};
+var MODULES = {};
+
+
 importClass(java.lang.Runnable);
 importClass(android.animation.ObjectAnimator)
 importClass(android.animation.PropertyValuesHolder)
@@ -32,21 +45,7 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
-// 捕获异常时打log记录详细的调用栈
-//（不能先声明为空函数再赋值，否则不会正常工作）
-function logException(e) {
-    try { throw e; } catch (caught) {
-        Error.captureStackTrace(caught, logException);
-        //log(e, caught.stack); //输出挤在一行里了，不好看
-        log(e);
-        log(caught.stack);
-    }
-}
-
 var origFunc = {
-    click: function () {return click.apply(this, arguments)},
-    swipe: function () {return swipe.apply(this, arguments)},
-    press: function () {return press.apply(this, arguments)},
     buildDialog: function() {return dialogs.build.apply(this, arguments)},
 }
 
@@ -59,7 +58,77 @@ function getProjectVersion() {
 //记录当前版本是否测试过助战的文件(已经去掉，留下注释)
 //var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
 
-var tasks = algo_init();
+var tasks = {};
+function init() {
+    //在传入版本号appVersion、已加载模块列表MODULES之后,init函数才会执行
+    MODULES = floatUI.MODULES;
+
+    tasks = algo_init();
+    // available script list
+    floatUI.scripts = [
+        {
+            name: "副本周回(剧情/活动通用)",
+            fn: tasks.default,
+        },
+        {
+            name: "镜层周回",
+            fn: tasks.mirrors,
+        },
+        {
+            name: "自动点击行动盘(识图,连携)",
+            fn: tasks.CVAutoBattle,
+        },
+        {
+            name: "自动点击行动盘(无脑123盘)",
+            fn: tasks.simpleAutoBattle,
+        },
+        {
+            name: "录制闪退重开选关动作",
+            fn: tasks.recordSteps,
+        },
+        {
+            name: "重放选关动作",
+            fn: tasks.replaySteps,
+        },
+        {
+            name: "导入动作录制数据",
+            fn: tasks.importSteps,
+        },
+        {
+            name: "导出动作录制数据",
+            fn: tasks.exportSteps,
+        },
+        {
+            name: "清除动作录制数据",
+            fn: tasks.clearSteps,
+        },
+        {
+            name: "测试助战自动选择",
+            fn: tasks.testSupportSel,
+        },
+        {
+            name: "测试闪退自动重开",
+            fn: tasks.testReLaunch,
+        },
+        {
+            name: "副本周回2(备用可选)",
+            fn: autoMain,
+        },
+        {
+            name: "活动周回2(备用可选)",
+            fn: autoMainver1,
+        },
+        {
+            name: "镜层周回2(备用,无脑123盘)",
+            fn: jingMain,
+        },
+        {
+            name: "活动周回,自动重开(备用)",
+            fn: tasks.reopen,
+        }
+    ];
+}
+floatUI.init = init;
 // touch capture, will be initialized in main
 var capture = () => { };
 // 停止脚本线程，尤其是防止停止自己的时候仍然继续往下执行少许语句（同上，会在main函数中初始化）
@@ -72,7 +141,6 @@ var normalShell = () => { };
 // 检查root或adb权限
 var getEUID = () => { };
 var requestShellPrivilege = () => { };
-var requestShellPrivilegeThread = null;
 // 嗑药数量限制和统计
 //绿药或红药，每次消耗1个
 //魔法石，每次碎5钻
@@ -82,70 +150,6 @@ var updateDrugConsumingStats = () => { };
 var isDrugEnough = () => { };
 // 周回数统计
 var updateCycleCount = () => { };
-
-// available script list
-floatUI.scripts = [
-    {
-        name: "副本周回(剧情/活动通用)",
-        fn: tasks.default,
-    },
-    {
-        name: "镜层周回",
-        fn: tasks.mirrors,
-    },
-    {
-        name: "自动点击行动盘(识图,连携)",
-        fn: tasks.CVAutoBattle,
-    },
-    {
-        name: "自动点击行动盘(无脑123盘)",
-        fn: tasks.simpleAutoBattle,
-    },
-    {
-        name: "录制闪退重开选关动作",
-        fn: tasks.recordSteps,
-    },
-    {
-        name: "重放选关动作",
-        fn: tasks.replaySteps,
-    },
-    {
-        name: "导入动作录制数据",
-        fn: tasks.importSteps,
-    },
-    {
-        name: "导出动作录制数据",
-        fn: tasks.exportSteps,
-    },
-    {
-        name: "清除动作录制数据",
-        fn: tasks.clearSteps,
-    },
-    {
-        name: "测试助战自动选择",
-        fn: tasks.testSupportSel,
-    },
-    {
-        name: "测试闪退自动重开",
-        fn: tasks.testReLaunch,
-    },
-    {
-        name: "副本周回2(备用可选)",
-        fn: autoMain,
-    },
-    {
-        name: "活动周回2(备用可选)",
-        fn: autoMainver1,
-    },
-    {
-        name: "镜层周回2(备用,无脑123盘)",
-        fn: jingMain,
-    },
-    {
-        name: "活动周回,自动重开(备用)",
-        fn: tasks.reopen,
-    }
-];
 
 //当前正在运行的线程
 var currentTask = null;
@@ -1045,135 +1049,19 @@ floatUI.main = function () {
     });
 
     //使用Shizuku执行shell命令
-    shizukuShell = function (shellcmd, logstring) {
-        if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "执行shell命令: ["+shellcmd+"]";
-        if (logstring !== false) log("使用Shizuku"+logstring);
-        $shell.setDefaultOptions({adb: true});
-        let result = $shell(shellcmd);
-        $shell.setDefaultOptions({adb: false});
-        if (logstring !== false) log("使用Shizuku"+logstring+" 完成");
-        return result;
-    };
+    shizukuShell = MODULES.shellCmd.shizukuShell;
     //直接使用root权限执行shell命令
-    rootShell = function (shellcmd, logstring) {
-        if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "执行shell命令: ["+shellcmd+"]";
-        if (logstring !== false) log("直接使用root权限"+logstring);
-        $shell.setDefaultOptions({adb: false});
-        if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
-        return $shell(shellcmd, true);
-    };
+    rootShell = MODULES.shellCmd.rootShell;
     //根据情况使用Shizuku还是直接使用root执行shell命令
-    privShell = function (shellcmd, logstring) {
-        if (limit.privilege) {
-            if (limit.privilege.shizuku) {
-                return shizukuShell(shellcmd, logstring);
-            } else {
-                return rootShell(shellcmd, logstring);
-            }
-        } else {
-            if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
-                toastLog("已经在尝试申请root或adb权限了\n请稍后重试,或彻底退出脚本后重试");
-            } else {
-                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-            }
-            throw new Error("没有root或adb权限");
-        }
-    }
+    privShell = MODULES.shellCmd.privShell;
     //不使用特权执行shell命令
-    normalShell = function (shellcmd, logstring) {
-        if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "执行shell命令: ["+shellcmd+"]";
-        if (logstring !== false) log("不使用特权"+logstring);
-        $shell.setDefaultOptions({adb: false});
-        if (logstring !== false) log("不使用特权"+logstring+" 完成");
-        return $shell(shellcmd);
-    }
+    normalShell = MODULES.shellCmd.normalShell;
 
     //检查并申请root或adb权限
-    getEUID = function (procStatusContent) {
-        let matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
-        if (matched != null) {
-            matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
-        }
-        if (matched != null) {
-            return parseInt(matched[0]);
-        } else {
-            return -1;
-        }
-    }
-    requestShellPrivilege = function () {
-        if (limit.privilege) {
-            log("已经获取到root或adb权限了");
-            return limit.privilege;
-        }
+    getEUID = MODULES.shellCmd.getEUID;
+    requestShellPrivilege = MODULES.shellCmd.requestShellPrivilege;
 
-        let rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
-
-        let shellcmd = "cat /proc/self/status";
-        let result = null;
-        try {
-            result = shizukuShell(shellcmd);
-        } catch (e) {
-            result = {code: 1, result: "-1", err: ""};
-            logException(e);
-        }
-        let euid = -1;
-        if (result.code == 0) {
-            euid = getEUID(result.result);
-            switch (euid) {
-            case 0:
-                log("Shizuku有root权限");
-                limit.privilege = {shizuku: {uid: euid}};
-                break;
-            case 2000:
-                log("Shizuku有adb shell权限");
-                limit.privilege = {shizuku: {uid: euid}};
-                break;
-            default:
-                log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
-                limit.privilege = null;
-            }
-        }
-
-        if (limit.privilege != null) return;
-
-        if (!files.isFile(rootMarkerPath)) {
-            toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
-            sleep(2500);
-            toastLog("请务必选择“永久”授权，而不是一次性授权！");
-        } else {
-            log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
-        }
-        result = rootShell(shellcmd);
-        if (result.code == 0) euid = getEUID(result.result);
-        if (euid == 0) {
-            log("直接获取root权限成功");
-            limit.privilege = {shizuku: null};
-            files.create(rootMarkerPath);
-        } else {
-            toastLog("直接获取root权限失败！");
-            sleep(2500);
-            limit.privilege = null;
-            files.remove(rootMarkerPath);
-            if (device.sdkInt >= 23) {
-                toastLog("请下载安装Shizuku,并按照说明启动它\n然后在Shizuku中给本应用授权");
-                $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
-            } else {
-                toastLog("Android版本低于6，Shizuku不能使用最新版\n请安装并启动Shizuku 3.6.1，并给本应用授权");
-                $app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
-            }
-        }
-
-        return limit.privilege;
-    }
-
-    if (device.sdkInt < 24) {
-        if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
-            requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-        }
-    }
+    requestShellPrivilege();
 
     //嗑药后，更新设置中的嗑药个数限制
     updateDrugLimit = function (index) {
@@ -1290,7 +1178,6 @@ var limit = {
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
     firstRequestPrivilege: true,
-    privilege: null
 }
 
 var cutoutParamsLock = threads.lock();
@@ -1949,10 +1836,8 @@ floatUI.adjust = function (key, value) {
         let isPrivNeeded = false;
         if (key == "rootForceStop" && value) isPrivNeeded = true;
         if (key == "rootScreencap" && value) isPrivNeeded = true;
-        if (!limit.privilege && isPrivNeeded) {
-            if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
-                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-            }
+        if (!MODULES.shellCmd.privilege && isPrivNeeded) {
+            requestShellPrivilege();
         }
     }
 }
@@ -1963,27 +1848,6 @@ floatUI.logParams = function () {
 
 // compatible action closure
 function algo_init() {
-
-    //虽然函数名里有Root，实际上用的可能还是adb shell权限
-    function clickOrSwipeRoot(x1, y1, x2, y2, duration) {
-        var shellcmd = null;
-        var logString = null;
-        switch (arguments.length) {
-            case 5:
-                shellcmd = "input swipe "+x1+" "+y1+" "+x2+" "+y2+(duration==null?"":(" "+duration));
-                logString = "模拟滑动: ["+x1+","+y1+" => "+x2+","+y2+"]"+(duration==null?"":(" ("+duration+"ms)"));
-                break;
-            case 2:
-                //shellcmd = "input tap "+x1+" "+y1; //在MuMu上会出现自动战斗时一次点不到盘的问题
-                shellcmd = "input swipe "+x1+" "+y1+" "+x1+" "+y1+" 150";
-                logString = "模拟点击: ["+x1+","+y1+"]";
-                break;
-            default:
-                throw new Error("clickOrSwipeRoot: invalid argument count");
-        }
-        privShell(shellcmd, logString);
-    }
-
     function click(x, y) {
         //isGameDead和getFragmentViewBounds其实是在后面定义的
         if (isGameDead() == "crashed") {
@@ -2019,22 +1883,7 @@ function algo_init() {
             if (xy.clamped[axis] != xy.orig[axis])
                 log("点击坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
 
-        // system version higher than Android 7.0
-        if (device.sdkInt >= 24) {
-            // now accessibility gesture APIs are available
-            log("使用无障碍服务模拟点击坐标 "+x+","+y);
-            origFunc.click(x, y);
-            log("点击完成");
-        } else {
-            clickOrSwipeRoot(x, y);
-        }
-    }
-
-    function getDefaultSwipeDuration(x1, x2, y1, y2) {
-        // 默认滑动时间计算，距离越长时间越长
-        let swipe_distance = Math.sqrt(Math.pow((x2 - x1), 2) + Math.pow((y2 - y1), 2));
-        let screen_diagonal = Math.sqrt(Math.pow((device.width), 2) + Math.pow((device.height), 2));
-        return parseInt(1500 + 3000 * (swipe_distance / screen_diagonal));
+        MODULES.compatTouch.click(x, y);
     }
 
     function swipe(x1, y1, x2, y2, duration) {
@@ -2110,14 +1959,7 @@ function algo_init() {
             if (xy.clamped[axis] != xy.orig[axis])
                 log("滑动坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
 
-        // system version higher than Android 7.0
-        if (device.sdkInt >= 24) {
-            log("使用无障碍服务模拟滑动 "+x1+","+y1+" => "+x2+","+y2+(duration==null?"":(" ("+duration+"ms)")));
-            origFunc.swipe(x1, y1, x2, y2, duration != null ? duration : getDefaultSwipeDuration(x1, x2, y1, y2)); //最后一个参数不能缺省
-            log("滑动完成");
-        } else {
-            clickOrSwipeRoot(x1, y1, x2, y2, duration != null ? duration : getDefaultSwipeDuration(x1, x2, y1, y2));
-        }
+        MODULES.compatTouch.swipe(x1, y1, x2, y2, duration);
     }
 
     // find first element using regex
@@ -3708,7 +3550,7 @@ function algo_init() {
         }
         var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
         toastLog("强关游戏...");
-        if (limit.privilege && limit.rootForceStop) {
+        if (MODULES.shellCmd.privilege && limit.rootForceStop) {
             log("使用am force-stop命令...");
             while (true) {
                 privShell("am force-stop "+name);
@@ -3822,7 +3664,7 @@ function algo_init() {
     }
 
     function requestPrivilegeIfNeeded() {
-        if (limit.privilege) return true;
+        if (MODULES.shellCmd.privilege) return true;
 
         if (limit.rootForceStop || limit.firstRequestPrivilege) {
             limit.firstRequestPrivilege = false;
@@ -3832,11 +3674,7 @@ function algo_init() {
                 ui.run(() => {
                     ui["rootForceStop"].setChecked(true);
                 });
-                if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
-                    toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
-                } else {
-                    requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-                }
+                requestShellPrivilege();
                 return false;//等到权限获取完再重试
             } else {
                 limit.firstRequestPrivilege = false;//下次不会提醒了
@@ -7741,11 +7579,9 @@ function algo_init() {
     }
 
     function mirrorsAutoBattleMain() {
-        if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
+        if (!MODULES.shellCmd.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
             toastLog("需要root或shizuku adb权限");
-            if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
-                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-            }
+            requestShellPrivilege();
             return;
         }
 
@@ -8323,11 +8159,9 @@ function algo_init() {
     function taskMirrors() {
         toast("镜层周回\n自动战斗策略:"+(limit.useCVAutoBattle?"识图":"无脑123盘"));
 
-        if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
+        if (!MODULES.shellCmd.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
             toastLog("需要root或shizuku adb权限");
-            if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
-                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
-            }
+            requestShellPrivilege();
             return;
         }
 
