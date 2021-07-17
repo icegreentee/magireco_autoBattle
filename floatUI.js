@@ -7324,7 +7324,7 @@ function algo_init() {
             let disadvAttribs = [];
             disadvAttribs = getAdvDisadvAttribsOfStandPoints(getAliveStandPoints("our"), "adv");
             let disadvAttrEnemies = [];
-            if (disadvAttribs.length > 0) disadvAttrEnemies = getEnemiesByAttrib(disadvAttribs[0]);
+            disadvAttribs.forEach((attrib) => getEnemiesByAttrib(attrib).forEach((enemy) => disadvAttrEnemies.push(enemy)));
             if (disadvAttrEnemies.length > 0) {
                 let disadvAttribsOfEnemies = [];
                 disadvAttrEnemies.forEach(function (enemy) {
