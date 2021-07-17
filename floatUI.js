@@ -5159,7 +5159,7 @@ function algo_init() {
     }
     //在/data/local/tmp/下安装scrcap2bmp
     var binarySetupDone = false;
-    const binURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.4.0";
+    const binURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.5.0";
     function setupBinary() {
         if (binarySetupDone) return binarySetupDone;
 
@@ -5581,7 +5581,7 @@ function algo_init() {
     }
 
     //已知参照图像，包括A/B/C盘等
-    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.4.0";
+    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.5.0";
     var knownImgs = {};
     const knownImgURLs = {
         accel: ImgURLBase+"/images/accel.png",
