@@ -7339,14 +7339,12 @@ function algo_init() {
                     if (allActionDisks.find((disk) => disk.connectable) != null) {
                         log("我方可以发动连携");
                         let ourAttribs = [];
-                        for (let thisRow of battleField["our"]) {
-                            thisRow.forEach(function (standPoint) {
-                                if (ourAttribs.find((attrib) => attrib == standPoint.attrib) == null) {
-                                    //不是重复的
-                                    ourAttribs.push(standPoint.attrib);
-                                }
-                            });
-                        }
+                        getAliveStandPoints("our").forEach(function (standPoint) {
+                            if (ourAttribs.find((attrib) => attrib == standPoint.attrib) == null) {
+                                //不是重复的
+                                ourAttribs.push(standPoint.attrib);
+                            }
+                        });
                         let ourDesiredAttribs = [];
                         ourAttribs.forEach(function (attrib) {
                             let attribs = getAdvDisadvAttribs(attrib, "disadv");
