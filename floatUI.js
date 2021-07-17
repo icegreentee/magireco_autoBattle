@@ -7364,20 +7364,42 @@ function algo_init() {
             } else {
                 //没有连携
                 //先找Puella Combo
+                let candidateDisks = allActionDisks;
                 let sameCharaDisks = findSameCharaDisks(allActionDisks);
                 if (sameCharaDisks.length >= 3) {
+                    candidateDisks = sameCharaDisks;
                     prioritiseDisks(sameCharaDisks);
-                    //Pcombo内尽量Blast Combo
-                    let blastDisks = findSameActionDisks(sameCharaDisks, "blast");
-                    prioritiseDisks(blastDisks);
-                } else {
-                    //随便挑个ACB
-                    let acbDisks = [];
-                    for (let action of ["accel", "charge", "blast"]) {
-                        let foundDisks = findSameActionDisks(allActionDisks, action);
-                        if (foundDisks.length > 0) acbDisks.push(foundDisks[0]);
+                }
+                //再依次找Blast/Accel/Charge Combo
+                let comboDisks = [];
+                for (let action of ["blast", "accel", "charge"]) {
+                    comboDisks = findSameActionDisks(candidateDisks, action);
+                    if (comboDisks.length >= 3) {
+                        prioritiseDisks(comboDisks);
+                        break;
                     }
-                    if (acbDisks.length >= 3) prioritiseDisks(acbDisks);
+                }
+                let ACBDisks = [];
+                if (comboDisks.length < 3) {
+                    //再找ACB
+                    //先找Puella Combo内的ACB，再找混合ACB
+                    let ACBAttemptMax = sameCharaDisks.length >= 3 ? 2 : 1;
+                    candidateDisks = sameCharaDisks.length >= 3 ? sameCharaDisks : allActionDisks;
+                    for (let ACBAttempt=0; ACBAttempt<ACBAttemptMax; ACBAttempt++) {
+                        for (let action of ["accel", "charge", "blast"]) {
+                            let foundDisks = findSameActionDisks(candidateDisks, action);
+                            if (foundDisks.length > 0) ACBDisks.push(foundDisks[0]);
+                        }
+                        if (ACBDisks.length >= 3) {
+                            prioritiseDisks(ACBDisks);
+                            break;
+                        } else if (sameCharaDisks.length >= 3) {
+                            //有Puella Combo但Puella Combo内没有ACB，那就Puella Combo
+                            prioritiseDisks(sameCharaDisks);
+                            break;
+                        }
+                        candidateDisks = allActionDisks;
+                    }
                 }
             }
 
