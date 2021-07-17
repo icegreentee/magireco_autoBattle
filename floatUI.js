@@ -7325,7 +7325,65 @@ function algo_init() {
             disadvAttribs = getAdvDisadvAttribsOfStandPoints(getAliveStandPoints("our"), "adv");
             let disadvAttrEnemies = [];
             if (disadvAttribs.length > 0) disadvAttrEnemies = getEnemiesByAttrib(disadvAttribs[0]);
-            if (disadvAttrEnemies.length > 0) aimAtEnemy(disadvAttrEnemies[0]);
+            if (disadvAttrEnemies.length > 0) {
+                let disadvAttribsOfEnemies = [];
+                disadvAttrEnemies.forEach(function (enemy) {
+                    if (disadvAttribsOfEnemies.find((attrib) => attrib == enemy.attrib) == null) {
+                        disadvAttribsOfEnemies.push(enemy.attrib);
+                    }
+                });
+                if (disadvAttribsOfEnemies.length == 1) {
+                    //对面只有一种能克制我方的强势属性，优先集火
+                    aimAtEnemy(disadvAttrEnemies[0]);
+                } else {
+                    //对面不止一种能克制我方的强势属性
+                    if (allActionDisks.find((disk) => disk.connectable) != null) {
+                        //有连携，随便选一个，连携时会挑选不被克制的去接受连携
+                        aimAtEnemy(disadvAttrEnemies[0]);
+                    } else {
+                        //没有连携
+                        let sameCharaDisks = findSameCharaDisks(allActionDisks);
+                        let ourFirstDiskAttrib = null;
+                        if (sameCharaDisks.length >= 3) {
+                            //有Puella Combo
+                            ourFirstDiskAttrib = sameCharaDisks[0].attrib;
+                        } else {
+                            //没有Puella Combo
+                            let accelDisk = findSameActionDisks(allActionDisks, "accel");
+                            if (accelDisk != null) {
+                                //有Accel盘
+                                ourFirstDiskAttrib = accelDisk.attrib;
+                            } else {
+                                //没有Accel盘，就看第一个盘吧
+                                ourFirstDiskAttrib = allActionDisks[0].attrib;
+                            }
+                        }
+                        //在对面找能被我方属性克制的敌人，或是至少不克制我方的
+                        let undesiredEnemyAttribs = getAdvDisadvAttribs(ourFirstDiskAttrib, "adv");
+                        let desiredEnemyAttribs = getAdvDisadvAttribs(ourFirstDiskAttrib, "disadv");
+                        //寻找能被我方克制的敌人
+                        let desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                            desiredEnemyAttribs.find((attrib) => attrib == enemy.attrib) != null
+                        );
+                        if (desiredEnemy != null) {
+                            //找到能被我方克制的敌人
+                            aimAtEnemy(desiredEnemy);
+                        } else {
+                            //退而求其次，不克制我方就行
+                            desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                                undesiredEnemyAttribs.find((attrib) => attrib == enemy.attrib) == null
+                            );
+                            if (desiredEnemy != null) {
+                                //找到不克制我方的敌人
+                                aimAtEnemy(desiredEnemy);
+                            } else {
+                                //没办法，只能逆属性攻击了
+                                aimAtEnemy(disadvAttrEnemies[0]);
+                            }
+                        }
+                    }
+                }
+            }
 
             if (disadvAttrEnemies.length == 0) {
                 //敌方没有能克制我方的属性，推后打被我方克制的属性
