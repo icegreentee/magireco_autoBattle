@@ -7338,8 +7338,46 @@ function algo_init() {
                 } else {
                     //对面不止一种能克制我方的强势属性
                     if (allActionDisks.find((disk) => disk.connectable) != null) {
-                        //有连携，随便选一个，连携时会挑选不被克制的去接受连携
-                        aimAtEnemy(disadvAttrEnemies[0]);
+                        //有连携
+                        let ourAttribs = [];
+                        for (let thisRow of battleField["our"]) {
+                            thisRow.forEach(function (standPoint) {
+                                if (ourAttribs.find((attrib) => attrib == standPoint.attrib) == null) {
+                                    //不是重复的
+                                    ourAttribs.push(standPoint.attrib);
+                                }
+                            });
+                        }
+                        let ourDesiredAttribs = [];
+                        ourAttribs.forEach(function (attrib) {
+                            let attribs = getAdvDisadvAttribs(attrib, "disadv");
+                            if (attribs.length == 1) ourDesiredAttribs.push(attribs[0]);
+                        });
+                        let ourUndesiredAttribs = [];
+                        ourAttribs.forEach(function (attrib) {
+                            let attribs = getAdvDisadvAttribs(attrib, "adv");
+                            if (attribs.length == 1) ourUndesiredAttribs.push(attribs[0]);
+                        });
+                        //找能被我方场上任意角色克制的敌人
+                        let desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                            ourDesiredAttribs.find((attrib) => attrib == enemy.attrib) != null
+                        );
+                        if (desiredEnemy != null) {
+                            //找到能被我方场上任意角色克制的敌人
+                            aimAtEnemy(desiredEnemy);
+                        } else {
+                            //退而求其次，找至少不会克制我方的
+                            let desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                                ourUndesiredAttribs.find((attrib) => attrib == enemy.attrib) == null
+                            );
+                            if (desiredEnemy != null) {
+                                //找到至少不会克制我方的敌人
+                                aimAtEnemy(desiredEnemy);
+                            } else {
+                                //只有克制我方的敌人，没办法
+                                aimAtEnemy(disadvAttrEnemies[0]);
+                            }
+                        }
                     } else {
                         //没有连携
                         let sameCharaDisks = findSameCharaDisks(allActionDisks);
