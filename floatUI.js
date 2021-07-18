@@ -7019,7 +7019,7 @@ function algo_init() {
 
         for (let pass=1; pass<=2; pass++) { //只循环2遍，防止被控的时候技能按钮总是亮着又发动不了
             var hasAvailableSkill = false;
-            let screenshot = compatCaptureScreen();
+            let screenshot = renewImage(images.copy(compatCaptureScreen()));
             for (let diskPos=0; diskPos<5; diskPos++) {
                 for (let skillNo=0; skillNo<2; skillNo++) {
                     if (isSkillAvailable(screenshot, diskPos, skillNo)) {
@@ -7058,7 +7058,6 @@ function algo_init() {
                             }
                         }
                         toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
-                        screenshot = compatCaptureScreen(); //toggleSkillPanel回收了screenshot，所以需要重新截图赋值
                     }
                 }
             }
