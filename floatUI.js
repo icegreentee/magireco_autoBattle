@@ -6937,6 +6937,54 @@ function algo_init() {
         }
     }
 
+    var knownOKButtonCoords = {
+        topLeft: {
+            x: 1313, y: 705, pos: "center"
+        },
+        bottomRight: {
+            x: 1381, y: 824, pos: "center"
+        }
+    };
+
+    function getOKButtonArea() {
+        return getConvertedArea(knownOKButtonCoords);
+    }
+
+    function getOKButtonImg() {
+        let area = getOKButtonArea();
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+
+    //检测技能确认按钮是否出现
+    function detectOKButtonStatus(screenshot) {
+        let refImg = knownImgs["OKButtonGray"];
+        let img = getOKButtonImg(screenshot);
+        let imgGray = renewImage(images.grayscale(img));
+        let OKButtonArea = getOKButtonArea();
+        let gaussianX = parseInt(getAreaWidth(OKButtonArea) / 3);
+        let gaussianY = parseInt(getAreaHeight(OKButtonArea) / 3);
+        if (gaussianX % 2 == 0) gaussianX += 1;
+        if (gaussianY % 2 == 0) gaussianY += 1;
+        let gaussianSize = [gaussianX, gaussianY];
+        let imgGrayBlur = renewImage(images.gaussianBlur(imgGray, gaussianSize));
+        let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
+        let similarity = images.getSimilarity(refImgBlur, imgGrayBlur, {"type": "MSSIM"});
+        log("判断技能确认按钮是否出现 MSSIM=", similarity);
+        if (similarity > 2.1) {
+            similarity = images.getSimilarity(img, imgGray, {"type": "MSSIM"});
+            if (similarity > 2.9) {
+                log("技能按钮为灰色");
+                return "grayed_out";
+            } else {
+                log("技能按钮可用");
+                return "available";
+            }
+        } else {
+            log("没有检测到技能按钮");
+            return "not_detected";
+        }
+    }
+
     //闭着眼放出所有主动技能
     function clickAllSkills() {
         //打开技能面板
@@ -6949,16 +6997,39 @@ function algo_init() {
                 for (let skillNo=0; skillNo<2; skillNo++) {
                     if (isSkillAvailable(screenshot, diskPos, skillNo)) {
                         hasAvailableSkill = true;
-                        log("点击使用第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能");
-                        click(getAreaCenter(getSkillArea(diskPos, skillNo)));
-                        sleep(500);
-                        log("点击确认按钮使用技能");
-                        click(convertCoords(clickSetsMod.recover_battle));
-                        sleep(4000);
-                        while (isBackButtonAppearing(compatCaptureScreen())) {
-                            log("误触打开了角色信息,点击返回关闭");
-                            click(convertCoords(clickSetsMod.back));
-                            sleep(500);
+                        let isSkillButtonClicked = false;
+                        let lastOKClickTime = 0;
+                        let isSkillDone = false;
+                        for (let startTime=new Date().getTime(); new Date().getTime()-startTime<15000; sleep(200)) {
+                            screenshot = compatCaptureScreen();
+                            if (isBackButtonAppearing(screenshot)) {
+                                log("误触打开了角色信息,点击返回关闭");
+                                click(convertCoords(clickSetsMod.back));
+                            } else if (isSkillDone) {
+                                break;
+                            } else switch (detectOKButtonStatus(screenshot)) {
+                                case "available":
+                                    let clickTime = new Date().getTime();
+                                    if (lastOKClickTime == 0 || clickTime - lastOKClickTime > 2000) {
+                                        lastOKClickTime = clickTime;
+                                        log("点击确认按钮使用技能");
+                                        click(convertCoords(clickSetsMod.recover_battle));
+                                    }
+                                    break;
+                                case "grayed_out":
+                                    isSkillDone = true;
+                                    break;
+                                case "not_detected":
+                                default:
+                                    if (isSkillButtonClicked) {
+                                        isSkillDone = true;
+                                        log("技能使用完成");
+                                    } else {
+                                        isSkillButtonClicked = true;
+                                        log("点击使用第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能");
+                                        click(getAreaCenter(getSkillArea(diskPos, skillNo)));
+                                    } 
+                            }
                         }
                         toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
                         screenshot = compatCaptureScreen(); //toggleSkillPanel回收了screenshot，所以需要重新截图赋值
