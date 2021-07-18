@@ -6504,12 +6504,10 @@ function algo_init() {
         // MuMu模拟器上tap无效，用swipe代替可解，不知道别的机器情况如何
         swipe(x, y, x, y, 100);
         sleep(50);
-        swipe(x, y, x, y, 100);
-        sleep(50);
-        click(x, y);
-        sleep(100);
-        click(x, y);
-        sleep(100);
+        if (!clickBackButtonIfShowed()) {
+            log("误触打开了角色信息,多次尝试点击返回却没有效果,退出");
+            stopThread();
+        }
         battleField["their"].lastAimedAtEnemy = enemy;
     }
 
@@ -6910,10 +6908,9 @@ function algo_init() {
                 click(convertCoords(clickSetsMod.reconnectYes));
                 sleep(500);
             }
-            if (isBackButtonAppearing(compatCaptureScreen())) {
-                log("误触打开了角色信息,点击返回关闭");
-                click(convertCoords(clickSetsMod.back));
-                sleep(500);
+            if (!clickBackButtonIfShowed()) {
+                log("误触打开了角色信息,多次尝试点击返回却没有效果,退出");
+                stopThread();
             }
             log("点击切换技能面板/行动盘面板");
             click(convertCoords(clickSetsMod.skillPanelSwitch));
@@ -6937,6 +6934,26 @@ function algo_init() {
             log("似乎没出现返回按钮");
             return false;
         }
+    }
+
+    //有返回按钮出现时点击
+    function clickBackButtonIfShowed() {
+        let lastClickTime = 0;
+        let attemptMax = 10;
+        for (let attempt=0; attempt<attemptMax; attempt++) {
+            if (!isBackButtonAppearing(compatCaptureScreen())) {
+                return true;
+            }
+            let clickTime = new Date().getTime();
+            if (lastClickTime == 0 || clickTime - lastClickTime > 2000) {
+                lastClickTime = clickTime;
+                log("点击返回");
+                click(convertCoords(clickSetsMod.back));
+            }
+            sleep(500);
+        }
+        log("尝试点击返回多次仍然没有效果");
+        return false;
     }
 
     var knownOKButtonCoords = {
@@ -7011,13 +7028,12 @@ function algo_init() {
                         let lastOKClickTime = 0;
                         let isSkillDone = false;
                         for (let startTime=new Date().getTime(); new Date().getTime()-startTime<15000; sleep(200)) {
-                            screenshot = compatCaptureScreen();
-                            if (isBackButtonAppearing(screenshot)) {
-                                log("误触打开了角色信息,点击返回关闭");
-                                click(convertCoords(clickSetsMod.back));
+                            if (!clickBackButtonIfShowed()) {
+                                log("误触打开了角色信息,多次点击返回却没有效果,退出");
+                                stopThread();
                             } else if (isSkillDone) {
                                 break;
-                            } else switch (detectOKButtonStatus(screenshot)) {
+                            } else switch (detectOKButtonStatus(compatCaptureScreen())) {
                                 case "available":
                                     let clickTime = new Date().getTime();
                                     if (lastOKClickTime == 0 || clickTime - lastOKClickTime > 2000) {
