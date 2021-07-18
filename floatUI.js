@@ -7017,13 +7017,13 @@ function algo_init() {
         //打开技能面板
         toggleSkillPanel(true);
 
-        for (let pass=1; pass<=2; pass++) { //只循环2遍，防止被控的时候技能按钮总是亮着又发动不了
-            var hasAvailableSkill = false;
+        for (let pass=1; pass<=3; pass++) { //只循环3遍
+            var availableSkillCount = 0;
             let screenshot = renewImage(images.copy(compatCaptureScreen()));
             for (let diskPos=0; diskPos<5; diskPos++) {
                 for (let skillNo=0; skillNo<2; skillNo++) {
                     if (isSkillAvailable(screenshot, diskPos, skillNo)) {
-                        hasAvailableSkill = true;
+                        availableSkillCount++;
                         let isSkillButtonClicked = false;
                         let lastOKClickTime = 0;
                         let lastCancelClickTime = 0;
@@ -7035,6 +7035,7 @@ function algo_init() {
                                 log("误触打开了角色信息,多次点击返回却没有效果,退出");
                                 stopThread();
                             } else if (isSkillDone) {
+                                if (!isSkillUsed) availableSkillCount--;
                                 break;
                             } else switch (detectOKButtonStatus(compatCaptureScreen())) {
                                 case "available":
@@ -7075,7 +7076,7 @@ function algo_init() {
                     }
                 }
             }
-            if (!hasAvailableSkill) break;
+            if (availableSkillCount <= 0) break;
         }
 
         //关闭技能面板
