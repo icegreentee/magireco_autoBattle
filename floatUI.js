@@ -6961,9 +6961,11 @@ function algo_init() {
     function detectOKButtonStatus(screenshot) {
         let refImg = knownImgs["OKButton"];
         let img = getOKButtonImg(screenshot);
-        let imgGray = renewImage(images.grayscale(img));
+        let imgGRAY = renewImage(images.grayscale(img));
+        let imgGray = renewImage(images.cvtColor(imgGRAY, "GRAY2BGRA"));
+        let imgBGRA = renewImage(images.cvtColor(img, "BGR2BGRA"));
         let isGray = false;
-        let similarity = images.getSimilarity(img, imgGray, {"type": "MSSIM"});
+        let similarity = images.getSimilarity(imgBGRA, imgGray, {"type": "MSSIM"});
         log("判断按钮区域图像是否为灰度 MSSIM=", similarity);
         if (similarity > 2.9) {
             isGray = true;
