@@ -6660,7 +6660,7 @@ function algo_init() {
                 }
                 //最后一个盘点击成功的表现就是行动盘消失，所以当然无法分辨盘是否被按下
                 //这种情况下因为我方回合选盘已经结束，点击行动盘的位置没有影响，所以即便多点几次也是无害的
-                if (clickedDisksCount == 2 && inconclusiveCount >= 3) {
+                if (clickedDisksCount == 2 && inconclusiveCount >= 1) {
                     log("看不到最后一个盘了，应该是点击动作完成了");
                     disk.down = true;
                 } else {
