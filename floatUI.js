@@ -7019,7 +7019,7 @@ function algo_init() {
 
         for (let pass=1; pass<=3; pass++) { //只循环3遍
             var availableSkillCount = 0;
-            let screenshot = renewImage(images.copy(compatCaptureScreen()));
+            let screenshot = renewImage(images.copy(compatCaptureScreen())); //toggleSkillPanel会回收screenshot
             for (let diskPos=0; diskPos<5; diskPos++) {
                 for (let skillNo=0; skillNo<2; skillNo++) {
                     if (isSkillAvailable(screenshot, diskPos, skillNo)) {
@@ -7076,6 +7076,7 @@ function algo_init() {
                     }
                 }
             }
+            try {screenshot.recycle();} catch (e) {};
             if (availableSkillCount <= 0) break;
         }
 
