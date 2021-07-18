@@ -5607,6 +5607,7 @@ function algo_init() {
         skillEmptyCHS: ImgURLBase+"/images/skillEmptyCHS.png",
         skillEmptyCHT: ImgURLBase+"/images/skillEmptyCHT.png",
         skillEmptyJP: ImgURLBase+"/images/skillEmptyJP.png",
+        OKButton: ImgURLBase+"/images/OKButton.png",
         OKButtonGray: ImgURLBase+"/images/OKButtonGray.png",
     };
 
@@ -6958,22 +6959,28 @@ function algo_init() {
 
     //检测技能确认按钮是否出现
     function detectOKButtonStatus(screenshot) {
-        let refImg = knownImgs["OKButtonGray"];
+        let refImg = knownImgs["OKButton"];
         let img = getOKButtonImg(screenshot);
         let imgGray = renewImage(images.grayscale(img));
+        let isGray = false;
+        let similarity = images.getSimilarity(img, imgGray, {"type": "MSSIM"});
+        log("判断按钮区域图像是否为灰度 MSSIM=", similarity);
+        if (similarity > 2.9) {
+            isGray = true;
+            refImg = knownImgs["OKButtonGray"];
+        }
         let OKButtonArea = getOKButtonArea();
         let gaussianX = parseInt(getAreaWidth(OKButtonArea) / 3);
         let gaussianY = parseInt(getAreaHeight(OKButtonArea) / 3);
         if (gaussianX % 2 == 0) gaussianX += 1;
         if (gaussianY % 2 == 0) gaussianY += 1;
         let gaussianSize = [gaussianX, gaussianY];
-        let imgGrayBlur = renewImage(images.gaussianBlur(imgGray, gaussianSize));
+        let imgBlur = renewImage(images.gaussianBlur(img, gaussianSize));
         let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
-        let similarity = images.getSimilarity(refImgBlur, imgGrayBlur, {"type": "MSSIM"});
+        similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
         log("判断技能确认按钮是否出现 MSSIM=", similarity);
         if (similarity > 2.1) {
-            similarity = images.getSimilarity(img, imgGray, {"type": "MSSIM"});
-            if (similarity > 2.9) {
+            if (isGray) {
                 log("技能按钮为灰色");
                 return "grayed_out";
             } else {
@@ -7246,7 +7253,7 @@ function algo_init() {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
             } else if (imgName == "skillLocked" || imgName.startsWith("skillEmpty")) {
                 knownArea = knownFirstSkillCoords;
-            } else if (imgName == "OKButtonGray") {
+            } else if (imgName == "OKButton" || imgName == "OKButtonGray") {
                 knownArea = knownOKButtonCoords;
             } else {
                 knownArea = knownFirstStandPointCoords.our[imgName];
