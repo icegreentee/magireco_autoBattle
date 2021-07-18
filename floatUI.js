@@ -5607,6 +5607,7 @@ function algo_init() {
         skillEmptyCHS: ImgURLBase+"/images/skillEmptyCHS.png",
         skillEmptyCHT: ImgURLBase+"/images/skillEmptyCHT.png",
         skillEmptyJP: ImgURLBase+"/images/skillEmptyJP.png",
+        OKButtonGray: ImgURLBase+"/images/OKButtonGray.png",
     };
 
     var downloadAllImages = sync(function () {
@@ -7245,6 +7246,8 @@ function algo_init() {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
             } else if (imgName == "skillLocked" || imgName.startsWith("skillEmpty")) {
                 knownArea = knownFirstSkillCoords;
+            } else if (imgName == "OKButtonGray") {
+                knownArea = knownOKButtonCoords;
             } else {
                 knownArea = knownFirstStandPointCoords.our[imgName];
                 if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
