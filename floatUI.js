@@ -7026,6 +7026,8 @@ function algo_init() {
                         hasAvailableSkill = true;
                         let isSkillButtonClicked = false;
                         let lastOKClickTime = 0;
+                        let lastCancelClickTime = 0;
+                        let isSkillUsed = false;
                         let isSkillDone = false;
                         for (let startTime=new Date().getTime(); new Date().getTime()-startTime<15000; sleep(200)) {
                             if (!clickBackButtonIfShowed()) {
@@ -7035,21 +7037,32 @@ function algo_init() {
                                 break;
                             } else switch (detectOKButtonStatus(compatCaptureScreen())) {
                                 case "available":
+                                    isSkillUsed = true;
                                     let clickTime = new Date().getTime();
-                                    if (lastOKClickTime == 0 || clickTime - lastOKClickTime > 2000) {
+                                    if (lastOKClickTime == 0 || clickTime - lastOKClickTime > 4000) {
                                         lastOKClickTime = clickTime;
                                         log("点击确认按钮使用技能");
                                         click(convertCoords(clickSetsMod.recover_battle));
                                     }
                                     break;
                                 case "grayed_out":
-                                    isSkillDone = true;
+                                    isSkillUsed = false;
+                                    let clickTime = new Date().getTime();
+                                    if (lastCancelClickTime == 0 || clickTime - lastCancelClickTime > 1000) {
+                                        lastCancelClickTime = clickTime;
+                                        log("确定按钮为灰色,点击取消按钮放弃使用技能");
+                                        click(convertCoords(clickSetsMod.reconnectYes));
+                                    }
                                     break;
                                 case "not_detected":
                                 default:
                                     if (isSkillButtonClicked) {
                                         isSkillDone = true;
-                                        log("技能使用完成");
+                                        if (isSkillUsed) {
+                                            log("技能使用完成");
+                                        } else {
+                                            log("技能不可用");
+                                        }
                                     } else {
                                         isSkillButtonClicked = true;
                                         log("点击使用第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能");
