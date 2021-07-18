@@ -6951,7 +6951,7 @@ function algo_init() {
         return getConvertedArea(knownOKButtonCoords);
     }
 
-    function getOKButtonImg() {
+    function getOKButtonImg(screenshot) {
         let area = getOKButtonArea();
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
