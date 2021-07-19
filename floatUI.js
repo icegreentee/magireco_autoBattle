@@ -5159,7 +5159,7 @@ function algo_init() {
     }
     //在/data/local/tmp/下安装scrcap2bmp
     var binarySetupDone = false;
-    const binURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.5.0";
+    const binURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.6.0";
     function setupBinary() {
         if (binarySetupDone) return binarySetupDone;
 
@@ -5581,7 +5581,7 @@ function algo_init() {
     }
 
     //已知参照图像，包括A/B/C盘等
-    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.5.0";
+    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.6.0";
     var knownImgs = {};
     const knownImgURLs = {
         accel: ImgURLBase+"/images/accel.png",
@@ -5607,6 +5607,8 @@ function algo_init() {
         skillEmptyCHS: ImgURLBase+"/images/skillEmptyCHS.png",
         skillEmptyCHT: ImgURLBase+"/images/skillEmptyCHT.png",
         skillEmptyJP: ImgURLBase+"/images/skillEmptyJP.png",
+        OKButton: ImgURLBase+"/images/OKButton.png",
+        OKButtonGray: ImgURLBase+"/images/OKButtonGray.png",
     };
 
     var downloadAllImages = sync(function () {
@@ -6502,12 +6504,10 @@ function algo_init() {
         // MuMu模拟器上tap无效，用swipe代替可解，不知道别的机器情况如何
         swipe(x, y, x, y, 100);
         sleep(50);
-        swipe(x, y, x, y, 100);
-        sleep(50);
-        click(x, y);
-        sleep(100);
-        click(x, y);
-        sleep(100);
+        if (!clickBackButtonIfShowed()) {
+            log("误触打开了角色信息,多次尝试点击返回却没有效果,退出");
+            stopThread();
+        }
         battleField["their"].lastAimedAtEnemy = enemy;
     }
 
@@ -6658,7 +6658,7 @@ function algo_init() {
                 }
                 //最后一个盘点击成功的表现就是行动盘消失，所以当然无法分辨盘是否被按下
                 //这种情况下因为我方回合选盘已经结束，点击行动盘的位置没有影响，所以即便多点几次也是无害的
-                if (clickedDisksCount == 2 && inconclusiveCount >= 3) {
+                if (clickedDisksCount == 2 && inconclusiveCount >= 1) {
                     log("看不到最后一个盘了，应该是点击动作完成了");
                     disk.down = true;
                 } else {
@@ -6908,10 +6908,9 @@ function algo_init() {
                 click(convertCoords(clickSetsMod.reconnectYes));
                 sleep(500);
             }
-            if (isBackButtonAppearing(compatCaptureScreen())) {
-                log("误触打开了角色信息,点击返回关闭");
-                click(convertCoords(clickSetsMod.back));
-                sleep(500);
+            if (!clickBackButtonIfShowed()) {
+                log("误触打开了角色信息,多次尝试点击返回却没有效果,退出");
+                stopThread();
             }
             log("点击切换技能面板/行动盘面板");
             click(convertCoords(clickSetsMod.skillPanelSwitch));
@@ -6937,35 +6936,148 @@ function algo_init() {
         }
     }
 
+    //有返回按钮出现时点击
+    function clickBackButtonIfShowed() {
+        let lastClickTime = 0;
+        let attemptMax = 10;
+        for (let attempt=0; attempt<attemptMax; attempt++) {
+            if (!isBackButtonAppearing(compatCaptureScreen())) {
+                return true;
+            }
+            let clickTime = new Date().getTime();
+            if (lastClickTime == 0 || clickTime - lastClickTime > 2000) {
+                lastClickTime = clickTime;
+                log("点击返回");
+                click(convertCoords(clickSetsMod.back));
+            }
+            sleep(500);
+        }
+        log("尝试点击返回多次仍然没有效果");
+        return false;
+    }
+
+    var knownOKButtonCoords = {
+        topLeft: {
+            x: 1313, y: 705, pos: "center"
+        },
+        bottomRight: {
+            x: 1381, y: 824, pos: "center"
+        }
+    };
+
+    function getOKButtonArea() {
+        return getConvertedArea(knownOKButtonCoords);
+    }
+
+    function getOKButtonImg(screenshot) {
+        let area = getOKButtonArea();
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+
+    //检测技能确认按钮是否出现
+    function detectOKButtonStatus(screenshot) {
+        let refImg = knownImgs["OKButton"];
+        let img = getOKButtonImg(screenshot);
+        let imgGRAY = renewImage(images.grayscale(img));
+        let imgGray = renewImage(images.cvtColor(imgGRAY, "GRAY2BGRA"));
+        let imgBGRA = renewImage(images.cvtColor(img, "BGR2BGRA"));
+        let isGray = false;
+        let similarity = images.getSimilarity(imgBGRA, imgGray, {"type": "MSSIM"});
+        log("判断按钮区域图像是否为灰度 MSSIM=", similarity);
+        if (similarity > 2.9) {
+            isGray = true;
+            refImg = knownImgs["OKButtonGray"];
+        }
+        let OKButtonArea = getOKButtonArea();
+        let gaussianX = parseInt(getAreaWidth(OKButtonArea) / 3);
+        let gaussianY = parseInt(getAreaHeight(OKButtonArea) / 3);
+        if (gaussianX % 2 == 0) gaussianX += 1;
+        if (gaussianY % 2 == 0) gaussianY += 1;
+        let gaussianSize = [gaussianX, gaussianY];
+        let imgBlur = renewImage(images.gaussianBlur(img, gaussianSize));
+        let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
+        similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
+        log("判断技能确认按钮是否出现 MSSIM=", similarity);
+        if (similarity > 2.1) {
+            if (isGray) {
+                log("技能按钮为灰色");
+                return "grayed_out";
+            } else {
+                log("技能按钮可用");
+                return "available";
+            }
+        } else {
+            log("没有检测到技能按钮");
+            return "not_detected";
+        }
+    }
+
     //闭着眼放出所有主动技能
     function clickAllSkills() {
         //打开技能面板
         toggleSkillPanel(true);
 
-        for (let pass=1; pass<=2; pass++) { //只循环2遍，防止被控的时候技能按钮总是亮着又发动不了
-            var hasAvailableSkill = false;
-            let screenshot = compatCaptureScreen();
+        for (let pass=1; pass<=3; pass++) { //只循环3遍
+            var availableSkillCount = 0;
+            let screenshot = renewImage(images.copy(compatCaptureScreen())); //复制一遍以避免toggleSkillPanel回收screenshot导致崩溃退出的问题
             for (let diskPos=0; diskPos<5; diskPos++) {
                 for (let skillNo=0; skillNo<2; skillNo++) {
                     if (isSkillAvailable(screenshot, diskPos, skillNo)) {
-                        hasAvailableSkill = true;
-                        log("点击使用第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能");
-                        click(getAreaCenter(getSkillArea(diskPos, skillNo)));
-                        sleep(500);
-                        log("点击确认按钮使用技能");
-                        click(convertCoords(clickSetsMod.recover_battle));
-                        sleep(4000);
-                        while (isBackButtonAppearing(compatCaptureScreen())) {
-                            log("误触打开了角色信息,点击返回关闭");
-                            click(convertCoords(clickSetsMod.back));
-                            sleep(500);
+                        availableSkillCount++;
+                        let isSkillButtonClicked = false;
+                        let lastOKClickTime = 0;
+                        let lastCancelClickTime = 0;
+                        let isSkillUsed = false;
+                        let isSkillDone = false;
+                        for (let startTime=new Date().getTime(); new Date().getTime()-startTime<15000; sleep(200)) {
+                            let clickTime = 0;
+                            if (!clickBackButtonIfShowed()) {
+                                log("误触打开了角色信息,多次点击返回却没有效果,退出");
+                                stopThread();
+                            } else if (isSkillDone) {
+                                if (!isSkillUsed) availableSkillCount--;
+                                break;
+                            } else switch (detectOKButtonStatus(compatCaptureScreen())) {
+                                case "available":
+                                    isSkillUsed = true;
+                                    clickTime = new Date().getTime();
+                                    if (lastOKClickTime == 0 || clickTime - lastOKClickTime > 4000) {
+                                        lastOKClickTime = clickTime;
+                                        log("点击确认按钮使用技能");
+                                        click(convertCoords(clickSetsMod.recover_battle));
+                                    }
+                                    break;
+                                case "grayed_out":
+                                    isSkillUsed = false;
+                                    clickTime = new Date().getTime();
+                                    if (lastCancelClickTime == 0 || clickTime - lastCancelClickTime > 1000) {
+                                        lastCancelClickTime = clickTime;
+                                        log("确定按钮为灰色,点击取消按钮放弃使用技能");
+                                        click(convertCoords(clickSetsMod.reconnectYes));
+                                    }
+                                    break;
+                                case "not_detected":
+                                default:
+                                    if (isSkillButtonClicked) {
+                                        isSkillDone = true;
+                                        if (isSkillUsed) {
+                                            log("技能使用完成");
+                                        } else {
+                                            log("技能不可用");
+                                        }
+                                    } else {
+                                        isSkillButtonClicked = true;
+                                        log("点击使用第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能");
+                                        click(getAreaCenter(getSkillArea(diskPos, skillNo)));
+                                    } 
+                            }
                         }
                         toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
-                        screenshot = compatCaptureScreen(); //toggleSkillPanel回收了screenshot，所以需要重新截图赋值
                     }
                 }
             }
-            if (!hasAvailableSkill) break;
+            try {screenshot.recycle();} catch (e) {};
+            if (availableSkillCount <= 0) break;
         }
 
         //关闭技能面板
@@ -7174,6 +7286,8 @@ function algo_init() {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
             } else if (imgName == "skillLocked" || imgName.startsWith("skillEmpty")) {
                 knownArea = knownFirstSkillCoords;
+            } else if (imgName == "OKButton" || imgName == "OKButtonGray") {
+                knownArea = knownOKButtonCoords;
             } else {
                 knownArea = knownFirstStandPointCoords.our[imgName];
                 if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
