@@ -87,7 +87,12 @@ function setupBinary() {
 
     privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
     let result = privShell("chmod 755 "+binaryCopyToPath);
-    if (result.code == 0) shellScreenCap.binarySetupDone = true;
+    if (result.code == 0) {
+        shellScreenCap.binarySetupDone = true;
+    } else {
+        log(result);
+    }
+    return shellScreenCap.binarySetupDone;
 }
 
 //申请截屏权限
