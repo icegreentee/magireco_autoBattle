@@ -286,7 +286,7 @@ var compatCaptureScreen = sync(function (useShell) {
         return renewImage(screenshot, "screenshot", tagOnly); //回收旧图片
     } else {
         //使用AutoJS默认提供的录屏API截图
-        let screenshot = captureScreen.apply(this, arguments);
+        let screenshot = captureScreen();
         if (needScreenCaptureFix) {
             //检测到横屏强制转竖屏的截屏，需要修正
 
