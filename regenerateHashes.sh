@@ -39,9 +39,10 @@ for SUBDIR in *; do
         find . | grep -v '^\.$' | grep -v -- '-sha256-hashes\.json$' | sed -e 's/^\.\///g' | while read FILE; do
             if [ ! -f "${FILE}" ]; then continue; fi
             echo -ne "{"
-            echo -ne "\"fileName\":\"${FILE}\","
+            FILENAME=$(basename "modules/${SUBDIR}/${FILE}")
+            echo -ne "\"fileName\":\"${FILENAME}\","
             DIRNAME=$(dirname "modules/${SUBDIR}/${FILE}")
-            echo -ne "  ${DIRNAME} ${FILE}..." >&2
+            echo -ne "  ${DIRNAME} ${FILENAME}..." >&2
             echo -ne "\"fileDir\":\"${DIRNAME}\","
             if [[ "${FILE}" == *".js" ]] || [[ "${FILE}" == *".json" ]] || [[ "${FILE}" == *".c" ]] || [[ "${FILE}" == *".txt" ]]; then
                 echo -ne " strip CR..." >&2
