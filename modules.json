@@ -8,6 +8,10 @@
     "deps": []
   },
   {
+    "name": "dialogsManager",
+    "deps": []
+  },
+  {
     "name": "shellCmd",
     "deps": []
   },
@@ -21,6 +25,6 @@
   },
   {
     "name": "settingsUI",
-    "deps": ["bugReporter", "floatUI", "onlineUpdate"]
+    "deps": ["bugReporter", "dialogsManager", "floatUI", "onlineUpdate"]
   }
 ]

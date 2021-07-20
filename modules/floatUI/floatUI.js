@@ -45,10 +45,6 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
-var origFunc = {
-    buildDialog: function() {return dialogs.build.apply(this, arguments)},
-}
-
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
@@ -162,9 +158,6 @@ const TASK_PAUSING = 2;
 const TASK_PAUSED = 3;
 const TASK_RESUMING = 4;
 var isCurrentTaskPaused = threads.atomic(TASK_STOPPED);
-//被打开的所有对话框（用于在线程退出时dismiss）
-var openedDialogs = {openedDialogCount: 0};
-var openedDialogsLock = threads.lock();
 
 //运行脚本时隐藏UI控件，防止误触
 var menuItems = [];
@@ -332,41 +325,8 @@ var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
             isCurrentTaskPaused.set(TASK_STOPPED);
             lockUI(false);
         }
-        log("关闭所有无主对话框...");
-        try {
-            openedDialogsLock.lock();//先加锁，dismiss会等待解锁后再开始删
-            for (let key in openedDialogs) {
-                if (key != "openedDialogCount") {
-                    openedDialogs[key].node.dialog.dismiss();
-                }
-            }
-        } catch (e) {
-            logException(e);
-            throw e;
-        } finally {
-            openedDialogsLock.unlock();
-        }
-        //等待dismiss删完，如果不等删完的话，下一次启动的脚本调用对话框又会死锁
-        log("等待无主对话框全部清空...");
-        while (true) {
-            let remaining = 0;
-            try {
-                openedDialogsLock.lock();
-                for (let key in openedDialogs) {
-                    if (key != "openedDialogCount") {
-                        remaining++;
-                    }
-                }
-            } catch (e) {
-                logException(e);
-                throw e;
-            } finally {
-                openedDialogsLock.unlock();
-            }
-            if (remaining == 0) break;
-            sleep(100);
-        }
-        log("无主对话框已全部清空");
+        //关闭所有无主对话框
+        MODULES.dialogsManager.dismissAll();
     });
     monitoredTask.waitFor();
 });
@@ -2715,136 +2675,7 @@ function algo_init() {
         ],
     };
 
-    function deleteDialogAndSetResult(openedDialogsNode, result) {
-        //调用origFunc.buildDialog时貌似又会触发一次dismiss，然后造成openedDialogsLock死锁，所以这里return来避免这个死锁
-        if (openedDialogsNode.alreadyDeleted.getAndIncrement() != 0) return;
-
-        let count = openedDialogsNode.count;
-
-        try {
-            openedDialogsLock.lock();
-            delete openedDialogs[""+count];
-        } catch (e) {
-            logException(e);
-            throw e;
-        } finally {
-            openedDialogsLock.unlock();
-        }
-
-        openedDialogsNode.dialogResult.setAndNotify(result);
-    }
-    var dialogs = {
-        buildAndShow: function () { let openedDialogsNode = {}; try {
-            openedDialogsLock.lock();
-
-            let count = ++openedDialogs.openedDialogCount;
-            openedDialogs[""+count] = {node: openedDialogsNode};
-            openedDialogsNode.count = count;
-
-            var dialogType = arguments[0];
-            var title = arguments[1];
-            var content = arguments[2];
-            var prefill = content;
-            var callback1 = arguments[3];
-            var callback2 = arguments[4];
-            if (dialogType == "rawInputWithContent") {
-                prefill = arguments[3];
-                callback1 = arguments[4];
-                callback2 = arguments[5];
-            }
-            if (title == null) title = "";
-            if (content == null) content = "";
-            if (prefill == null) prefill = "";
-
-            openedDialogsNode.dialogResult = threads.disposable();
-
-            let dialogParams = {title: title};
-            if (dialogType != "select") dialogParams.positive = "确定";
-
-            switch (dialogType) {
-                case "alert":
-                    dialogParams["content"] = content;
-                    break;
-                case "select":
-                    if (callback2 != null) dialogParams["negative"] = "取消";
-                    dialogParams["items"] = content;
-                    dialogParams["itemsSelectMode"] = "select";
-                    break;
-                case "confirm":
-                    dialogParams["negative"] = "取消";
-                    dialogParams["content"] = content;
-                    break;
-                case "rawInputWithContent":
-                    if (content != null && content != "") dialogParams["content"] = content;
-                case "rawInput":
-                    if (callback2 != null) dialogParams["negative"] = "取消";
-                    dialogParams["inputPrefill"] = prefill;
-                    break;
-            }
-
-            let newDialog = origFunc.buildDialog(dialogParams);
-
-            openedDialogsNode.alreadyDeleted = threads.atomic(0);
-            newDialog = newDialog.on("dismiss", () => {
-                //dismiss应该在positive/negative/input之后，所以应该不会有总是传回null的问题
-                //其中，positive/input之后应该不会继续触发dismiss，只有negative才会
-                deleteDialogAndSetResult(openedDialogsNode, null);
-            });
-
-            if (dialogType != "rawInput" && dialogType != "rawInputWithContent" && dialogType != "select") {
-                newDialog = newDialog.on("positive", () => {
-                    if (callback1 != null) callback1();
-                    //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                    deleteDialogAndSetResult(openedDialogsNode, true);
-                });
-            }
-
-            switch (dialogType) {
-                case "alert":
-                    break;
-                case "select":
-                    newDialog = newDialog.on("item_select", (index, item, dialog) => {
-                        if (callback1 != null) callback1();
-                        deleteDialogAndSetResult(openedDialogsNode, index);
-                    });
-                    //不break
-                case "confirm":
-                    newDialog = newDialog.on("negative", () => {
-                        if (callback2 != null) callback2();
-                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                        deleteDialogAndSetResult(openedDialogsNode, false);
-                    });
-                    break;
-                case "rawInputWithContent":
-                case "rawInput":
-                    newDialog = newDialog.on("input", (input) => {
-                        if (callback1 != null) callback1();
-                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                        deleteDialogAndSetResult(openedDialogsNode, input);
-                    });
-                    newDialog = newDialog.on("negative", () => {
-                        if (callback2 != null) callback2();
-                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                        deleteDialogAndSetResult(openedDialogsNode, null);
-                    });
-                    break;
-            }
-
-            openedDialogsNode.dialog = newDialog;
-
-            newDialog.show();
-        } catch (e) {
-            logException(e);
-            throw e;
-        } finally {
-            openedDialogsLock.unlock();
-        } return openedDialogsNode.dialogResult.blockedGet(); },
-        alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
-        select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
-        confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
-        rawInput: function(title, prefill, callback1, callback2) {return this.buildAndShow("rawInput", title, prefill, callback1, callback2)},
-        rawInputWithContent: function(title, content, prefill, callback1, callback2) {return this.buildAndShow("rawInputWithContent", title, content, prefill, callback1, callback2)},
-    };
+    var dialogs = MODULES.dialogsManager;
 
     var string = {};
     var last_alive_lang = null; //用于游戏闪退重启

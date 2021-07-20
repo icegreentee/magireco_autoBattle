@@ -23,7 +23,7 @@ function logException(e) {
 
 
 //isDevMode为true时不检查模块哈希值
-const isDevMode = false;
+const isDevMode = true;
 
 //已加载模块列表
 var MODULES = {};
@@ -202,6 +202,7 @@ if (!isAllModulesLoaded) {
         }
         if (response.statusCode != 200) {
             toastLog("下载在线更新模块 [onlineUpdate] 时出错\n"+response.statusCode+" "+response.statusMessage);
+            log("完整URL: ["+url+"]");
             return false;
         }
         log("写入文件 [onlineUpdate.js] ...");
@@ -269,7 +270,11 @@ if (!isAllModulesLoaded) {
             }
         } else if (typeof MODULES.onlineUpdate.verifyModule == "function") {
             //检查并修复现有版本
-            if (!isDevMode) {
+            if (isDevMode) {
+                if (MODULES.onlineUpdate.updateEverythingToLatest(true)) {
+                    MODULES.onlineUpdate.restart();
+                }
+            } else {
                 let isAllSucceeded = true;
                 if (!MODULES.onlineUpdate.verifyModule("main", false)) {
                     if (!MODULES.onlineUpdate.updateModuleToVersion("main", version)) {
