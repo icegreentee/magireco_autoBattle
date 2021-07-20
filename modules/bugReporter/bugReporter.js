@@ -27,7 +27,7 @@ function setFollowRedirects(value) {
 }
 
 var reportTask = null;
-function reportBug() {
+var reportBug = sync(function () {
     toastLog("正在上传日志和最近一次的快照,请耐心等待...");
 
     log(appName);
@@ -164,6 +164,13 @@ function reportBug() {
             inputPrefill: resultLinks
         }).show();
         log("报告问题对话框已关闭");
+    }
+});
+bugReporter.reportBug = function () {
+    if (reportTask != null && reportTask.isAlive()) {
+        toastLog("已经在上传了,请稍后再试");
+    } else {
+        reportTask = threads.start(function () {reportBug();});
     }
 }
 

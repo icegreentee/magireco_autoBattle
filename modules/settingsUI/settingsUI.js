@@ -308,11 +308,7 @@ function init() { ui.run(function () {
     ui.emitter.on("options_item_selected", (e, item) => {
         switch (item.getTitle()) {
             case "报告问题":
-                if (reportTask && reportTask.isAlive()) {
-                    toastLog("已经在上传了,请稍后再试");
-                } else {
-                    reportTask = threads.start(reportBug);
-                }
+                MODULES.bugReporter.reportBug();
                 break;
             case "查看日志":
                 app.startActivity("console")
