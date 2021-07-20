@@ -43,7 +43,7 @@ for SUBDIR in *; do
             DIRNAME=$(dirname "modules/${SUBDIR}/${FILE}")
             echo -ne "  ${DIRNAME} ${FILE}..." >&2
             echo -ne "\"fileDir\":\"${DIRNAME}\","
-            if [[ "${FILE}" == *".js" ]]; then
+            if [[ "${FILE}" == *".js" ]] || [[ "${FILE}" == *".json" ]] || [[ "${FILE}" == *".c" ]] || [[ "${FILE}" == *".txt" ]]; then
                 echo -ne " strip CR..." >&2
                 HASH=$(sed -e 's/\x0d//g' "${FILE}" | sha256sum | awk '{print $1}')
             else
