@@ -2415,6 +2415,7 @@ function algo_init() {
     }
 
     function getCostAP() {
+        //正常情况下“消耗AP”文字和数字是分开的
         let elements = findAll(string.cost_ap);
         for (let element of elements) {
             if (element.indexInParent() < element.parent().childCount() - 1) {
@@ -2424,6 +2425,11 @@ function algo_init() {
                 }
             }
         }
+        //有的时候它没分开
+        let element = match(string.regex_cost_ap);
+        let text = getContent(element);
+        let matched = text != null ? text.match(/\d+/) : null;
+        if (matched != null) return parseInt(matched[0]);
     }
 
     const knownFirstPtPoint = {
@@ -2737,6 +2743,7 @@ function algo_init() {
             "follow_append",
             "battle_confirm",
             "cost_ap",
+            "regex_cost_ap",
             "regex_drug",
             "regex_lastlogin",
             "regex_bonus",
@@ -2760,6 +2767,7 @@ function algo_init() {
             "关注追加",
             "确定",
             "消耗AP",
+            /^消耗AP *\d+/,
             /^\d+个$/,
             /^最终登录.+/,
             /＋\d+个$/,
@@ -2783,6 +2791,7 @@ function algo_init() {
             "追加關注",
             "決定",
             "消費AP",
+            /^消費AP *\d+/,
             /^\d+個$/,
             /^最終登入.+/,
             /＋\d+個$/,
@@ -2806,6 +2815,7 @@ function algo_init() {
             "フォロー追加",
             "決定",
             "消費AP",
+            /^消費AP *\d+/,
             /^\d+個$/,
             /^最終ログイン.+/,
             /＋\d+個$/,
