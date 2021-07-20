@@ -5125,7 +5125,7 @@ function algo_init() {
                     if (element && element.refresh()) {
                         log("尝试跳过剧情");
                         let bound = element.bounds();
-                        click(bound.right, bound.top);
+                        click(bound.right-50, bound.top+50);
                     }
                     break;
                 }
