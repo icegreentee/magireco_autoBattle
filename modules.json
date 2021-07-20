@@ -20,8 +20,12 @@
     "deps": ["shellCmd"]
   },
   {
+    "name": "shellScreenCap",
+    "deps": ["shellCmd"]
+  },
+  {
     "name": "floatUI",
-    "deps": ["compatTouch"]
+    "deps": ["compatTouch", "shellScreenCap"]
   },
   {
     "name": "settingsUI",
