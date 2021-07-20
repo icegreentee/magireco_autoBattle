@@ -1,7 +1,13 @@
 #!/bin/bash
 
 VERSIONNAME=$(grep -m1 "versionName" project.json | tr -d ':",' | awk '{print $2}')
+echo -ne "Updating \"version\" variable in main.js ..."
 sed -i "s/^var version *= *\"[^\"]*\"/var version = \"${VERSIONNAME}\"/g" main.js
+echo -ne "DONE!\n\n"
+
+echo -ne "Disabling \"isDevMode\" in main.js ..."
+sed -i "s/^const isDevMode *= .*/const isDevMode = false;/g" main.js
+echo -ne "DONE!\n\n"
 
 echo -ne "Regenerating hashes for main.js and floatUI.js ..." >&2
 echo -ne "[" > main-sha256-hashes.json
@@ -43,7 +49,7 @@ for SUBDIR in *; do
             else
                 HASH=$(sha256sum "${FILE}" | awk '{print $1}')
             fi
-            echo -ne "DONE\n" >&2
+            echo -ne "DONE!\n" >&2
             echo -ne "\"fileHash\":\"${HASH}\","
             echo -ne "\"fileVersion\":\"${VERSIONNAME}\""
             echo -ne "},"

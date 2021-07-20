@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "4.6.0";
+var version = "4.8.0";
 var appName = Name + " v" + version;
 
 // 捕获异常时打log记录详细的调用栈
