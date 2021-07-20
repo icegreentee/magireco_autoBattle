@@ -23,7 +23,7 @@ function logException(e) {
 
 
 //isDevMode为true时不检查模块哈希值
-const isDevMode = true;
+const isDevMode = false;
 
 //已加载模块列表
 var MODULES = {};
