@@ -44,10 +44,10 @@ function logException(e) {
 }
 
 var origFunc = {
-    click: function () {return click.apply(this, arguments)},
-    swipe: function () {return swipe.apply(this, arguments)},
-    press: function () {return press.apply(this, arguments)},
-    buildDialog: function() {return dialogs.build.apply(this, arguments)},
+    click: function () { return click.apply(this, arguments) },
+    swipe: function () { return swipe.apply(this, arguments) },
+    press: function () { return press.apply(this, arguments) },
+    buildDialog: function () { return dialogs.build.apply(this, arguments) },
 }
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -155,7 +155,7 @@ const TASK_PAUSED = 3;
 const TASK_RESUMING = 4;
 var isCurrentTaskPaused = threads.atomic(TASK_STOPPED);
 //被打开的所有对话框（用于在线程退出时dismiss）
-var openedDialogs = {openedDialogCount: 0};
+var openedDialogs = { openedDialogCount: 0 };
 var openedDialogsLock = threads.lock();
 
 //运行脚本时隐藏UI控件，防止误触
@@ -163,13 +163,13 @@ var menuItems = [];
 function lockUI(isLocked) {
     ui.run(() => {
         //隐藏或显示设置界面
-        ui["swipe"].setVisibility(isLocked?View.GONE:View.VISIBLE);
-        ui["running_stats"].setVisibility(isLocked?View.VISIBLE:View.GONE);
-        activity.setSupportActionBar(isLocked?null:ui.toolbar);
+        ui["swipe"].setVisibility(isLocked ? View.GONE : View.VISIBLE);
+        ui["running_stats"].setVisibility(isLocked ? View.VISIBLE : View.GONE);
+        activity.setSupportActionBar(isLocked ? null : ui.toolbar);
         let menu = ui["toolbar"].getMenu();
         menu.close();
         if (isLocked) {
-            for (let i=0; i<menu.size(); i++) menuItems.push(menu.getItem(i));
+            for (let i = 0; i < menu.size(); i++) menuItems.push(menu.getItem(i));
             menu.clear();
         } else {
             menu.clear();
@@ -192,7 +192,7 @@ function getUIContent(key) {
             return ui[key].getText() + "";
         case "Switch":
         case "CheckBox":
-            return ui[key].isChecked()?"已启用":"已停用";
+            return ui[key].isChecked() ? "已启用" : "已停用";
         case "JsSpinner":
             return ui[key].getSelectedItemPosition();
         case "RadioGroup": {
@@ -209,13 +209,13 @@ function getParamsText() {
     let result = "";
 
     let drugnumarr = [];
-    for (let i=1; i<=4; i++) {
-        let drugName = ui["drug"+i].text;
-        let drugNum = ui["drug"+i+"num"].getText();
-        let ischecked = ui["drug"+i].isChecked();
-        drugnumarr.push("<font color='#"+(ischecked?"000000'>":"808080'>")+" "+drugName+" "+(ischecked?"已启用":"已停用")+" 个数限制"+drugNum+"</font>");
+    for (let i = 1; i <= 4; i++) {
+        let drugName = ui["drug" + i].text;
+        let drugNum = ui["drug" + i + "num"].getText();
+        let ischecked = ui["drug" + i].isChecked();
+        drugnumarr.push("<font color='#" + (ischecked ? "000000'>" : "808080'>") + " " + drugName + " " + (ischecked ? "已启用" : "已停用") + " 个数限制" + drugNum + "</font>");
     }
-    result += drugnumarr.join("<br>")+"<br>";
+    result += drugnumarr.join("<br>") + "<br>";
 
     const globalTaskParams = {
         justNPC: "只使用NPC",
@@ -247,12 +247,12 @@ function getParamsText() {
         for (let key in taskParams) {
             let name = taskParams[key];
             let content = getUIContent(key);
-            let isdisabled = (content=="" || content=="已停用");
-            content = content==""?ui[key].hint:content;
-            taskparamarr.push("<font color='#"+(!isdisabled?"000000'>":"808080'>")+" "+name+" "+content+"</font>");
+            let isdisabled = (content == "" || content == "已停用");
+            content = content == "" ? ui[key].hint : content;
+            taskparamarr.push("<font color='#" + (!isdisabled ? "000000'>" : "808080'>") + " " + name + " " + content + "</font>");
         }
     }
-    result += taskparamarr.join("<br>")+"<br>";
+    result += taskparamarr.join("<br>") + "<br>";
 
     return android.text.Html.fromHtml(result);
 }
@@ -271,7 +271,7 @@ function getStatusText() {
 
     result += "<font color='#000000'>";
 
-    result += "已运行周回数(可能不准确): "+currentTaskCycles;
+    result += "已运行周回数(可能不准确): " + currentTaskCycles;
     result += "<br>"
     result += "已磕药数: ";
     const drugnames = {
@@ -283,8 +283,8 @@ function getStatusText() {
     let consumedarr = [];
     for (let key in drugnames) {
         let consumed = currentTaskDrugConsumed[key];
-        consumed = consumed==null ? 0 : consumed;
-        consumedarr.push(drugnames[key]+":"+consumed+"个");
+        consumed = consumed == null ? 0 : consumed;
+        consumedarr.push(drugnames[key] + ":" + consumed + "个");
     }
     result += consumedarr.join("  ");
 
@@ -296,7 +296,7 @@ function getStatusText() {
 //监视当前任务的线程
 var monitoredTask = null;
 
-var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
+var syncedReplaceCurrentTask = sync(function (taskItem, callback) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
         isCurrentTaskPaused.set(TASK_STOPPED);
@@ -316,7 +316,7 @@ var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
             currentTask.waitFor();
             //由被运行的脚本线程自己执行isCurrentTaskPaused.set(TASK_RUNNING)
             //如果被运行的脚本不（需要）支持暂停，那就不设置TASK_RUNNING
-        } catch (e) {logException(e);}
+        } catch (e) { logException(e); }
         if (currentTask != null && currentTask.isAlive()) {
             lockUI(true);
             currentTask.join();
@@ -366,7 +366,7 @@ var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
 function replaceCurrentTask(taskItem, callback) {
     //确保前一个脚本停下后会新开一个线程执行callback
     try {
-        threads.start(function () {syncedReplaceCurrentTask(taskItem, callback);}).waitFor();
+        threads.start(function () { syncedReplaceCurrentTask(taskItem, callback); }).waitFor();
     } catch (e) {
         logException(e);
     }
@@ -427,7 +427,7 @@ floatUI.main = function () {
             });
         } else {
             while (isSelf || (thread != null && thread.isAlive())) {
-                try {thread.interrupt();} catch (e) {};
+                try { thread.interrupt(); } catch (e) { };
                 sleep(200);
             }
         }
@@ -483,13 +483,13 @@ floatUI.main = function () {
 
     function cancelWrap() {
         toastLog("停止脚本");
-        replaceCurrentTask({name:"未运行任何脚本", fn: function () {}});
+        replaceCurrentTask({ name: "未运行任何脚本", fn: function () { } });
     }
 
     // get to main activity
     function settingsScrollToTop(isPaused) {
         //scrollview内容有变动时滚动回顶端
-        ui.run(function() {
+        ui.run(function () {
             //尝试过OnGlobalLayoutListener，但仍然没解决问题；
             //可能是这个事件被触发过很多次，然后就不知道应该在第几次触发时注销Listener
             ui["content"].postDelayed(function () {
@@ -504,7 +504,7 @@ floatUI.main = function () {
     function openSettingsRunnable() {
         if (!isCurrentTaskPaused.compareAndSet(TASK_RUNNING, TASK_PAUSING)) {
             replaceCurrentTask(
-                {name:"未运行任何脚本", fn: function () {}},
+                { name: "未运行任何脚本", fn: function () { } },
                 function () {
                     //确保之前的脚本停下来后才会新开一个线程执行这个回调
                     toastLog("打开脚本设置\n(没有脚本正在运行中)");
@@ -547,13 +547,13 @@ floatUI.main = function () {
                     break;
                 case TASK_RUNNING:
                     toastLog("继续运行脚本");
-                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    ui.run(function () { ui["task_paused_vertical"].setVisibility(View.GONE); });
                     lockUI(true);
                     return;
                     break;
                 case TASK_STOPPED:
                     log("脚本已停止运行");
-                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    ui.run(function () { ui["task_paused_vertical"].setVisibility(View.GONE); });
                     //monitoredTask会执行lockUI(false)
                     return;
                     break;
@@ -564,20 +564,22 @@ floatUI.main = function () {
         }
     }
     var openSettingsThread = null;
-    function settingsWrap() {sync(function () {
-        if (openSettingsThread != null && openSettingsThread.isAlive()) {
-            if (isCurrentTaskPaused.get() == TASK_PAUSED) {
-                toastLog("打开脚本设置\n(脚本已暂停)");
-                backtoMain();
-                settingsScrollToTop(true);
+    function settingsWrap() {
+        sync(function () {
+            if (openSettingsThread != null && openSettingsThread.isAlive()) {
+                if (isCurrentTaskPaused.get() == TASK_PAUSED) {
+                    toastLog("打开脚本设置\n(脚本已暂停)");
+                    backtoMain();
+                    settingsScrollToTop(true);
+                } else {
+                    toastLog("脚本尚未暂停\n请稍后再试");
+                    return;
+                }
             } else {
-                toastLog("脚本尚未暂停\n请稍后再试");
-                return;
+                openSettingsThread = threads.start(openSettingsRunnable);
             }
-        } else {
-            openSettingsThread = threads.start(openSettingsRunnable);
-        }
-    })();};
+        })();
+    };
 
     var task_popup = floaty.rawWindow(
         <frame id="container" w="*" h="*">
@@ -971,7 +973,7 @@ floatUI.main = function () {
         }
         if (touch_down_time == 0 || touch_up_time == 0) return null;//不应该仍然为0。实际上应该不会发生
         let swipe_duration = touch_up_time - touch_down_time;
-        return {pos_down: touch_down_pos, pos_up: touch_up_pos, duration: swipe_duration};
+        return { pos_down: touch_down_pos, pos_up: touch_up_pos, duration: swipe_duration };
     };
 
     //初始化getWindowSize()
@@ -1003,7 +1005,7 @@ floatUI.main = function () {
             cutoutParamsLock.lock();
             var startTime = new Date().getTime();
             do {
-                try {adjustCutoutParams();} catch (e) {logException(e);};
+                try { adjustCutoutParams(); } catch (e) { logException(e); };
                 if (limit.cutoutParams != null && limit.cutoutParams.cutout != null) break;
                 sleep(500);
             } while (new Date().getTime() < startTime + 4000);
@@ -1019,21 +1021,21 @@ floatUI.main = function () {
     //使用Shizuku执行shell命令
     shizukuShell = function (shellcmd, logstring) {
         if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "执行shell命令: ["+shellcmd+"]";
-        if (logstring !== false) log("使用Shizuku"+logstring);
-        $shell.setDefaultOptions({adb: true});
+            logstring = "执行shell命令: [" + shellcmd + "]";
+        if (logstring !== false) log("使用Shizuku" + logstring);
+        $shell.setDefaultOptions({ adb: true });
         let result = $shell(shellcmd);
-        $shell.setDefaultOptions({adb: false});
-        if (logstring !== false) log("使用Shizuku"+logstring+" 完成");
+        $shell.setDefaultOptions({ adb: false });
+        if (logstring !== false) log("使用Shizuku" + logstring + " 完成");
         return result;
     };
     //直接使用root权限执行shell命令
     rootShell = function (shellcmd, logstring) {
         if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "执行shell命令: ["+shellcmd+"]";
-        if (logstring !== false) log("直接使用root权限"+logstring);
-        $shell.setDefaultOptions({adb: false});
-        if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
+            logstring = "执行shell命令: [" + shellcmd + "]";
+        if (logstring !== false) log("直接使用root权限" + logstring);
+        $shell.setDefaultOptions({ adb: false });
+        if (logstring !== false) log("直接使用root权限" + logstring + " 完成");
         return $shell(shellcmd, true);
     };
     //根据情况使用Shizuku还是直接使用root执行shell命令
@@ -1056,10 +1058,10 @@ floatUI.main = function () {
     //不使用特权执行shell命令
     normalShell = function (shellcmd, logstring) {
         if (logstring === true || (logstring !== false && logstring == null))
-            logstring = "执行shell命令: ["+shellcmd+"]";
-        if (logstring !== false) log("不使用特权"+logstring);
-        $shell.setDefaultOptions({adb: false});
-        if (logstring !== false) log("不使用特权"+logstring+" 完成");
+            logstring = "执行shell命令: [" + shellcmd + "]";
+        if (logstring !== false) log("不使用特权" + logstring);
+        $shell.setDefaultOptions({ adb: false });
+        if (logstring !== false) log("不使用特权" + logstring + " 完成");
         return $shell(shellcmd);
     }
 
@@ -1088,24 +1090,24 @@ floatUI.main = function () {
         try {
             result = shizukuShell(shellcmd);
         } catch (e) {
-            result = {code: 1, result: "-1", err: ""};
+            result = { code: 1, result: "-1", err: "" };
             logException(e);
         }
         let euid = -1;
         if (result.code == 0) {
             euid = getEUID(result.result);
             switch (euid) {
-            case 0:
-                log("Shizuku有root权限");
-                limit.privilege = {shizuku: {uid: euid}};
-                break;
-            case 2000:
-                log("Shizuku有adb shell权限");
-                limit.privilege = {shizuku: {uid: euid}};
-                break;
-            default:
-                log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
-                limit.privilege = null;
+                case 0:
+                    log("Shizuku有root权限");
+                    limit.privilege = { shizuku: { uid: euid } };
+                    break;
+                case 2000:
+                    log("Shizuku有adb shell权限");
+                    limit.privilege = { shizuku: { uid: euid } };
+                    break;
+                default:
+                    log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
+                    limit.privilege = null;
             }
         }
 
@@ -1122,7 +1124,7 @@ floatUI.main = function () {
         if (result.code == 0) euid = getEUID(result.result);
         if (euid == 0) {
             log("直接获取root权限成功");
-            limit.privilege = {shizuku: null};
+            limit.privilege = { shizuku: null };
             files.create(rootMarkerPath);
         } else {
             toastLog("直接获取root权限失败！");
@@ -1150,38 +1152,38 @@ floatUI.main = function () {
     //嗑药后，更新设置中的嗑药个数限制
     updateDrugLimit = function (index) {
         if (index < 0 || index > 3) throw new Error("index out of range");
-        let drugnum = parseInt(limit["drug"+(index+1)+"num"]);
+        let drugnum = parseInt(limit["drug" + (index + 1) + "num"]);
         //parseInt("") == NaN，NaN视为无限大处理（所以不需要更新数值）
         if (!isNaN(drugnum)) {
             if (drugnum >= drugCosts[index]) {
                 drugnum -= drugCosts[index];
-                limit["drug"+(index+1)+"num"] = ""+drugnum;
+                limit["drug" + (index + 1) + "num"] = "" + drugnum;
                 if (drugnum < drugCosts[index]) {
-                    limit["drug"+(index+1)] = false;
+                    limit["drug" + (index + 1)] = false;
                 }
                 ui.run(() => {
                     //注意,这里会受到main.js里注册的listener影响
-                    ui["drug"+(index+1)+"num"].setText(limit["drug"+(index+1)+"num"]);
-                    let drugcheckbox = ui["drug"+(index+1)];
-                    let newvalue = limit["drug"+(index+1)];
+                    ui["drug" + (index + 1) + "num"].setText(limit["drug" + (index + 1) + "num"]);
+                    let drugcheckbox = ui["drug" + (index + 1)];
+                    let newvalue = limit["drug" + (index + 1)];
                     if (drugcheckbox.isChecked() != newvalue) drugcheckbox.setChecked(newvalue);
                 });
             } else {
                 //正常情况下应该首先是药的数量还够，才会继续嗑药，然后才会更新嗑药个数限制，所以不应该走到这里
-                log("limit.drug"+(index+1)+"num", limit["drug"+(index+1)+"num"]);
+                log("limit.drug" + (index + 1) + "num", limit["drug" + (index + 1) + "num"]);
                 log("index", index);
-                throw new Error("limit.drug"+(index+1)+"num exhausted");
+                throw new Error("limit.drug" + (index + 1) + "num exhausted");
             }
         }
     }
     //嗑药后，更新嗑药个数统计
     updateDrugConsumingStats = function (index) {
         if (index < 0 || index > 3) throw new Error("index out of range");
-        if (currentTaskDrugConsumed["drug"+(index+1)] == null) {
-            currentTaskDrugConsumed["drug"+(index+1)] = 0;
+        if (currentTaskDrugConsumed["drug" + (index + 1)] == null) {
+            currentTaskDrugConsumed["drug" + (index + 1)] = 0;
         }
-        currentTaskDrugConsumed["drug"+(index+1)] += drugCosts[index];
-        log("drug"+(index+1)+"已经磕了"+currentTaskDrugConsumed["drug"+(index+1)]+"个");
+        currentTaskDrugConsumed["drug" + (index + 1)] += drugCosts[index];
+        log("drug" + (index + 1) + "已经磕了" + currentTaskDrugConsumed["drug" + (index + 1)] + "个");
         ui.run(function () {
             //实际上嗑药数量设置会不断扣减，这里没有更新显示
             ui["running_stats_status_text"].setText(getStatusText());
@@ -1193,16 +1195,16 @@ floatUI.main = function () {
 
         //从游戏界面上读取剩余回复药个数后，作为count传入进来
         let remainingnum = parseInt(count);
-        let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
+        let limitnum = parseInt(limit["drug" + (index + 1) + "num"]);
         log(
-        "\n第"+(index+1)+"种回复药"
-        +"\n"+(limit["drug"+(index+1)]?"已启用":"已禁用")
-        +"\n剩余:    "+remainingnum+"个"
-        +"\n个数限制:"+limitnum+"个"
+            "\n第" + (index + 1) + "种回复药"
+            + "\n" + (limit["drug" + (index + 1)] ? "已启用" : "已禁用")
+            + "\n剩余:    " + remainingnum + "个"
+            + "\n个数限制:" + limitnum + "个"
         );
 
         //如果未启用则直接返回false
-        if (!limit["drug"+(index+1)]) return false;
+        if (!limit["drug" + (index + 1)]) return false;
 
         //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
         if (limitnum < drugCosts[index]) return false;
@@ -1930,13 +1932,13 @@ function algo_init() {
         var logString = null;
         switch (arguments.length) {
             case 5:
-                shellcmd = "input swipe "+x1+" "+y1+" "+x2+" "+y2+(duration==null?"":(" "+duration));
-                logString = "模拟滑动: ["+x1+","+y1+" => "+x2+","+y2+"]"+(duration==null?"":(" ("+duration+"ms)"));
+                shellcmd = "input swipe " + x1 + " " + y1 + " " + x2 + " " + y2 + (duration == null ? "" : (" " + duration));
+                logString = "模拟滑动: [" + x1 + "," + y1 + " => " + x2 + "," + y2 + "]" + (duration == null ? "" : (" (" + duration + "ms)"));
                 break;
             case 2:
                 //shellcmd = "input tap "+x1+" "+y1; //在MuMu上会出现自动战斗时一次点不到盘的问题
-                shellcmd = "input swipe "+x1+" "+y1+" "+x1+" "+y1+" 150";
-                logString = "模拟点击: ["+x1+","+y1+"]";
+                shellcmd = "input swipe " + x1 + " " + y1 + " " + x1 + " " + y1 + " 150";
+                logString = "模拟点击: [" + x1 + "," + y1 + "]";
                 break;
             default:
                 throw new Error("clickOrSwipeRoot: invalid argument count");
@@ -1958,7 +1960,7 @@ function algo_init() {
         // limit range
 
         let xy = {};
-        xy.orig = {x: x, y: y};
+        xy.orig = { x: x, y: y };
 
         var sz = getFragmentViewBounds();
         if (x < sz.left) {
@@ -1974,15 +1976,15 @@ function algo_init() {
             y = sz.bottom - 1;
         }
 
-        xy.clamped = {x: x, y: y};
+        xy.clamped = { x: x, y: y };
         for (let axis of ["x", "y"])
             if (xy.clamped[axis] != xy.orig[axis])
-                log("点击坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
+                log("点击坐标" + axis + "=" + xy.orig[axis] + "超出游戏画面之外,强制修正至" + axis + "=" + xy.clamped[axis]);
 
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             // now accessibility gesture APIs are available
-            log("使用无障碍服务模拟点击坐标 "+x+","+y);
+            log("使用无障碍服务模拟点击坐标 " + x + "," + y);
             origFunc.click(x, y);
             log("点击完成");
         } else {
@@ -2006,15 +2008,15 @@ function algo_init() {
         // 解析参数
         var points = [];
         if (arguments.length > 5) throw new Error("compatSwipe: incorrect argument count");
-        for (let i=0; i<arguments.length; i++) {
+        for (let i = 0; i < arguments.length; i++) {
             if (isNaN(parseInt(arguments[i]))) {
                 //参数本身就（可能）是一个坐标点对象
                 points.push(arguments[i]);
             } else {
                 //参数应该是坐标X值或滑动时长
-                if (i < arguments.length-1) {
+                if (i < arguments.length - 1) {
                     //存在下一个参数，则把这个参数视为坐标X值，下一个参数视为坐标Y值
-                    points.push({x: parseInt(arguments[i]), y: parseInt(arguments[i+1])});
+                    points.push({ x: parseInt(arguments[i]), y: parseInt(arguments[i + 1]) });
                     i++;
                 } else {
                     //不存在下一个参数，这个参数应该是滑动时长
@@ -2022,7 +2024,7 @@ function algo_init() {
                 }
             }
             //坐标X、Y值应该都是数字
-            if (isNaN(points[points.length-1].x) || isNaN(points[points.length-1].y))
+            if (isNaN(points[points.length - 1].x) || isNaN(points[points.length - 1].y))
                 throw new Error("compatSwipe: invalid arguments (invalid point)");
             //又一个坐标点被加入，最多加入2个点，不允许加入第3个点
             if (points.length > 2) {
@@ -2037,7 +2039,7 @@ function algo_init() {
         // limit range
 
         let xy = {};
-        xy.orig = {x1: x1, y1: y1, x2: x2, y2: y2};
+        xy.orig = { x1: x1, y1: y1, x2: x2, y2: y2 };
 
         var sz = getFragmentViewBounds();
         if (x1 < sz.left) {
@@ -2065,14 +2067,14 @@ function algo_init() {
             y2 = sz.bottom - 1;
         }
 
-        xy.clamped = {x1: x1, y1: y1, x2: x2, y2: y2};
+        xy.clamped = { x1: x1, y1: y1, x2: x2, y2: y2 };
         for (let axis of ["x1", "y1", "x2", "y2"])
             if (xy.clamped[axis] != xy.orig[axis])
-                log("滑动坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
+                log("滑动坐标" + axis + "=" + xy.orig[axis] + "超出游戏画面之外,强制修正至" + axis + "=" + xy.clamped[axis]);
 
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
-            log("使用无障碍服务模拟滑动 "+x1+","+y1+" => "+x2+","+y2+(duration==null?"":(" ("+duration+"ms)")));
+            log("使用无障碍服务模拟滑动 " + x1 + "," + y1 + " => " + x2 + "," + y2 + (duration == null ? "" : (" (" + duration + "ms)")));
             origFunc.swipe(x1, y1, x2, y2, duration != null ? duration : getDefaultSwipeDuration(x1, x2, y1, y2)); //最后一个参数不能缺省
             log("滑动完成");
         } else {
@@ -2286,7 +2288,7 @@ function algo_init() {
             let children_elements = element.children();
             let max = 0;
             let title = "";
-            for (let i=0; i<children_elements.length; i++) {
+            for (let i = 0; i < children_elements.length; i++) {
                 let child_element = children_elements[i];
                 let text = getContent(child_element);
                 if (text != null && text.length > max) {
@@ -2439,7 +2441,7 @@ function algo_init() {
         //Lv/ATK/DEF/HP 玩家名 [Rank] [最终登录] Pt
         let AllElements = [];
         let uicollection = packageName(string.package_name).find();
-        for (let i=0; i<uicollection.length; i++) {
+        for (let i = 0; i < uicollection.length; i++) {
             AllElements.push(uicollection[i]);
         }
 
@@ -2450,7 +2452,7 @@ function algo_init() {
         if (finalIndex == -1) {
             log("助战选择出错,找不到难度");
             hasError = true;
-            finalIndex = AllElements.length-1; //先让他继续跑，虽然结果不会用
+            finalIndex = AllElements.length - 1; //先让他继续跑，虽然结果不会用
         }
 
         let LvLikeIndices = [];
@@ -2466,14 +2468,14 @@ function algo_init() {
             if (getContent(val).match(string.regex_lastlogin)) LastLoginLikeIndices.push(i)
         });
         let PtLikeIndices = [];
-        AllElements.forEach(function (val, i){
+        AllElements.forEach(function (val, i) {
             if (getContent(val).match(/^\+\d*$/)) PtLikeIndices.push(i)
         });
         log("\n匹配到:"
-            +"\n  类似Lv/ATK/DEF/HP的控件个数: "+LvLikeIndices.length
-            +"\n  类似Rank的控件个数:          "+RankLikeIndices.length
-            +"\n  类似上次登录的控件个数:      "+LastLoginLikeIndices.length
-            +"\n  类似Pt的控件个数:            "+PtLikeIndices.length);
+            + "\n  类似Lv/ATK/DEF/HP的控件个数: " + LvLikeIndices.length
+            + "\n  类似Rank的控件个数:          " + RankLikeIndices.length
+            + "\n  类似上次登录的控件个数:      " + LastLoginLikeIndices.length
+            + "\n  类似Pt的控件个数:            " + PtLikeIndices.length);
 
         let AllLvIndices = [];
         let PlayerLvIndices = [];
@@ -2482,7 +2484,7 @@ function algo_init() {
         LvLikeIndices.reverse().forEach(function (index, i, arr) {
             //第一个(序号0)在颠倒前就是最后一个，因为后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex
             //第二个(序号1)和后续的在颠倒前就是倒数第二个和之前的，往前推一个对应颠倒前往后推一个
-            let nextIndex = i == 0 ? finalIndex : arr[i-1];
+            let nextIndex = i == 0 ? finalIndex : arr[i - 1];
 
             let rankIndex = RankLikeIndices.find((val) => val > index && val < nextIndex);
             let lastLoginIndex = LastLoginLikeIndices.find((val) => val > index && val < nextIndex);
@@ -2494,11 +2496,11 @@ function algo_init() {
                 return
             }
             if (rankIndex != null && lastLoginIndex == null) {
-                log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank,却没找到上次登录");
+                log("在第" + (arr.length - i) + "个Lv/ATK/DEF/HP控件后,找到了Rank,却没找到上次登录");
                 return;
             }
             if (rankIndex == null && lastLoginIndex != null) {
-                log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,没找到Rank,却找到上次登录");
+                log("在第" + (arr.length - i) + "个Lv/ATK/DEF/HP控件后,没找到Rank,却找到上次登录");
                 return;
             }
             if (rankIndex == null && lastLoginIndex == null) {
@@ -2515,7 +2517,7 @@ function algo_init() {
         AllLvIndices.reverse();
         PlayerLvIndices.reverse();
         NPCLvIndices.reverse();
-        log("玩家助战总数: "+PlayerLvIndices.length);
+        log("玩家助战总数: " + PlayerLvIndices.length);
 
         //从NPC的Lv/ATK/DEF/HP里排除和Lv/ATK/DEF/HP相似的恶搞玩家名
         //这里的假设是玩家名肯定在Lv/ATK/DEF/HP和Pt之间——如果还有更奇葩的环境不满足这个假设就没辙了
@@ -2526,14 +2528,14 @@ function algo_init() {
             //已经是第一个Lv/ATK/DEF/HP控件(序号0)了，不可能是假的
             if (i_index == 0) return true;
             //找到前一个Lv/ATK/DEF/HP控件
-            let prevIndex = AllLvIndices[i_index-1];
+            let prevIndex = AllLvIndices[i_index - 1];
 
             let PtIndex = PtLikeIndices.find((val) => val > prevIndex && val < index);
 
             if (PtIndex == null) {
                 //假Lv/ATK/DEF/HP和真Lv/ATK/DEF/HP之间肯定没有Pt
                 let delete_i = AllLvIndices.findIndex((val) => val == index);
-                log("第"+(delete_i+1)+"个Lv/ATK/DEF/HP控件是恶搞玩家名,排除");
+                log("第" + (delete_i + 1) + "个Lv/ATK/DEF/HP控件是恶搞玩家名,排除");
                 AllLvIndices.splice(delete_i, 1);
                 return false;
             }
@@ -2544,8 +2546,8 @@ function algo_init() {
         });
         NPCLvIndices.reverse();//恢复原来的顺序
 
-        log("NPC助战个数: "+NPCLvIndices.length);
-        log("助战总数: "+AllLvIndices.length);
+        log("NPC助战个数: " + NPCLvIndices.length);
+        log("助战总数: " + AllLvIndices.length);
         if (NPCLvIndices.length + PlayerLvIndices.length != AllLvIndices.length) {
             hasError = true;
             log("助战选择出错,NPC助战个数+玩家助战总数!=助战总数");
@@ -2559,7 +2561,7 @@ function algo_init() {
         //可以不用颠倒过来了
         AllLvIndices.forEach(function (index, i, arr) {
             //最后一个Lv/ATK/DEF/HP控件后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex；其余的往后推一个即可
-            let nextIndex = i >= arr.length - 1 ? finalIndex : arr[i+1];
+            let nextIndex = i >= arr.length - 1 ? finalIndex : arr[i + 1];
 
             //倒过来从后往前搜Pt控件，防止碰到类似Pt的恶搞玩家名
             let ptIndex = PtLikeIndices.reverse().find((val) => val > index && val < nextIndex);
@@ -2575,7 +2577,7 @@ function algo_init() {
                     Pt = parseInt(PtContent);
                 }
                 if (isNaN(Pt)) {
-                    log("助战选择出错,在第"+(i+1)+"个Lv/ATK/DEF/HP控件后无法读取Pt数值");
+                    log("助战选择出错,在第" + (i + 1) + "个Lv/ATK/DEF/HP控件后无法读取Pt数值");
                     hasError = true;
                     return;
                 }
@@ -2589,18 +2591,18 @@ function algo_init() {
                 AllPtIndices.push(ptIndex);
 
                 if (Pt > HighestPt) {
-                    log("在第"+(i+1)+"个Lv/ATK/DEF/HP控件后找到了更高的Pt加成: "+Pt);
+                    log("在第" + (i + 1) + "个Lv/ATK/DEF/HP控件后找到了更高的Pt加成: " + Pt);
                     HighestPt = Pt;
                 }
                 return;
             }
             if (ptIndex == null) {
-                log("助战选择出错,在第"+(i+1)+"个Lv/ATK/DEF/HP控件后,找不到Pt控件");
+                log("助战选择出错,在第" + (i + 1) + "个Lv/ATK/DEF/HP控件后,找不到Pt控件");
                 hasError = true;
                 return;
             }
         });
-        log("最高Pt加成: "+HighestPt);
+        log("最高Pt加成: " + HighestPt);
 
         if (NPCPtIndices.length != NPCLvIndices.length) {
             hasError = true;
@@ -2617,8 +2619,8 @@ function algo_init() {
 
         let AllHighPtIndices = AllPtIndices.filter((index) => parseInt(getContent(AllElements[index])) == HighestPt);
         let PlayerHighPtIndices = PlayerPtIndices.filter((index) => parseInt(getContent(AllElements[index])) == HighestPt);
-        log("高Pt加成助战总数: "+AllHighPtIndices.length);
-        log("玩家高Pt加成助战个数: "+PlayerHighPtIndices.length);
+        log("高Pt加成助战总数: " + AllHighPtIndices.length);
+        log("玩家高Pt加成助战个数: " + PlayerHighPtIndices.length);
         if (NPCPtIndices.length + PlayerHighPtIndices.length != AllHighPtIndices.length) {
             hasError = true;
             log("助战选择出错,NPCPt控件数+玩家高Pt加成控件数!=高Pt加成控件总数");
@@ -2628,19 +2630,19 @@ function algo_init() {
         var testOutputString = null;
         if (isTestMode) {
             if (!hasError) {
-                testOutputString  =
-                        "最高Pt加成:"
-                    + "\n  "+HighestPt
+                testOutputString =
+                    "最高Pt加成:"
+                    + "\n  " + HighestPt
                     + "\n助战总数:"
-                    + "\n| "+AllPtIndices.length
+                    + "\n| " + AllPtIndices.length
                     + "\n+---NPC个数:"
-                    + "\n|     "+NPCPtIndices.length
+                    + "\n|     " + NPCPtIndices.length
                     + "\n+---玩家总数:"
-                    + "\n    | "+PlayerPtIndices.length
+                    + "\n    | " + PlayerPtIndices.length
                     + "\n    +---互关好友个数:"
-                    + "\n    |     "+PlayerHighPtIndices.length
+                    + "\n    |     " + PlayerHighPtIndices.length
                     + "\n    +---单FO或路人个数:"
-                    + "\n          "+(PlayerPtIndices.length-PlayerHighPtIndices.length);
+                    + "\n          " + (PlayerPtIndices.length - PlayerHighPtIndices.length);
             } else {
                 testOutputString = null;
             }
@@ -2650,25 +2652,25 @@ function algo_init() {
 
         if (hasError) {
             toastLog("助战选择过程中出错,返回第一个助战");
-            return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+            return { point: convertCoords(knownFirstPtPoint), testdata: testOutputString };
         }
 
         if (AllPtIndices.length == 0) {
             toastLog("没有助战可供选择");
-            return {point: null, testdata: testOutputString};
+            return { point: null, testdata: testOutputString };
         }
 
         if (limit.justNPC) {
             if (NPCPtIndices.length > 0) {
                 log("仅使用NPC已开启,选择第一个助战(即第一个NPC)");
-                return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+                return { point: convertCoords(knownFirstPtPoint), testdata: testOutputString };
             } else if (PlayerPtIndices.length > 0) {
                 toastLog("仅使用NPC已开启,但是没有NPC,所以没有助战可供选择");
-                return {point: null, testdata: testOutputString};
+                return { point: null, testdata: testOutputString };
             } else {
                 //不应该走到这里
                 toastLog("没有助战可供选择");
-                return {point: null, testdata: testOutputString};
+                return { point: null, testdata: testOutputString };
             }
         }
 
@@ -2684,17 +2686,17 @@ function algo_init() {
                 toastLog("推算出的第一个互关好友坐标已经超出屏幕范围");
                 //在click里会限制到屏幕范围之内
             }
-            return {point: point, testdata: testOutputString};
+            return { point: point, testdata: testOutputString };
         } else if (NPCPtIndices.length > 0) {
             log("没有互关好友,选择第一个助战(即第一个NPC)");
-            return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+            return { point: convertCoords(knownFirstPtPoint), testdata: testOutputString };
         } else if (PlayerPtIndices.length > 0) {
             log("没有互关好友也没有NPC,选择第一个助战(即单向关注好友或路人)");
-            return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+            return { point: convertCoords(knownFirstPtPoint), testdata: testOutputString };
         } else {
             //不应该走到这里
             toastLog("没有助战可供选择");
-            return {point: null, testdata: testOutputString};
+            return { point: null, testdata: testOutputString };
         }
     }
 
@@ -2826,7 +2828,7 @@ function algo_init() {
 
         try {
             openedDialogsLock.lock();
-            delete openedDialogs[""+count];
+            delete openedDialogs["" + count];
         } catch (e) {
             logException(e);
             throw e;
@@ -2837,116 +2839,118 @@ function algo_init() {
         openedDialogsNode.dialogResult.setAndNotify(result);
     }
     var dialogs = {
-        buildAndShow: function () { let openedDialogsNode = {}; try {
-            openedDialogsLock.lock();
+        buildAndShow: function () {
+            let openedDialogsNode = {}; try {
+                openedDialogsLock.lock();
 
-            let count = ++openedDialogs.openedDialogCount;
-            openedDialogs[""+count] = {node: openedDialogsNode};
-            openedDialogsNode.count = count;
+                let count = ++openedDialogs.openedDialogCount;
+                openedDialogs["" + count] = { node: openedDialogsNode };
+                openedDialogsNode.count = count;
 
-            var dialogType = arguments[0];
-            var title = arguments[1];
-            var content = arguments[2];
-            var prefill = content;
-            var callback1 = arguments[3];
-            var callback2 = arguments[4];
-            if (dialogType == "rawInputWithContent") {
-                prefill = arguments[3];
-                callback1 = arguments[4];
-                callback2 = arguments[5];
-            }
-            if (title == null) title = "";
-            if (content == null) content = "";
-            if (prefill == null) prefill = "";
+                var dialogType = arguments[0];
+                var title = arguments[1];
+                var content = arguments[2];
+                var prefill = content;
+                var callback1 = arguments[3];
+                var callback2 = arguments[4];
+                if (dialogType == "rawInputWithContent") {
+                    prefill = arguments[3];
+                    callback1 = arguments[4];
+                    callback2 = arguments[5];
+                }
+                if (title == null) title = "";
+                if (content == null) content = "";
+                if (prefill == null) prefill = "";
 
-            openedDialogsNode.dialogResult = threads.disposable();
+                openedDialogsNode.dialogResult = threads.disposable();
 
-            let dialogParams = {title: title};
-            if (dialogType != "select") dialogParams.positive = "确定";
+                let dialogParams = { title: title };
+                if (dialogType != "select") dialogParams.positive = "确定";
 
-            switch (dialogType) {
-                case "alert":
-                    dialogParams["content"] = content;
-                    break;
-                case "select":
-                    if (callback2 != null) dialogParams["negative"] = "取消";
-                    dialogParams["items"] = content;
-                    dialogParams["itemsSelectMode"] = "select";
-                    break;
-                case "confirm":
-                    dialogParams["negative"] = "取消";
-                    dialogParams["content"] = content;
-                    break;
-                case "rawInputWithContent":
-                    if (content != null && content != "") dialogParams["content"] = content;
-                case "rawInput":
-                    if (callback2 != null) dialogParams["negative"] = "取消";
-                    dialogParams["inputPrefill"] = prefill;
-                    break;
-            }
+                switch (dialogType) {
+                    case "alert":
+                        dialogParams["content"] = content;
+                        break;
+                    case "select":
+                        if (callback2 != null) dialogParams["negative"] = "取消";
+                        dialogParams["items"] = content;
+                        dialogParams["itemsSelectMode"] = "select";
+                        break;
+                    case "confirm":
+                        dialogParams["negative"] = "取消";
+                        dialogParams["content"] = content;
+                        break;
+                    case "rawInputWithContent":
+                        if (content != null && content != "") dialogParams["content"] = content;
+                    case "rawInput":
+                        if (callback2 != null) dialogParams["negative"] = "取消";
+                        dialogParams["inputPrefill"] = prefill;
+                        break;
+                }
 
-            let newDialog = origFunc.buildDialog(dialogParams);
+                let newDialog = origFunc.buildDialog(dialogParams);
 
-            openedDialogsNode.alreadyDeleted = threads.atomic(0);
-            newDialog = newDialog.on("dismiss", () => {
-                //dismiss应该在positive/negative/input之后，所以应该不会有总是传回null的问题
-                //其中，positive/input之后应该不会继续触发dismiss，只有negative才会
-                deleteDialogAndSetResult(openedDialogsNode, null);
-            });
-
-            if (dialogType != "rawInput" && dialogType != "rawInputWithContent" && dialogType != "select") {
-                newDialog = newDialog.on("positive", () => {
-                    if (callback1 != null) callback1();
-                    //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                    deleteDialogAndSetResult(openedDialogsNode, true);
+                openedDialogsNode.alreadyDeleted = threads.atomic(0);
+                newDialog = newDialog.on("dismiss", () => {
+                    //dismiss应该在positive/negative/input之后，所以应该不会有总是传回null的问题
+                    //其中，positive/input之后应该不会继续触发dismiss，只有negative才会
+                    deleteDialogAndSetResult(openedDialogsNode, null);
                 });
-            }
 
-            switch (dialogType) {
-                case "alert":
-                    break;
-                case "select":
-                    newDialog = newDialog.on("item_select", (index, item, dialog) => {
+                if (dialogType != "rawInput" && dialogType != "rawInputWithContent" && dialogType != "select") {
+                    newDialog = newDialog.on("positive", () => {
                         if (callback1 != null) callback1();
-                        deleteDialogAndSetResult(openedDialogsNode, index);
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, true);
                     });
+                }
+
+                switch (dialogType) {
+                    case "alert":
+                        break;
+                    case "select":
+                        newDialog = newDialog.on("item_select", (index, item, dialog) => {
+                            if (callback1 != null) callback1();
+                            deleteDialogAndSetResult(openedDialogsNode, index);
+                        });
                     //不break
-                case "confirm":
-                    newDialog = newDialog.on("negative", () => {
-                        if (callback2 != null) callback2();
-                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                        deleteDialogAndSetResult(openedDialogsNode, false);
-                    });
-                    break;
-                case "rawInputWithContent":
-                case "rawInput":
-                    newDialog = newDialog.on("input", (input) => {
-                        if (callback1 != null) callback1();
-                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                        deleteDialogAndSetResult(openedDialogsNode, input);
-                    });
-                    newDialog = newDialog.on("negative", () => {
-                        if (callback2 != null) callback2();
-                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
-                        deleteDialogAndSetResult(openedDialogsNode, null);
-                    });
-                    break;
-            }
+                    case "confirm":
+                        newDialog = newDialog.on("negative", () => {
+                            if (callback2 != null) callback2();
+                            //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                            deleteDialogAndSetResult(openedDialogsNode, false);
+                        });
+                        break;
+                    case "rawInputWithContent":
+                    case "rawInput":
+                        newDialog = newDialog.on("input", (input) => {
+                            if (callback1 != null) callback1();
+                            //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                            deleteDialogAndSetResult(openedDialogsNode, input);
+                        });
+                        newDialog = newDialog.on("negative", () => {
+                            if (callback2 != null) callback2();
+                            //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                            deleteDialogAndSetResult(openedDialogsNode, null);
+                        });
+                        break;
+                }
 
-            openedDialogsNode.dialog = newDialog;
+                openedDialogsNode.dialog = newDialog;
 
-            newDialog.show();
-        } catch (e) {
-            logException(e);
-            throw e;
-        } finally {
-            openedDialogsLock.unlock();
-        } return openedDialogsNode.dialogResult.blockedGet(); },
-        alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
-        select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
-        confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
-        rawInput: function(title, prefill, callback1, callback2) {return this.buildAndShow("rawInput", title, prefill, callback1, callback2)},
-        rawInputWithContent: function(title, content, prefill, callback1, callback2) {return this.buildAndShow("rawInputWithContent", title, content, prefill, callback1, callback2)},
+                newDialog.show();
+            } catch (e) {
+                logException(e);
+                throw e;
+            } finally {
+                    openedDialogsLock.unlock();
+                } return openedDialogsNode.dialogResult.blockedGet();
+        },
+        alert: function (title, content, callback) { return this.buildAndShow("alert", title, content, callback) },
+        select: function (title, items, callback1, callback2) { return this.buildAndShow("select", title, items, callback1, callback2) },
+        confirm: function (title, content, callback1, callback2) { return this.buildAndShow("confirm", title, content, callback1, callback2) },
+        rawInput: function (title, prefill, callback1, callback2) { return this.buildAndShow("rawInput", title, prefill, callback1, callback2) },
+        rawInputWithContent: function (title, content, prefill, callback1, callback2) { return this.buildAndShow("rawInputWithContent", title, content, prefill, callback1, callback2) },
     };
 
     var string = {};
@@ -2961,7 +2965,7 @@ function algo_init() {
                     if (detectedLang != last_alive_lang) log("区服", detectedLang);
                     break;
                 }
-            } catch (e) {detectedLang = null;}
+            } catch (e) { detectedLang = null; }
             detectedLang = null;
         }
         if (detectedLang != null) {
@@ -2988,7 +2992,7 @@ function algo_init() {
                     if (auto.root != null) {
                         current_package_name = auto.root.packageName();
                     }
-                } catch (e) {current_package_name = null;};
+                } catch (e) { current_package_name = null; };
                 if (current_package_name == string.package_name) {
                     detectedLang = last_alive_lang;
                     break;
@@ -3053,16 +3057,16 @@ function algo_init() {
         return bounds;
     }
 
-    var screen = {width: 0, height: 0, type: "normal"};
+    var screen = { width: 0, height: 0, type: "normal" };
     var gamebounds = null;
-    var gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
+    var gameoffset = { x: 0, y: 0, center: { y: 0 }, bottom: { y: 0 } };
 
     function detectScreenParams() {
         //开始脚本前可能转过屏之类的，所以参数需要先重置
         //如果中途有问题有问题，最终就不会修改之前的参数
-        let detected_screen = {width: 0, height: 0, type: "normal"};
+        let detected_screen = { width: 0, height: 0, type: "normal" };
         let detected_gamebounds = null;
-        let detected_gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
+        let detected_gameoffset = { x: 0, y: 0, center: { y: 0 }, bottom: { y: 0 } };
 
         detected_screen.width = device.width;
         detected_screen.height = device.height;
@@ -3117,18 +3121,17 @@ function algo_init() {
 
                 if (currentRotation != null && initialRotation != null
                     && currentRotation >= 0 && currentRotation <= 3
-                    && initialRotation >= 0 && initialRotation <= 3)
-                {
+                    && initialRotation >= 0 && initialRotation <= 3) {
                     let relativeRotation = (4 + currentRotation - initialRotation) % 4;
                     log("relativeRotation", relativeRotation);
 
                     let safeInsets = {};
                     for (let key of ["Left", "Top", "Right", "Bottom"]) {
-                        safeInsets[key] = initialCutout["getSafeInset"+key]();
+                        safeInsets[key] = initialCutout["getSafeInset" + key]();
                     }
                     log("safeInsets before rotation", safeInsets);
 
-                    for (let i=0; i<relativeRotation; i++) {
+                    for (let i = 0; i < relativeRotation; i++) {
                         //顺时针旋转相应的次数
                         let temp = safeInsets.Left;
                         safeInsets.Left = safeInsets.Top;
@@ -3229,7 +3232,7 @@ function algo_init() {
         var apCost = getCostAP();
 
         //循环嗑药到设定的AP上限倍数，并且达到关卡消耗的2倍
-        var apMultiplier = parseInt(0+limit.apmul);
+        var apMultiplier = parseInt(0 + limit.apmul);
         while (true) {
             if (apCost == null) {
                 //先检查是否误触，或者检测迟滞而步调不一致
@@ -3254,16 +3257,16 @@ function algo_init() {
                 result == "error";
                 break;//后面还是要尽量把AP药选择窗口关闭，如果已经打开的话
             }
-            log("当前AP:"+apinfo.value+"/"+apinfo.total);
+            log("当前AP:" + apinfo.value + "/" + apinfo.total);
 
             var apMax = apinfo.total * apMultiplier;
-            log("要嗑药到"+apMultiplier+"倍AP上限,即"+apMax+"AP");
+            log("要嗑药到" + apMultiplier + "倍AP上限,即" + apMax + "AP");
 
             if (apinfo.value >= apMax) {
                 log("当前AP已经达到设置的上限倍数");
-                log("关卡消耗"+apCost+"AP");//apCost == null的情况已经在前面排除了
+                log("关卡消耗" + apCost + "AP");//apCost == null的情况已经在前面排除了
                 if (apinfo.value >= apCost * 2) {
-                    log("当前AP达到关卡消耗量的两倍,即"+(apCost*2)+"AP,停止嗑药");
+                    log("当前AP达到关卡消耗量的两倍,即" + (apCost * 2) + "AP,停止嗑药");
                     break;
                 } else if (apinfo.value >= apCost) {
                     log("当前AP只满足关卡消耗量的一倍,尚未达到两倍");
@@ -3278,7 +3281,7 @@ function algo_init() {
 
             //确保AP药选择窗口已经打开
             let ap_refill_title_attempt_max = 1500;
-            for (let attempt=0; attempt<ap_refill_title_attempt_max; attempt++) {
+            for (let attempt = 0; attempt < ap_refill_title_attempt_max; attempt++) {
                 log("等待AP药选择窗口出现...");
                 ap_refill_title_popup = findPopupInfoDetailTitle(string.ap_refill_title, false);
                 if (ap_refill_title_popup != null) {
@@ -3303,7 +3306,7 @@ function algo_init() {
                     result = "error";
                     return result;
                 }
-                if (attempt == ap_refill_title_attempt_max-1) {
+                if (attempt == ap_refill_title_attempt_max - 1) {
                     log("长时间等待后，AP药选择窗口仍然没有出现，退出");
                     stopThread();
                 }
@@ -3329,7 +3332,7 @@ function algo_init() {
                     if (isDrugEnough(i, remainingDrugCount)) {
                         var bound = buttons[i].bounds();
                         do {
-                            log("点击使用第"+(i+1)+"种回复药");
+                            log("点击使用第" + (i + 1) + "种回复药");
                             click(bound.centerX(), bound.centerY());
                             // wait for confirmation popup
                             var ap_refill_confirm_popup = findPopupInfoDetailTitle(string.ap_refill_popup, 2000);
@@ -3352,7 +3355,7 @@ function algo_init() {
 
                         break; //防止一次连续磕到三种不同的药
                     } else {
-                        log("第"+(i+1)+"种回复药剩余数量不足或已经达到嗑药个数限制");
+                        log("第" + (i + 1) + "种回复药剩余数量不足或已经达到嗑药个数限制");
                     }
                 }
             }
@@ -3388,7 +3391,7 @@ function algo_init() {
     }
 
     function convertCoords(point) {
-        let newpoint = {x: point.x, y: point.y, pos: point.pos};
+        let newpoint = { x: point.x, y: point.y, pos: point.pos };
 
         //先缩放
         newpoint.x *= scalerate;
@@ -3399,24 +3402,24 @@ function algo_init() {
         newpoint.y += gameoffset.y;
 
         switch (screen.type) {
-        case "normal":
-            break;
-        case "wider":
-            break;
-        case "higher":
-            switch (point.pos) {
-            case "top":
+            case "normal":
                 break;
-            case "center":
-            case "bottom":
-                newpoint.y += gameoffset[point.pos].y;
+            case "wider":
+                break;
+            case "higher":
+                switch (point.pos) {
+                    case "top":
+                        break;
+                    case "center":
+                    case "bottom":
+                        newpoint.y += gameoffset[point.pos].y;
+                        break;
+                    default:
+                        throw new Error("incorrect point.pos");
+                }
                 break;
             default:
-                throw new Error("incorrect point.pos");
-            }
-            break;
-        default:
-            throw new Error("incorrect screen type");
+                throw new Error("incorrect screen type");
         }
 
         newpoint.x = parseInt(newpoint.x);
@@ -3425,7 +3428,7 @@ function algo_init() {
     }
 
     function convertCoordsNoCutout(point) {
-        let newpoint = {x: point.x, y: point.y, pos: point.pos};
+        let newpoint = { x: point.x, y: point.y, pos: point.pos };
 
         //先缩放
         newpoint.x *= scalerate;
@@ -3438,26 +3441,26 @@ function algo_init() {
         */
 
         switch (screen.type) {
-        case "normal":
-            break;
-        case "wider":
-            break;
-        case "higher":
-            switch (point.pos) {
-            case "top":
+            case "normal":
                 break;
-            case "center":
-            case "bottom":
-                /*
-                newpoint.y += gameoffset[point.pos].y;
-                */
+            case "wider":
+                break;
+            case "higher":
+                switch (point.pos) {
+                    case "top":
+                        break;
+                    case "center":
+                    case "bottom":
+                        /*
+                        newpoint.y += gameoffset[point.pos].y;
+                        */
+                        break;
+                    default:
+                        throw new Error("incorrect point.pos");
+                }
                 break;
             default:
-                throw new Error("incorrect point.pos");
-            }
-            break;
-        default:
-            throw new Error("incorrect screen type");
+                throw new Error("incorrect screen type");
         }
 
         newpoint.x = parseInt(newpoint.x);
@@ -3487,25 +3490,25 @@ function algo_init() {
 
     function selectBattle() { }
 
-    function enterLoop(){
-        var last=Date.now();
+    function enterLoop() {
+        var last = Date.now();
         initialize();
         var pkgName = auto.root.packageName();
         var state = STATE_BATTLE;
-        if(match(string.regex_until)) state = STATE_HOME;
-        else if(find(string.support)) state = STATE_SUPPORT;
-        else if(findID("nextPageBtn")) state = STATE_TEAM;
-        else if(find("BATTLE 1")) state=STATE_MENU;
+        if (match(string.regex_until)) state = STATE_HOME;
+        else if (find(string.support)) state = STATE_SUPPORT;
+        else if (findID("nextPageBtn")) state = STATE_TEAM;
+        else if (find("BATTLE 1")) state = STATE_MENU;
         while (true) {
             switch (state) {
-                case STATE_LOGIN:{
-                    if(match(string.regex_until)){
-                        state=STATE_HOME;
+                case STATE_LOGIN: {
+                    if (match(string.regex_until)) {
+                        state = STATE_HOME;
                         log("进入主页面");
                         break;
                     }
-                    if(find("BATTLE 1")){
-                        state=STATE_MENU;
+                    if (find("BATTLE 1")) {
+                        state = STATE_MENU;
                         log("进入关卡选择");
                         break;
                     }
@@ -3519,26 +3522,26 @@ function algo_init() {
                         log("进入队伍调整");
                         break;
                     }
-                    let window=findID("android:id/content")
-                    if(window){
+                    let window = findID("android:id/content")
+                    if (window) {
                         click(convertCoords(clickSets.recover_battle))
                     }
                     break;
                 }
-                case STATE_HOME:{
-                    if(find("BATTLE 1")){
-                        state=STATE_MENU;
+                case STATE_HOME: {
+                    if (find("BATTLE 1")) {
+                        state = STATE_MENU;
                         log("进入关卡选择");
                         break;
                     }
                     let found_popup = findPopupInfoDetailTitle();
                     if (found_popup != null) {
-                        log("尝试关闭弹窗 标题: \""+found_popup.title+"\"");
+                        log("尝试关闭弹窗 标题: \"" + found_popup.title + "\"");
                         click(found_popup.close);
                     }
-                    let element=match(string.regex_until)
-                    if(element){
-                        click(element.bounds().centerX(),element.bounds().centerY())
+                    let element = match(string.regex_until)
+                    if (element) {
+                        click(element.bounds().centerX(), element.bounds().centerY())
                     }
                     break;
                 }
@@ -3549,15 +3552,15 @@ function algo_init() {
                         log("进入助战选择");
                         break;
                     }
-                    let element=find("BATTLE 1")
-                    if(element){
-                        if(element.bounds().top<element.bounds().bottom){
-                            click(element.bounds().centerX(),element.bounds().centerY())
+                    let element = find("BATTLE 1")
+                    if (element) {
+                        if (element.bounds().top < element.bounds().bottom) {
+                            click(element.bounds().centerX(), element.bounds().centerY())
                         }
-                        else{
-                            let sx=element.bounds().centerX()
-                            let syfrom=getWindowSize().y-100
-                            let syto=parseInt(syfrom/2)
+                        else {
+                            let sx = element.bounds().centerX()
+                            let syfrom = getWindowSize().y - 100
+                            let syto = parseInt(syfrom / 2)
                             swipe(sx, syfrom, sx, syto, 100)
                         }
                     }
@@ -3609,14 +3612,14 @@ function algo_init() {
                     break;
                 }
 
-                case STATE_BATTLE:{
+                case STATE_BATTLE: {
                     if (!packageName(pkgName).findOnce()) {
                         app.launch(pkgName);
                         sleep(2000);
-                        last=Date.now();
-                        state=STATE_LOGIN;
+                        last = Date.now();
+                        state = STATE_LOGIN;
                         log("重启游戏进程，进入登录页面");
-                    } else if(((Date.now()>last+1000*60*60) && findID("charaWrap"))||(Date.now()>last+1000*60*65)){
+                    } else if (((Date.now() > last + 1000 * 60 * 60) && findID("charaWrap")) || (Date.now() > last + 1000 * 60 * 65)) {
                         log("尝试关闭游戏进程");
                         backtoMain();
                         sleep(5000)
@@ -3625,7 +3628,7 @@ function algo_init() {
                     } else if (limit.autoReconnect && !findID("charaWrap")) {
                         clickReconnect();
                         //slow down
-                        findID("charaWrap",2000);
+                        findID("charaWrap", 2000);
                     }
                     break;
                 }
@@ -3644,7 +3647,7 @@ function algo_init() {
         if (limit.privilege && limit.rootForceStop) {
             log("使用am force-stop命令...");
             while (true) {
-                privShell("am force-stop "+name);
+                privShell("am force-stop " + name);
                 sleep(1000);
                 if (isGameDead(2000)) break;
                 log("游戏仍在运行,再次尝试强行停止...");
@@ -3673,7 +3676,7 @@ function algo_init() {
         toastLog("重新启动游戏...");
         var it = new Intent();
         var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
-        log("app.launch("+name+")");
+        log("app.launch(" + name + ")");
         app.launch(name);//是不是真的启动成功，在外边检测
         log("重启游戏完成");
         return true;
@@ -3696,17 +3699,17 @@ function algo_init() {
             }
             var found_popup = findPopupInfoDetailTitle(null, 1000);
             if (found_popup != null) {
-                log("发现弹窗 标题: \""+found_popup.title+"\"");
+                log("发现弹窗 标题: \"" + found_popup.title + "\"");
                 let expected_titles = [];
                 for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
                     expected_titles.push(string[error_type]);
                 }
                 let matched_title = expected_titles.find((val) => val == found_popup.title);
                 if (matched_title != null) {
-                    log("弹窗标题\""+matched_title+"\",没有关闭按钮,只有回首页按钮,点击回首页...");
+                    log("弹窗标题\"" + matched_title + "\",没有关闭按钮,只有回首页按钮,点击回首页...");
                     click(convertCoords(clickSets.backToHomepage));
                 } else {
-                    log("弹窗标题为\""+found_popup.title+"\",尝试关闭...");
+                    log("弹窗标题为\"" + found_popup.title + "\",尝试关闭...");
                     click(found_popup.close);
                 }
                 log("等待2秒...");
@@ -3725,7 +3728,7 @@ function algo_init() {
             var apinfo = getAP(200);
             var button = null;
             if (apinfo != null) {
-                log("当前AP:"+apinfo.value+"/"+apinfo.total);
+                log("当前AP:" + apinfo.value + "/" + apinfo.total);
             } else {
                 button = findID("nextPageBtn", 200);
             }
@@ -3751,7 +3754,7 @@ function algo_init() {
 
     function getScreenParams() {
         if (screen != null && gameoffset != null)
-            return JSON.stringify({screen: screen, gameoffset: gameoffset});
+            return JSON.stringify({ screen: screen, gameoffset: gameoffset });
     }
 
     function requestPrivilegeIfNeeded() {
@@ -3759,8 +3762,7 @@ function algo_init() {
 
         if (limit.rootForceStop || limit.firstRequestPrivilege) {
             limit.firstRequestPrivilege = false;
-            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
-            {
+            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?")) {
                 limit.firstRequestPrivilege = true;//如果这次没申请到权限，下次还会提醒
                 ui.run(() => {
                     ui["rootForceStop"].setChecked(true);
@@ -3837,7 +3839,7 @@ function algo_init() {
         var result = null;
         while (true) {
             let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
-            let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
+            let selected = dialogs.select("请选择下一步(第" + (step + 1) + "步)要录制什么动作", options);
             selected = parseInt(selected);
             if (isNaN(selected)) continue;
             let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", "abandon"];
@@ -3883,25 +3885,25 @@ function algo_init() {
             }
         } while (new_sleep_time <= 0 || isNaN(new_sleep_time));
         result.defaultSleepTime = new_sleep_time;
-        toastLog("每一步操作之间将会等待"+result.defaultSleepTime+"毫秒");
+        toastLog("每一步操作之间将会等待" + result.defaultSleepTime + "毫秒");
 
         let endRecording = false;
-        for (let step=0; !endRecording; step++) {
-            log("录制第"+(step+1)+"步操作...");
+        for (let step = 0; !endRecording; step++) {
+            log("录制第" + (step + 1) + "步操作...");
             let op = {};
             op.action = chooseAction(step);
             switch (op.action) {
                 case "click":
                     log("等待录制点击动作...");
                     op.click = {};
-                    op.click.point = capture("录制第"+(step+1)+"步操作\n请点击要记录下来的点击位置").pos_up;
+                    op.click.point = capture("录制第" + (step + 1) + "步操作\n请点击要记录下来的点击位置").pos_up;
                     if (op.click.point == null) {
                         toastLog("录制点击动作出错");
                         stopThread();
                     }
                     click(op.click.point);
                     result.steps.push(op);
-                    toastLog("已记录点击动作: ["+op.click.point.x+","+op.click.point.y+"]");
+                    toastLog("已记录点击动作: [" + op.click.point.x + "," + op.click.point.y + "]");
                     toast("如果点击没点到,请重录上一步");
                     sleep(4000);
                     break;
@@ -3909,7 +3911,7 @@ function algo_init() {
                     log("等待录制滑动动作...");
                     op.swipe = {};
                     op.swipe.points = [];
-                    let swipe_data = capture("录制第"+(step+1)+"步操作\n请进行触控滑动操作\n为了增加重放成功的概率,请尽量慢一些");
+                    let swipe_data = capture("录制第" + (step + 1) + "步操作\n请进行触控滑动操作\n为了增加重放成功的概率,请尽量慢一些");
                     if (swipe_data == null) {
                         toastLog("录制滑动动作出错");
                         stopThread();
@@ -3919,11 +3921,11 @@ function algo_init() {
                     swipe(op.swipe.points[0], op.swipe.points[1], op.swipe.duration);
                     result.steps.push(op);
                     toastLog("已记录滑动动作: "
-                             +"["+op.swipe.points[0].x+","+op.swipe.points[0].y+"]"
-                             +" => "
-                             +"["+op.swipe.points[1].x+","+op.swipe.points[1].y+"]"
-                             +" ("+op.swipe.duration+"ms)"
-                             );
+                        + "[" + op.swipe.points[0].x + "," + op.swipe.points[0].y + "]"
+                        + " => "
+                        + "[" + op.swipe.points[1].x + "," + op.swipe.points[1].y + "]"
+                        + " (" + op.swipe.duration + "ms)"
+                    );
                     toast("如果滑动没反应,请重录上一步");
                     sleep(4000);
                     break;
@@ -3931,7 +3933,7 @@ function algo_init() {
                     op.sleep = {};
                     let sleep_ms = 0;
                     do {
-                        sleep_ms = dialogs.rawInput("录制第"+(step+1)+"步操作\n要等待多少毫秒", "3000");
+                        sleep_ms = dialogs.rawInput("录制第" + (step + 1) + "步操作\n要等待多少毫秒", "3000");
                         sleep_ms = parseInt(sleep_ms);
                         if (isNaN(sleep_ms) || sleep_ms <= 0) {
                             toastLog("请输入一个正整数");
@@ -3940,7 +3942,7 @@ function algo_init() {
                     } while (sleep_ms <= 0 || isNaN(sleep_ms));
                     op.sleep.sleepTime = sleep_ms;
                     result.steps.push(op);
-                    toastLog("录制第"+(step+1)+"步操作\n已记录等待动作,时间为"+op.sleep.sleepTime+"毫秒");
+                    toastLog("录制第" + (step + 1) + "步操作\n已记录等待动作,时间为" + op.sleep.sleepTime + "毫秒");
                     break;
                 case "checkText":
                     op.checkText = {};
@@ -3952,15 +3954,15 @@ function algo_init() {
                     let dialog_selected = null;
                     while (selected < 0) {
                         selected = -1;
-                        check_text_point = capture("录制第"+(step+1)+"步操作\n请点击要检测的文字出现的位置").pos_up;
+                        check_text_point = capture("录制第" + (step + 1) + "步操作\n请点击要检测的文字出现的位置").pos_up;
                         if (check_text_point == null) {
                             toastLog("录制检测文字是否出现动作出错");
                             stopThread();
                         }
 
                         let all_found_text = boundsContains(check_text_point.x, check_text_point.y, check_text_point.x, check_text_point.y)
-                                             .find();
-                        for (let i=0; i<all_found_text.length; i++) {
+                            .find();
+                        for (let i = 0; i < all_found_text.length; i++) {
                             let found_text = all_found_text[i];
                             let content = getContent(found_text);
                             if (content != null && content != "") {
@@ -3975,17 +3977,17 @@ function algo_init() {
                                 selected = 0;
                                 break;
                             default:
-                                selected = dialogs.select("录制第"+(step+1)+"步操作\n在点击位置检测到多个含有文字的控件,请选择:", all_text);
+                                selected = dialogs.select("录制第" + (step + 1) + "步操作\n在点击位置检测到多个含有文字的控件,请选择:", all_text);
                                 selected = parseInt(selected);
                                 if (isNaN(selected)) selected = -1;
                         }
                     }
                     op.checkText.text = all_text[selected];
-                    toastLog("录制第"+(step+1)+"步操作\n要检测的文字是\""+op.checkText.text+"\"");
+                    toastLog("录制第" + (step + 1) + "步操作\n要检测的文字是\"" + op.checkText.text + "\"");
 
                     dialog_options = ["横纵坐标都检测", "只检测横坐标X", "只检测纵坐标Y", "横纵坐标都不检测"];
                     do {
-                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n是否要检测文字\""+op.checkText.text+"\"在屏幕出现的位置和现在是否一致?", dialog_options);
+                        dialog_selected = dialogs.select("录制第" + (step + 1) + "步操作\n是否要检测文字\"" + op.checkText.text + "\"在屏幕出现的位置和现在是否一致?", dialog_options);
                         dialog_selected = parseInt(dialog_selected);
                         if (isNaN(dialog_selected)) dialog_selected = -1;
                     } while (dialog_selected < 0);
@@ -4002,7 +4004,7 @@ function algo_init() {
                         op.checkText[found_or_not_found].kill = false;
                         dialog_options = ["什么也不做,继续执行", "报告成功并结束", "报告失败并结束", "先强关游戏再报告成功并结束", "先强关游戏再报告失败并结束"];
                         do {
-                            dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字\""+op.checkText.text+"\"时要做什么?", dialog_options);
+                            dialog_selected = dialogs.select("录制第" + (step + 1) + "步操作\n" + (found_or_not_found == "notFound" ? "未" : "") + "检测到文字\"" + op.checkText.text + "\"时要做什么?", dialog_options);
                             dialog_selected = parseInt(dialog_selected);
                             if (isNaN(dialog_selected)) dialog_selected = -1;
                         } while (dialog_selected < 0);
@@ -4025,10 +4027,10 @@ function algo_init() {
                                 toastLog("询问检测文字后要做什么时出错");
                                 stopThread();
                         }
-                        toastLog("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字时要\n"+dialog_options[dialog_selected]);
+                        toastLog("录制第" + (step + 1) + "步操作\n" + (found_or_not_found == "notFound" ? "未" : "") + "检测到文字时要\n" + dialog_options[dialog_selected]);
                     }
                     result.steps.push(op);
-                    toastLog("已记录检测文字\""+op.checkText.text+"\"是否出现的动作");
+                    toastLog("已记录检测文字\"" + op.checkText.text + "\"是否出现的动作");
                     if (deadEnd) {
                         endRecording = true;
                         toastLog("录制结束");
@@ -4038,13 +4040,13 @@ function algo_init() {
                     if (result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null)) {
                         dialog_selected = dialogs.confirm(
                             "警告", "您没有录制文字检测动作！\n"
-                            +"您确定 不需要 检测文字么？\n"
-                            +"重放时未必可以一次成功，点错并不是稀奇事。\n"
-                            +"点错后可能发生各种不可预知的后果：从脚本因步调错乱而停滞不动，到误触误删文件，再到变成魔女，全都是有可能的哦！"
-                            );
+                            + "您确定 不需要 检测文字么？\n"
+                            + "重放时未必可以一次成功，点错并不是稀奇事。\n"
+                        + "点错后可能发生各种不可预知的后果：从脚本因步调错乱而停滞不动，到误触误删文件，再到变成魔女，全都是有可能的哦！"
+                        );
                         if (!dialog_selected) {
-                            let last_action = result.steps[result.steps.length-1].action;
-                            toastLog("继续录制\n第"+(step+1)+"步");
+                            let last_action = result.steps[result.steps.length - 1].action;
+                            toastLog("继续录制\n第" + (step + 1) + "步");
                             step--;//这一步没录，所以需要-1
                             break;
                         } else {
@@ -4057,7 +4059,7 @@ function algo_init() {
                     op.exit.kill = false;
                     dialog_options = ["报告成功", "报告失败", "先强关游戏再报告成功", "先强关游戏再报告失败"];
                     do {
-                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", dialog_options);
+                        dialog_selected = dialogs.select("录制第" + (step + 1) + "步操作\n结束时要报告成功还是失败?", dialog_options);
                         dialog_selected = parseInt(dialog_selected);
                         if (isNaN(dialog_selected)) dialog_selected = -1;
                     } while (dialog_selected < 0);
@@ -4076,17 +4078,17 @@ function algo_init() {
                             toastLog("询问结束时报告成功还是失败时出错");
                             stopThread();
                     }
-                    toastLog("录制第"+(step+1)+"步操作\n结束时要"+dialog_options[dialog_selected]);
+                    toastLog("录制第" + (step + 1) + "步操作\n结束时要" + dialog_options[dialog_selected]);
                     result.steps.push(op);
                     toastLog("录制结束");
                     endRecording = true;
                     break;
                 case "undo":
                     if (result.steps.length > 0) {
-                        let last_action = result.steps[result.steps.length-1].action;
+                        let last_action = result.steps[result.steps.length - 1].action;
                         step--;
                         result.steps.pop();
-                        toastLog("重录第"+(step+1)+"步");
+                        toastLog("重录第" + (step + 1) + "步");
                         if (last_action == "click" || last_action == "swipe") {
                             sleep(3000);
                             toast("录制将会在 12 秒后继续...");
@@ -4113,15 +4115,15 @@ function algo_init() {
                     toastLog("放弃录制");
                     stopThread();//lastOpList不会被重新赋值为null
                 default:
-                    toastLog("录制第"+(step+1)+"步操作\n出错: 未知动作", op.action);
+                    toastLog("录制第" + (step + 1) + "步操作\n出错: 未知动作", op.action);
                     stopThread();
             }
-            if (op.action != "undo") log("录制第"+result.steps.length+"步动作完成");
+            if (op.action != "undo") log("录制第" + result.steps.length + "步动作完成");
         }
         if (result != null) {
             saveOpList(result);//写入到文件
             lastOpList = result;
-            toastLog("录制完成,共记录"+result.steps.length+"步动作");
+            toastLog("录制完成,共记录" + result.steps.length + "步动作");
         }
         return result;
     }
@@ -4161,7 +4163,7 @@ function algo_init() {
     function safetyCheck() {
         for (let resID of dangerousResIDs) {
             if (findID(resID)) {
-                log("检测到危险控件:\""+resID+"\"");
+                log("检测到危险控件:\"" + resID + "\"");
                 return false;
             }
         }
@@ -4194,7 +4196,7 @@ function algo_init() {
 
         let endReplaying = false;
         let defaultOpCycleWaitTime = 500 + parseInt(opList.defaultSleepTime);
-        for (let i=0; i<opList.steps.length&&!endReplaying; i++) {
+        for (let i = 0; i < opList.steps.length && !endReplaying; i++) {
             switch (isGameDead()) {
                 case "crashed":
                     log("游戏已经闪退,停止重放");
@@ -4210,7 +4212,7 @@ function algo_init() {
                     log("未知闪退状态,停止重放");
                     return false;
             }
-            log("执行安全检查,同时等待"+defaultOpCycleWaitTime+"毫秒...");
+            log("执行安全检查,同时等待" + defaultOpCycleWaitTime + "毫秒...");
             let opCycleStartTime = new Date().getTime();
             do {
                 if (!safetyCheck()) {
@@ -4222,7 +4224,7 @@ function algo_init() {
             } while (new Date().getTime() < opCycleStartTime + defaultOpCycleWaitTime);
 
             let op = opList.steps[i];
-            log("第"+(i+1)+"步", op);
+            log("第" + (i + 1) + "步", op);
             switch (op.action) {
                 case "click":
                     if (opList.isGeneric) {
@@ -4246,7 +4248,7 @@ function algo_init() {
                     let check_result = null;
                     let all_found_text = findAll(op.checkText.text, parseInt(limit.timeout));
                     if (all_found_text != null && all_found_text.length > 0) {
-                        for (let j=0; j<all_found_text.length; j++) {
+                        for (let j = 0; j < all_found_text.length; j++) {
                             try {
                                 let found_text = all_found_text[j];
                                 //先排除大小为0或者干脆数值就不合法（比如左边缘比右边缘还靠右）的控件
@@ -4254,19 +4256,18 @@ function algo_init() {
                                 //如果centerX/Y不是数值（比如undefined）那就不检查横/纵坐标中的这一项（另一项如果是数值还要检查）
                                 let found_text_bounds = null;
                                 if (typeof op.checkText.centerX == "number"
-                                    || typeof op.checkText.centerY == "number")
-                                {
+                                    || typeof op.checkText.centerY == "number") {
                                     found_text_bounds = found_text.bounds();//注意Rect包含左/上边缘，不包括右/下边缘
                                 }
                                 if (typeof op.checkText.centerX == "number") {
-                                    if (found_text_bounds.left >= found_text_bounds.right) {reallyFound = false; break;}
-                                    if (found_text_bounds.left > op.checkText.centerX) {reallyFound = false; break;}
-                                    if (found_text_bounds.right <= op.checkText.centerX) {reallyFound = false; break;}
+                                    if (found_text_bounds.left >= found_text_bounds.right) { reallyFound = false; break; }
+                                    if (found_text_bounds.left > op.checkText.centerX) { reallyFound = false; break; }
+                                    if (found_text_bounds.right <= op.checkText.centerX) { reallyFound = false; break; }
                                 }
                                 if (typeof op.checkText.centerY == "number") {
-                                    if (found_text_bounds.top >= found_text_bounds.bottom) {reallyFound = false; break;}
-                                    if (found_text_bounds.top > op.checkText.centerY) {reallyFound = false; break;}
-                                    if (found_text_bounds.bottom <= op.checkText.centerY) {reallyFound = false; break;}
+                                    if (found_text_bounds.top >= found_text_bounds.bottom) { reallyFound = false; break; }
+                                    if (found_text_bounds.top > op.checkText.centerY) { reallyFound = false; break; }
+                                    if (found_text_bounds.bottom <= op.checkText.centerY) { reallyFound = false; break; }
                                 }
                                 //全部检查通过
                                 reallyFound = true;
@@ -4280,7 +4281,7 @@ function algo_init() {
                         }
                     }
                     if (reallyFound) {
-                        log("找到位于["+op.checkText.centerX+","+op.checkText.centerY+"],文字为\""+op.checkText.text+"\"的控件");
+                        log("找到位于[" + op.checkText.centerX + "," + op.checkText.centerY + "],文字为\"" + op.checkText.text + "\"的控件");
                         check_result = op.checkText.found;
                     } else {
                         log("未找到满足指定位置和文字内容条件的控件");
@@ -4323,10 +4324,10 @@ function algo_init() {
                     log("未知操作");
             }
             if (!endReplaying) {
-                log("第"+(i+1)+"步操作完成");
+                log("第" + (i + 1) + "步操作完成");
             }
         }
-        toastLog("所有动作重放完成,结果:"+(result?"成功":"失败"));
+        toastLog("所有动作重放完成,结果:" + (result ? "成功" : "失败"));
         return result;
     }
 
@@ -4374,7 +4375,7 @@ function algo_init() {
             "导入选关动作",
             "您可以把之前录制并保存下来的动作重新导入进来。",
             "",
-            function () {},
+            function () { },
             function () {
                 toastLog("取消导入动作录制数据");
             }
@@ -4446,7 +4447,7 @@ function algo_init() {
         let test_record = files.read(supportPickingTestRecordPath);
         let tested_versions = test_record.split('\n');
         if (tested_versions.find((val) => val == getCurrentVersion()) == null) {
-            files.append(supportPickingTestRecordPath, "\n"+getCurrentVersion()+"\n"); //会产生空行，但无所谓
+            files.append(supportPickingTestRecordPath, "\n" + getCurrentVersion() + "\n"); //会产生空行，但无所谓
         }
 
         //开始测试
@@ -4463,9 +4464,9 @@ function algo_init() {
             while (dialogs.confirm(
                 "测试助战自动选择",
                 "请检查游戏中实际显示的助战数目是否和下面的结果一致。"
-                +"\n如果发现结果不对，请在助战选择界面拍一张快照，然后回到脚本主界面，点击右上角菜单里的\"报告问题\"，谢谢！"
-                +"\n点击\"取消\"结束；点击\"确定\"后，对话框会先消失10秒再重新弹出。"
-                +"\n\n"+result.testdata
+                + "\n如果发现结果不对，请在助战选择界面拍一张快照，然后回到脚本主界面，点击右上角菜单里的\"报告问题\"，谢谢！"
+                + "\n点击\"取消\"结束；点击\"确定\"后，对话框会先消失10秒再重新弹出。"
+                + "\n\n" + result.testdata
             )) {
                 toast("10秒后将重新弹出对话框");
                 sleep(8000);
@@ -4491,10 +4492,10 @@ function algo_init() {
                 while (dialogs.confirm(
                     "测试助战自动选择",
                     "请检查游戏中实际出现在队伍里的助战角色是否正确。"
-                    +"\n如果发现结果不对，请在助战选择界面拍一张快照，然后回到脚本主界面，点击右上角菜单里的\"报告问题\"，谢谢！"
-                    +"\n点击\"取消\"结束；点击\"确定\"后，对话框会先消失5秒再重新弹出。"
-                    +"\n"+result.testdata
-                )) {sleep(5000);};
+                    + "\n如果发现结果不对，请在助战选择界面拍一张快照，然后回到脚本主界面，点击右上角菜单里的\"报告问题\"，谢谢！"
+                    + "\n点击\"取消\"结束；点击\"确定\"后，对话框会先消失5秒再重新弹出。"
+                    + "\n" + result.testdata
+                )) { sleep(5000); };
             }
 
             toastLog("助战选择测试结束");
@@ -4526,7 +4527,7 @@ function algo_init() {
                 state = STATE_CRASHED;
                 return state;
             } else {
-                log("关闭弹窗\""+found_popup.title+"\"...");
+                log("关闭弹窗\"" + found_popup.title + "\"...");
                 click(found_popup.close);
             }
             sleep(1000);
@@ -4576,13 +4577,12 @@ function algo_init() {
         if (!is_support_picking_tested) {
             if (dialogs.confirm("测试助战自动选择",
                 "安装这个版本以来还没有测试过助战自动选择是否可以正常工作。"
-                +"\n要测试吗？"))
-            {
+                + "\n要测试吗？")) {
                 replaceSelfCurrentTask(floatUI.scripts.find((val) => val.name == "测试助战自动选择"));
                 //测试完再写入文件，来记录是否曾经测试过
             } else {
                 files.create(supportPickingTestRecordPath);
-                files.append(supportPickingTestRecordPath, "\n"+getCurrentVersion()+"\n");//会产生空行，但无所谓
+                files.append(supportPickingTestRecordPath, "\n" + getCurrentVersion() + "\n");//会产生空行，但无所谓
             }
         }
     }
@@ -4680,11 +4680,11 @@ function algo_init() {
                     let state_stuck_timeout = 1000 * parseInt(limit.forceStopTimeout);
                     if (new Date().getTime() > stuckStartTime + state_stuck_timeout) {
                         if (lastOpList != null) {
-                            toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n杀进程重开...");
+                            toastLog("卡在状态" + StateNames[state] + "的时间太久,超过设定(" + parseInt(limit.forceStopTimeout) + "s)\n杀进程重开...");
                             killGame(limit.package_name);
                             state = STATE_CRASHED;
                         } else {
-                            toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n等待10秒...");
+                            toastLog("卡在状态" + StateNames[state] + "的时间太久,超过设定(" + parseInt(limit.forceStopTimeout) + "s)\n等待10秒...");
                             sleep(10000);
                         }
                     }
@@ -4699,7 +4699,7 @@ function algo_init() {
             last_state = state;
 
             //打断官方自动周回的计时点
-            switch(state) {
+            switch (state) {
                 case STATE_BATTLE:
                 case STATE_REWARD_CHARACTER:
                 case STATE_REWARD_MATERIAL:
@@ -4797,9 +4797,9 @@ function algo_init() {
                     }
                     if (findID("nextPageBtn")) {
                         state = STATE_TEAM;
-                        toastLog("警告: 脚本不知道现在选了哪一关!"+
-                                 "本轮"+(limit.useAuto?"官方周回":"战斗")+"结束后,\n"+
-                                 "可能无法自动选关重新开始!");
+                        toastLog("警告: 脚本不知道现在选了哪一关!" +
+                            "本轮" + (limit.useAuto ? "官方周回" : "战斗") + "结束后,\n" +
+                            "可能无法自动选关重新开始!");
                         log("进入队伍调整");
                         break;
                     }
@@ -4854,7 +4854,7 @@ function algo_init() {
                                 state = STATE_SUPPORT;
                             }
                         }
-                    // 重放动作录制之前需要先回主页，最简单粗暴的办法就是杀进程重开
+                        // 重放动作录制之前需要先回主页，最简单粗暴的办法就是杀进程重开
                     } else if (lastOpList) {
                         toastLog("已加载动作录制数据,先杀掉游戏再重启重新选关");
                         killGame(string.package_name);
@@ -4897,15 +4897,15 @@ function algo_init() {
                     }
 
                     //等待“请选择支援角色”出现
-                    log("等待\""+string.support+"\"出现...");
+                    log("等待\"" + string.support + "\"出现...");
                     if (find(string.support, parseInt(limit.timeout)) == null) break;
-                    log("等待\""+string.support+"\"已经出现");
+                    log("等待\"" + string.support + "\"已经出现");
 
                     // save battle name if needed
                     let battle = match(/^BATTLE.+/);
                     if (battle) {
                         battlename = getContent(battle);
-                        log("已记下关卡名: \""+battlename+"\"");
+                        log("已记下关卡名: \"" + battlename + "\"");
                     }
                     // pick support
                     let pt_point = pickSupportWithMostPt();
@@ -4921,11 +4921,11 @@ function algo_init() {
                         click(convertCoords(clickSets.back));
                         //点击后等待默认最多5秒(可配置)
                         waitAny(
-                          [
-                            () => findID("questLinkList"),
-                            () => findID("questWrapTitle")
-                          ],
-                          parseInt(limit.timeout)
+                            [
+                                () => findID("questLinkList"),
+                                () => findID("questWrapTitle")
+                            ],
+                            parseInt(limit.timeout)
                         );
                         break;
                     }
@@ -4938,9 +4938,9 @@ function algo_init() {
                     var found_popup = null;
                     found_popup = findPopupInfoDetailTitle();
                     if (found_popup != null) {
-                        log("在队伍调整界面发现有弹窗\""+found_popup.title+"\"已经打开");
+                        log("在队伍调整界面发现有弹窗\"" + found_popup.title + "\"已经打开");
                         if (found_popup.title != string.team_name_change) {
-                            log("弹窗标题不是意料之中的\""+string.team_name_change+"\"！");
+                            log("弹窗标题不是意料之中的\"" + string.team_name_change + "\"！");
                         }
                         log("尝试关闭弹窗");
                         click(found_popup.close);
@@ -5014,8 +5014,7 @@ function algo_init() {
                         if (
                             battleStartBtnClickTime != 0
                             && new Date().getTime() > battleStartBtnClickTime + 1000 * auto_cycle_break_duration
-                           )
-                        {
+                        ) {
                             log("时间到,长按屏幕以打断官方自动周回...");
                             swipe(convertCoords(clickSets.reconection), convertCoords(clickSets.reconection), 5000);
                             log("长按操作已完成");
@@ -5122,10 +5121,10 @@ function algo_init() {
                     }
                     // try to skip
                     let element = className("EditText").findOnce();
-                    if (element && element.refresh()) {
+                    if (element && element.refresh() && !id("menu").findOnce()) {
                         log("尝试跳过剧情");
                         let bound = element.bounds();
-                        click(bound.right-50, bound.top+50);
+                        click(bound.right - 50, bound.top + 50);
                     }
                     break;
                 }
@@ -5164,39 +5163,39 @@ function algo_init() {
         if (binarySetupDone) return binarySetupDone;
 
         let binaryFileName = "scrcap2bmp";
-        let binaryCopyToPath = "/data/local/tmp/"+AutoJSPkgName+"/sbin/"+binaryFileName;
+        let binaryCopyToPath = "/data/local/tmp/" + AutoJSPkgName + "/sbin/" + binaryFileName;
         detectABI();
 
         let binaryBytes = null;
         try {
-            let url = binURLBase+"/bin/"+binaryFileName+"-"+shellABI;
+            let url = binURLBase + "/bin/" + binaryFileName + "-" + shellABI;
             let response = http.get(url);
             if (response.statusCode == 200) {
                 binaryBytes = response.body.bytes();
             }
-        } catch (e) {return;}
+        } catch (e) { return; }
         if (binaryBytes == null) return;
-        let binaryCopyFromPath = dataDir+"/bin/"+binaryFileName+"-"+shellABI;
+        let binaryCopyFromPath = dataDir + "/bin/" + binaryFileName + "-" + shellABI;
         files.ensureDir(binaryCopyFromPath);
         files.create(binaryCopyFromPath);
         files.writeBytes(binaryCopyFromPath, binaryBytes);
         if (!files.isFile(binaryCopyFromPath)) return;
 
         //adb shell的权限并不能修改APP数据目录的权限，所以先要用APP自己的身份来改权限
-        normalShell("chmod a+x "+dataDir+"/../../"); // pkgname/
-        normalShell("chmod a+x "+dataDir+"/../");    // pkgname/files/
-        normalShell("chmod a+x "+dataDir);           // pkgname/files/project/
-        normalShell("chmod a+x "+dataDir+"/bin");
+        normalShell("chmod a+x " + dataDir + "/../../"); // pkgname/
+        normalShell("chmod a+x " + dataDir + "/../");    // pkgname/files/
+        normalShell("chmod a+x " + dataDir);           // pkgname/files/project/
+        normalShell("chmod a+x " + dataDir + "/bin");
 
-        normalShell("chmod a+r "+binaryCopyFromPath);
+        normalShell("chmod a+r " + binaryCopyFromPath);
 
-        privShell("mkdir "+"/data/local/tmp/"+AutoJSPkgName);
-        privShell("mkdir "+"/data/local/tmp/"+AutoJSPkgName+"/sbin");
-        privShell("chmod 755 "+"/data/local/tmp/"+AutoJSPkgName);
-        privShell("chmod 755 "+"/data/local/tmp/"+AutoJSPkgName+"/sbin");
+        privShell("mkdir " + "/data/local/tmp/" + AutoJSPkgName);
+        privShell("mkdir " + "/data/local/tmp/" + AutoJSPkgName + "/sbin");
+        privShell("chmod 755 " + "/data/local/tmp/" + AutoJSPkgName);
+        privShell("chmod 755 " + "/data/local/tmp/" + AutoJSPkgName + "/sbin");
 
-        privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
-        privShell("chmod 755 "+binaryCopyToPath);
+        privShell("cat " + binaryCopyFromPath + " > " + binaryCopyToPath);
+        privShell("chmod 755 " + binaryCopyToPath);
 
         binarySetupDone = true;
     }
@@ -5257,13 +5256,13 @@ function algo_init() {
             let screenshot = captureScreen();
             let x = screenshot.getWidth();
             let y = screenshot.getHeight();
-            log("通过录屏API得到截图,大小:"+x+"x"+y);
+            log("通过录屏API得到截图,大小:" + x + "x" + y);
             log("测试对截图进行裁剪...");
-            let img = images.clip(screenshot, parseInt(x/4), parseInt(y/4), parseInt(x/2), parseInt(y/2));
+            let img = images.clip(screenshot, parseInt(x / 4), parseInt(y / 4), parseInt(x / 2), parseInt(y / 2));
             img.recycle();
             log("测试对截图进行裁剪完成");
             log("测试对截图进行缩放...");
-            img = images.resize(screenshot, [parseInt(x/2), parseInt(y/2)]);
+            img = images.resize(screenshot, [parseInt(x / 2), parseInt(y / 2)]);
             img.recycle();
             log("测试对截图进行缩放完成");
             if (x < y) {
@@ -5284,15 +5283,15 @@ function algo_init() {
     var screencapLength = -1;
     var localHttpListenPort = -1;
     function detectScreencapLength() {
-        let result = privShell("screencap | "+"/data/local/tmp/"+AutoJSPkgName+"/sbin/scrcap2bmp -a -l");
+        let result = privShell("screencap | " + "/data/local/tmp/" + AutoJSPkgName + "/sbin/scrcap2bmp -a -l");
         if (result.code == 0) return parseInt(result.error);
         throw "detectScreencapLengthFailed"
     }
     function findListenPort() {
-        for (let i=11023; i<65535; i+=16) {
-            let cmd = "/data/local/tmp/"+AutoJSPkgName+"/sbin/scrcap2bmp -t"+i;
+        for (let i = 11023; i < 65535; i += 16) {
+            let cmd = "/data/local/tmp/" + AutoJSPkgName + "/sbin/scrcap2bmp -t" + i;
             let result = privShell(cmd);
-            if (result.code == 0 && result.error.includes("Port "+i+" is available")) {
+            if (result.code == 0 && result.error.includes("Port " + i + " is available")) {
                 log("可用监听端口", i);
                 return i;
             }
@@ -5310,22 +5309,22 @@ function algo_init() {
         let key = "";
 
         switch (arguments.length) {
-        case 3:
-            tagOnly = arguments[2];
-        case 2:
-            tag = "TAG"+arguments[1];
-        case 1:
-            imageObj = arguments[0];
-            break;
-        default:
-            throw "renewImageIncorrectArgc"
+            case 3:
+                tagOnly = arguments[2];
+            case 2:
+                tag = "TAG" + arguments[1];
+            case 1:
+                imageObj = arguments[0];
+                break;
+            default:
+                throw "renewImageIncorrectArgc"
         }
 
         if (!tagOnly) {
             try { throw new Error(""); } catch (e) {
                 Error.captureStackTrace(e, renewImage); //不知道AutoJS的Rhino是什么版本，不captureStackTrace的话，e.stack == null
                 let splitted = e.stack.toString().split("\n");
-                for (let i=0; i<splitted.length; i++) {
+                for (let i = 0; i < splitted.length; i++) {
                     if (splitted[i].match(/:\d+/) && !splitted[i].match(/renewImage/)) {
                         //含有行号，且不是renewImage
                         key += splitted[i];
@@ -5338,7 +5337,7 @@ function algo_init() {
         key += tag;
 
         if (imgRecycleMap[key] != null) {
-            try {imgRecycleMap[key].recycle();} catch (e) {log("renewImage", e)};
+            try { imgRecycleMap[key].recycle(); } catch (e) { log("renewImage", e) };
             imgRecycleMap[key] = null;
         }
 
@@ -5358,33 +5357,33 @@ function algo_init() {
                 //log(i);
             }
         }
-        log("recycleAllImages done, recycled "+count+" images");
+        log("recycleAllImages done, recycled " + count + " images");
     }
 
 
     var compatCaptureScreen = sync(function () {
         if (limit.rootScreencap) {
             //使用shell命令 screencap 截图
-            try {screencapShellCmdThread.interrupt();} catch (e) {};
-            if (localHttpListenPort<0) localHttpListenPort = findListenPort();
+            try { screencapShellCmdThread.interrupt(); } catch (e) { };
+            if (localHttpListenPort < 0) localHttpListenPort = findListenPort();
             if (screencapLength < 0) screencapLength = detectScreencapLength();
             if (screencapLength <= 0) {
-                log("screencapLength="+screencapLength+"<= 0, exit");
+                log("screencapLength=" + screencapLength + "<= 0, exit");
                 stopThread();
             }
             let screenshot = null;
-            for (let i=0; i<10; i++) {
-                screencapShellCmdThread = threads.start(function() {
-                    let cmd = "screencap | "+"/data/local/tmp/"+AutoJSPkgName+"/sbin/scrcap2bmp -a -w5 -p"+localHttpListenPort;
+            for (let i = 0; i < 10; i++) {
+                screencapShellCmdThread = threads.start(function () {
+                    let cmd = "screencap | " + "/data/local/tmp/" + AutoJSPkgName + "/sbin/scrcap2bmp -a -w5 -p" + localHttpListenPort;
                     let result = privShell(cmd, false);
                 });
                 sleep(100);
-                for (let j=0; j<5; j++) {
-                    try { screenshot = images.load("http://127.0.0.1:"+localHttpListenPort+"/screencap.bmp"); } catch (e) {log(e)};
+                for (let j = 0; j < 5; j++) {
+                    try { screenshot = images.load("http://127.0.0.1:" + localHttpListenPort + "/screencap.bmp"); } catch (e) { log(e) };
                     if (screenshot != null) break;
                     sleep(200);
                 }
-                try {screencapShellCmdThread.interrupt();} catch (e) {};
+                try { screencapShellCmdThread.interrupt(); } catch (e) { };
                 if (screenshot != null) break;
                 sleep(100);
             }
@@ -5584,31 +5583,31 @@ function algo_init() {
     const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.6.0";
     var knownImgs = {};
     const knownImgURLs = {
-        accel: ImgURLBase+"/images/accel.png",
-        blast: ImgURLBase+"/images/blast.png",
-        charge: ImgURLBase+"/images/charge.png",
-        connectIndicator: ImgURLBase+"/images/connectIndicator.png",
-        connectIndicatorBtnDown: ImgURLBase+"/images/connectIndicatorBtnDown.png",
-        light: ImgURLBase+"/images/light.png",
-        dark: ImgURLBase+"/images/dark.png",
-        water: ImgURLBase+"/images/water.png",
-        fire: ImgURLBase+"/images/fire.png",
-        wood: ImgURLBase+"/images/wood.png",
-        none: ImgURLBase+"/images/none.png",
-        lightBtnDown: ImgURLBase+"/images/lightBtnDown.png",
-        darkBtnDown: ImgURLBase+"/images/darkBtnDown.png",
-        waterBtnDown: ImgURLBase+"/images/waterBtnDown.png",
-        fireBtnDown: ImgURLBase+"/images/fireBtnDown.png",
-        woodBtnDown: ImgURLBase+"/images/woodBtnDown.png",
-        noneBtnDown: ImgURLBase+"/images/noneBtnDown.png",
-        mirrorsWinLetterI: ImgURLBase+"/images/mirrorsWinLetterI.png",
-        mirrorsLose: ImgURLBase+"/images/mirrorsLose.png",
-        skillLocked: ImgURLBase+"/images/skillLocked.png",
-        skillEmptyCHS: ImgURLBase+"/images/skillEmptyCHS.png",
-        skillEmptyCHT: ImgURLBase+"/images/skillEmptyCHT.png",
-        skillEmptyJP: ImgURLBase+"/images/skillEmptyJP.png",
-        OKButton: ImgURLBase+"/images/OKButton.png",
-        OKButtonGray: ImgURLBase+"/images/OKButtonGray.png",
+        accel: ImgURLBase + "/images/accel.png",
+        blast: ImgURLBase + "/images/blast.png",
+        charge: ImgURLBase + "/images/charge.png",
+        connectIndicator: ImgURLBase + "/images/connectIndicator.png",
+        connectIndicatorBtnDown: ImgURLBase + "/images/connectIndicatorBtnDown.png",
+        light: ImgURLBase + "/images/light.png",
+        dark: ImgURLBase + "/images/dark.png",
+        water: ImgURLBase + "/images/water.png",
+        fire: ImgURLBase + "/images/fire.png",
+        wood: ImgURLBase + "/images/wood.png",
+        none: ImgURLBase + "/images/none.png",
+        lightBtnDown: ImgURLBase + "/images/lightBtnDown.png",
+        darkBtnDown: ImgURLBase + "/images/darkBtnDown.png",
+        waterBtnDown: ImgURLBase + "/images/waterBtnDown.png",
+        fireBtnDown: ImgURLBase + "/images/fireBtnDown.png",
+        woodBtnDown: ImgURLBase + "/images/woodBtnDown.png",
+        noneBtnDown: ImgURLBase + "/images/noneBtnDown.png",
+        mirrorsWinLetterI: ImgURLBase + "/images/mirrorsWinLetterI.png",
+        mirrorsLose: ImgURLBase + "/images/mirrorsLose.png",
+        skillLocked: ImgURLBase + "/images/skillLocked.png",
+        skillEmptyCHS: ImgURLBase + "/images/skillEmptyCHS.png",
+        skillEmptyCHT: ImgURLBase + "/images/skillEmptyCHT.png",
+        skillEmptyJP: ImgURLBase + "/images/skillEmptyJP.png",
+        OKButton: ImgURLBase + "/images/OKButton.png",
+        OKButtonGray: ImgURLBase + "/images/OKButtonGray.png",
     };
 
     var downloadAllImages = sync(function () {
@@ -5616,7 +5615,7 @@ function algo_init() {
             let hasNull = false;
             for (let key in knownImgURLs) {
                 if (knownImgs[key] == null) {
-                    log("下载图片 "+knownImgURLs[key]+" ...");
+                    log("下载图片 " + knownImgURLs[key] + " ...");
                     knownImgs[key] = images.load(knownImgURLs[key]);
                     if (knownImgs[key] == null) hasNull = true;
                 }
@@ -5630,7 +5629,7 @@ function algo_init() {
             }
         }
     });
-    threads.start(function () {downloadAllImages();});
+    threads.start(function () { downloadAllImages(); });
 
     //矩形参数计算，宽度、高度、中心坐标等等
     function getAreaWidth_(topLeft, bottomRight) {
@@ -5640,7 +5639,7 @@ function algo_init() {
         return bottomRight.y - topLeft.y + 1;
     }
     function getAreaCenter_(topLeft, bottomRight) {
-        var result = {x: 0, y: 0, pos: "top"};
+        var result = { x: 0, y: 0, pos: "top" };
         var width = getAreaWidth(topLeft, bottomRight);
         var height = getAreaHeight(topLeft, bottomRight);
         result.x = topLeft.x + parseInt(width / 2);
@@ -5649,48 +5648,48 @@ function algo_init() {
         return result;
     }
     function getAreaWidth() {
-        switch(arguments.length) {
-        case 1:
-            var area = arguments[0];
-            return getAreaWidth_(area.topLeft, area.bottomRight);
-            break;
-        case 2:
-            var topLeft = arguments[0];
-            var bottomRight = arguments[1];
-            return getAreaWidth_(topLeft, bottomRight);
-            break;
-        default:
-            throw "getAreaWidthArgcIncorrect"
+        switch (arguments.length) {
+            case 1:
+                var area = arguments[0];
+                return getAreaWidth_(area.topLeft, area.bottomRight);
+                break;
+            case 2:
+                var topLeft = arguments[0];
+                var bottomRight = arguments[1];
+                return getAreaWidth_(topLeft, bottomRight);
+                break;
+            default:
+                throw "getAreaWidthArgcIncorrect"
         };
     }
     function getAreaHeight() {
-        switch(arguments.length) {
-        case 1:
-            var area = arguments[0];
-            return getAreaHeight_(area.topLeft, area.bottomRight);
-            break;
-        case 2:
-            var topLeft = arguments[0];
-            var bottomRight = arguments[1];
-            return getAreaHeight_(topLeft, bottomRight);
-            break;
-        default:
-            throw "getAreaWidthArgcIncorrect"
+        switch (arguments.length) {
+            case 1:
+                var area = arguments[0];
+                return getAreaHeight_(area.topLeft, area.bottomRight);
+                break;
+            case 2:
+                var topLeft = arguments[0];
+                var bottomRight = arguments[1];
+                return getAreaHeight_(topLeft, bottomRight);
+                break;
+            default:
+                throw "getAreaWidthArgcIncorrect"
         };
     }
     function getAreaCenter() {
-        switch(arguments.length) {
-        case 1:
-            var area = arguments[0];
-            return getAreaCenter_(area.topLeft, area.bottomRight);
-            break;
-        case 2:
-            var topLeft = arguments[0];
-            var bottomRight = arguments[1];
-            return getAreaCenter_(topLeft, bottomRight);
-            break;
-        default:
-            throw "getAreaWidthArgcIncorrect"
+        switch (arguments.length) {
+            case 1:
+                var area = arguments[0];
+                return getAreaCenter_(area.topLeft, area.bottomRight);
+                break;
+            case 2:
+                var topLeft = arguments[0];
+                var bottomRight = arguments[1];
+                return getAreaCenter_(topLeft, bottomRight);
+                break;
+            default:
+                throw "getAreaWidthArgcIncorrect"
         };
     }
 
@@ -5699,21 +5698,21 @@ function algo_init() {
     var knownFirstStandPointCoords = {
         our: {
             attrib: {
-                topLeft:     { x: 1047, y: 274, pos: "center" },
+                topLeft: { x: 1047, y: 274, pos: "center" },
                 bottomRight: { x: 1076, y: 303, pos: "center" }
             },
             floor: {
-                topLeft:     { x: 1048, y: 518, pos: "center" },
+                topLeft: { x: 1048, y: 518, pos: "center" },
                 bottomRight: { x: 1168, y: 575, pos: "center" }
             }
         },
         their: {
             attrib: {
-                topLeft:     { x: 230, y: 275, pos: "center" },
+                topLeft: { x: 230, y: 275, pos: "center" },
                 bottomRight: { x: 259, y: 304, pos: "center" }
             },
             floor: {
-                topLeft:     { x: 258, y: 520, pos: "center" },
+                topLeft: { x: 258, y: 520, pos: "center" },
                 bottomRight: { x: 361, y: 573, pos: "center" }
             }
         },
@@ -5734,44 +5733,44 @@ function algo_init() {
     var battleField = {
         our: {
             topRow: {
-                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 },
+                left: { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 },
                 middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 1 },
-                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 2 }
+                right: { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 2 }
             },
             middleRow: {
-                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 0 },
+                left: { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 0 },
                 middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 1 },
-                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 2 }
+                right: { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 2 }
             },
             bottomRow: {
-                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 0 },
+                left: { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 0 },
                 middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 1 },
-                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 2 }
+                right: { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 2 }
             }
         },
         their: {
             topRow: {
-                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 },
+                left: { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 },
                 middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 1 },
-                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 2 }
+                right: { occupied: false, attrib: "none", charaID: -1, rowNum: 0, columnNum: 2 }
             },
             middleRow: {
-                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 0 },
+                left: { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 0 },
                 middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 1 },
-                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 2 }
+                right: { occupied: false, attrib: "none", charaID: -1, rowNum: 1, columnNum: 2 }
             },
             bottomRow: {
-                left:   { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 0 },
+                left: { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 0 },
                 middle: { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 1 },
-                right:  { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 2 }
+                right: { occupied: false, attrib: "none", charaID: -1, rowNum: 2, columnNum: 2 }
             },
             lastAimedAtEnemy: { occupied: true, attrib: "none", charaID: -1, rowNum: 0, columnNum: 0 }
         }
     };
     var rows = ["topRow", "middleRow", "bottomRow"];
     var columns = ["left", "middle", "right"];
-    var rowsNum = {topRow: 0, middleRow: 1, bottomRow: 2};
-    var columnsNum = {left: 0, middle: 1, right: 2};
+    var rowsNum = { topRow: 0, middleRow: 1, bottomRow: 2 };
+    var columnsNum = { left: 0, middle: 1, right: 2 };
 
 
     //获取换算后的角色站位所需部分（血条右边框，地板等等）坐标
@@ -5795,15 +5794,15 @@ function algo_init() {
     }
     function getStandPointArea(whichSide, rowNum, columnNum, part) {
         let firstStandPointArea = {
-            topLeft:     getStandPointCoords("our", 0, 0, part, "topLeft"),
+            topLeft: getStandPointCoords("our", 0, 0, part, "topLeft"),
             bottomRight: getStandPointCoords("our", 0, 0, part, "bottomRight")
         };
         let resultTopLeft = getStandPointCoords(whichSide, rowNum, columnNum, part, "topLeft");
         let result = {
             topLeft: resultTopLeft,
             bottomRight: { //防止图像大小不符导致MSSIM==-1
-                x:   resultTopLeft.x + getAreaWidth(firstStandPointArea) - 1,
-                y:   resultTopLeft.y + getAreaHeight(firstStandPointArea) - 1,
+                x: resultTopLeft.x + getAreaWidth(firstStandPointArea) - 1,
+                y: resultTopLeft.y + getAreaHeight(firstStandPointArea) - 1,
                 pos: resultTopLeft.pos
             }
         };
@@ -5819,7 +5818,7 @@ function algo_init() {
     //识别指定站位的属性
     function getStandPointAttrib(screenshot, whichSide, rowNum, columnNum) {
         let similarity = -1;
-        for (let i=0; i<diskAttribs.length; i++) {
+        for (let i = 0; i < diskAttribs.length; i++) {
             let img = getStandPointImg(screenshot, whichSide, rowNum, columnNum, "attrib");
             let testAttrib = diskAttribs[i];
             let refImg = knownImgs[testAttrib];
@@ -5831,23 +5830,22 @@ function algo_init() {
             let gaussianSize = [gaussianX, gaussianY];
             let imgBlur = renewImage(images.gaussianBlur(img, gaussianSize));
             let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
-            similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
+            similarity = images.getSimilarity(refImgBlur, imgBlur, { "type": "MSSIM" });
             if (similarity > 2.1) {
-                log("第", rowNum+1, "行，第", columnNum+1, "列站位【有人】 属性", testAttrib, "MSSIM=", similarity);
+                log("第", rowNum + 1, "行，第", columnNum + 1, "列站位【有人】 属性", testAttrib, "MSSIM=", similarity);
                 return testAttrib;
             }
         }
-        log("第", rowNum+1, "行，第", columnNum+1, "列站位无人 MSSIM=", similarity);
+        log("第", rowNum + 1, "行，第", columnNum + 1, "列站位无人 MSSIM=", similarity);
         throw "getStandPointAttribInconclusive";
     }
 
     //扫描战场信息
-    function scanBattleField(whichSide)
-    {
-        log("scanBattleField("+whichSide+")");
+    function scanBattleField(whichSide) {
+        log("scanBattleField(" + whichSide + ")");
         let screenshot = compatCaptureScreen();
-        for(let i=0; i<3; i++) {
-            for(let j=0; j<3; j++) {
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
                 let whichStandPoint = battleField[whichSide][rows[i]][columns[j]];
                 whichStandPoint.occupied = true;
                 try {
@@ -5865,8 +5863,8 @@ function algo_init() {
     //获取有存活角色的站位
     function getAliveStandPoints(whichSide) {
         let result = [];
-        for(let i=0; i<3; i++) {
-            for(let j=0; j<3; j++) {
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
                 let standPoint = battleField[whichSide][rows[i]][columns[j]];
                 if (standPoint.occupied) {
                     result.push(standPoint);
@@ -5883,49 +5881,49 @@ function algo_init() {
     var knownFirstDiskCoords = {
         action: {
             topLeft: {
-                x:   359,
-                y:   1016,
+                x: 359,
+                y: 1016,
                 pos: "bottom"
             },
             bottomRight: {
-                x:   480,
-                y:   1039,
+                x: 480,
+                y: 1039,
                 pos: "bottom"
             }
         },
         charaImg: {
             topLeft: {
-                x:   393,
-                y:   925,
+                x: 393,
+                y: 925,
                 pos: "bottom"
             },
             bottomRight: {
-                x:   449,
-                y:   996,
+                x: 449,
+                y: 996,
                 pos: "bottom"
             }
         },
         attrib: {
             topLeft: {
-                x:   349,
-                y:   966,
+                x: 349,
+                y: 966,
                 pos: "bottom"
             },
             bottomRight: {
-                x:   378,
-                y:   995,
+                x: 378,
+                y: 995,
                 pos: "bottom"
             }
         },
         connectIndicator: {
             topLeft: {
-                x:   340, //第五个盘是1420
-                y:   865,
+                x: 340, //第五个盘是1420
+                y: 865,
                 pos: "bottom"
             },
             bottomRight: {
-                x:   370,
-                y:   882,
+                x: 370,
+                y: 882,
                 pos: "bottom"
             }
         },
@@ -5936,76 +5934,76 @@ function algo_init() {
     //行动盘信息
     var allActionDisks = [
         {
-            position:    0,
-            priority:    "first",
-            down:        false,
-            action:      "accel",
-            attrib:      "none",
-            charaImg:    null,
-            charaID:     0,
+            position: 0,
+            priority: "first",
+            down: false,
+            action: "accel",
+            attrib: "none",
+            charaImg: null,
+            charaID: 0,
             connectable: false,
-            connectedTo:   -1
+            connectedTo: -1
         },
         {
-            position:    1,
-            priority:    "second",
-            down:        false,
-            action:      "accel",
-            attrib:      "none",
-            charaImg:    null,
-            charaID:     1,
+            position: 1,
+            priority: "second",
+            down: false,
+            action: "accel",
+            attrib: "none",
+            charaImg: null,
+            charaID: 1,
             connectable: false,
-            connectedTo:   -1
+            connectedTo: -1
         },
         {
-            position:    2,
-            priority:    "third",
-            down:        false,
-            action:      "accel",
-            attrib:      "none",
-            img:         null,
-            charaImg:    null,
-            charaID:     2,
+            position: 2,
+            priority: "third",
+            down: false,
+            action: "accel",
+            attrib: "none",
+            img: null,
+            charaImg: null,
+            charaID: 2,
             connectable: false,
-            connectedTo:   -1
+            connectedTo: -1
         },
         {
-            position:    3,
-            priority:    "fourth",
-            down:        false,
-            action:      "accel",
-            attrib:      "none",
-            charaImg:    null,
-            charaID:     3,
+            position: 3,
+            priority: "fourth",
+            down: false,
+            action: "accel",
+            attrib: "none",
+            charaImg: null,
+            charaID: 3,
             connectable: false,
-            connectedTo:   -1
+            connectedTo: -1
         },
         {
-            position:    4,
-            priority:    "fifth",
-            down:        false,
-            action:      "accel",
-            attrib:      "none",
-            charaImg:    null,
-            charaID:     4,
+            position: 4,
+            priority: "fifth",
+            down: false,
+            action: "accel",
+            attrib: "none",
+            charaImg: null,
+            charaID: 4,
             connectable: false,
-            connectedTo:   -1
+            connectedTo: -1
         }
     ];
     var clickedDisksCount = 0;
 
     var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
-    var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
+    var ordinalNum = { first: 0, second: 1, third: 2, fourth: 3 };
     var diskActions = ["accel", "blast", "charge"];
     var diskAttribs = ["light", "dark", "water", "fire", "wood", "none"];
-    var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs.length; i++) { diskAttribsBtnDown.push(diskAttribs[i]+"BtnDown"); }
+    var diskAttribsBtnDown = []; for (let i = 0; i < diskAttribs.length; i++) { diskAttribsBtnDown.push(diskAttribs[i] + "BtnDown"); }
 
     function logDiskInfo(disk) {
         let connectableStr = "不可连携";
         if (disk.connectable) connectableStr = "【连携】";
         let downStr = "未按下"
         if (disk.down) downStr = "【按下】"
-        log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
+        log("第", disk.position + 1, "号盘", disk.action, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
 
     }
 
@@ -6025,7 +6023,7 @@ function algo_init() {
             firstDiskArea = getStandPointArea("our", 0, 0, "attrib");
         } else {
             firstDiskArea = {
-                topLeft:     getDiskCoords(0, part, "topLeft"),
+                topLeft: getDiskCoords(0, part, "topLeft"),
                 bottomRight: getDiskCoords(0, part, "bottomRight")
             };
         }
@@ -6033,8 +6031,8 @@ function algo_init() {
         let result = {
             topLeft: resultTopLeft,
             bottomRight: { //防止图像大小不符导致MSSIM==-1
-                x:   resultTopLeft.x + getAreaWidth(firstDiskArea) - 1,
-                y:   resultTopLeft.y + getAreaHeight(firstDiskArea) - 1,
+                x: resultTopLeft.x + getAreaWidth(firstDiskArea) - 1,
+                y: resultTopLeft.y + getAreaHeight(firstDiskArea) - 1,
                 pos: resultTopLeft.pos
             }
         };
@@ -6068,21 +6066,21 @@ function algo_init() {
             } else {
                 if (recogWhatArr[1] == "all") {
                     // attrib_all 和按下的所有属性比对
-                    for (let i=0; i<diskAttribs.length; i++){
+                    for (let i = 0; i < diskAttribs.length; i++) {
                         possibilities.push(diskAttribs[i]);
                     }
-                    for (let i=0; i<diskAttribsBtnDown.length; i++){
+                    for (let i = 0; i < diskAttribsBtnDown.length; i++) {
                         possibilities.push(diskAttribsBtnDown[i]);
                     }
                 } else {
                     // attrib_light/dark/water/fire/wood/none 只和光/暗/水/火/木/无属性比对
-                    possibilities = [recogWhatArr[1], recogWhatArr[1]+"BtnDown"];
+                    possibilities = [recogWhatArr[1], recogWhatArr[1] + "BtnDown"];
                 }
             }
         } else {
             throw "recognizeDiskUnknownrecogWhat"
         }
-        for (let i=0; i<possibilities.length; i++) {
+        for (let i = 0; i < possibilities.length; i++) {
             let refImg = knownImgs[possibilities[i]];
             let firstDiskArea = getDiskArea(0, "action");
             let gaussianX = parseInt(getAreaWidth(firstDiskArea) / 3);
@@ -6092,7 +6090,7 @@ function algo_init() {
             let gaussianSize = [gaussianX, gaussianY];
             let capturedImgBlur = renewImage(images.gaussianBlur(capturedImg, gaussianSize));
             let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
-            let similarity = images.getSimilarity(refImgBlur, capturedImgBlur, {"type": "MSSIM"});
+            let similarity = images.getSimilarity(refImgBlur, capturedImgBlur, { "type": "MSSIM" });
             log("与", possibilities[i], "盘的相似度 MSSIM=", similarity);
             if (similarity > maxSimilarity) {
                 maxSimilarity = similarity;
@@ -6112,41 +6110,41 @@ function algo_init() {
         let recogWhat = null;
         let threshold = 0;
         switch (arguments.length) {
-        case 2:
-            capturedImg = arguments[0];
-            recogWhat = arguments[1];
-            threshold = 0;
-            try {
+            case 2:
+                capturedImg = arguments[0];
+                recogWhat = arguments[1];
+                threshold = 0;
+                try {
+                    result = recognizeDisk_(capturedImg, recogWhat, threshold);
+                } catch (e) {
+                    if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+                    result = null;
+                }
+                if (result == null) {
+                    if (recogWhat == "action") result = "accel";
+                    log("当作", result, "盘，继续运行");
+                }
+                break;
+            case 3:
+                capturedImg = arguments[0];
+                recogWhat = arguments[1];
+                threshold = arguments[2];
                 result = recognizeDisk_(capturedImg, recogWhat, threshold);
-            } catch(e) {
-                if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
-                result = null;
-            }
-            if (result == null) {
-                if (recogWhat == "action") result = "accel";
-                log("当作", result, "盘，继续运行");
-            }
-            break;
-        case 3:
-            capturedImg = arguments[0];
-            recogWhat = arguments[1];
-            threshold = arguments[2];
-            result = recognizeDisk_(capturedImg, recogWhat, threshold);
-            break;
-        default:
-            throw "recognizeDiskArgcIncorrect"
+                break;
+            default:
+                throw "recognizeDiskArgcIncorrect"
         }
         return result;
     }
     function getDiskAction(screenshot, diskPos) {
         let actionImg = getDiskImg(screenshot, diskPos, "action");
-        log("识别第", diskPos+1, "盘的A/B/C类型...");
+        log("识别第", diskPos + 1, "盘的A/B/C类型...");
         return recognizeDisk(actionImg, "action");
     }
     function getDiskAttribDown(screenshot, diskPos) {
-        let result = {attrib: null, down: false};
+        let result = { attrib: null, down: false };
         let attribImg = getDiskImg(screenshot, diskPos, "attrib");
-        log("识别第", diskPos+1, "盘的光/暗/水/火/木/无属性，以及盘是否被按下...");
+        log("识别第", diskPos + 1, "盘的光/暗/水/火/木/无属性，以及盘是否被按下...");
         try {
             result.attrib = recognizeDisk(attribImg, "attrib_all", 2.1);
         } catch (e) {
@@ -6174,10 +6172,10 @@ function algo_init() {
     function isDiskDown(screenshot, diskPos) {
         let attribImg = getDiskImg(screenshot, diskPos, "attrib");
         let disk = allActionDisks[diskPos];
-        log("识别第", diskPos+1, "盘 (", disk.attrib, ") 是否被按下...");
+        log("识别第", diskPos + 1, "盘 (", disk.attrib, ") 是否被按下...");
         let recogResult = null;
         try {
-           recogResult = recognizeDisk(attribImg, "attrib_"+disk.attrib, 2.1);
+            recogResult = recognizeDisk(attribImg, "attrib_" + disk.attrib, 2.1);
         } catch (e) {
             if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
             recogResult = null;
@@ -6208,7 +6206,7 @@ function algo_init() {
 
     //截取盘上的角色头像
     function getDiskCharaImg(screenshot, diskPos) {
-        let tag = ""+diskPos;
+        let tag = "" + diskPos;
         return getDiskImgWithTag(screenshot, diskPos, "charaImg", tag);
     }
 
@@ -6224,26 +6222,26 @@ function algo_init() {
         let gaussianSize = [gaussianX, gaussianY];
         let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
         let imgBlur = renewImage(images.gaussianBlur(img, gaussianSize));
-        let similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
-        let result = {connectable: false, down: false};
+        let similarity = images.getSimilarity(refImgBlur, imgBlur, { "type": "MSSIM" });
+        let result = { connectable: false, down: false };
         if (similarity > 2.1) {
-            log("第", diskPos+1, "号盘【可以连携】，MSSIM=", similarity);
+            log("第", diskPos + 1, "号盘【可以连携】，MSSIM=", similarity);
             result.connectable = true;
             result.down = false;
             return result;
         }
         let refImgBtnDown = knownImgs.connectIndicatorBtnDown;
         let refImgBtnDownBlur = renewImage(images.gaussianBlur(refImgBtnDown, gaussianSize));
-        similarity = images.getSimilarity(refImgBtnDownBlur, imgBlur, {"type": "MSSIM"});
+        similarity = images.getSimilarity(refImgBtnDownBlur, imgBlur, { "type": "MSSIM" });
         if (similarity > 2.1) {
             // 这里还无法分辨到底是盘已经按下了，还是因为没有其他人可以连携而灰掉
-            log("第", diskPos+1, "号盘可以连携，但是已经被按下，或因为我方只剩一人而无法连携，MSSIM=", similarity);
+            log("第", diskPos + 1, "号盘可以连携，但是已经被按下，或因为我方只剩一人而无法连携，MSSIM=", similarity);
             result.connectable = true;
             result.down = true;
             return result;
         }
-        log("第", diskPos+1, "号盘不能连携，MSSIM=", similarity);
-        result = {connectable: false, down: false}; //这里没有进一步判断down的值
+        log("第", diskPos + 1, "号盘不能连携，MSSIM=", similarity);
+        result = { connectable: false, down: false }; //这里没有进一步判断down的值
         return result;
     }
 
@@ -6263,19 +6261,19 @@ function algo_init() {
         let gaussianSize = [gaussianX, gaussianY];
         let imgABlur = renewImage(images.gaussianBlur(imgA, gaussianSize));
         let imgBBlur = renewImage(images.gaussianBlur(imgB, gaussianSize));
-        let similarity = images.getSimilarity(imgABlur, imgBBlur, {"type": "MSSIM"});
+        let similarity = images.getSimilarity(imgABlur, imgBBlur, { "type": "MSSIM" });
         if (similarity > 2.4) { //有属性克制时的闪光可能会干扰判断，会造成假阴性，实际上是同一个角色，却被误识别为不同的角色
-            log("第", diskA.position+1, "盘与第", diskB.position+1,"盘【像是】同一角色 MSSIM=", similarity);
+            log("第", diskA.position + 1, "盘与第", diskB.position + 1, "盘【像是】同一角色 MSSIM=", similarity);
             return true;
         }
-        log("第", diskA.position+1, "盘与第", diskB.position+1,"盘不像同一角色 MSSIM=", similarity);
+        log("第", diskA.position + 1, "盘与第", diskB.position + 1, "盘不像同一角色 MSSIM=", similarity);
         return false;
     }
 
     //扫描行动盘信息
     function scanDisks() {
         //重新赋值，覆盖上一轮选盘残留的数值
-        for (let i=0; i<allActionDisks.length; i++) {
+        for (let i = 0; i < allActionDisks.length; i++) {
             allActionDisks[i].priority = ordinalWord[i];
             allActionDisks[i].down = false;
             allActionDisks[i].action = "accel";
@@ -6290,7 +6288,7 @@ function algo_init() {
         //截屏，对盘进行识别
         //这里还是假设没有盘被按下
         let screenshot = compatCaptureScreen();
-        for (let i=0; i<allActionDisks.length; i++) {
+        for (let i = 0; i < allActionDisks.length; i++) {
             let disk = allActionDisks[i];
             disk.action = getDiskAction(screenshot, i);
             disk.charaImg = getDiskCharaImg(screenshot, i);
@@ -6303,9 +6301,9 @@ function algo_init() {
         //分辨不同的角色，用charaID标记
         //如果有盘被点击过，在有属性克制的情况下，这个检测可能被闪光特效干扰
         //如果有按下的盘，这里也会把同一位角色误判为不同角色
-        for (let i=0; i<allActionDisks.length-1; i++) {
+        for (let i = 0; i < allActionDisks.length - 1; i++) {
             let diskI = allActionDisks[i];
-            for (let j=i+1; j<allActionDisks.length; j++) {
+            for (let j = i + 1; j < allActionDisks.length; j++) {
                 let diskJ = allActionDisks[j];
                 if (areDisksSimilar(screenshot, i, j)) {
                     diskJ.charaID = diskI.charaID;
@@ -6314,7 +6312,7 @@ function algo_init() {
         }
 
         log("行动盘扫描结果：");
-        for (let i=0; i<allActionDisks.length; i++) {
+        for (let i = 0; i < allActionDisks.length; i++) {
             logDiskInfo(allActionDisks[i]);
         }
     }
@@ -6322,7 +6320,7 @@ function algo_init() {
     //找出可以给出连携的盘
     function getConnectableDisks(disks) {
         let result = [];
-        for (let i=0; i<disks.length; i++) {
+        for (let i = 0; i < disks.length; i++) {
             var disk = disks[i];
             if (disk.connectable && (!disk.down)) result.push(disk);
         }
@@ -6332,7 +6330,7 @@ function algo_init() {
     //找出某一角色的盘
     function findDisksByCharaID(disks, charaID) {
         let result = [];
-        for (let i=0; i<disks.length; i++) {
+        for (let i = 0; i < disks.length; i++) {
             var disk = disks[i];
             if (disk.charaID == charaID) result.push(disk);
         }
@@ -6342,7 +6340,7 @@ function algo_init() {
     //找出指定（A/B/C）的盘
     function findSameActionDisks(disks, action) {
         let result = [];
-        for (let i=0; i<disks.length; i++) {
+        for (let i = 0; i < disks.length; i++) {
             var disk = disks[i];
             if (disk.action == action) result.push(disk);
         }
@@ -6354,7 +6352,7 @@ function algo_init() {
         let result = [];
         diskCount = [0, 0, 0, 0, 0];
         //每个盘都属于哪个角色
-        for (let i=0; i<disks.length; i++) {
+        for (let i = 0; i < disks.length; i++) {
             var disk = disks[i];
             //本角色出现盘数+1
             diskCount[disk.charaID]++;
@@ -6363,7 +6361,7 @@ function algo_init() {
         //找到出现盘数最多的角色
         var max = 0;
         var mostDisksCharaID = 0;
-        for (let i=0; i<diskCount.length; i++) {
+        for (let i = 0; i < diskCount.length; i++) {
             if (diskCount[i] > max) {
                 max = diskCount[i];
                 mostDisksCharaID = i;
@@ -6377,7 +6375,7 @@ function algo_init() {
     //返回指定属性的盘（光/暗/水/火/木/无）
     function findSameAttribDisks(disks, attrib) {
         let result = [];
-        for (let i=0; i<disks.length; i++) {
+        for (let i = 0; i < disks.length; i++) {
             var disk = disks[i];
             if (disk.attrib == attrib) result.push(disk);
         }
@@ -6407,7 +6405,7 @@ function algo_init() {
 
     //返回优先第N个点击的盘
     function getDiskByPriority(disks, priority) {
-        for (let i=0; i<disks.length; i++) {
+        for (let i = 0; i < disks.length; i++) {
             disk = disks[i];
             if (disk.priority == priority) return disk;
         }
@@ -6417,36 +6415,36 @@ function algo_init() {
     function getAdvDisadvAttribs(attrib, advOrDisadv) {
         let result = [];
         switch (advOrDisadv) {
-        case "disadv":
-            switch(attrib) {
-            case "light": result = ["dark" ]; break;
-            case "dark":  result = ["light"]; break;
-            case "water": result = ["fire" ]; break;
-            case "fire":  result = ["wood" ]; break;
-            case "wood":  result = ["water"]; break;
-            case "none":  result = [];        break;
-            }
-            break;
-        case "adv":
-            switch(attrib) {
-            case "light": result = ["dark" ]; break;
-            case "dark":  result = ["light"]; break;
-            case "water": result = ["wood" ]; break;
-            case "fire":  result = ["water"]; break;
-            case "wood":  result = ["fire" ]; break;
-            case "none":  result = [];        break;
-            }
-            break;
-        case "neutral":
-            switch(attrib) {
-            case "light": result = ["none", "light"]; break;
-            case "dark":  result = ["none", "dark" ]; break;
-            case "water": result = ["none", "water"]; break;
-            case "fire":  result = ["none", "fire" ]; break;
-            case "wood":  result = ["none", "wood" ]; break;
-            case "none":  result = ["none", "light", "dark", "water", "fire", "wood"]; break;
-            }
-            break;
+            case "disadv":
+                switch (attrib) {
+                    case "light": result = ["dark"]; break;
+                    case "dark": result = ["light"]; break;
+                    case "water": result = ["fire"]; break;
+                    case "fire": result = ["wood"]; break;
+                    case "wood": result = ["water"]; break;
+                    case "none": result = []; break;
+                }
+                break;
+            case "adv":
+                switch (attrib) {
+                    case "light": result = ["dark"]; break;
+                    case "dark": result = ["light"]; break;
+                    case "water": result = ["wood"]; break;
+                    case "fire": result = ["water"]; break;
+                    case "wood": result = ["fire"]; break;
+                    case "none": result = []; break;
+                }
+                break;
+            case "neutral":
+                switch (attrib) {
+                    case "light": result = ["none", "light"]; break;
+                    case "dark": result = ["none", "dark"]; break;
+                    case "water": result = ["none", "water"]; break;
+                    case "fire": result = ["none", "fire"]; break;
+                    case "wood": result = ["none", "wood"]; break;
+                    case "none": result = ["none", "light", "dark", "water", "fire", "wood"]; break;
+                }
+                break;
         }
         return result;
     }
@@ -6454,9 +6452,9 @@ function algo_init() {
     //获取我方克制/弱点/中立属性（对于水队来说弱点属性就是木属性）
     function getAdvDisadvAttribsOfStandPoints(standPoints, advOrDisadv) {
         let result = [];
-        let stats = {light: 0, dark: 0, water: 0, fire: 0, wood: 0, none: 0};
+        let stats = { light: 0, dark: 0, water: 0, fire: 0, wood: 0, none: 0 };
         let maxCount = 0;
-        for (let i=0; i<standPoints.length; i++) {
+        for (let i = 0; i < standPoints.length; i++) {
             let standPoint = standPoints[i];
             let attribs = getAdvDisadvAttribs(standPoint.attrib, advOrDisadv);
             if (attribs != null) {
@@ -6467,7 +6465,7 @@ function algo_init() {
             }
         }
         //把出现多的排到前面
-        for (let i=1; i<=maxCount; i++) {
+        for (let i = 1; i <= maxCount; i++) {
             for (let attrib in stats) {
                 let count = stats[attrib];
                 if (count == i) {
@@ -6482,8 +6480,8 @@ function algo_init() {
     function getEnemiesByAttrib(targetedAttrib) {
         log("getEnemiesByAttrib(", targetedAttrib, ")");
         let result = [];
-        for (let i=0; i<rows.length; i++) {
-            for (let j=0; j<columns.length; j++) {
+        for (let i = 0; i < rows.length; i++) {
+            for (let j = 0; j < columns.length; j++) {
                 let standPoint = battleField.their[rows[i]][columns[j]];
                 if (standPoint.occupied && standPoint.attrib == targetedAttrib) {
                     result.push(standPoint);
@@ -6515,19 +6513,19 @@ function algo_init() {
     function avoidAimAtEnemies(enemiesToAvoid) {
         log("avoidAimAtEnemies(", enemiesToAvoid, ")");
         let allEnemies = [];
-        for (let i=0; i<rows.length; i++) {
-            for (let j=0; j<columns.length; j++) {
+        for (let i = 0; i < rows.length; i++) {
+            for (let j = 0; j < columns.length; j++) {
                 let standPoint = battleField.their[rows[i]][columns[j]];
                 if (standPoint.occupied) allEnemies.push(standPoint);
             }
         }
 
         let remainingEnemies = [];
-        for (let i=0; i<allEnemies.length; i++) { remainingEnemies.push(allEnemies[i]); }
-        for (let i=0; i<remainingEnemies.length; i++) {
+        for (let i = 0; i < allEnemies.length; i++) { remainingEnemies.push(allEnemies[i]); }
+        for (let i = 0; i < remainingEnemies.length; i++) {
             let thisEnemy = remainingEnemies[i];
             let deleted = false;
-            for (let j=0; j<enemiesToAvoid.length; j++) {
+            for (let j = 0; j < enemiesToAvoid.length; j++) {
                 let enemyToAvoid = enemiesToAvoid[j];
                 if (thisEnemy.rowNum == enemyToAvoid.rowNum || thisEnemy.columnNum == enemyToAvoid.columnNum) {
                     //绕开与指定敌人同一行或同一列的其他敌人，如果可能的话
@@ -6545,11 +6543,11 @@ function algo_init() {
         }
 
         remainingEnemies = [];
-        for (let i=0; i<allEnemies.length; i++) { remainingEnemies.push(allEnemies[i]); }
-        for (let i=0; i<remainingEnemies.length; i++) {
+        for (let i = 0; i < allEnemies.length; i++) { remainingEnemies.push(allEnemies[i]); }
+        for (let i = 0; i < remainingEnemies.length; i++) {
             let thisEnemy = remainingEnemies[i];
             let deleted = false;
-            for (let j=0; j<enemiesToAvoid.length; j++) {
+            for (let j = 0; j < enemiesToAvoid.length; j++) {
                 let enemyToAvoid = enemiesToAvoid[j];
                 if (thisEnemy.rowNum == enemyToAvoid.rowNum && thisEnemy.columnNum == enemyToAvoid.columnNum) {
                     //绕开的指定要避免的敌人本身
@@ -6567,11 +6565,11 @@ function algo_init() {
     //选盘，实质上是把选到的盘在allActionDisks数组里排到前面
     function prioritiseDisks(disks) {
         log("优先选盘：");
-        for (let i=0; i<disks.length; i++) {
+        for (let i = 0; i < disks.length; i++) {
             logDiskInfo(disks[i]);
         }
         let replaceDiskAtThisPriority = clickedDisksCount;
-        for (let i=0; i<disks.length; i++) {
+        for (let i = 0; i < disks.length; i++) {
             let targetDisk = getDiskByPriority(allActionDisks, ordinalWord[replaceDiskAtThisPriority]);
             let diskToPrioritise = disks[i];
             let posA = targetDisk.position;
@@ -6583,7 +6581,7 @@ function algo_init() {
         }
 
         log("当前选盘情况：");
-        for (let i=clickedDisksCount; i<allActionDisks.length; i++) {
+        for (let i = clickedDisksCount; i < allActionDisks.length; i++) {
             logDiskInfo(getDiskByPriority(allActionDisks, ordinalWord[i]));
         }
     }
@@ -6604,7 +6602,7 @@ function algo_init() {
                         foundIndices.push(index);
                     }
                 });
-                for (let i=0; i<foundIndices.length; i++) {
+                for (let i = 0; i < foundIndices.length; i++) {
                     let temp = aliveStandPoints[i];
                     aliveStandPoints[i] = aliveStandPoints[foundIndices[i]];
                     aliveStandPoints[foundIndices[i]] = temp;
@@ -6615,7 +6613,7 @@ function algo_init() {
         for (let thisStandPoint of aliveStandPoints) {
             if (thisStandPoint.charaID != fromDisk.charaID) {
                 //找到有人、并且角色和连携发出角色不同的的站位
-                log("从", fromDisk.position+1, "盘向第", thisStandPoint.rowNum+1, "行第", thisStandPoint.columnNum+1, "列站位进行连携");
+                log("从", fromDisk.position + 1, "盘向第", thisStandPoint.rowNum + 1, "行第", thisStandPoint.columnNum + 1, "列站位进行连携");
                 let src = getAreaCenter(getDiskArea(fromDisk.position, "charaImg"));
                 let dst = getAreaCenter(getStandPointArea("our", thisStandPoint.rowNum, thisStandPoint.columnNum, "floor"));
                 //连携划动
@@ -6639,11 +6637,11 @@ function algo_init() {
 
     //点击行动盘
     function clickDisk(disk) {
-        log("点击第", disk.position+1, "号盘");
+        log("点击第", disk.position + 1, "号盘");
         let point = getAreaCenter(getDiskArea(disk.position, "charaImg"));
         let clickAttemptMax = 10;
         let inconclusiveCount = 0;
-        for (let i=0; i<clickAttemptMax; i++) {
+        for (let i = 0; i < clickAttemptMax; i++) {
             click(point.x, point.y);
             //点击有时候会没效果，还需要监控盘是否按下了
             sleep(333);
@@ -6682,13 +6680,13 @@ function algo_init() {
     //已知接第一盘角色头像坐标
     var knownFirstSelectedConnectedDiskCoords = {
         topLeft: {
-            x:   809,
-            y:   112,
+            x: 809,
+            y: 112,
             pos: "top"
         },
         bottomRight: {
-            x:   825,
-            y:   133,
+            x: 825,
+            y: 133,
             pos: "top"
         },
         distance: 187.5
@@ -6705,7 +6703,7 @@ function algo_init() {
     }
     function getSelectedConnectedDiskArea(which) {
         var result = {
-            topLeft:     getSelectedConnectedDiskCoords("topLeft", which),
+            topLeft: getSelectedConnectedDiskCoords("topLeft", which),
             bottomRight: getSelectedConnectedDiskCoords("bottomRight", which),
         };
         return result;
@@ -6736,14 +6734,14 @@ function algo_init() {
             let imgB = getDiskImg(screenshot, diskPos, "charaImg"); //这里还没考虑侧边刘海屏可能切掉画面的问题，不过除非侧边特别宽否则应该不会有影响
             let imgBShrunk = renewImage(images.resize(imgB, [getAreaWidth(area), getAreaHeight(area)]));
             let imgBShrunkBlur = renewImage(images.gaussianBlur(imgBShrunk, gaussianSize));
-            let similarity = images.getSimilarity(imgABlur, imgBShrunkBlur, {"type": "MSSIM"});
-            log("比对第", diskPos+1, "号盘与屏幕上方的第一个盘的连携接受者 MSSIM=", similarity);
+            let similarity = images.getSimilarity(imgABlur, imgBShrunkBlur, { "type": "MSSIM" });
+            log("比对第", diskPos + 1, "号盘与屏幕上方的第一个盘的连携接受者 MSSIM=", similarity);
             if (similarity > maxSimilarity) {
                 maxSimilarity = similarity;
                 max = diskPos;
             }
         }
-        log("比对结束，与第", max+1, "号盘最相似，charaID=", allActionDisks[max].charaID, "MSSIM=", maxSimilarity);
+        log("比对结束，与第", max + 1, "号盘最相似，charaID=", allActionDisks[max].charaID, "MSSIM=", maxSimilarity);
         if (allActionDisks[max].charaID == fromDisk.charaID) {
             log("识图比对结果有误，和连携发出角色相同");
             log("为避免问题，返回 charaID=-1");
@@ -6817,12 +6815,12 @@ function algo_init() {
 
     //检测技能是否可用
     function isSkillAvailable(screenshot, diskPos, skillNo) {
-        log("检测第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能是否可用...");
+        log("检测第 " + (diskPos + 1) + " 个位置的角色的第 " + (skillNo + 1) + " 个技能是否可用...");
         let skillImg = getSkillImg(screenshot, diskPos, skillNo);
         let skillImgGRAY = renewImage(images.grayscale(skillImg));
         let skillImgGray = renewImage(images.cvtColor(skillImgGRAY, "GRAY2BGRA"));
         let skillImgBGRA = renewImage(images.cvtColor(skillImg, "BGR2BGRA"));
-        let similarity = images.getSimilarity(skillImgGray, skillImgBGRA, {"type": "MSSIM"});
+        let similarity = images.getSimilarity(skillImgGray, skillImgBGRA, { "type": "MSSIM" });
         log("技能按钮区域图像 去色前后的相似度 MSSIM=", similarity);
         if (similarity > 2.9) {
             let firstSkillArea = getSkillArea(0, 0);
@@ -6844,7 +6842,7 @@ function algo_init() {
             let skillFullImg = getSkillFullImg(screenshot, diskPos, skillNo);
             let skillFullImgGray = renewImage(images.grayscale(skillFullImg));
             let minRadius = parseInt(getAreaWidth(getSkillFullArea(0, 0)) * 0.33);
-            let foundCircles = images.findCircles(skillFullImgGray, {minRadius: minRadius});
+            let foundCircles = images.findCircles(skillFullImgGray, { minRadius: minRadius });
             log("找圆结果", foundCircles);
             if (foundCircles != null && foundCircles.length > 0) {
                 let firstSkillArea = getSkillArea(0, 0);
@@ -6857,7 +6855,7 @@ function algo_init() {
                 similarity = -1;
                 for (var imgName of ["skillLocked", "skillEmptyCHS", "skillEmptyCHT", "skillEmptyJP"]) {
                     let imgB = renewImage(images.gaussianBlur(knownImgs[imgName], gaussianSize));
-                    let s = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
+                    let s = images.getSimilarity(imgA, imgB, { "type": "MSSIM" });
                     if (s > similarity) {
                         similarity = s;
                     }
@@ -6888,7 +6886,7 @@ function algo_init() {
         let diskAppeared = true;
         try {
             recognizeDisk(img, "action", 2.1);
-        } catch(e) {
+        } catch (e) {
             if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
             diskAppeared = false;
         }
@@ -6897,10 +6895,10 @@ function algo_init() {
 
     //打开或关闭技能面板
     function toggleSkillPanel(open) {
-        log((open?"打开":"关闭")+"技能面板...");
-        for (let attempt=0; isDiskAppearing(compatCaptureScreen())==open; attempt++) {
+        log((open ? "打开" : "关闭") + "技能面板...");
+        for (let attempt = 0; isDiskAppearing(compatCaptureScreen()) == open; attempt++) {
             if (attempt >= 10) {
-                log((open?"打开":"关闭")+"技能面板时出错");
+                log((open ? "打开" : "关闭") + "技能面板时出错");
                 stopThread();
             }
             if (attempt % 2 == 1) {
@@ -6940,7 +6938,7 @@ function algo_init() {
     function clickBackButtonIfShowed() {
         let lastClickTime = 0;
         let attemptMax = 10;
-        for (let attempt=0; attempt<attemptMax; attempt++) {
+        for (let attempt = 0; attempt < attemptMax; attempt++) {
             if (!isBackButtonAppearing(compatCaptureScreen())) {
                 return true;
             }
@@ -6982,7 +6980,7 @@ function algo_init() {
         let imgGray = renewImage(images.cvtColor(imgGRAY, "GRAY2BGRA"));
         let imgBGRA = renewImage(images.cvtColor(img, "BGR2BGRA"));
         let isGray = false;
-        let similarity = images.getSimilarity(imgBGRA, imgGray, {"type": "MSSIM"});
+        let similarity = images.getSimilarity(imgBGRA, imgGray, { "type": "MSSIM" });
         log("判断按钮区域图像是否为灰度 MSSIM=", similarity);
         if (similarity > 2.9) {
             isGray = true;
@@ -6996,7 +6994,7 @@ function algo_init() {
         let gaussianSize = [gaussianX, gaussianY];
         let imgBlur = renewImage(images.gaussianBlur(img, gaussianSize));
         let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
-        similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
+        similarity = images.getSimilarity(refImgBlur, imgBlur, { "type": "MSSIM" });
         log("判断技能确认按钮是否出现 MSSIM=", similarity);
         if (similarity > 2.1) {
             if (isGray) {
@@ -7017,11 +7015,11 @@ function algo_init() {
         //打开技能面板
         toggleSkillPanel(true);
 
-        for (let pass=1; pass<=3; pass++) { //只循环3遍
+        for (let pass = 1; pass <= 3; pass++) { //只循环3遍
             var availableSkillCount = 0;
             let screenshot = renewImage(images.copy(compatCaptureScreen())); //复制一遍以避免toggleSkillPanel回收screenshot导致崩溃退出的问题
-            for (let diskPos=0; diskPos<5; diskPos++) {
-                for (let skillNo=0; skillNo<2; skillNo++) {
+            for (let diskPos = 0; diskPos < 5; diskPos++) {
+                for (let skillNo = 0; skillNo < 2; skillNo++) {
                     if (isSkillAvailable(screenshot, diskPos, skillNo)) {
                         availableSkillCount++;
                         let isSkillButtonClicked = false;
@@ -7029,7 +7027,7 @@ function algo_init() {
                         let lastCancelClickTime = 0;
                         let isSkillUsed = false;
                         let isSkillDone = false;
-                        for (let startTime=new Date().getTime(); new Date().getTime()-startTime<15000; sleep(200)) {
+                        for (let startTime = new Date().getTime(); new Date().getTime() - startTime < 15000; sleep(200)) {
                             let clickTime = 0;
                             if (!clickBackButtonIfShowed()) {
                                 log("误触打开了角色信息,多次点击返回却没有效果,退出");
@@ -7067,16 +7065,16 @@ function algo_init() {
                                         }
                                     } else {
                                         isSkillButtonClicked = true;
-                                        log("点击使用第 "+(diskPos+1)+" 个位置的角色的第 "+(skillNo+1)+" 个技能");
+                                        log("点击使用第 " + (diskPos + 1) + " 个位置的角色的第 " + (skillNo + 1) + " 个技能");
                                         click(getAreaCenter(getSkillArea(diskPos, skillNo)));
-                                    } 
+                                    }
                             }
                         }
                         toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
                     }
                 }
             }
-            try {screenshot.recycle();} catch (e) {};
+            try { screenshot.recycle(); } catch (e) { };
             if (availableSkillCount <= 0) break;
         }
 
@@ -7091,7 +7089,7 @@ function algo_init() {
         let result = false;
         let cycles = 0;
         let diskAppearedCount = 0;
-        while(true) {
+        while (true) {
             cycles++;
             let screenshot = compatCaptureScreen();
             /*
@@ -7100,8 +7098,8 @@ function algo_init() {
             if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce() || /*镜层结算*/
                 id("ResultWrap").findOnce() || id("charaWrap").findOnce() || /*副本结算*/
                 id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
-            //不再通过识图判断战斗是否结束
-            //if (didWeWin(screenshot) || didWeLose(screenshot)) {
+                //不再通过识图判断战斗是否结束
+                //if (didWeWin(screenshot) || didWeLose(screenshot)) {
                 log("战斗已经结束，不再等待我方回合");
                 result = false;
                 break;
@@ -7137,10 +7135,10 @@ function algo_init() {
                         images.save(img, imgPath, "png");
                         log("保存第一个盘的动作图片完成");
                         for (let action of ["accel", "blast", "charge"]) {
-                            log("保存用于参考的"+action+"盘的动作图片...");
-                            let refImgPath = files.join(screenshotDir, action+".png");
+                            log("保存用于参考的" + action + "盘的动作图片...");
+                            let refImgPath = files.join(screenshotDir, action + ".png");
                             images.save(knownImgs[action], refImgPath, "png");
-                            log("保存用于参考的"+action+"盘的动作图片完成");
+                            log("保存用于参考的" + action + "盘的动作图片完成");
                         }
                     }
                     toastLog("调试模式下已保存图片,退出识图自动战斗");
@@ -7154,7 +7152,7 @@ function algo_init() {
                     break;
                 }
             }
-            if(cycles>300*5) {
+            if (cycles > 300 * 5) {
                 log("等待己方回合已经超过10分钟，结束运行");
                 stopThread();
             }
@@ -7167,25 +7165,25 @@ function algo_init() {
     var knownMirrorsWinLoseCoords = {
         mirrorsWinLetterI: {
             topLeft: {
-                x:   962,
-                y:   370,
+                x: 962,
+                y: 370,
                 pos: "center"
             },
             bottomRight: {
-                x:   989,
-                y:   464,
+                x: 989,
+                y: 464,
                 pos: "center"
             }
         },
         mirrorsLose: {
             topLeft: {
-                x:   757,
-                y:   371,
+                x: 757,
+                y: 371,
                 pos: "center"
             },
             bottomRight: {
-                x:   1161,
-                y:   463,
+                x: 1161,
+                y: 463,
                 pos: "center"
             }
         }
@@ -7210,7 +7208,7 @@ function algo_init() {
         //结算页面有闪光，会干扰判断，但是只会产生假阴性，不会出现假阳性
         let imgA = knownImgs[winOrLose];
         let imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
-        let similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
+        let similarity = images.getSimilarity(imgA, imgB, { "type": "MSSIM" });
         log("镜界胜负判断", winOrLose, " MSSIM=", similarity);
         if (similarity > 2.1) {
             return true;
@@ -7228,8 +7226,8 @@ function algo_init() {
     //判断最终输赢
     function clickMirrorsBattleResult() {
         var screenCenter = {
-            x:   960,
-            y:   540,
+            x: 960,
+            y: 540,
             pos: "center"
         };
         let failedCount = 0; //调查无法判定镜层战斗输赢的问题
@@ -7325,12 +7323,12 @@ function algo_init() {
 
         //简单镜层自动战斗
         while (true) {
-            for (let n=0; n<8; n++) {
-                log("n="+n);
-                let isDiskClickable = [(n&4)==0, (n&2)==0, (n&1)==0];
+            for (let n = 0; n < 8; n++) {
+                log("n=" + n);
+                let isDiskClickable = [(n & 4) == 0, (n & 2) == 0, (n & 1) == 0];
                 let breakable = false;
-                for (let pass=1; pass<=4; pass++) {
-                    for (let i=1; i<=3; i++) {
+                for (let pass = 1; pass <= 4; pass++) {
+                    for (let i = 1; i <= 3; i++) {
                         for (let resID of battleEndIDs) {
                             if (findID(resID)) {
                                 log("找到", resID, ", 结束简单镜层自动战斗");
@@ -7347,8 +7345,8 @@ function algo_init() {
                             }
                         });
                         if (!isBattleResult) {
-                            if (isDiskClickable[i-1] || (pass >= 1 && pass <= 2)) {
-                                click(convertCoords(clickSetsMod["battlePan"+i]));
+                            if (isDiskClickable[i - 1] || (pass >= 1 && pass <= 2)) {
+                                click(convertCoords(clickSetsMod["battlePan" + i]));
                                 sleep(1000);
                             }
                         } else {
@@ -7416,8 +7414,8 @@ function algo_init() {
         //利用截屏识图进行稍复杂的自动战斗（比如连携）
         //开始一次镜界自动战斗
         turn = 0;
-        while(true) {
-            if(!waitForOurTurn()) break;
+        while (true) {
+            if (!waitForOurTurn()) break;
             //我的回合，抽盘
             turn++;
 
@@ -7593,7 +7591,7 @@ function algo_init() {
                     //先找Puella Combo内的ACB，再找混合ACB
                     let ACBAttemptMax = sameCharaDisks.length >= 3 ? 2 : 1;
                     candidateDisks = sameCharaDisks.length >= 3 ? sameCharaDisks : allActionDisks;
-                    for (let ACBAttempt=0; ACBAttempt<ACBAttemptMax; ACBAttempt++) {
+                    for (let ACBAttempt = 0; ACBAttempt < ACBAttemptMax; ACBAttempt++) {
                         for (let action of ["accel", "charge", "blast"]) {
                             let foundDisks = findSameActionDisks(candidateDisks, action);
                             if (foundDisks.length > 0) ACBDisks.push(foundDisks[0]);
@@ -7612,7 +7610,7 @@ function algo_init() {
             }
 
             //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
-            for (let i=clickedDisksCount; i<3; i++) {
+            for (let i = clickedDisksCount; i < 3; i++) {
                 let diskToClick = getDiskByPriority(allActionDisks, ordinalWord[i]);
                 //有时候点连携盘会变成长按拿起又放下，改成拖出去连携来避免这个问题
                 if (diskToClick.connectable) {
@@ -7652,16 +7650,16 @@ function algo_init() {
         //[1246,375][1357,425]
         //[1246,656][1357,706]
         //[1246,937][1357,988]
-        topLeft: {x: 1236, y: 370, pos: "center"},
-        bottomRight: {x: 1400, y: 430, pos: "center"},
+        topLeft: { x: 1236, y: 370, pos: "center" },
+        bottomRight: { x: 1400, y: 430, pos: "center" },
         distance: 281
     }
     //在匹配到的三个对手中，获取指定的其中一个（1/2/3）的战力值
     function getMirrorsScoreAt(position) {
         let distance = knownFirstMirrorsOpponentScoreCoords.distance * (position - 1);
         let knownArea = {
-            topLeft: {x: 0, y: distance, pos: "center"},
-            bottomRight: {x: 0, y: distance, pos: "center"}
+            topLeft: { x: 0, y: distance, pos: "center" },
+            bottomRight: { x: 0, y: distance, pos: "center" }
         }
         for (point in knownArea) {
             for (key in knownArea.topLeft) {
@@ -7670,7 +7668,7 @@ function algo_init() {
         }
         let convertedArea = getConvertedArea(knownArea);
         let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
-        for (let i=0; i<uiObjArr.length; i++) {
+        for (let i = 0; i < uiObjArr.length; i++) {
             let uiObj = uiObjArr[i];
             let score = parseInt(getContent(uiObj));
             if (isNaN(score)) continue;
@@ -7683,14 +7681,14 @@ function algo_init() {
 
     var knownMirrorsSelfScoreCoords = {
         //[0,804][712,856]
-        topLeft: {x: 0, y: 799, pos: "bottom"},
-        bottomRight: {x: 717, y: 861, pos: "bottom"}
+        topLeft: { x: 0, y: 799, pos: "bottom" },
+        bottomRight: { x: 717, y: 861, pos: "bottom" }
     }
     //获取自己的战力值
     function getMirrorsSelfScore() {
         let convertedArea = getConvertedArea(knownMirrorsSelfScoreCoords);
         let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
-        for (let i=0; i<uiObjArr.length; i++) {
+        for (let i = 0; i < uiObjArr.length; i++) {
             let uiObj = uiObjArr[i];
             let score = parseInt(getContent(uiObj));
             if (score != null && !isNaN(score)) {
@@ -7704,8 +7702,8 @@ function algo_init() {
     var knownFirstMirrorsLvCoords = {
         //r1c1 Lv: [232,236][253,258] 100: [260,228][301,260]
         //r3c3 Lv: [684,688][705,710] 100: [712,680][753,712]
-        topLeft: {x: 227, y: 223, pos: "center"},
-        bottomRight: {x: 306, y: 265, pos: "center"},
+        topLeft: { x: 227, y: 223, pos: "center" },
+        bottomRight: { x: 306, y: 265, pos: "center" },
         distancex: 226,
         distancey: 226
     }
@@ -7714,8 +7712,8 @@ function algo_init() {
         let distancex = knownFirstMirrorsLvCoords.distancex * (columnNum - 1);
         let distancey = knownFirstMirrorsLvCoords.distancey * (rowNum - 1);
         let knownArea = {
-            topLeft: {x: distancex, y: distancey, pos: "center"},
-            bottomRight: {x: distancex, y: distancey, pos: "center"}
+            topLeft: { x: distancex, y: distancey, pos: "center" },
+            bottomRight: { x: distancex, y: distancey, pos: "center" }
         }
         for (point in knownArea) {
             for (key in knownArea.topLeft) {
@@ -7724,7 +7722,7 @@ function algo_init() {
         }
         let convertedArea = getConvertedArea(knownArea);
         let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
-        for (let i=0; i<uiObjArr.length; i++) {
+        for (let i = 0; i < uiObjArr.length; i++) {
             let uiObj = uiObjArr[i];
             let content = getContent(uiObj);
             if (content != null) {
@@ -7742,7 +7740,7 @@ function algo_init() {
     //在对手队伍信息中获取等级信息，用来计算人均战力
     function getMirrorsAverageScore(totalScore) {
         //刷新auto.root（也许只有心理安慰作用？）
-        try { auto.root != null && auto.root.refresh(); } catch (e) {}; //只刷新一次
+        try { auto.root != null && auto.root.refresh(); } catch (e) { }; //只刷新一次
 
         if (totalScore == null) return 0;
         log("getMirrorsAverageScore totalScore", totalScore);
@@ -7752,10 +7750,10 @@ function algo_init() {
         let highestLv = 0;
 
         let attemptMax = 5;
-        for (let rowNum=1; rowNum<=3; rowNum++) {
-            for (let columnNum=1; columnNum<=3; columnNum++) {
+        for (let rowNum = 1; rowNum <= 3; rowNum++) {
+            for (let columnNum = 1; columnNum <= 3; columnNum++) {
                 let Lv = 0;
-                for (let attempt=0; attempt<attemptMax; attempt++) {
+                for (let attempt = 0; attempt < attemptMax; attempt++) {
                     Lv = getMirrorsLvAt(rowNum, columnNum);
                     if (Lv > 0) {
                         if (Lv > highestLv) highestLv = Lv;
@@ -7785,10 +7783,10 @@ function algo_init() {
         var stopTime = new Date().getTime() + 5000;
 
         //刷新auto.root（也许只有心理安慰作用？）
-        for (let attempt=0; attempt<10; attempt++) {
-            try {if (auto.root != null && auto.root.refresh()) break;} catch (e) {};
+        for (let attempt = 0; attempt < 10; attempt++) {
+            try { if (auto.root != null && auto.root.refresh()) break; } catch (e) { };
             sleep(100);
-            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+            if (new Date().getTime() > (stopTime < deadlineTime ? stopTime : deadlineTime)) {
                 log("等待auto.root刷新时间过长");
                 return false;
             }
@@ -7806,7 +7804,7 @@ function algo_init() {
         while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) {
             log("等待对手列表出现...");
             sleep(1000);
-            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+            if (new Date().getTime() > (stopTime < deadlineTime ? stopTime : deadlineTime)) {
                 log("没等到对手列表控件matchingWrap或matchingList出现,无法智能挑选最弱对手");
                 return false;
             }
@@ -7819,9 +7817,9 @@ function algo_init() {
             //演习模式下直接点最上面第一个对手
             while (id("matchingList").findOnce()) { //如果不小心点到战斗开始，就退出循环
                 if (getMirrorsAverageScore(totalScore[1]) > 0) break; //如果已经打开了一个对手，直接战斗开始
-                click(convertCoords(clickSetsMod["mirrorsOpponent"+"1"]));
+                click(convertCoords(clickSetsMod["mirrorsOpponent" + "1"]));
                 sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
-                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                if (new Date().getTime() > (stopTime < deadlineTime ? stopTime : deadlineTime)) {
                     log("没等到镜层对手队伍信息出现(也可能是虽然已经出现,但getMirrorsAverageScore没检测到导致的)");
                 }
             }
@@ -7831,11 +7829,11 @@ function algo_init() {
         stopTime = new Date().getTime() + 5000;
 
         //如果已经打开了信息面板，先关掉
-        for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
+        for (let attempt = 0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
             if (getMirrorsAverageScore(99999999) <= 0) break; //如果没有打开队伍信息面板，那就直接退出循环，避免点到MENU
             if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
             sleep(1000);
-            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+            if (new Date().getTime() > (stopTime < deadlineTime ? stopTime : deadlineTime)) {
                 log("没等到镜层对手队伍信息面板消失");
                 return false;
             }
@@ -7846,19 +7844,19 @@ function algo_init() {
         let selfScore = getMirrorsSelfScore();
 
         //获取每个对手的总战力
-        for (let position=1; position<=3; position++) {
-            for (let attempt=0; attempt<10; attempt++) {
+        for (let position = 1; position <= 3; position++) {
+            for (let attempt = 0; attempt < 10; attempt++) {
                 totalScore[position] = getMirrorsScoreAt(position);
                 if (totalScore[position] > 0) break;
                 sleep(100);
-                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
-                    log("没等到第"+position+"个镜层对手的队伍信息出现(也可能是虽然已经出现,但getMirrorsAverageScore没检测到导致的)");
+                if (new Date().getTime() > (stopTime < deadlineTime ? stopTime : deadlineTime)) {
+                    log("没等到第" + position + "个镜层对手的队伍信息出现(也可能是虽然已经出现,但getMirrorsAverageScore没检测到导致的)");
                     return false;
                 }
             }
             if (totalScore[position] <= 0) {
                 toastLog("获取某个对手的总战力失败\n请尝试退出镜层后重新进入");
-                log("获取第"+position+"个对手的总战力失败");
+                log("获取第" + position + "个对手的总战力失败");
                 return false;
             }
             if (totalScore[position] < lowestTotalScore) {
@@ -7872,12 +7870,12 @@ function algo_init() {
         //福利队
         //因为队伍最多5人，所以总战力比我方总战力六分之一还少应该就是福利队
         if (lowestTotalScore < selfScore / 6) {
-            toastLog("找到了战力低于我方六分之一的对手\n位于第"+lowestScorePosition+"个,战力="+totalScore[lowestScorePosition]);
+            toastLog("找到了战力低于我方六分之一的对手\n位于第" + lowestScorePosition + "个,战力=" + totalScore[lowestScorePosition]);
             while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
-                click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
+                click(convertCoords(clickSetsMod["mirrorsOpponent" + lowestScorePosition]));
                 sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
                 if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
-                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                if (new Date().getTime() > (stopTime < deadlineTime ? stopTime : deadlineTime)) {
                     log("没等到镜层对手(福利队)的队伍信息出现");
                     return false;
                 }
@@ -7888,10 +7886,10 @@ function algo_init() {
         stopTime = new Date().getTime() + 5000;
 
         //找平均战力最低的
-        for (let position=1; position<=3; position++) {
-            toast("检查第"+position+"个镜层对手的队伍情况...");
+        for (let position = 1; position <= 3; position++) {
+            toast("检查第" + position + "个镜层对手的队伍情况...");
             while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
-                click(convertCoords(clickSetsMod["mirrorsOpponent"+position]));
+                click(convertCoords(clickSetsMod["mirrorsOpponent" + position]));
                 sleep(2000); //等待对手队伍信息出现（avgScore<=0表示对手队伍信息还没出现）
                 avgScore[position] = getMirrorsAverageScore(totalScore[position]);
                 if (avgScore[position] > 0) {
@@ -7901,20 +7899,20 @@ function algo_init() {
                     }
                     break;
                 }
-                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
-                    log("没等到第"+position+"个镜层对手的队伍信息出现");
+                if (new Date().getTime() > (stopTime < deadlineTime ? stopTime : deadlineTime)) {
+                    log("没等到第" + position + "个镜层对手的队伍信息出现");
                     return false;
                 }
             }
 
             //关闭信息面板
-            for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
+            for (let attempt = 0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
                 if (position == 3) break; //第3个对手也有可能是最弱的，暂时不关面板
                 if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
                 sleep(1000);
                 if (getMirrorsAverageScore(totalScore[position]) <= 0) break;
-                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
-                    log("没等到第"+position+"个镜层对手的队伍信息出现");
+                if (new Date().getTime() > (stopTime < deadlineTime ? stopTime : deadlineTime)) {
+                    log("没等到第" + position + "个镜层对手的队伍信息出现");
                     return false;
                 }
             }
@@ -7927,11 +7925,11 @@ function algo_init() {
         if (lowestScorePosition == 3) return true; //最弱的就是第3个对手
 
         //最弱的不是第3个对手，先关掉第3个对手的队伍信息面板
-        for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
+        for (let attempt = 0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
             if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
             sleep(1000);
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) <= 0) break;
-            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+            if (new Date().getTime() > (stopTime < deadlineTime ? stopTime : deadlineTime)) {
                 log("没等到第3个镜层对手(不是最弱)的队伍信息消失");
                 return false;
             }
@@ -7941,11 +7939,11 @@ function algo_init() {
 
         //重新打开平均战力最低队伍的队伍信息面板
         while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
-            click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
+            click(convertCoords(clickSetsMod["mirrorsOpponent" + lowestScorePosition]));
             sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) return true;
-            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
-                log("没等到第"+lowestScorePosition+"个镜层对手(最弱)的队伍信息出现");
+            if (new Date().getTime() > (stopTime < deadlineTime ? stopTime : deadlineTime)) {
+                log("没等到第" + lowestScorePosition + "个镜层对手(最弱)的队伍信息出现");
                 return false;
             }
         }
@@ -7956,7 +7954,7 @@ function algo_init() {
     function mirrorsPick3rdOpponent() {
         toastLog("挑选第3个镜层对手...");
         let matchWrap = id("matchingWrap").findOne().bounds()
-        for (let attempt=0; attempt<3; attempt++) {
+        for (let attempt = 0; attempt < 3; attempt++) {
             if (id("battleStartBtn").findOnce()) break; //MuMu等控件树残缺环境下永远也找不到battleStartBtn（虽然实际上有战斗开始按钮）
             click(matchWrap.centerX(), matchWrap.bottom - 50);
             sleep(1500);
@@ -7965,7 +7963,7 @@ function algo_init() {
     }
 
     function taskMirrors() {
-        toast("镜层周回\n自动战斗策略:"+(limit.useCVAutoBattle?"识图":"无脑123盘"));
+        toast("镜层周回\n自动战斗策略:" + (limit.useCVAutoBattle ? "识图" : "无脑123盘"));
 
         if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
             toastLog("需要root或shizuku adb权限");
@@ -7994,7 +7992,7 @@ function algo_init() {
             if (limit.smartMirrorsPick) {
                 //挑选最弱的对手
                 let pickWeakestAttemptMax = 2;
-                for (let attempt=0; attempt<pickWeakestAttemptMax; attempt++) {
+                for (let attempt = 0; attempt < pickWeakestAttemptMax; attempt++) {
                     if (mirrorsPickWeakestOpponent()) {
                         pickedWeakest = true;
                         break;
@@ -8082,7 +8080,7 @@ function detectInitialWindowSize() {
 
     let rotation = display.getRotation();
 
-    initialWindowSize = {size: pt, rotation: rotation};
+    initialWindowSize = { size: pt, rotation: rotation };
 }
 function getWindowSize() {
     let display = context.getSystemService(context.WINDOW_SERVICE).getDefaultDisplay();
