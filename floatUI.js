@@ -1249,6 +1249,7 @@ var limit = {
     drug4num: '0',
     default: 0,
     useAuto: true,
+    autoFollow: true,
     breakAutoCycleDuration: "",
     forceStopTimeout: "",
     apmul: "",
@@ -1321,11 +1322,16 @@ var clickSets = {
         y: 750,
         pos: "center"
     },
-    yesfocus: {
+    yesfocus: {/*其实应该是followYes，是否关注路人？“是”*/
         x: 1220,
         y: 860,
         pos: "center"
     },
+    nofocus: {/*其实应该是followNo，是否关注路人？“否”*/
+        x: 699,
+        y: 860,
+        pos: "center"
+    }
     focusclose: {
         x: 950,
         y: 820,
@@ -5029,6 +5035,22 @@ function algo_init() {
                     if (findID("hasTotalRiche")) {
                         state = STATE_REWARD_MATERIAL;
                         log("进入掉落结算");
+                        break;
+                    }
+                    let pop_follow = findPopupInfoDetailTitle(string.follow);
+                    if (pop_follow != null) {
+                        //关注陌生人
+                        //这里本来可以类似find(string[limit.autoFollow?"yesfocus":"nofocus"])这样，找“是”或“否”，
+                        //但是我懒得开台服日服去找字符串了。另外万一要关注的玩家就叫“是”或“否”呢？
+                        log("关注路人助战 "+(limit.autoFollow?"是":"否"));
+                        click(convertCoords(clickSets[limit.autoFollow?"yesfocus":"nofocus"]));
+                        break;
+                    }
+                    let pop_follow_append = findPopupInfoDetailTitle(string.follow_append);
+                    if (pop_follow_append != null) {
+                        //点“是”关注后会弹出关注追加弹窗，现在把它关闭
+                        log("关闭关注追加弹窗");
+                        click(pop_follow_append.close);
                         break;
                     }
                     let element = findID("charaWrap");
