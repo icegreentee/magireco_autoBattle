@@ -226,6 +226,7 @@ function getParamsText() {
         apmul: "嗑药至AP上限倍数",
         breakAutoCycleDuration: "每隔多少秒打断官方自动续战",
         forceStopTimeout: "假死检测超时秒数",
+        periodicallyKillTimeout: "定时杀进程重开秒数",
         rootForceStop: "优先使用root或adb权限杀进程",
         rootScreencap: "使用root或adb权限截屏",
     };
@@ -1251,6 +1252,7 @@ var limit = {
     useAuto: true,
     breakAutoCycleDuration: "",
     forceStopTimeout: "",
+    periodicallyKillTimeout: "",
     apmul: "",
     timeout: "5000",
     rootForceStop: false,
@@ -4729,6 +4731,8 @@ function algo_init() {
         var inautobattle = false;
         var battleStartBtnClickTime = 0;
         var stuckStartTime = new Date().getTime();
+        var lastStuckRemindTime = new Date().getTime();
+        var lastReLaunchTime = new Date().getTime();
         var isFirstBRANCHClick = true; //在杜鹃花型活动地图点了启动脚本,无法保证一定能正确选关
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
@@ -4778,14 +4782,34 @@ function algo_init() {
                     stuckStartTime = new Date().getTime();
                 } else if (!isNaN(parseInt(limit.forceStopTimeout))) {
                     let state_stuck_timeout = 1000 * parseInt(limit.forceStopTimeout);
-                    if (new Date().getTime() > stuckStartTime + state_stuck_timeout) {
+                    let current_state_stuck_time = new Date().getTime() - stuckStartTime;
+                    let stuck_seconds = parseInt(current_state_stuck_time / 1000);
+                    if (current_state_stuck_time > state_stuck_timeout) {
                         if (lastOpList != null) {
-                            toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n杀进程重开...");
-                            killGame(limit.package_name);
+                            toastLog("卡在状态"+StateNames[state]+"的时间太久("+stuck_seconds+"s),超过设定("+parseInt(limit.forceStopTimeout)+"s)\n杀进程重开...");
+                            killGame(string.package_name);
+                            state = STATE_CRASHED;
+                        } else if (new Date().getTime() > lastStuckRemindTime + 10000) {
+                            lastStuckRemindTime = new Date().getTime();
+                            toastLog("卡在状态"+StateNames[state]+"的时间太久("+stuck_seconds+"s),超过设定("+parseInt(limit.forceStopTimeout)+"s)\n但是没加载选关动作录制数据\n不会杀进程重开");
+                        }
+                    }
+                }
+            }
+
+            //无条件定时杀进程重开的计时点
+            if (!isNaN(parseInt(limit.periodicallyKillTimeout))) {
+                if (state == STATE_CRASHED || state == STATE_LOGIN) {
+                    lastReLaunchTime = new Date().getTime();
+                } else {
+                    if (new Date().getTime() > lastReLaunchTime + (parseInt(limit.periodicallyKillTimeout) * 1000)) {
+                        if (lastOpList != null) {
+                            toastLog("无条件定时杀进程重开时间已到(每隔"+limit.periodicallyKillTimeout+"秒)\n杀进程重开...");
+                            killGame(string.package_name);
                             state = STATE_CRASHED;
                         } else {
-                            toastLog("卡在状态"+StateNames[state]+"的时间太久,超过设定("+parseInt(limit.forceStopTimeout)+"s)\n等待10秒...");
-                            sleep(10000);
+                            toastLog("无条件定时杀进程重开时间已到(每隔"+limit.periodicallyKillTimeout+"秒)\n但是没加载选关动作录制数据,不会杀进程重开");
+                            lastReLaunchTime = new Date().getTime();
                         }
                     }
                 }
