@@ -4436,8 +4436,8 @@ function algo_init() {
 
         if (find(string.support) == null) {
             do {
-                toastLog("等待进入助战选择界面...");
-            } while (find(string.support, 10000) == null);
+                toastLog("正在测试助战自动选择\n等待进入助战选择界面...");
+            } while (find(string.support, 4000) == null);
         }
 
         //写入文件，来记录曾经测试过
@@ -4573,7 +4573,7 @@ function algo_init() {
         } else {
             is_support_picking_tested = false;
         }
-        if (!is_support_picking_tested) {
+        if (!is_support_picking_tested && find(string.support)) {
             if (dialogs.confirm("测试助战自动选择",
                 "安装这个版本以来还没有测试过助战自动选择是否可以正常工作。"
                 +"\n要测试吗？"))
