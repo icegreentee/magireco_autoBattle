@@ -118,7 +118,7 @@ floatUI.scripts = [
         fn: tasks.reopen,
     },
     {
-        name: "录制选关动作",
+        name: "录制闪退重开选关动作",
         fn: tasks.recordSteps,
     },
     {
@@ -2756,6 +2756,7 @@ function algo_init() {
             "regex_bonus",
             "regex_autobattle",
             "regex_until",
+            "regex_event_branch",
             "package_name",
             "connection_lost",
             "auth_error",
@@ -2780,6 +2781,7 @@ function algo_init() {
             /＋\d+个$/,
             /[\s\S]*续战/,
             /.+截止$/,
+            /^event_branch.*/,
             "com.bilibili.madoka.bilibili",
             "连线超时",
             "认证错误",//被踢下线
@@ -2804,6 +2806,7 @@ function algo_init() {
             /＋\d+個$/,
             /[\s\S]*周回/,
             /.+為止$/,
+            /^event_branch.*/,
             "com.komoe.madokagp",
             "連線超時",
             "認證錯誤",//被踢下线
@@ -2828,6 +2831,7 @@ function algo_init() {
             /＋\d+個$/,
             /[\s\S]*周回/,
             /.+まで$/,
+            /^event_branch.*/,
             "com.aniplex.magireco",
             "通信エラー",
             "認証エラー",//这个是脑补的。实际上日服貌似只能引继，没有多端登录，所以也就没有被“顶号”、被踢下线……
@@ -3810,7 +3814,14 @@ function algo_init() {
             return null;
         }
 
-        let file_content = files.read(savedLastOpListPath);
+        let file_content = null;
+        try {
+            file_content = files.read(savedLastOpListPath);
+        } catch (e) {
+            logException(e);
+            log("loadOpList读取文件时失败");
+            return null;
+        }
         if (justFileContent) return file_content;
 
         let loadedOpList = null;
@@ -3818,6 +3829,7 @@ function algo_init() {
             loadedOpList = JSON.parse(file_content);
         } catch (e) {
             logException(e);
+            log("loadOpList解析JSON时失败");
             loadedOpList = null;
         }
         if (loadedOpList != null) return loadedOpList;
@@ -3850,17 +3862,30 @@ function algo_init() {
         }
     }
 
-    function chooseAction(step) {
+    function chooseAction(step, isEventTypeBRANCH) {
         var result = null;
         while (true) {
             let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
+            let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", "abandon"];
+            if (isEventTypeBRANCH) {
+                options.splice(2, 0, "在杜鹃花型活动地图上点击选关");
+                actions.splice(2, 0, "BRANCHclick");
+            }
             let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
             selected = parseInt(selected);
             if (isNaN(selected)) continue;
-            let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", "abandon"];
             result = actions[selected];
             if (result != null) break;
         }
+        return result;
+    }
+
+    function getTimestamp() {
+        let d = new Date();
+        let result = "";
+        result += d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+        result += "_";
+        result += d.getHours()+"-"+d.getMinutes()+"-"+d.getSeconds();
         return result;
     }
 
@@ -3883,13 +3908,15 @@ function algo_init() {
             package_name: string.package_name,
             //现在的convertCoords只能从1920x1080转到别的分辨率，不能逆向转换
             //如果以后做了reverseConvertCoords，那就可以把isGeneric设为true了，然后录制的动作列表可以通用
+            date: getTimestamp(),
             isGeneric: false,
             screenParams: currentScreenParams,
             defaultSleepTime: 1500,
+            isEventTypeBRANCH: false,//杜鹃花型活动
             steps: []
         }
-        toastLog("请务必先回到首页再开始录制！");
-        sleep(2000);
+        dialogs.alert("请务必先回到首页再开始录制！", "录制将会在5秒后开始");
+        sleep(5000);
         let new_sleep_time = -1;
         do {
             new_sleep_time = dialogs.rawInput("每一步操作之间的默认等待时长设为多少毫秒？（除了强制要求的500毫秒安全检查之外）", "1500");
@@ -3902,12 +3929,42 @@ function algo_init() {
         result.defaultSleepTime = new_sleep_time;
         toastLog("每一步操作之间将会等待"+result.defaultSleepTime+"毫秒");
 
+        let isEventTypeBRANCH = null;
+        do {
+            isEventTypeBRANCH = dialogs.confirm("要录制的是杜鹃花型活动的选关动作么？");
+        } while (isEventTypeBRANCH !== true && isEventTypeBRANCH !== false);
+        result.isEventTypeBRANCH = isEventTypeBRANCH;
+        toastLog("要录制的【"+(result.isEventTypeBRANCH?"是":"不是")+"】\n杜鹃花型活动的选关动作");
+
         let endRecording = false;
         for (let step=0; !endRecording; step++) {
             log("录制第"+(step+1)+"步操作...");
             let op = {};
-            op.action = chooseAction(step);
+            op.action = chooseAction(step, result.isEventTypeBRANCH);
+            if (
+                  result.isEventTypeBRANCH
+                  && result.steps.find((val) => val.action == "BRANCHclick") != null
+                  && op.action != "exit" && op.action != "undo" && op.action != "abandon"
+               )
+            {
+                let dialog_selected = dialogs.confirm("警告",
+                    "您已经录制过在杜鹃花型活动地图上点击选关的动作,\n"
+                    +"在此之后,动作录制/重放就结束了。\n"
+                    +"要结束录制请点确定。点取消可以回到菜单,然后可以选择重录上一步/结束/放弃。");
+                if (dialog_selected) {
+                    op.action = "exit";
+                    op.exit = {kill: false, exitStatus: false};
+                    result.steps.push(op);
+                    toastLog("录制结束");
+                    endRecording = true;
+                } else {
+                    toastLog("继续录制\n第"+(step+1)+"步");
+                    step--;//这一步没录，所以需要-1
+                }
+                continue;
+            }
             switch (op.action) {
+                case "BRANCHclick":
                 case "click":
                     log("等待录制点击动作...");
                     op.click = {};
@@ -4052,7 +4109,24 @@ function algo_init() {
                     }
                     break;
                 case "exit":
-                    if (result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null)) {
+                    if (result.isEventTypeBRANCH) {
+                        //杜鹃花型活动不需要检测文字,默认检测类似event_branch_1032_part_1这样的特征即可
+                        if (result.steps.find((val) => val.action == "BRANCHclick") == null) {
+                            dialogs.alert("错误",
+                                "您没有录制在活动地图的点击选关动作！\n"
+                                +"既然是杜鹃花型活动,那么在活动地图上,必须指定最后需要点击哪里来选关,否则就不能正常选关"
+                                );
+                            toastLog("继续录制\n第"+(step+1)+"步");
+                            step--;//这一步没录，所以需要-1
+                            continue;
+                        } else {
+                            op.exit = {kill: false, exitStatus: false};
+                            result.steps.push(op);
+                            toastLog("录制结束");
+                            endRecording = true;
+                        }
+                        break;
+                    } else if (result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null)) {
                         dialog_selected = dialogs.confirm(
                             "警告", "您没有录制文字检测动作！\n"
                             +"您确定 不需要 检测文字么？\n"
@@ -4060,10 +4134,9 @@ function algo_init() {
                             +"点错后可能发生各种不可预知的后果：从脚本因步调错乱而停滞不动，到误触误删文件，再到变成魔女，全都是有可能的哦！"
                             );
                         if (!dialog_selected) {
-                            let last_action = result.steps[result.steps.length-1].action;
                             toastLog("继续录制\n第"+(step+1)+"步");
                             step--;//这一步没录，所以需要-1
-                            break;
+                            continue;
                         } else {
                             toastLog("好吧，尊重你的选择：\n不检测文字\n祝你好运!");
                             sleep(1000);
@@ -4123,7 +4196,7 @@ function algo_init() {
                         toastLog("还没开始录制第1步");
                     }
                     step--;//这一步没录，所以需要再-1
-                    break;
+                    continue;
                 case null:
                 case "abandon":
                     result = null;
@@ -4133,7 +4206,7 @@ function algo_init() {
                     toastLog("录制第"+(step+1)+"步操作\n出错: 未知动作", op.action);
                     stopThread();
             }
-            if (op.action != "undo") log("录制第"+result.steps.length+"步动作完成");
+            log("录制第"+result.steps.length+"步动作完成");
         }
         if (result != null) {
             saveOpList(result);//写入到文件
@@ -4241,12 +4314,27 @@ function algo_init() {
             let op = opList.steps[i];
             log("第"+(i+1)+"步", op);
             switch (op.action) {
+                case "BRANCHclick":
+                    endReplaying = true;
+                    if (match(string.regex_event_branch)) {
+                        result = true;
+                        toastLog("已进入杜鹃花型活动地图");
+                    } else {
+                        result = false;
+                        toastLog("未进入杜鹃花型活动地图,重放失败终止,杀进程重开...");
+                        log("强行停止游戏", opList.package_name);
+                        killGame(opList.package_name);
+                        log("强行停止完成");
+                        break;
+                    }
+                    log("在杜鹃花型活动地图上点击选关...");
                 case "click":
                     if (opList.isGeneric) {
                         click(convertCoords(op.click.point));
                     } else {
                         click(op.click.point);
                     }
+                    if (op.action == "BRANCHclick") log("在杜鹃花型活动地图上点击选关完成,重放成功结束");
                     break;
                 case "swipe":
                     let points = op.swipe.points;
@@ -4609,10 +4697,13 @@ function algo_init() {
 
         initialize();
 
+        let lastOpListDateString = "";
         if (lastOpList == null) {
-            if (files.isFile(savedLastOpListPath)) {
-                if (dialogs.confirm("自动选关", "要加载之前保存的选关动作录制数据吗?")) {
-                    lastOpList = loadOpList();
+            let opList = null;
+            if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
+                lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
+                if (dialogs.confirm("自动选关", "要加载之前保存的选关动作录制数据吗?"+lastOpListDateString)) {
+                    lastOpList = opList;
                 } else {
                     if (dialogs.confirm("自动选关", "要删除保存选关动作录制数据的文件么?")) {
                         if (!files.remove(savedLastOpListPath)) {
@@ -4623,6 +4714,8 @@ function algo_init() {
                     }
                 }
             }
+        } else {
+            lastOpListDateString = ((lastOpList.date == null) ? "" : ("\n录制日期: "+lastOpList.date));
         }
 
         if (lastOpList == null) {
@@ -4633,7 +4726,7 @@ function algo_init() {
                 stopThread();//等到权限获取完再重试
                 return;
             }
-            toastLog("已加载动作录制数据\n游戏闪退时将自动重启");
+            toastLog("已加载动作录制数据"+lastOpListDateString+"\n游戏闪退时将自动重启");
         }
 
         startSupportPickTestingIfNeeded();//如果选择开始测试会不再继续往下运行
@@ -4873,8 +4966,31 @@ function algo_init() {
                         }
                     // 重放动作录制之前需要先回主页，最简单粗暴的办法就是杀进程重开
                     } else if (lastOpList) {
-                        toastLog("已加载动作录制数据,先杀掉游戏再重启重新选关");
-                        killGame(string.package_name);
+                        toastLog("已加载动作录制数据");
+                        if (lastOpList.isEventTypeBRANCH) {
+                            log("动作录制数据是杜鹃花型活动选关动作");
+                            if (match(string.regex_event_branch)) {
+                                log("已进入活动地图");
+                                let op = lastOpList.steps.find((val) => val.action == "BRANCHclick");
+                                if (op == null) {
+                                    toastLog("错误: 没找到杜鹃花活动的点击选关动作,停止脚本");
+                                    stopThread();
+                                } else {
+                                    log("在活动地图点击选关");
+                                    if (lastOpList.isGeneric) {
+                                        click(convertCoords(op.click.point));
+                                    } else {
+                                        click(op.click.point);
+                                    }
+                                }
+                            } else {
+                                toastLog("未进入活动地图,先杀掉游戏再重启重新选关");
+                                killGame(string.package_name);
+                            }
+                        } else {
+                            toastLog("先杀掉游戏再重启重新选关");
+                            killGame(string.package_name);
+                        }
                     } else {
                         log("等待捕获关卡坐标");
                         battlepos = capture().pos_up;
