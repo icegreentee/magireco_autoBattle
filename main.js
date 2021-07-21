@@ -574,7 +574,7 @@ const persistParamList = [
     "helpy",
     "battleNo",
     "useAuto",
-    "autoFollow"
+    "autoFollow",
     "breakAutoCycleDuration",
     "forceStopTimeout",
     "timeout",

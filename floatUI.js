@@ -1331,7 +1331,7 @@ var clickSets = {
         x: 699,
         y: 860,
         pos: "center"
-    }
+    },
     focusclose: {
         x: 950,
         y: 820,
