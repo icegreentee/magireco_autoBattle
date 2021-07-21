@@ -4258,7 +4258,7 @@ function algo_init() {
             let op = opList.steps[i];
             log("第"+(i+1)+"步", op);
             switch (op.action) {
-                case "BRANCHclick"
+                case "BRANCHclick":
                     endReplaying = true;
                     if (match(string.regex_event_branch)) {
                         result = true;
