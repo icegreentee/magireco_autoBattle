@@ -140,6 +140,10 @@ floatUI.scripts = [
     {
         name: "测试助战自动选择",
         fn: tasks.testSupportSel,
+    },
+    {
+        name: "测试闪退自动重开",
+        fn: tasks.testReLaunch,
     }
 ];
 
@@ -4681,6 +4685,49 @@ function algo_init() {
         }
     }
 
+    var isRelaunchTested = false; //只表示是否测试过,不表示是否成功过
+
+    function testReLaunchRunnable() {
+        initialize();
+        while (true) {
+            dialogs.alert("测试闪退自动重开", "即将回到脚本界面并杀进程退出游戏");
+            killGame();
+            backtoMain();
+            dialogs.alert("测试闪退自动重开", "即将重启游戏。\n如果弹出提示询问是否允许关联启动,请点\"允许\"");
+            reLaunchGame();
+            toast("等待5秒...");
+            sleep(5000);
+            if (dialogs.confirm("测试闪退自动重开",
+                    "游戏成功重启了么?\n"
+                    +"看上去好像"+(isGameDead()?"没成功":"成功了")
+                    +"\n点\"确定\"结束测试,点\"取消\"重测一次"
+                    +"\n强烈推荐至少重测一次!"
+                    +"\n如果不能成功,请搜索你的手机品牌/型号是否有允许关联启动(白名单之类的)的设置方法")
+               )
+            {
+                isRelaunchTested = true; //只表示是否测试过,不表示是否成功过
+                break;
+            }
+        }
+        log("测试闪退自动重开结束");
+        for (let i=1; i<=2; i++) {
+            toast("测试闪退自动重开结束\n如果没问题,可以进入游戏重新启动脚本了 ×"+i);
+            sleep(2000);
+        }
+    }
+
+    function requestTestReLaunchIfNeeded() {
+        if (isRelaunchTested) return;
+        if (dialogs.confirm("闪退自动重开",
+            "部分手机会拦截关联启动,阻碍自动重开游戏。\n"
+            +"强烈建议:点击\"确定\",这样会先停止脚本,然后测试脚本是否可以正常启动游戏。\n"
+            +"已知情况:\nMIUI上第一次会被拦截关联启动,点\"允许\"后就不会再拦截了。")
+           )
+        {
+            replaceCurrentTask(scripts.find((val) => val.name == "测试闪退自动重开"));
+        }
+    }
+
     function taskDefault() {
         isCurrentTaskPaused.set(TASK_RUNNING);//其他暂不（需要）支持暂停的脚本不需要加这一句
 
@@ -4691,10 +4738,10 @@ function algo_init() {
             let opList = null;
             if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
                 lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
-                if (dialogs.confirm("自动选关", "要加载之前保存的选关动作录制数据吗?"+lastOpListDateString)) {
+                if (dialogs.confirm("闪退自动重开", "要加载之前保存的选关动作录制数据吗?"+lastOpListDateString)) {
                     lastOpList = opList;
                 } else {
-                    if (dialogs.confirm("自动选关", "要删除保存选关动作录制数据的文件么?")) {
+                    if (dialogs.confirm("闪退自动重开", "要删除保存选关动作录制数据的文件么?")) {
                         if (!files.remove(savedLastOpListPath)) {
                             toastLog("删除动作录制数据文件失败");
                         } else {
@@ -4715,6 +4762,7 @@ function algo_init() {
                 stopThread();//等到权限获取完再重试
                 return;
             }
+            requestTestReLaunchIfNeeded();//测试是否可以正常重开
             toastLog("已加载动作录制数据"+lastOpListDateString+"\n游戏闪退时将自动重启");
         }
 
@@ -8192,6 +8240,7 @@ function algo_init() {
         importSteps: importOpList,
         clearSteps: clearOpList,
         testSupportSel: testSupportPicking,
+        testReLaunch: testReLaunchRunnable,
     };
 }
 
