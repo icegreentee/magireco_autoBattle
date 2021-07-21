@@ -3851,8 +3851,8 @@ function algo_init() {
             let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
             let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", "abandon"];
             if (isEventTypeBRANCH) {
-                options.splice(1, 0, "在杜鹃花型活动地图上点击选关");
-                actions.splice(1, 0, "BRANCHclick");
+                options.splice(2, 0, "在杜鹃花型活动地图上点击选关");
+                actions.splice(2, 0, "BRANCHclick");
             }
             let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
             selected = parseInt(selected);
