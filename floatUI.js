@@ -4166,6 +4166,8 @@ function algo_init() {
             }
         }
         if (findID("listTitle") && (!findID("allReserve"))) {
+            //listTitle可能是商店板块标题
+            //任务窗口同时有listTitle和allReserve,其中allReserve是全部领取按钮
             log("检测到疑似商店的危险控件 (有\"listTitle\",无\"allReserve\")");
             return false;
         }
