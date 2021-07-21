@@ -56,8 +56,8 @@ function getProjectVersion() {
     if (conf) return conf.versionName;
 }
 
-//记录当前版本是否测试过助战的文件
-var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
+//记录当前版本是否测试过助战的文件(已经去掉，留下注释)
+//var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
 
 var tasks = algo_init();
 // touch capture, will be initialized in main
@@ -4440,15 +4440,6 @@ function algo_init() {
             } while (find(string.support, 4000) == null);
         }
 
-        //写入文件，来记录曾经测试过
-        is_support_picking_tested = true;
-        files.create(supportPickingTestRecordPath);
-        let test_record = files.read(supportPickingTestRecordPath);
-        let tested_versions = test_record.split('\n');
-        if (tested_versions.find((val) => val == getCurrentVersion()) == null) {
-            files.append(supportPickingTestRecordPath, "\n"+getCurrentVersion()+"\n"); //会产生空行，但无所谓
-        }
-
         //开始测试
         let testMode = true;
         let result = pickSupportWithMostPt(testMode);
@@ -4559,35 +4550,6 @@ function algo_init() {
         return state;
     }
 
-    function startSupportPickTestingIfNeeded() {
-        if (is_support_picking_tested) return;
-
-        if (files.isFile(supportPickingTestRecordPath)) {
-            let test_record = files.read(supportPickingTestRecordPath);
-            let tested_versions = test_record.split('\n');
-            if (tested_versions.find((val) => val == getCurrentVersion()) != null) {
-                is_support_picking_tested = true;
-            } else {
-                is_support_picking_tested = false;
-            }
-        } else {
-            is_support_picking_tested = false;
-        }
-        if (!is_support_picking_tested && find(string.support)) {
-            if (dialogs.confirm("测试助战自动选择",
-                "安装这个版本以来还没有测试过助战自动选择是否可以正常工作。"
-                +"\n要测试吗？"))
-            {
-                replaceSelfCurrentTask(floatUI.scripts.find((val) => val.name == "测试助战自动选择"));
-                //测试完再写入文件，来记录是否曾经测试过
-            } else {
-                //用户拒绝测试后也当作测试过了，然后就不再询问
-                files.create(supportPickingTestRecordPath);
-                files.append(supportPickingTestRecordPath, "\n"+getCurrentVersion()+"\n");//会产生空行，但无所谓
-            }
-        }
-    }
-
     function taskDefault() {
         isCurrentTaskPaused.set(TASK_RUNNING);//其他暂不（需要）支持暂停的脚本不需要加这一句
 
@@ -4619,8 +4581,6 @@ function algo_init() {
             }
             toastLog("已加载动作录制数据\n游戏闪退时将自动重启");
         }
-
-        startSupportPickTestingIfNeeded();//如果选择开始测试会不再继续往下运行
 
         var state = detectInitialState();
         var last_state = -1;
