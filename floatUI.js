@@ -4809,6 +4809,7 @@ function algo_init() {
         var inautobattle = null; //null表示状态未知
         var battleStartBtnClickTime = 0;
         var stuckStartTime = new Date().getTime();
+        var isFirstBRANCHClick = true; //在杜鹃花型活动地图点了启动脚本,无法保证一定能正确选关
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -4952,6 +4953,9 @@ function algo_init() {
                     if (replayOperations(lastOpList, true)) {//dontStopOnError设为true
                         toastLog("重放完成,报告成功,应该已经完成选关了");
                         state = STATE_MENU;
+                        if (lastOpList != null && lastOpList.isEventTypeBRANCH) {
+                            isFirstBRANCHClick = false;
+                        }
                     }
                     //动作录制数据里会指定在失败时杀掉进程重启
                     break;
@@ -5039,13 +5043,20 @@ function algo_init() {
                         if (lastOpList.isEventTypeBRANCH) {
                             log("动作录制数据是杜鹃花型活动选关动作");
                             if (match(string.regex_event_branch)) {
-                                log("已进入活动地图");
+                                toastLog("已进入活动地图");
+                                if (isFirstBRANCHClick) {
+                                    //在杜鹃花型活动地图点了启动脚本,无法保证一定能正确选关
+                                    isFirstBRANCHClick = false;
+                                    toastLog("无法保证一定能正确选关,先杀掉游戏再重启重新选关");
+                                    killGame(string.package_name);
+                                    break;
+                                }
                                 let op = lastOpList.steps.find((val) => val.action == "BRANCHclick");
                                 if (op == null) {
                                     toastLog("错误: 没找到杜鹃花活动的点击选关动作,停止脚本");
                                     stopThread();
                                 } else {
-                                    log("在活动地图点击选关");
+                                    toastLog("在活动地图点击选关");
                                     if (lastOpList.isGeneric) {
                                         click(convertCoords(op.click.point));
                                     } else {
