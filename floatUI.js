@@ -4697,6 +4697,8 @@ function algo_init() {
                     }
                 }
             }
+        } else {
+            lastOpListDateString = ((lastOpList.date == null) ? "" : ("\n录制日期: "+lastOpList.date));
         }
 
         if (lastOpList == null) {
