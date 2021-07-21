@@ -3980,7 +3980,8 @@ function algo_init() {
                 "杜鹃花型活动选关步骤一般是:\n"
                 +"在首页点进活动地图,\n"
                 +"然后(如果有需要)拖动活动地图,\n"
-                +"最后一步是[在杜鹃花型活动地图上点击选关]"
+                +"最后一步是[在杜鹃花型活动地图上点击选关]\n"
+                +"注意:不需要专门去录制点击开始按钮,脚本自己会去点!"
                 +tipsTextAboutBRANCH
             );
         } while (isEventTypeBRANCH !== true && isEventTypeBRANCH !== false);
@@ -4848,6 +4849,7 @@ function algo_init() {
         var lastStuckRemindTime = new Date().getTime();
         var lastReLaunchTime = new Date().getTime();
         var isFirstBRANCHClick = true; //在杜鹃花型活动地图点了启动脚本,无法保证一定能正确选关
+        var BRANCHclickAttemptCount = 0;
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -5062,6 +5064,9 @@ function algo_init() {
                     // if need to click to enter battle
                     let button = find(string.battle_confirm);
                     if (button) {
+                        if (lastOpList != null && lastOpList.isEventTypeBRANCH) {
+                            BRANCHclickAttemptCount = 0;
+                        }
                         log("点击确认进入battle");
                         let bound = button.bounds();
                         click(bound.centerX(), bound.centerY());
@@ -5114,12 +5119,18 @@ function algo_init() {
                                     toastLog("错误: 没找到杜鹃花活动的点击选关动作,停止脚本");
                                     stopThread();
                                 } else {
+                                    if (BRANCHclickAttemptCount >= 5) {
+                                        toastLog("已进入活动地图,但之前点了5次选关都没成功,故杀进程重开...");
+                                        killGame(string.package_name);
+                                        break;
+                                    }
                                     toastLog("在活动地图点击选关");
                                     if (lastOpList.isGeneric) {
                                         click(convertCoords(op.click.point));
                                     } else {
                                         click(op.click.point);
                                     }
+                                    BRANCHclickAttemptCount++;
                                 }
                             } else {
                                 toastLog("未进入活动地图,先杀掉游戏再重启重新选关");
