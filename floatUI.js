@@ -3906,23 +3906,30 @@ function algo_init() {
             log("录制第"+(step+1)+"步操作...");
             let op = {};
             op.action = chooseAction(step, result.isEventTypeBRANCH);
+            if (
+                  result.isEventTypeBRANCH
+                  && result.steps.find((val) => val.action == "BRANCHclick") != null
+                  && op.action != "exit" && op.action != "undo" && op.action != "abandon"
+               )
+            {
+                let dialog_selected = dialogs.confirm("警告",
+                    "您已经录制过在杜鹃花型活动地图上点击选关的动作,\n"
+                    +"在此之后,动作录制/重放就结束了。\n"
+                    +"要结束录制请点确定。点取消可以回到菜单,然后可以选择重录上一步/结束/放弃。");
+                if (dialog_selected) {
+                    op.action = "exit";
+                    op.exit = {kill: false, exitStatus: false};
+                    result.steps.push(op);
+                    toastLog("录制结束");
+                    endRecording = true;
+                } else {
+                    toastLog("继续录制\n第"+(step+1)+"步");
+                    step--;//这一步没录，所以需要-1
+                }
+                continue;
+            }
             switch (op.action) {
                 case "BRANCHclick":
-                    if (result.steps.find((val) => val.action == "BRANCHclick") != null) {
-                        let dialog_selected = dialogs.confirm("警告",
-                            "您已经录制过在杜鹃花型活动地图上点击选关的动作了\n"
-                            +"要结束录制请点确定。点取消可以回到菜单,然后可以选择结束或放弃。");
-                        if (dialog_selected) {
-                            op.exit = {kill: false, exitStatus: false};
-                            result.steps.push(op);
-                            toastLog("录制结束");
-                            endRecording = true;
-                        } else {
-                            toastLog("继续录制\n第"+(step+1)+"步");
-                            step--;//这一步没录，所以需要-1
-                        }
-                        break;
-                    }//继续录制点击动作
                 case "click":
                     log("等待录制点击动作...");
                     op.click = {};
@@ -4076,6 +4083,7 @@ function algo_init() {
                                 );
                             toastLog("继续录制\n第"+(step+1)+"步");
                             step--;//这一步没录，所以需要-1
+                            continue;
                         } else {
                             op.exit = {kill: false, exitStatus: false};
                             result.steps.push(op);
@@ -4093,7 +4101,7 @@ function algo_init() {
                         if (!dialog_selected) {
                             toastLog("继续录制\n第"+(step+1)+"步");
                             step--;//这一步没录，所以需要-1
-                            break;
+                            continue;
                         } else {
                             toastLog("好吧，尊重你的选择：\n不检测文字\n祝你好运!");
                             sleep(1000);
@@ -4153,7 +4161,7 @@ function algo_init() {
                         toastLog("还没开始录制第1步");
                     }
                     step--;//这一步没录，所以需要再-1
-                    break;
+                    continue;
                 case null:
                 case "abandon":
                     result = null;
@@ -4163,7 +4171,7 @@ function algo_init() {
                     toastLog("录制第"+(step+1)+"步操作\n出错: 未知动作", op.action);
                     stopThread();
             }
-            if (op.action != "undo") log("录制第"+result.steps.length+"步动作完成");
+            log("录制第"+result.steps.length+"步动作完成");
         }
         if (result != null) {
             saveOpList(result);//写入到文件
