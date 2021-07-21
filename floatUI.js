@@ -4581,6 +4581,7 @@ function algo_init() {
                 replaceSelfCurrentTask(floatUI.scripts.find((val) => val.name == "测试助战自动选择"));
                 //测试完再写入文件，来记录是否曾经测试过
             } else {
+                //用户拒绝测试后也当作测试过了，然后就不再询问
                 files.create(supportPickingTestRecordPath);
                 files.append(supportPickingTestRecordPath, "\n"+getCurrentVersion()+"\n");//会产生空行，但无所谓
             }
