@@ -2263,6 +2263,7 @@ function algo_init() {
     }
 
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
+    //关注追加窗口在MuMu上点这里的close坐标点不到关闭
     function findPopupInfoDetailTitle(title_to_find, wait) {
         let default_x = getFragmentViewBounds().right - 1;
         let default_y = 0;
