@@ -3909,7 +3909,7 @@ function algo_init() {
             switch (op.action) {
                 case "BRANCHclick":
                     if (result.steps.find((val) => val.action == "BRANCHclick") != null) {
-                        let dialog_selected = dialog.confirm("警告",
+                        let dialog_selected = dialogs.confirm("警告",
                             "您已经录制过在杜鹃花型活动地图上点击选关的动作了\n"
                             +"要结束录制请点确定。点取消可以回到菜单,然后可以选择结束或放弃。");
                         if (dialog_selected) {
