@@ -4102,6 +4102,20 @@ function algo_init() {
                         }
                         toastLog("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字时要\n"+dialog_options[dialog_selected]);
                     }
+                    if (
+                          deadEnd
+                          && result.isEventTypeBRANCH
+                          && result.steps.find((val) => val.action == "BRANCHclick") == null
+                       )
+                    {
+                        dialogs.alert("错误",
+                            "您没有录制在活动地图的点击选关动作！\n"
+                            +"既然是杜鹃花型活动,那么在活动地图上,必须指定最后需要点击哪里来选关,否则就不能正常选关"
+                            );
+                        toastLog("继续录制\n第"+(step+1)+"步");
+                        step--;//这一步没录，所以需要-1
+                        continue;
+                    }
                     result.steps.push(op);
                     toastLog("已记录检测文字\""+op.checkText.text+"\"是否出现的动作");
                     if (deadEnd) {
@@ -4111,7 +4125,7 @@ function algo_init() {
                     break;
                 case "exit":
                     if (result.isEventTypeBRANCH) {
-                        //杜鹃花型活动不需要检测文字,默认检测类似event_branch_1032_part_1这样的特征即可
+                        //杜鹃花型活动并不是必须要检测文字,默认检测类似event_branch_1032_part_1这样的特征即可
                         if (result.steps.find((val) => val.action == "BRANCHclick") == null) {
                             dialogs.alert("错误",
                                 "您没有录制在活动地图的点击选关动作！\n"
