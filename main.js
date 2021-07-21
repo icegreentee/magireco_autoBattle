@@ -135,6 +135,14 @@ ui.layout(
                                 <text text="如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultExtraSettings4" visibility="gone" padding="0 8 0 0" w="*" h="auto">
+                                <linear>
+                                    <text text="无条件杀进程重开,每隔" textColor="#000000" />
+                                    <input maxLength="5" id="periodicallyKillTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
+                                    <text text="秒一次" textColor="#000000" />
+                                </linear>
+                                <text text="有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。" textColor="#000000" />
+                            </vertical>
+                            <vertical id="DefaultExtraSettings5" visibility="gone" padding="0 8 0 0" w="*" h="auto">
                                 <linear padding="0 0 0 0" w="*" h="auto">
                                     <text text="等待控件超时" textColor="#000000" />
                                     <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
@@ -142,7 +150,7 @@ ui.layout(
                                 </linear>
                                 <text text="修改“等待控件超时”并不能让脚本变快,数值太小反而可能出错。如果不是机器特别卡(这种情况也要把这个值改得更大,而不是更小)请不要改,退格可自动恢复默认(5000毫秒)" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings5" visibility="gone" padding="0 8 0 6" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings6" visibility="gone" padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
                                 <text text="部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
                             </vertical>
@@ -577,6 +585,7 @@ const persistParamList = [
     "autoFollow",
     "breakAutoCycleDuration",
     "forceStopTimeout",
+    "periodicallyKillTimeout",
     "timeout",
     "rootForceStop",
     "rootScreencap",
