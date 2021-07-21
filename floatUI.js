@@ -4424,8 +4424,6 @@ function algo_init() {
         }
     };
 
-    var is_support_picking_tested = false;
-
     function getCurrentVersion() {
         if (limit.version == "") return getProjectVersion();
         return limit.version;
