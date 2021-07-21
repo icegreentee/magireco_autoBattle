@@ -4758,7 +4758,7 @@ function algo_init() {
             +"已知情况:\nMIUI上第一次会被拦截关联启动,点\"允许\"后就不会再拦截了。")
            )
         {
-            replaceCurrentTask(scripts.find((val) => val.name == "测试闪退自动重开"));
+            replaceCurrentTask(floatUI.scripts.find((val) => val.name == "测试闪退自动重开"));
         }
     }
 
