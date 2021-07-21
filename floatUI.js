@@ -3880,8 +3880,8 @@ function algo_init() {
             isEventTypeBRANCH: false,//杜鹃花型活动
             steps: []
         }
-        toastLog("请务必先回到首页再开始录制！");
-        sleep(2000);
+        dialogs.alert("请务必先回到首页再开始录制！", "录制将会在5秒后开始");
+        sleep(5000);
         let new_sleep_time = -1;
         do {
             new_sleep_time = dialogs.rawInput("每一步操作之间的默认等待时长设为多少毫秒？（除了强制要求的500毫秒安全检查之外）", "1500");
@@ -4062,13 +4062,13 @@ function algo_init() {
                             let last_action = result.steps[result.steps.length-1].action;
                             toastLog("继续录制\n第"+(step+1)+"步");
                             step--;//这一步没录，所以需要-1
-                            break;
                         } else {
                             op.exit = {kill: false, exitStatus: false};
                             result.steps.push(op);
                             toastLog("录制结束");
                             endRecording = true;
                         }
+                        break;
                     } else if (result.steps.length > 0 && (result.steps.find((val) => val.action == "checkText") == null)) {
                         dialog_selected = dialogs.confirm(
                             "警告", "您没有录制文字检测动作！\n"
