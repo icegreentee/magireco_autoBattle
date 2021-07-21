@@ -3897,7 +3897,7 @@ function algo_init() {
         let isEventTypeBRANCH = null;
         do {
             isEventTypeBRANCH = dialogs.confirm("要录制的是杜鹃花型活动的选关动作么？");
-        } while (isEventTypeBRANCH === true || isEventTypeBRANCH === false);
+        } while (isEventTypeBRANCH !== true && isEventTypeBRANCH !== false);
         result.isEventTypeBRANCH = isEventTypeBRANCH;
         toastLog("要录制的【"+(result.isEventTypeBRANCH?"是":"不是")+"】\n杜鹃花型活动的选关动作");
 
