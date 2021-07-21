@@ -4919,7 +4919,10 @@ function algo_init() {
                         toast("请勿拖动助战列表!\n自动点击助战...");
                         click(pt_point);
                         // wait for start button for 5 seconds
-                        findID("nextPageBtn", parseInt(limit.timeout));
+                        if (findID("nextPageBtn", parseInt(limit.timeout))) {
+                            state = STATE_TEAM;
+                            log("进入队伍调整");
+                        }
                         break;
                     } else {
                         toastLog("助战选择失败,点击返回重试");
