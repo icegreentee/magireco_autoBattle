@@ -1302,6 +1302,11 @@ var clickSets = {
         y: 1000,
         pos: "bottom"
     },
+    startAutoRestart: {
+        x: 1800,
+        y: 750,
+        pos: "bottom"
+    },
     autostart: {
         x: 1800,
         y: 750,
@@ -4737,7 +4742,7 @@ function algo_init() {
         var battlename = "";
         var charabound = null;
         var battlepos = null;
-        var inautobattle = false;
+        var inautobattle = null; //null表示状态未知
         var battleStartBtnClickTime = 0;
         var stuckStartTime = new Date().getTime();
         /*
@@ -5047,7 +5052,10 @@ function algo_init() {
                         toast("请勿拖动助战列表!\n自动点击助战...");
                         click(pt_point);
                         // wait for start button for 5 seconds
-                        findID("nextPageBtn", parseInt(limit.timeout));
+                        if (findID("nextPageBtn", parseInt(limit.timeout))) {
+                            state = STATE_TEAM;
+                            log("进入队伍调整");
+                        }
                         break;
                     } else {
                         toastLog("助战选择失败,点击返回重试");
@@ -5067,6 +5075,12 @@ function algo_init() {
                 }
 
                 case STATE_TEAM: {
+                    //走到这里时肯定至少已经检测到开始按钮,即nextPageBtn
+                    //因为后面检测误触弹窗和按钮比较慢,先闭着眼点一下开始或自动续战按钮
+                    //一开始不知道能不能用自动续战,inautobattle还是null,这个时候就按照是否启用官方自动续战的设置来
+                    //后面检测按钮后就给inautobattle赋值了,就按照inautobattle是true或false的情况来
+                    click(convertCoords(clickSets[(inautobattle===null?limit.useAuto:inautobattle)?"startAutoRestart":"start"]));
+
                     //如果之前误触了队伍名称变更，先尝试关闭
                     var found_popup = null;
                     found_popup = findPopupInfoDetailTitle();
