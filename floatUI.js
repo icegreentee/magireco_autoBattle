@@ -118,7 +118,7 @@ floatUI.scripts = [
         fn: tasks.reopen,
     },
     {
-        name: "录制选关动作",
+        name: "录制闪退重开选关动作",
         fn: tasks.recordSteps,
     },
     {
