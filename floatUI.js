@@ -3918,9 +3918,20 @@ function algo_init() {
         result.defaultSleepTime = new_sleep_time;
         toastLog("每一步操作之间将会等待"+result.defaultSleepTime+"毫秒");
 
+        const tipsTextAboutBRANCH = "\n备注:\n"
+            +"如果害怕意外点错关卡,在录制到进入活动地图这一步后,可以继续录制这4步(或更多)动作:\n"
+            +"[点击]=>[检测文字是否出现](可以多检测几处文字)=>[点击]=>[在杜鹃花型活动地图上点击选关],\n"
+            +"也就是先[点击]开关卡详情,再[检测]关卡名是否正确,再[点击]关闭关卡详情,最后让[在杜鹃花型活动地图上点击选关]重新打开关卡详情,完成选关\n";
+
         let isEventTypeBRANCH = null;
         do {
-            isEventTypeBRANCH = dialogs.confirm("要录制的是杜鹃花型活动的选关动作么？");
+            isEventTypeBRANCH = dialogs.confirm("要录制的是杜鹃花型活动的选关动作么？",
+                "杜鹃花型活动选关步骤一般是:\n"
+                +"在首页点进活动地图,\n"
+                +"然后(如果有需要)拖动活动地图,\n"
+                +"最后一步是[在杜鹃花型活动地图上点击选关]"
+                +tipsTextAboutBRANCH
+            );
         } while (isEventTypeBRANCH !== true && isEventTypeBRANCH !== false);
         result.isEventTypeBRANCH = isEventTypeBRANCH;
         toastLog("要录制的【"+(result.isEventTypeBRANCH?"是":"不是")+"】\n杜鹃花型活动的选关动作");
@@ -3939,7 +3950,8 @@ function algo_init() {
                 let dialog_selected = dialogs.confirm("警告",
                     "您已经录制过在杜鹃花型活动地图上点击选关的动作,\n"
                     +"在此之后,动作录制/重放就结束了。\n"
-                    +"要结束录制请点确定。点取消可以回到菜单,然后可以选择重录上一步/结束/放弃。");
+                    +"要结束录制请点确定。点取消可以回到菜单,然后可以选择重录上一步/结束/放弃。"
+                    +tipsTextAboutBRANCH);
                 if (dialog_selected) {
                     op.action = "exit";
                     op.exit = {kill: false, exitStatus: false};
@@ -4166,7 +4178,7 @@ function algo_init() {
                         step--;
                         result.steps.pop();
                         toastLog("重录第"+(step+1)+"步");
-                        if (last_action == "click" || last_action == "swipe") {
+                        if (last_action == "click" || last_action == "swipe" || last_action == "BRANCHclick") {
                             sleep(3000);
                             toast("录制将会在 12 秒后继续...");
                             sleep(2000);
