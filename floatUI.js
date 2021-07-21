@@ -3843,7 +3843,7 @@ function algo_init() {
             let options = ["点击", "滑动", "等待", "检测文字是否出现", "结束", "重录上一步", "放弃录制"];
             let actions = ["click", "swipe", "sleep", "checkText", "exit", "undo", "abandon"];
             if (isEventTypeBRANCH) {
-                options.splice(1, 0, "(在杜鹃花型活动地图)点击(选关)");
+                options.splice(1, 0, "在杜鹃花型活动地图上点击选关");
                 actions.splice(1, 0, "BRANCHclick");
             }
             let selected = dialogs.select("请选择下一步(第"+(step+1)+"步)要录制什么动作", options);
@@ -3908,6 +3908,21 @@ function algo_init() {
             op.action = chooseAction(step, result.isEventTypeBRANCH);
             switch (op.action) {
                 case "BRANCHclick":
+                    if (result.steps.find((val) => val.action == "BRANCHclick") != null) {
+                        let dialog_selected = dialog.confirm("警告",
+                            "您已经录制过在杜鹃花型活动地图上点击选关的动作了\n"
+                            +"要结束录制请点确定。点取消可以回到菜单,然后可以选择结束或放弃。");
+                        if (dialog_selected) {
+                            op.exit = {kill: false, exitStatus: false};
+                            result.steps.push(op);
+                            toastLog("录制结束");
+                            endRecording = true;
+                        } else {
+                            toastLog("继续录制\n第"+(step+1)+"步");
+                            step--;//这一步没录，所以需要-1
+                        }
+                        break;
+                    }//继续录制点击动作
                 case "click":
                     log("等待录制点击动作...");
                     op.click = {};
@@ -4057,9 +4072,8 @@ function algo_init() {
                         if (result.steps.find((val) => val.action == "BRANCHclick") == null) {
                             dialogs.alert("错误",
                                 "您没有录制在活动地图的点击选关动作！\n"
-                                +"既然是杜鹃花型活动,那么在活动地图上,必须指定最后需要点击哪里来选关,否则就不能正常选关\n"
-                                +"点\"确定\"重录上一步");
-                            let last_action = result.steps[result.steps.length-1].action;
+                                +"既然是杜鹃花型活动,那么在活动地图上,必须指定最后需要点击哪里来选关,否则就不能正常选关"
+                                );
                             toastLog("继续录制\n第"+(step+1)+"步");
                             step--;//这一步没录，所以需要-1
                         } else {
@@ -4077,7 +4091,6 @@ function algo_init() {
                             +"点错后可能发生各种不可预知的后果：从脚本因步调错乱而停滞不动，到误触误删文件，再到变成魔女，全都是有可能的哦！"
                             );
                         if (!dialog_selected) {
-                            let last_action = result.steps[result.steps.length-1].action;
                             toastLog("继续录制\n第"+(step+1)+"步");
                             step--;//这一步没录，所以需要-1
                             break;
