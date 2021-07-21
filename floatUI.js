@@ -4165,6 +4165,10 @@ function algo_init() {
                 return false;
             }
         }
+        if (findID("listTitle") && (!findID("allReserve"))) {
+            log("检测到疑似商店的危险控件 (有\"listTitle\",无\"allReserve\")");
+            return false;
+        }
         return true;
     }
 
