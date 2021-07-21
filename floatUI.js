@@ -3792,8 +3792,14 @@ function algo_init() {
 
     //从文件读取上次录制的数据
     function loadOpList(justFileContent) {
-        if (!files.isFile(savedLastOpListPath)) {
-            toastLog("未找到动作录制数据文件");
+        try {
+            if (!files.isFile(savedLastOpListPath)) {
+                toastLog("未找到动作录制数据文件");
+                return null;
+            }
+        } catch (e) {
+            logException(e);
+            log("loadOpList中调用files.isFile时出错");
             return null;
         }
 
