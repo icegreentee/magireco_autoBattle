@@ -3797,7 +3797,14 @@ function algo_init() {
             return null;
         }
 
-        let file_content = files.read(savedLastOpListPath);
+        let file_content = null;
+        try {
+            file_content = files.read(savedLastOpListPath);
+        } catch (e) {
+            logException(e);
+            log("loadOpList读取文件时失败");
+            return null;
+        }
         if (justFileContent) return file_content;
 
         let loadedOpList = null;
@@ -3805,6 +3812,7 @@ function algo_init() {
             loadedOpList = JSON.parse(file_content);
         } catch (e) {
             logException(e);
+            log("loadOpList解析JSON时失败");
             loadedOpList = null;
         }
         if (loadedOpList != null) return loadedOpList;
@@ -3855,6 +3863,15 @@ function algo_init() {
         return result;
     }
 
+    function getTimestamp() {
+        let d = new Date();
+        let result = "";
+        result += d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+        result += "_";
+        result += d.getHours()+"-"+d.getMinutes()+"-"+d.getSeconds();
+        return result;
+    }
+
     function recordOperations() {
         if (!requestPrivilegeIfNeeded()) {
             log("用户选择获取特权,但还没获取到,退出录制");
@@ -3874,6 +3891,7 @@ function algo_init() {
             package_name: string.package_name,
             //现在的convertCoords只能从1920x1080转到别的分辨率，不能逆向转换
             //如果以后做了reverseConvertCoords，那就可以把isGeneric设为true了，然后录制的动作列表可以通用
+            date: getTimestamp(),
             isGeneric: false,
             screenParams: currentScreenParams,
             defaultSleepTime: 1500,
@@ -4662,10 +4680,13 @@ function algo_init() {
 
         initialize();
 
+        let lastOpListDateString = "";
         if (lastOpList == null) {
-            if (files.isFile(savedLastOpListPath)) {
-                if (dialogs.confirm("自动选关", "要加载之前保存的选关动作录制数据吗?")) {
-                    lastOpList = loadOpList();
+            let opList = null;
+            if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
+                lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
+                if (dialogs.confirm("自动选关", "要加载之前保存的选关动作录制数据吗?"+lastOpListDateString)) {
+                    lastOpList = opList;
                 } else {
                     if (dialogs.confirm("自动选关", "要删除保存选关动作录制数据的文件么?")) {
                         if (!files.remove(savedLastOpListPath)) {
@@ -4686,7 +4707,7 @@ function algo_init() {
                 stopThread();//等到权限获取完再重试
                 return;
             }
-            toastLog("已加载动作录制数据\n游戏闪退时将自动重启");
+            toastLog("已加载动作录制数据"+lastOpListDateString+"\n游戏闪退时将自动重启");
         }
 
         startSupportPickTestingIfNeeded();//如果选择开始测试会不再继续往下运行
