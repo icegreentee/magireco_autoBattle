@@ -5050,7 +5050,8 @@ function algo_init() {
                     if (pop_follow_append != null) {
                         //点“是”关注后会弹出关注追加弹窗，现在把它关闭
                         log("关闭关注追加弹窗");
-                        click(pop_follow_append.close);
+                        //click(pop_follow_append.close); //在MuMu上点不到
+                        click(convertCoords(clickSets.focusclose));
                         break;
                     }
                     let element = findID("charaWrap");
