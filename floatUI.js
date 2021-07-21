@@ -1301,6 +1301,11 @@ var clickSets = {
         y: 1000,
         pos: "bottom"
     },
+    startAutoRestart: {
+        x: 1800,
+        y: 750,
+        pos: "bottom"
+    },
     autostart: {
         x: 1800,
         y: 750,
