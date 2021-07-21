@@ -471,11 +471,13 @@ floatUI.main = function () {
     }
 
     function defaultWrap() {
+        checkRotationGlitch();
         toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
         replaceCurrentTask(floatUI.scripts[limit.default]);
     }
 
     function taskWrap() {
+        checkRotationGlitch();
         layoutTaskPopup();
         task_popup.container.setVisibility(View.VISIBLE);
         task_popup.setTouchable(true);
@@ -484,6 +486,27 @@ floatUI.main = function () {
     function cancelWrap() {
         toastLog("停止脚本");
         replaceCurrentTask({name:"未运行任何脚本", fn: function () {}});
+    }
+
+    //检测getRotation获取到的转屏方向是不是出现错误
+    function checkRotationGlitch() {
+        let sz = getWindowSize();
+        if (sz.y > sz.x) {
+            try {
+                if (auto.root.packageName() != context.getPackageName()) {
+                    threads.start(function () {
+                        for (let i=0; i<3; i++) {
+                            toastLog("警告:\n检测到竖屏");
+                            sleep(2000);
+                            toast("如果实际上并不是竖屏,\n请强行停止脚本运行,或重启手机");
+                            sleep(2000);
+                        }
+                    });
+                }
+            } catch (e) {
+                logException(e);
+            };
+        }
     }
 
     // get to main activity
