@@ -4855,7 +4855,7 @@ function algo_init() {
         }
 
         if (lastOpList == null) {
-            toastLog("没有动作录制数据\n不会启用闪退自动重启功能");
+            toastLog("周回已开始。\n因为没有动作录制数据,\n所以未启用闪退自动重开功能。");
         } else {
             if (!requestPrivilegeIfNeeded()) {
                 log("用户选择获取特权,但还没获取到,退出录制");
@@ -4863,7 +4863,15 @@ function algo_init() {
                 return;
             }
             requestTestReLaunchIfNeeded();//测试是否可以正常重开
-            toastLog("已加载动作录制数据"+lastOpListDateString+"\n游戏闪退时将自动重启");
+            let loadedInfoString = "已加载动作录制数据,闪退自动重开已启用"+lastOpListDateString;
+            if (dialogs.confirm("闪退自动重开",
+                "即将开始周回。\n"+loadedInfoString+"\n点\"确定\"继续。\n点\"取消\"停用闪退自动重开。"))
+            {
+                toastLog("周回已开始。\n"+loadedInfoString);
+            } else {
+                lastOpList = null;
+                toastLog("周回已开始。\n已停用闪退自动重开。");
+            }
         }
 
         var state = detectInitialState();
