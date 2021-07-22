@@ -1903,10 +1903,10 @@ function algo_init() {
                     }
                     // try to skip
                     let element = className("EditText").findOnce();
-                    if (element && element.refresh()) {
+                    if (element && element.refresh() && !id("menu").findOnce()) {
                         log("尝试跳过剧情");
                         let bound = element.bounds();
-                        click(bound.right, bound.top);
+                        click(bound.right - 50, bound.top + 50);
                     }
                     break;
                 }
