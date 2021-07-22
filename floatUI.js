@@ -900,18 +900,35 @@ floatUI.main = function () {
         return true;
     });
 
+    //转屏时设置悬浮窗的位置和大小
     var receiver = new BroadcastReceiver({
         onReceive: function (ctx, it) {
             if (menu && menu.logo) {
                 var sz = getWindowSize();
+
+                //更新脚本选择悬浮窗的大小和位置
+                try {
+                    //因为已经有sz了，就不调用layoutTaskPopup()了
+                    task_popup.setSize(sz.x / 2, sz.y / 2);
+                    task_popup.setPosition(sz.x / 4, sz.y / 4);
+                } catch (e) {
+                    logException(e);
+                    toastLog("无法重设悬浮窗的大小和位置,可能是悬浮窗意外消失\n退出脚本...");
+                    engines.stopAll();
+                    return; //不再继续往下执行
+                }
+
+                //更新QB头像和5个按钮的位置
                 var x = menu.getX();
                 if (x <= 0) {
+                    //停靠屏幕左边缘
                     menu.setPosition(0, calcMenuY());
                     submenu.setPosition(
                         0,
                         parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
                     );
                 } else {
+                    //停靠屏幕右边缘
                     menu.setPosition(sz.x - menu.getWidth(), calcMenuY());
                     submenu.setPosition(
                         sz.x - submenu.getWidth(),
@@ -8436,6 +8453,7 @@ function algo_init() {
 }
 
 //global utility functions
+//MIUI上发现有时候转屏了getSize返回的还是没转屏的数据，但getRotation的结果仍然是转过屏的，所以 #89 才改成这样
 var initialWindowSize = {};
 function detectInitialWindowSize() {
     let display = context.getSystemService(context.WINDOW_SERVICE).getDefaultDisplay();
