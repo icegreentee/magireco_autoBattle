@@ -4537,7 +4537,10 @@ function algo_init() {
     }
 
     function clearOpList() {
-        dialogs.confirm("清除选关动作录制数据", "确定要清除么？", () => {
+        let lastOpListDateString = "";
+        let opList = loadOpList();
+        if (opList != null) lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
+        dialogs.confirm("清除选关动作录制数据", "确定要清除么？"+lastOpListDateString, () => {
             lastOpList = null;
             if (!files.remove(savedLastOpListPath)) {
                 toastLog("删除动作录制数据文件失败");
