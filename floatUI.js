@@ -5018,6 +5018,7 @@ function algo_init() {
                                     } else {
                                         click(op.click.point);
                                     }
+                                    sleep(2000);
                                     BRANCHclickAttemptCount++;
                                 }
                             } else {
