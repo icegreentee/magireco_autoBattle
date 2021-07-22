@@ -4904,10 +4904,10 @@ function algo_init() {
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
                 if (lastOpList != null) {
                     state = STATE_CRASHED;
-                    log("进入闪退/登出重启");
+                    toastLog("进入闪退/登出重启...");
                     continue;
                 } else {
-                    log("没有动作录制数据,不进入闪退/登出重启\n停止运行");
+                    toastLog("没有动作录制数据,不进入闪退/登出重启\n停止运行脚本...");
                     stopThread();
                 }
             }
