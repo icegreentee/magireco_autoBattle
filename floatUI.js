@@ -913,10 +913,10 @@ floatUI.main = function () {
                     task_popup.setPosition(sz.x / 4, sz.y / 4);
                 } catch (e) {
                     logException(e);
-                    //貌似只有完全退出脚本才可以避免getRotation错位的问题
+                    //貌似完全退出脚本可以一定程度上（并不是完全）避免getRotation错位的问题
                     toastLog("无法重设悬浮窗的大小和位置,\n可能是悬浮窗意外消失\n退出脚本...");
                     engines.stopAll();
-                    return; //不再继续往下执行
+                    exit(); //不再继续往下执行
                 }
 
                 //更新QB头像和5个按钮的位置
