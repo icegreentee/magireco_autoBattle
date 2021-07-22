@@ -4449,6 +4449,8 @@ function algo_init() {
                     } else {
                         result = false;
                         toastLog("未进入杜鹃花型活动地图,重放失败终止,杀进程重开...");
+                        log("先点击一下跳过剧情");
+                        click(convertCoords(clickSets.skip));
                         log("强行停止游戏", opList.package_name);
                         killGame(opList.package_name);
                         log("强行停止完成");
@@ -5531,12 +5533,12 @@ function algo_init() {
                         break;
                     }
                     // try to skip
-                    let element = className("EditText").findOnce();
-                  /*if (element && element.refresh()) {*/
-                    if (element && element.refresh() && !id("menu").findOnce()) {
+                    if (!id("menu").findOnce()) {
+                        //这里开发者意见存在分歧
+                        // @segfault-bilibili 观察到menu控件无论主菜单是否打开都存在,所以怀疑这个检测的效果
+                        // @icegreentee 则认为这样最简单直接,实际上也观察到之前有误触菜单问题的用户不再反馈有这个问题
                         log("尝试跳过剧情");
-                        let bound = element.bounds();
-                        click(bound.right-50, bound.top+50);
+                        click(convertCoords(clickSets.skip));
                     }
                     break;
                 }
