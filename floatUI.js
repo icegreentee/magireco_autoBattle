@@ -5008,6 +5008,7 @@ function algo_init() {
                                     stopThread();
                                 } else {
                                     if (BRANCHclickAttemptCount >= 5) {
+                                        BRANCHclickAttemptCount = 0;
                                         toastLog("已进入活动地图,但之前点了5次选关都没成功,故杀进程重开...");
                                         killGame(string.package_name);
                                         break;
@@ -5022,6 +5023,7 @@ function algo_init() {
                                     BRANCHclickAttemptCount++;
                                 }
                             } else {
+                                BRANCHclickAttemptCount = 0;
                                 toastLog("未进入活动地图,先杀掉游戏再重启重新选关");
                                 killGame(string.package_name);
                             }
