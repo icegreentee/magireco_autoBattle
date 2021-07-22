@@ -4036,7 +4036,7 @@ function algo_init() {
                                 +"\n确定要这样吗?哪怕会产生点击错位的问题?"
                             );
                             log("坐标太靠右的警告对话框已关闭");
-                            isGameDead(1000); //等待游戏回到前台,避免误判成游戏已经闪退之类的问题
+                            isGameDead(parseInt(limit.timeout)); //等待游戏回到前台,避免误判成游戏已经闪退之类的问题
                             if (!dialog_selected) {
                                 toastLog("重新录制\n第"+(step+1)+"步");
                                 step--;//这一步没录，所以需要-1
@@ -5177,7 +5177,7 @@ function algo_init() {
                                     +"\n确定要这样吗?哪怕会产生点击错位的问题?"
                                 );
                                 log("坐标太靠右的警告对话框已关闭");
-                                isGameDead(1000); //等待游戏回到前台,避免误判成游戏已经闪退之类的问题
+                                isGameDead(parseInt(limit.timeout)); //等待游戏回到前台,避免误判成游戏已经闪退之类的问题
                                 if (!dialog_selected) {
                                     battlepos = null;
                                     break;
