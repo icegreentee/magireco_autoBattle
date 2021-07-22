@@ -4030,10 +4030,13 @@ function algo_init() {
                     if (op.action == "BRANCHclick") {
                         let sz = getWindowSize();
                         if (op.click.point.x > sz.x / 2) {
+                            log("弹出坐标太靠右的警告对话框...");
                             let dialog_selected = dialogs.confirm("警告",
                                 "你点击的坐标好像太靠右了,这样在周回时,很可能点击错位、点到剧情地图上的其他关卡上!"
                                 +"\n确定要这样吗?哪怕会产生点击错位的问题?"
                             );
+                            log("坐标太靠右的警告对话框已关闭");
+                            isGameDead(1000); //等待游戏回到前台,避免误判成游戏已经闪退之类的问题
                             if (!dialog_selected) {
                                 toastLog("重新录制\n第"+(step+1)+"步");
                                 step--;//这一步没录，所以需要-1
@@ -5167,11 +5170,14 @@ function algo_init() {
                         if (is_branch_event) {
                             let sz = getWindowSize();
                             if (battlepos.x > sz.x / 2) {
+                                log("弹出坐标太靠右的警告对话框...");
                                 let dialog_selected = dialogs.confirm("警告",
                                     "看上去你正在杜鹃花型活动的剧情地图里选择关卡。"
                                     +"\n你点击的坐标好像太靠右了,这样在周回时,很可能点击错位、点到剧情地图上的其他关卡上!"
                                     +"\n确定要这样吗?哪怕会产生点击错位的问题?"
                                 );
+                                log("坐标太靠右的警告对话框已关闭");
+                                isGameDead(1000); //等待游戏回到前台,避免误判成游戏已经闪退之类的问题
                                 if (!dialog_selected) {
                                     battlepos = null;
                                     break;
