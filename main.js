@@ -280,13 +280,16 @@ function reportBug() {
         for (let i=0; i<listedFilenames.length; i++) {
             let filename = listedFilenames[i];
             let timestamp = filename.match(/^\d+-\d+-\d+_\d+-\d+-\d+/)[0];
-            let timevalues = timestamp.split('_').join('-').split('-');
-            let isNewer = true;
+            let timevalues = timestamp.split('_').join('-').split('-').map((val) => parseInt(val));
+            let isNewer = false;
             for (let j=0; j<6; j++) {
-                if (timevalues[j] < latest[j]) {
+                if (timevalues[j] > latest[j]) {
+                    isNewer = true;
+                    break;
+                } else if (timevalues[j] < latest[j]) {
                     isNewer = false;
                     break;
-                }
+                } //相等的话继续比下一项数值
             }
             if (isNewer) for (let j=0; j<6; j++) {
                 latest[j] = timevalues[j];
