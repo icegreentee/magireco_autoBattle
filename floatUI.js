@@ -102,22 +102,6 @@ floatUI.scripts = [
         fn: tasks.simpleAutoBattle,
     },
     {
-        name: "副本周回2(备用可选)",
-        fn: autoMain,
-    },
-    {
-        name: "活动周回2(备用可选)",
-        fn: autoMainver1,
-    },
-    {
-        name: "镜层周回2(备用,无脑123盘)",
-        fn: jingMain,
-    },
-    {
-        name: "每小时自动重开，刷剧情1",
-        fn: tasks.reopen,
-    },
-    {
         name: "录制闪退重开选关动作",
         fn: tasks.recordSteps,
     },
@@ -144,6 +128,22 @@ floatUI.scripts = [
     {
         name: "测试闪退自动重开",
         fn: tasks.testReLaunch,
+    },
+    {
+        name: "副本周回2(备用可选)",
+        fn: autoMain,
+    },
+    {
+        name: "活动周回2(备用可选)",
+        fn: autoMainver1,
+    },
+    {
+        name: "镜层周回2(备用,无脑123盘)",
+        fn: jingMain,
+    },
+    {
+        name: "活动周回,自动重开(备用)",
+        fn: tasks.reopen,
     }
 ];
 
@@ -3543,6 +3543,17 @@ function algo_init() {
     function selectBattle() { }
 
     function enterLoop(){
+        if (!dialogs.confirm("说明",
+            "这个备用的活动周回脚本,功能是刷类似[初出茅庐女仆十七夜 阔达自在！]这种门票型(DAILYTOWER)活动。"
+            +"\n写死了是刷活动[剧情 1],而且固定每小时自动杀进程重开一次游戏。"
+            +"\n在首页/选关/选助战/战斗中都可以启动这个脚本,就是启动后不能有其它操作。"
+            +"\n备注:"
+            +"\n这个脚本是群内大佬贡献的自用脚本(GitHub pull request #62)。它只是个临时的解决方案,用来解决[初出茅庐女仆十七夜 阔达自在！]活动在自动周回几个小时后就会爆内存的问题,没来及考虑照顾兼容所有环境。"
+            +"\n已知在MuMu模拟器、低于4.0的雷电模拟器等少数环境下,拖动列表后,抓取到的控件坐标会错乱,所以可能点不到活动[剧情 1]这个正确选项上。"
+        )) {
+            toastLog("用户点击取消,停止运行");
+            return;
+        }
         var last=Date.now();
         initialize();
         var pkgName = auto.root.packageName();
@@ -4843,7 +4854,7 @@ function algo_init() {
         }
 
         if (lastOpList == null) {
-            toastLog("没有动作录制数据\n不会启用闪退自动重启功能");
+            toastLog("周回已开始。\n因为没有动作录制数据,\n所以未启用闪退自动重开功能。");
         } else {
             if (!requestPrivilegeIfNeeded()) {
                 log("用户选择获取特权,但还没获取到,退出录制");
@@ -4851,7 +4862,7 @@ function algo_init() {
                 return;
             }
             requestTestReLaunchIfNeeded();//测试是否可以正常重开
-            toastLog("已加载动作录制数据"+lastOpListDateString+"\n游戏闪退时将自动重启");
+            toastLog("周回已开始。\n闪退自动重开已启用,已加载动作录制数据"+lastOpListDateString);
         }
 
         var state = detectInitialState();
