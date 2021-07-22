@@ -4178,7 +4178,7 @@ function algo_init() {
                             "您没有录制在活动地图的点击选关动作！\n"
                             +"既然是杜鹃花型活动,那么在活动地图上,必须指定最后需要点击哪里来选关,否则就不能正常选关"
                             );
-                        toastLog("继续录制\n第"+(step+1)+"步");
+                        toastLog("重新录制\n第"+(step+1)+"步");
                         step--;//这一步没录，所以需要-1
                         continue;
                     }
@@ -4215,7 +4215,7 @@ function algo_init() {
                             +"点错后可能发生各种不可预知的后果：从脚本因步调错乱而停滞不动，到误触误删文件，再到变成魔女，全都是有可能的哦！"
                             );
                         if (!dialog_selected) {
-                            toastLog("继续录制\n第"+(step+1)+"步");
+                            toastLog("重新录制\n第"+(step+1)+"步");
                             step--;//这一步没录，所以需要-1
                             continue;
                         } else {
@@ -4594,7 +4594,10 @@ function algo_init() {
     }
 
     function clearOpList() {
-        dialogs.confirm("清除选关动作录制数据", "确定要清除么？", () => {
+        let lastOpListDateString = "";
+        let opList = loadOpList();
+        if (opList != null) lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
+        dialogs.confirm("清除选关动作录制数据", "确定要清除么？"+lastOpListDateString, () => {
             lastOpList = null;
             if (!files.remove(savedLastOpListPath)) {
                 toastLog("删除动作录制数据文件失败");
