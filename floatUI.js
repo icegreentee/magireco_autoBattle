@@ -3976,6 +3976,20 @@ function algo_init() {
                         stopThread();
                     }
                     click(op.click.point);
+                    if (op.action == "BRANCHclick") {
+                        let sz = getWindowSize();
+                        if (op.click.point.x > sz.x / 2) {
+                            let dialog_selected = dialogs.confirm("警告",
+                                "你点击的坐标好像太靠右了,这样在周回时,很可能点击错位、点到剧情地图上的其他关卡上!"
+                                +"\n确定要这样吗?哪怕会产生点击错位的问题?"
+                            );
+                            if (!dialog_selected) {
+                                toastLog("重新录制\n第"+(step+1)+"步");
+                                step--;//这一步没录，所以需要-1
+                                continue;
+                            }
+                        }
+                    }
                     result.steps.push(op);
                     toastLog("已记录点击动作: ["+op.click.point.x+","+op.click.point.y+"]");
                     toast("如果点击没点到,请重录上一步");
@@ -5033,7 +5047,22 @@ function algo_init() {
                         }
                     } else {
                         log("等待捕获关卡坐标");
+                        let is_branch_event = match(string.regex_event_branch);
                         battlepos = capture().pos_up;
+                        if (is_branch_event) {
+                            let sz = getWindowSize();
+                            if (battlepos.x > sz.x / 2) {
+                                let dialog_selected = dialogs.confirm("警告",
+                                    "看上去你正在杜鹃花型活动的剧情地图里选择关卡。"
+                                    +"\n你点击的坐标好像太靠右了,这样在周回时,很可能点击错位、点到剧情地图上的其他关卡上!"
+                                    +"\n确定要这样吗?哪怕会产生点击错位的问题?"
+                                );
+                                if (!dialog_selected) {
+                                    battlepos = null;
+                                    break;
+                                }
+                            }
+                        }
                     }
                     break;
                 }
