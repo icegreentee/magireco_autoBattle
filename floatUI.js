@@ -3969,11 +3969,6 @@ function algo_init() {
         result.defaultSleepTime = new_sleep_time;
         toastLog("每一步操作之间将会等待"+result.defaultSleepTime+"毫秒");
 
-        const tipsTextAboutBRANCH = "\n备注:\n"
-            +"如果害怕意外点错关卡,在录制到进入活动地图这一步后,可以继续录制这4步(或更多)动作:\n"
-            +"[点击]=>[检测文字是否出现](可以多检测几处文字)=>[点击]=>[在杜鹃花型活动地图上点击选关],\n"
-            +"也就是先[点击]开关卡详情,再[检测]关卡名是否正确,再[点击]关闭关卡详情,最后让[在杜鹃花型活动地图上点击选关]重新打开关卡详情,完成选关\n";
-
         let isEventTypeBRANCH = null;
         do {
             isEventTypeBRANCH = dialogs.confirm("要录制的是杜鹃花型活动的选关动作么？",
@@ -3982,7 +3977,6 @@ function algo_init() {
                 +"然后(如果有需要)拖动活动地图,\n"
                 +"最后一步是[在杜鹃花型活动地图上点击选关]\n"
                 +"注意:不需要专门去录制点击开始按钮,脚本自己会去点!"
-                +tipsTextAboutBRANCH
             );
         } while (isEventTypeBRANCH !== true && isEventTypeBRANCH !== false);
         result.isEventTypeBRANCH = isEventTypeBRANCH;
@@ -4003,7 +3997,7 @@ function algo_init() {
                     "您已经录制过在杜鹃花型活动地图上点击选关的动作,\n"
                     +"在此之后,动作录制/重放就结束了。\n"
                     +"要结束录制请点确定。点取消可以回到菜单,然后可以选择重录上一步/结束/放弃。"
-                    +tipsTextAboutBRANCH);
+                );
                 if (dialog_selected) {
                     op.action = "exit";
                     op.exit = {kill: false, exitStatus: false};
@@ -4026,24 +4020,36 @@ function algo_init() {
                         toastLog("录制点击动作出错");
                         stopThread();
                     }
-                    click(op.click.point);
                     if (op.action == "BRANCHclick") {
-                        let sz = getWindowSize();
-                        if (op.click.point.x > sz.x / 2) {
-                            log("弹出坐标太靠右的警告对话框...");
-                            let dialog_selected = dialogs.confirm("警告",
-                                "你点击的坐标好像太靠右了,这样在周回时,很可能点击错位、点到剧情地图上的其他关卡上!"
-                                +"\n确定要这样吗?哪怕会产生点击错位的问题?"
-                            );
-                            log("坐标太靠右的警告对话框已关闭");
-                            isGameDead(parseInt(limit.timeout)); //等待游戏回到前台,避免误判成游戏已经闪退之类的问题
-                            if (!dialog_selected) {
-                                toastLog("重新录制\n第"+(step+1)+"步");
-                                step--;//这一步没录，所以需要-1
-                                continue;
+                        let dialog_selected = dialogs.confirm("警告",
+                            "要直接使用刚刚记录下来的点击坐标,而不进行校正么?"
+                            +"\n在完成一局战斗后,杜鹃花型活动的剧情地图会发生移动,从而可能导致点击错位"
+                            +"\n为避免点击错位,脚本将会自动拖动地图,让要点击的关卡按钮\"归中\","
+                            +"\n然后提示您再点击一次关卡按钮。"
+                            +"\n这个避免坐标错位的办法并不保证一定靠谱,只能说请多多测试以确保无误。"
+                            +"\n点击\"确定\"后,会直接使用刚刚记录的点击坐标,而不会进行自动拖动地图校正坐标的额外步骤。"
+                            +"\n点击\"取消\"后,则会开始校正步骤:先自动拖动地图,完成后,提示您再点击一次关卡按钮。"
+                        );
+                        if (!dialog_selected) {
+                            let bounds = getFragmentViewBounds();
+                            let opSwipe = {};
+                            opSwipe.action = "swipe"
+                            opSwipe.swipe = {};
+                            opSwipe.swipe.points = [op.click.point, {x: bounds.centerX(), y: bounds.centerY()}];
+                            opSwipe.swipe.duration = 6000;
+                            result.steps.push(opSwipe);
+                            step++;
+                            toastLog("正在自动拖动剧情地图,需要6秒完成...");
+                            swipe(op.click.point.x, op.click.point.y, bounds.centerX(), bounds.centerY(), 6000);
+                            toast("自动拖动剧情地图已完成");
+                            op.click.point = capture("录制第"+(step+1)+"步操作\n请点击要记录下来的点击位置").pos_up;
+                            if (op.click.point == null) {
+                                toastLog("录制点击动作出错");
+                                stopThread();
                             }
                         }
                     }
+                    click(op.click.point);
                     result.steps.push(op);
                     toastLog("已记录点击动作: ["+op.click.point.x+","+op.click.point.y+"]");
                     toast("如果点击没点到,请重录上一步");
@@ -4360,6 +4366,7 @@ function algo_init() {
         var result = false;
 
         if (opList == null) opList = lastOpList;
+        if (opList == null) opList = loadOpList();
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
             return false;
@@ -4431,7 +4438,7 @@ function algo_init() {
                     if (opList.isGeneric) {
                         points = op.swipe.points.map((point) => convertCoords(point));
                     }
-                    swipe(points[0], points[1]);
+                    swipe(points[0], points[1], op.swipe.duration);
                     break;
                 case "sleep":
                     sleep(op.sleep.sleepTime);
@@ -4829,7 +4836,9 @@ function algo_init() {
             let opList = null;
             if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
                 lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
-                if (dialogs.confirm("闪退自动重开", "要加载之前保存的选关动作录制数据吗?"+lastOpListDateString)) {
+                if (dialogs.confirm("闪退自动重开", "要加载之前保存的选关动作录制数据吗?"
+                    +"\n注意:4.9版或以前录制的杜鹃花型活动选关动作记录存在bug,没考虑点击坐标校正问题,可能在选关时点击错位,推荐删除重录。"
+                    +lastOpListDateString)) {
                     lastOpList = opList;
                 } else {
                     if (dialogs.confirm("闪退自动重开", "要删除保存选关动作录制数据的文件么?")) {
@@ -5164,25 +5173,39 @@ function algo_init() {
                             killGame(string.package_name);
                         }
                     } else {
-                        log("等待捕获关卡坐标");
-                        let is_branch_event = match(string.regex_event_branch);
-                        battlepos = capture().pos_up;
-                        if (is_branch_event) {
-                            let sz = getWindowSize();
-                            if (battlepos.x > sz.x / 2) {
-                                log("弹出坐标太靠右的警告对话框...");
-                                let dialog_selected = dialogs.confirm("警告",
-                                    "看上去你正在杜鹃花型活动的剧情地图里选择关卡。"
-                                    +"\n你点击的坐标好像太靠右了,这样在周回时,很可能点击错位、点到剧情地图上的其他关卡上!"
-                                    +"\n确定要这样吗?哪怕会产生点击错位的问题?"
-                                );
-                                log("坐标太靠右的警告对话框已关闭");
-                                isGameDead(parseInt(limit.timeout)); //等待游戏回到前台,避免误判成游戏已经闪退之类的问题
-                                if (!dialog_selected) {
-                                    battlepos = null;
-                                    break;
-                                }
+                        if (match(string.regex_event_branch)) {
+                            //杜鹃花型活动
+                            if (dialogs.confirm("警告",
+                                   "看上去你正在杜鹃花型活动的剧情地图中。"
+                                   +"\n在打完一局活动剧情后,杜鹃花型活动的剧情地图会发生移动,然后再次选关时,点击坐标就可能错位。"
+                                   +"\n为了避免点击错位,请问您是刚刚才通关过一次要周回的关卡么?"
+                                   +"\n注意!"
+                                   +"\n即便要周回的这一关之已经通关过不止一次,也是没用的,"
+                                   +"\n只要你现在是刚刚打开剧情地图(或者虽然刚刚打完一局活动剧情,但打的不是现在要周回的那一关),"
+                                   +"\n那么你仍然必须再把这一关打通关一次。"
+                                   +"\n(别偷懒!必须完整打完一局,而不是进入助战选择界面后直接点返回)"
+                                   +"\n在此之后,这一关在屏幕上的坐标位置才会固定下来。"
+                                   +"\n"
+                                   +"\n如果你已经准备好,请点\"确定\"。"
+                                   +"\n如果你点\"取消\",则脚本会尝试使用除了真正通关一次之外的替代办法,来尽量避免点击坐标错位:"
+                                   +"\n脚本会提示您先点击地图上的关卡按钮,接着会自动拖动剧情地图,让关卡按钮\"归中\",然后提示您再点击一次地图上的关卡按钮。"
+                               ))
+                            {
+                                log("等待捕获关卡坐标");
+                                battlepos = capture().pos_up;
+                            } else {
+                                log("等待第1次捕获杜鹃花关卡坐标");
+                                let temp_battlepos = capture("请点击需要周回的battle").pos_up;
+                                let bounds = getFragmentViewBounds();
+                                toastLog("正在自动拖动剧情地图,需要6秒完成...");
+                                swipe(temp_battlepos.x , temp_battlepos.y, bounds.centerX(), bounds.centerY(), 6000);
+                                toast("自动拖动剧情地图已完成");
+                                log("等待第2次捕获杜鹃花关卡坐标");
+                                battlepos = capture("请再点击一次需要周回的battle").pos_up;
                             }
+                        } else {
+                            log("等待捕获关卡坐标");
+                            battlepos = capture().pos_up;
                         }
                     }
                     break;
