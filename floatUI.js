@@ -8482,8 +8482,11 @@ function algo_init() {
 
     /* ~~~~~~~~ 来自3.6.0版(以及点SKIP跳过剧情bug修正)的备用周回脚本 开始 ~~~~~~~~ */
 
+    function taskDefault3_6_0() {
+        /* ~~~~ initialize begin ~~~~ */
+        var usedrug = false;
+        var druglimit = [];
 
-    function initialize3_6_0() {
         if (auto.root == null) {
             toastLog("未开启无障碍服务");
             //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
@@ -8514,10 +8517,8 @@ function algo_init() {
                 usedrug = true;
             }
         }
-    }
+        /* ~~~~ initialize end ~~~~ */
 
-    function taskDefault3_6_0() {
-        initialize3_6_0();
         var state = STATE_MENU;
         var battlename = "";
         var charabound = null;
