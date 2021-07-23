@@ -131,7 +131,7 @@ floatUI.scripts = [
     },
     {
         name: "通用副本周回v3.6.0",
-        fn: default3_6_0,
+        fn: tasks.default3_6_0,
     },
     {
         name: "副本周回2(备用可选)",
