@@ -945,12 +945,23 @@ floatUI.main = function () {
                     );
                 }
             } else {
-                context.unregisterReceiver(receiver);
+                try {
+                    context.unregisterReceiver(receiver);
+                } catch (e) {
+                    logException(e);
+                }
             }
         },
     });
 
     context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED));
+    events.on("exit", function () {
+        try {
+            context.unregisterReceiver(receiver);
+        } catch (e) {
+            logException(e);
+        }
+    });
 
     var touch_down_pos = null;
     var touch_up_pos = null;
