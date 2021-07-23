@@ -8668,7 +8668,7 @@ function algo_init() {
                         break;
                     }
                     // if we need to refill AP
-                    let apinfo = getAP();
+                    let apinfo = getAP(1000);
                     let apcost = getCostAP();
                     log(
                         "消费AP",
