@@ -8482,6 +8482,8 @@ function algo_init() {
 
     /* ~~~~~~~~ 来自3.6.0版(以及点SKIP跳过剧情bug修正)的备用周回脚本 开始 ~~~~~~~~ */
 
+    var string3_6_0 = {};
+
     function refillAP3_6_0() {
         log("尝试使用回复药");
         var revive_title_element = null;
@@ -8491,7 +8493,7 @@ function algo_init() {
             let revive_title_attempt_max = 1500;
             for (let attempt=0; attempt<revive_title_attempt_max; attempt++) {
                 log("等待AP药选择窗口出现...");
-                revive_title_element = find(string.revive_title, false);
+                revive_title_element = find(string3_6_0.revive_title, false);
                 if (revive_title_element != null) {
                     log("AP药选择窗口已经出现");
                     break;
@@ -8514,8 +8516,8 @@ function algo_init() {
             }
 
             var usedrug = false;
-            var numbers = matchAll(string.regex_drug, true);
-            var buttons = findAll(string.revive_button);
+            var numbers = matchAll(string3_6_0.regex_drug, true);
+            var buttons = findAll(string3_6_0.revive_button);
             // when things seems to be correct
             if (numbers.length == 3 && buttons.length == 3) {
                 for (let i = 0; i < 3; i++) {
@@ -8525,9 +8527,9 @@ function algo_init() {
                         do {
                             click(bound.centerX(), bound.centerY());
                             // wait for confirmation popup
-                            var revive_popup_element = find(string.revive_popup, 2000);
+                            var revive_popup_element = find(string3_6_0.revive_popup, 2000);
                         } while (revive_popup_element == null);
-                        bound = find(string.revive_confirm, true).bounds();
+                        bound = find(string3_6_0.revive_confirm, true).bounds();
                         while (revive_popup_element.refresh()) {
                             log("找到确认回复窗口，点击确认回复");
                             click(bound.centerX(), bound.centerY());
@@ -8540,7 +8542,7 @@ function algo_init() {
                     }
                 }
             }
-            if (!usedrug && find(string.out_of_ap)) {
+            if (!usedrug && find(string3_6_0.out_of_ap)) {
                 log("AP不足且未嗑药，退出");
                 threads.currentThread().interrupt();
             }
@@ -8548,7 +8550,7 @@ function algo_init() {
             log("当前AP:" + apinfo.value + "/" + apinfo.total);
         } while (usedrug && limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul));
         // now close the window
-        revive_title_element = find(string.revive_title, 2000); //不加这一行的时候，会出现卡在AP药选择窗口的问题（国服MuMu模拟器主线214上出现）
+        revive_title_element = find(string3_6_0.revive_title, 2000); //不加这一行的时候，会出现卡在AP药选择窗口的问题（国服MuMu模拟器主线214上出现）
         while (revive_title_element != null && revive_title_element.refresh()) {
             log("关闭回复窗口");
             bound = revive_title_element.parent().bounds();
@@ -8560,7 +8562,6 @@ function algo_init() {
 
     function taskDefault3_6_0() {
         /* ~~~~ initialize begin ~~~~ */
-        var string3_6_0 = {};
         var usedrug = false;
         var druglimit = [NaN, NaN, NaN];
 
