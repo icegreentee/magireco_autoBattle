@@ -7550,7 +7550,10 @@ function algo_init() {
                                     } 
                             }
                         }
-                        toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
+                        if (isSkillUsed) {
+                            sleep(2000);
+                            toggleSkillPanel(true); //如果发动了洗盘技能，就重新打开技能面板
+                        }
                     }
                 }
             }
