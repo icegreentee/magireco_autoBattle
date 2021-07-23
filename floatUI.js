@@ -8543,7 +8543,7 @@ function algo_init() {
                         }
                     } else {
                         log("等待捕获关卡坐标");
-                        battlepos = capture();
+                        battlepos = capture().pos_up;
                     }
                     break;
                 }
