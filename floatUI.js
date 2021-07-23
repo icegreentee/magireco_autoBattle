@@ -8489,6 +8489,78 @@ function algo_init() {
 
     /* ~~~~~~~~ 来自3.6.0版(以及点SKIP跳过剧情bug修正)的备用周回脚本 开始 ~~~~~~~~ */
 
+    // strings constants
+    const strings3_6_0 = {
+        name: [
+            "support",
+            "revive_title",
+            "revive_button",
+            "revive_popup",
+            "revive_confirm",
+            "out_of_ap",
+            "start",
+            "follow",
+            "follow_append",
+            "battle_confirm",
+            "cost_ap",
+            "regex_drug",
+            "regex_lastlogin",
+            "regex_bonus",
+            "regex_autobattle",
+        ],
+        zh_Hans: [
+            "请选择支援角色",
+            "AP回复",
+            "回复",
+            "回复确认",
+            "回复",
+            "AP不足",
+            "开始",
+            "关注",
+            "关注追加",
+            "确定",
+            "消耗AP",
+            /^\d+个$/,
+            /^最终登录.+/,
+            /＋\d+个$/,
+            /[\s\S]*续战/,
+        ],
+        zh_Hant: [
+            "請選擇支援角色",
+            "AP回復",
+            "回復",
+            "回復確認",
+            "進行回復",
+            "AP不足",
+            "開始",
+            "關注",
+            "追加關注",
+            "決定",
+            "消費AP",
+            /^\d+個$/,
+            /^最終登入.+/,
+            /＋\d+個$/,
+            /[\s\S]*周回/,
+        ],
+        ja: [
+            "サポートキャラを選んでください",
+            "AP回復",
+            "回復",
+            "回復確認",
+            "回復する",
+            "AP不足",
+            "開始",
+            "フォロー",
+            "フォロー追加",
+            "決定",
+            "消費AP",
+            /^\d+個$/,
+            /^最終ログイン.+/,
+            /＋\d+個$/,
+            /[\s\S]*周回/,
+        ],
+    };
+
     var string3_6_0 = {};
 
     function refillAP3_6_0() {
@@ -8579,19 +8651,19 @@ function algo_init() {
         var current = [];
         if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
             log("检测为国服");
-            current = strings.zh_Hans;
+            current = strings3_6_0.zh_Hans;
         } else if (packageName("com.komoe.madokagp").findOnce()) {
             log("检测为台服");
-            current = strings.zh_Hant;
+            current = strings3_6_0.zh_Hant;
         } else if (packageName("com.aniplex.magireco").findOnce()) {
             log("检测为日服");
-            current = strings.ja;
+            current = strings3_6_0.ja;
         } else {
             toastLog("未在前台检测到魔法纪录");
             threads.currentThread().interrupt();
         }
-        for (let i = 0; i < strings.name.length; i++) {
-            string3_6_0[strings.name[i]] = current[i];
+        for (let i = 0; i < strings3_6_0.name.length; i++) {
+            string3_6_0[strings3_6_0.name[i]] = current[i];
         }
         usedrug = false;
         for (let i = 0; i < 3; i++) {
