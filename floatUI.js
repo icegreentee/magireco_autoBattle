@@ -203,13 +203,16 @@ function getUIContent(key) {
         case "CheckBox":
             return ui[key].isChecked()?"已启用":"已停用";
         case "JsSpinner":
-            return ui[key].getSelectedItemPosition();
+            return ui[key].getSelectedItem();
         case "RadioGroup": {
             let name = "";
+            let text = "";
             let id = ui[key].getCheckedRadioButtonId();
-            if (id >= 0)
+            if (id >= 0) {
                 name = idmap[ui[key].getCheckedRadioButtonId()];
-            return name;
+                text = ui[name].getText();
+            }
+            return text;
         }
     }
 }
@@ -1983,10 +1986,17 @@ function getDrugNum(text) {
     return parseInt(text.slice(0, text.length - 1))
 }
 
+var canToastParamChanges = false;//启动时不弹toast
+floatUI.enableToastParamChanges = function () {
+    canToastParamChanges = true;
+}
 floatUI.adjust = function (key, value) {
     if (value !== undefined) {
         limit[key] = value
         log("更新参数：", key, value)
+
+        //默认执行脚本仍然会在启动时toast,原因未知
+        if (canToastParamChanges) toast(getUIContent(key) === "" ? "(参数留空)" : getUIContent(key));
 
         //如果需要就弹窗申请root或adb权限
         let isPrivNeeded = false;

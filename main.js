@@ -838,3 +838,5 @@ function toUpdate() {
         toastLog("请求超时，可再一次尝试")
     }
 }
+
+floatUI.enableToastParamChanges();
