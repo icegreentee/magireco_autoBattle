@@ -5686,7 +5686,13 @@ function algo_init() {
         sleep(500);
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
-            if (requestScreenCapture(screencap_landscape)) {
+            let result = false;
+            try {
+                result = requestScreenCapture(screencap_landscape);
+            } catch (e) {
+                logException(e);
+            }
+            if (result) {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
                 initializeScreenCaptureFix();
 
@@ -5704,7 +5710,7 @@ function algo_init() {
         }
 
         if (!canCaptureScreen) {
-            log("截图权限获取失败，退出");
+            toastLog("截图权限获取失败，退出");
             stopThread();
         }
 

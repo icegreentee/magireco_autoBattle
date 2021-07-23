@@ -489,11 +489,13 @@ ui.exitOnServiceSettings.setOnCheckedChangeListener(function (widget, checked) {
     for (let i=1; i<=4; i++) ui["fixOPPOtext"+i].setVisibility(checked?View.VISIBLE:View.GONE);
 });
 //前台服务
+$settings.setEnabled('foreground_service', $settings.isEnabled('foreground_service')); //修正刚安装好后返回错误的数值，点进设置再出来又变成正确的数值的问题
 ui.foreground.setChecked($settings.isEnabled('foreground_service'));
 ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('foreground_service', checked);
 });
 //按音量上键完全退出脚本
+$settings.setEnabled('stop_all_on_volume_up', $settings.isEnabled('stop_all_on_volume_up')); //修正刚安装好后返回错误的数值，点进设置再出来又变成正确的数值的问题
 ui.stopOnVolUp.setChecked($settings.isEnabled('stop_all_on_volume_up'));
 ui.stopOnVolUp.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('stop_all_on_volume_up', checked);
