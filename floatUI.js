@@ -8498,12 +8498,21 @@ function algo_init() {
                         log("不过，开始镜层演习需要至少有1BP");
                         log("镜层周回结束");
                         return;
-                    } else if (isDrugEnough(3)) {
+                    } else if (isDrugEnabled(3)) {
                         while (!id("bpTextWrap").findOnce()) {
                             click(convertCoords(clickSetsMod.bpExhaustToBpDrug))
                             sleep(1500)
                         }
-                        while (id("bpTextWrap").findOnce()) {
+                        let attemptMax = 10;
+                        for (let attempt=0; attempt<attemptMax; attempt++) {
+                            if (!id("bpTextWrap").findOnce()) {
+                                updateDrugLimit(3);
+                                break;
+                            }
+                            if (attempt == attemptMax - 1) {
+                                log("多次嗑BP药仍然没有反应,应该是BP药用完了,退出");
+                                return;
+                            }
                             click(convertCoords(clickSetsMod.bpDrugConfirm))
                             sleep(1500)
                         }
@@ -8511,7 +8520,6 @@ function algo_init() {
                             click(convertCoords(clickSetsMod.bpDrugRefilledOK))
                             sleep(1500)
                         }
-                        updateDrugLimit(3);
                     } else {
                         click(convertCoords(clickSetsMod.bpClose))
                         log("镜层周回结束")
