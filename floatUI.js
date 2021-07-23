@@ -8560,6 +8560,7 @@ function algo_init() {
 
     function taskDefault3_6_0() {
         /* ~~~~ initialize begin ~~~~ */
+        var string3_6_0 = {};
         var usedrug = false;
         var druglimit = [NaN, NaN, NaN];
 
@@ -8582,7 +8583,7 @@ function algo_init() {
             threads.currentThread().interrupt();
         }
         for (let i = 0; i < strings.name.length; i++) {
-            string[strings.name[i]] = current[i];
+            string3_6_0[strings.name[i]] = current[i];
         }
         usedrug = false;
         for (let i = 0; i < 3; i++) {
@@ -8606,14 +8607,14 @@ function algo_init() {
                 case STATE_MENU: {
                     waitAny(
                         [
-                            () => find(string.support),
+                            () => find(string3_6_0.support),
                             () => findID("helpBtn"),
                             () => match(/^BATTLE.+/),
                         ],
                         3000
                     );
                     // exit condition
-                    if (find(string.support)) {
+                    if (find(string3_6_0.support)) {
                         state = STATE_SUPPORT;
                         log("进入助战选择");
                         break;
@@ -8625,18 +8626,18 @@ function algo_init() {
                         break; //下一轮循环后会切换到助战选择状态，从而避免捕获关卡坐标后，错把助战当做关卡来误点击
                     }
                     // if need to click to enter battle
-                    let button = find(string.battle_confirm);
+                    let button = find(string3_6_0.battle_confirm);
                     if (button) {
                         log("点击确认进入battle");
                         let bound = button.bounds();
                         click(bound.centerX(), bound.centerY());
                         // wait for support screen for 5 seconds
-                        find(string.support, 5000);
+                        find(string3_6_0.support, 5000);
                     } else if (battlepos) {
                         log("尝试点击关卡坐标");
                         click(battlepos.x, battlepos.y);
                         waitAny(
-                            [() => find(string.battle_confirm), () => find(string.support)],
+                            [() => find(string3_6_0.battle_confirm), () => find(string3_6_0.support)],
                             5000
                         );
                     }
@@ -8648,7 +8649,7 @@ function algo_init() {
                             let bound = battle.bounds();
                             click(bound.centerX(), bound.centerY());
                             waitAny(
-                                [() => find(string.battle_confirm), () => find(string.support)],
+                                [() => find(string3_6_0.battle_confirm), () => find(string3_6_0.support)],
                                 5000
                             );
                         }
@@ -8701,7 +8702,7 @@ function algo_init() {
                     }
                     // pick support
                     let ptlist = getPTList();
-                    let playercount = matchAll(string.regex_lastlogin).length;
+                    let playercount = matchAll(string3_6_0.regex_lastlogin).length;
                     log("候选数量" + ptlist.length + ",玩家数量" + playercount);
                     if (ptlist.length) {
                         let bound;
@@ -8730,7 +8731,7 @@ function algo_init() {
                             let bound = element.bounds();
                             click(bound.left, bound.top);
                         }
-                        find(string.support, 5000);
+                        find(string3_6_0.support, 5000);
                     }
                     break;
                 }
