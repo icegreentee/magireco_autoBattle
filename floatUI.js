@@ -8482,6 +8482,82 @@ function algo_init() {
 
     /* ~~~~~~~~ 来自3.6.0版(以及点SKIP跳过剧情bug修正)的备用周回脚本 开始 ~~~~~~~~ */
 
+    function refillAP3_6_0() {
+        log("尝试使用回复药");
+        var revive_title_element = null;
+        var apinfo = null;
+
+        do {
+            let revive_title_attempt_max = 1500;
+            for (let attempt=0; attempt<revive_title_attempt_max; attempt++) {
+                log("等待AP药选择窗口出现...");
+                revive_title_element = find(string.revive_title, false);
+                if (revive_title_element != null) {
+                    log("AP药选择窗口已经出现");
+                    break;
+                }
+                if (attempt == revive_title_attempt_max-1) {
+                    log("长时间等待后，AP药选择窗口仍然没有出现，退出");
+                    threads.currentThread().interrupt();
+                }
+                if (attempt % 5 == 0) {
+                    apinfo = getAP();
+                    if (apinfo) {
+                        log("当前AP:" + apinfo.value + "/" + apinfo.total);
+                        log("点击AP按钮");
+                        click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
+                    } else {
+                        log("检测AP失败");
+                    }
+                }
+                sleep(200);
+            }
+
+            var usedrug = false;
+            var numbers = matchAll(string.regex_drug, true);
+            var buttons = findAll(string.revive_button);
+            // when things seems to be correct
+            if (numbers.length == 3 && buttons.length == 3) {
+                for (let i = 0; i < 3; i++) {
+                    if (ifUseDrug(i, parseInt(getContent(numbers[i]).slice(0, -1)))) {
+                        log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次");
+                        var bound = buttons[i].bounds();
+                        do {
+                            click(bound.centerX(), bound.centerY());
+                            // wait for confirmation popup
+                            var revive_popup_element = find(string.revive_popup, 2000);
+                        } while (revive_popup_element == null);
+                        bound = find(string.revive_confirm, true).bounds();
+                        while (revive_popup_element.refresh()) {
+                            log("找到确认回复窗口，点击确认回复");
+                            click(bound.centerX(), bound.centerY());
+                            waitElement(revive_popup_element, 5000);
+                        }
+                        log("确认回复窗口已消失");
+                        usedrug = true;
+                        updateDrugLimit(i);
+                        break;
+                    }
+                }
+            }
+            if (!usedrug && find(string.out_of_ap)) {
+                log("AP不足且未嗑药，退出");
+                threads.currentThread().interrupt();
+            }
+            apinfo = getAP();
+            log("当前AP:" + apinfo.value + "/" + apinfo.total);
+        } while (usedrug && limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul));
+        // now close the window
+        revive_title_element = find(string.revive_title, 2000); //不加这一行的时候，会出现卡在AP药选择窗口的问题（国服MuMu模拟器主线214上出现）
+        while (revive_title_element != null && revive_title_element.refresh()) {
+            log("关闭回复窗口");
+            bound = revive_title_element.parent().bounds();
+            click(bound.right, bound.top);
+            waitElement(revive_title_element, 5000);
+        }
+        return usedrug;
+    }
+
     function taskDefault3_6_0() {
         /* ~~~~ initialize begin ~~~~ */
         var usedrug = false;
@@ -8545,7 +8621,7 @@ function algo_init() {
                     // if AP is not enough
                     if (findID("popupInfoDetailTitle")) {
                         // try use drug
-                        tryusedrug = refillAP();
+                        tryusedrug = refillAP3_6_0();
                         break; //下一轮循环后会切换到助战选择状态，从而避免捕获关卡坐标后，错把助战当做关卡来误点击
                     }
                     // if need to click to enter battle
@@ -8616,7 +8692,7 @@ function algo_init() {
                             revive_window = findID("popupInfoDetailTitle", 5000);
                         } while (!revive_window);
                         // try use drug
-                        tryusedrug = refillAP();
+                        tryusedrug = refillAP3_6_0();
                     }
                     // save battle name if needed
                     let battle = match(/^BATTLE.+/);
