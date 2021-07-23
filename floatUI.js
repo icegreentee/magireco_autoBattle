@@ -4012,6 +4012,18 @@ function algo_init() {
         result.isEventTypeBRANCH = isEventTypeBRANCH;
         toastLog("要录制的【"+(result.isEventTypeBRANCH?"是":"不是")+"】\n杜鹃花型活动的选关动作");
 
+        if (!result.isEventTypeBRANCH) {
+            dialogs.alert("小贴士",
+                "录制下来的选关动作一般包含这几个步骤:\n"
+                +"1.在首页点击,进入主线/支线/活动剧情,\n"
+                +"2.点击选择要打的关卡所在的章节,\n"
+                +"3.利用\"检测文字是否出现\"来确保章节没有选错,如果检测到正确的章节文字就\"什么也不做,继续\",检测不到就\"先强关游戏再报告失败并结束\",\n"
+                +"4.点击选择要打的关卡,进入助战选择界面,\n"
+                +"5.在助战选择界面再次利用\"检测文字是否出现\"来确保章节和关卡都没有选错,原理同上,\n"
+                +"6.结束并报告成功。"
+            );
+        }
+
         let endRecording = false;
         for (let step=0; !endRecording; step++) {
             log("录制第"+(step+1)+"步操作...");
@@ -5213,39 +5225,32 @@ function algo_init() {
                             killGame(string.package_name);
                         }
                     } else {
-                        if (match(string.regex_event_branch)) {
-                            //杜鹃花型活动
-                            if (dialogs.confirm("警告",
-                                   "看上去你正在杜鹃花型活动的剧情地图中。"
-                                   +"\n在打完一局活动剧情后,杜鹃花型活动的剧情地图会发生移动,然后再次选关时,点击坐标就可能错位。"
-                                   +"\n为了避免点击错位,请问您是刚刚才通关过一次要周回的关卡么?"
-                                   +"\n注意!"
-                                   +"\n即便要周回的这一关之已经通关过不止一次,也是没用的,"
-                                   +"\n只要你现在是刚刚打开剧情地图(或者虽然刚刚打完一局活动剧情,但打的不是现在要周回的那一关),"
-                                   +"\n那么你仍然必须再把这一关打通关一次。"
-                                   +"\n(别偷懒!必须完整打完一局,而不是进入助战选择界面后直接点返回)"
-                                   +"\n在此之后,这一关在屏幕上的坐标位置才会固定下来。"
-                                   +"\n"
-                                   +"\n如果你已经准备好,请点\"确定\"。"
-                                   +"\n如果你点\"取消\",则脚本会尝试使用除了真正通关一次之外的替代办法,来尽量避免点击坐标错位:"
-                                   +"\n脚本会提示您先点击地图上的关卡按钮,接着会自动拖动剧情地图,让关卡按钮\"归中\",然后提示您再点击一次地图上的关卡按钮。"
-                               ))
-                            {
-                                log("等待捕获关卡坐标");
-                                battlepos = capture().pos_up;
-                            } else {
-                                log("等待第1次捕获杜鹃花关卡坐标");
-                                let temp_battlepos = capture("请点击需要周回的battle").pos_up;
-                                let bounds = getFragmentViewBounds();
-                                toastLog("正在自动拖动剧情地图,需要6秒完成...");
-                                swipe(temp_battlepos.x , temp_battlepos.y, bounds.centerX(), bounds.centerY(), 6000);
-                                toast("自动拖动剧情地图已完成");
-                                log("等待第2次捕获杜鹃花关卡坐标");
-                                battlepos = capture("请再点击一次需要周回的battle").pos_up;
-                            }
-                        } else {
+                        if (dialogs.confirm("警告",
+                               "在打完一局后,关卡列表或剧情地图会发生\"归中\"移动,然后再次选关时,点击坐标就可能错位。"
+                               +"\n为了避免点击错位,请问您是刚刚才通关过一次要周回的关卡么?"
+                               +"\n注意!"
+                               +"\n即便要周回的这一关之已经通关过不止一次,也是没用的,"
+                               +"\n只要你现在是刚刚进入关卡列表或剧情地图(或者虽然刚刚打完一局,但打的不是现在要周回的那一关),"
+                               +"\n那么你仍然必须再把这一关打通关一次。"
+                               +"\n(别偷懒!必须完整打完一局,而不是进入助战选择界面后直接点返回)"
+                               +"\n在此之后,这一关在屏幕上的坐标位置才会固定下来。"
+                               +"\n"
+                               +"\n如果你已经准备好,请点\"确定\"。"
+                               +"\n如果你点\"取消\",则脚本会尝试使用除了真正通关一次之外的替代办法,来尽量避免点击坐标错位:"
+                               +"\n脚本会提示您先点击选关一次,接着会自动拖动剧情地图或关卡列表,让关卡按钮\"归中\",然后提示您再点击选关一次。"
+                           ))
+                        {
                             log("等待捕获关卡坐标");
                             battlepos = capture().pos_up;
+                        } else {
+                            log("等待第1次捕获关卡坐标");
+                            let temp_battlepos = capture("请点击需要周回的battle").pos_up;
+                            let bounds = getFragmentViewBounds();
+                            toastLog("正在自动拖动,需要6秒完成...");
+                            swipe(temp_battlepos.x , temp_battlepos.y, bounds.centerX(), bounds.centerY(), 6000);
+                            toast("自动拖动已完成");
+                            log("等待第2次捕获坐标");
+                            battlepos = capture("请再点击一次需要周回的battle").pos_up;
                         }
                     }
                     break;
