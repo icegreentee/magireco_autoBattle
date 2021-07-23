@@ -130,7 +130,7 @@ floatUI.scripts = [
         fn: tasks.testReLaunch,
     },
     {
-        name: "通用副本周回v3.6.0",
+        name: "通用副本周回v3.6.0(备用)",
         fn: tasks.default3_6_0,
     },
     {
