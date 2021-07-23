@@ -8574,6 +8574,13 @@ function algo_init() {
         }
     }
 
+    function updateDrugLimit3_6_0(index) {
+        if (!isNaN(druglimit3_6_0[index])) {
+            druglimit3_6_0[index]--;
+            limit["drug" + (index + 1) + "num"] = "" + druglimit3_6_0[index];
+        }
+    }
+
     function refillAP3_6_0() {
         log("尝试使用回复药");
         var revive_title_element = null;
@@ -8627,7 +8634,7 @@ function algo_init() {
                         }
                         log("确认回复窗口已消失");
                         usedrug = true;
-                        updateDrugLimit(i);
+                        updateDrugLimit3_6_0(i);
                         break;
                     }
                 }
