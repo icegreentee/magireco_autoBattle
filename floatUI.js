@@ -79,6 +79,7 @@ var requestShellPrivilegeThread = null;
 const drugCosts = [1, 1, 5, 1];
 var updateDrugLimit = () => { };
 var updateDrugConsumingStats = () => { };
+var isDrugEnabled = () = { };
 var isDrugEnough = () => { };
 // 周回数统计
 var updateCycleCount = () => { };
@@ -1238,6 +1239,25 @@ floatUI.main = function () {
         });
     }
 
+    isDrugEnabled = function (index) {
+        if (index < 0 || index > 3) throw new Error("index out of range");
+
+        let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
+        log(
+        "\n第"+(index+1)+"种回复药"
+        +"\n"+(limit["drug"+(index+1)]?"已启用":"已禁用")
+        +"\n个数限制:"+limitnum+"个"
+        );
+
+        //如果未启用则直接返回false
+        if (!limit["drug"+(index+1)]) return false;
+
+        //检查是不是至少够磕一次
+        if (limitnum < drugCosts[index]) return false;
+
+        return true;
+    }
+
     isDrugEnough = function (index, count) {
         if (index < 0 || index > 3) throw new Error("index out of range");
 
@@ -1254,9 +1274,10 @@ floatUI.main = function () {
         //如果未启用则直接返回false
         if (!limit["drug"+(index+1)]) return false;
 
-        //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
+        //检查是不是至少够磕一次
         if (limitnum < drugCosts[index]) return false;
 
+        //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
         //BP蓝药数量暂时还不能检测，当作数量足够
         if (index == 3) {
             return true;
@@ -3356,6 +3377,17 @@ function algo_init() {
                 }
             } else {
                 log("当前AP尚未达到设置的上限倍数");
+                let drugEnabled = false;
+                for (let i=0; i<3; i++) {
+                    if (isDrugEnabled(i)) {
+                        drugEnabled = true;
+                        break;
+                    }
+                }
+                if (!drugEnabled) {
+                    log("所有3种药都没有允许使用");
+                    break;
+                }
             }
 
             log("继续嗑药");
