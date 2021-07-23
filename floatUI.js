@@ -8563,6 +8563,17 @@ function algo_init() {
 
     var string3_6_0 = {};
 
+    var druglimit3_6_0 = [NaN, NaN, NaN];
+    // isolate logic for future adaption
+    function ifUseDrug(index, count) {
+        // when drug is valid
+        if ((index < 2 && count > 0) || count > 4) {
+            // unlimited
+            if (isNaN(druglimit3_6_0[index])) return true;
+            else if (druglimit3_6_0[index] > 0) return true;
+        }
+    }
+
     function refillAP3_6_0() {
         log("尝试使用回复药");
         var revive_title_element = null;
@@ -8601,7 +8612,7 @@ function algo_init() {
             if (numbers.length == 3 && buttons.length == 3) {
                 for (let i = 0; i < 3; i++) {
                     if (ifUseDrug(i, parseInt(getContent(numbers[i]).slice(0, -1)))) {
-                        log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次");
+                        log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit3_6_0[i] + "次");
                         var bound = buttons[i].bounds();
                         do {
                             click(bound.centerX(), bound.centerY());
@@ -8642,7 +8653,6 @@ function algo_init() {
     function taskDefault3_6_0() {
         /* ~~~~ initialize begin ~~~~ */
         var usedrug = false;
-        var druglimit = [NaN, NaN, NaN];
 
         if (auto.root == null) {
             toastLog("未开启无障碍服务");
@@ -8667,10 +8677,10 @@ function algo_init() {
         }
         usedrug = false;
         for (let i = 0; i < 3; i++) {
-            druglimit[i] = limit["drug" + (i + 1)]
+            druglimit3_6_0[i] = limit["drug" + (i + 1)]
                 ? parseInt(limit["drug" + (i + 1) + "num"])
                 : 0;
-            if (druglimit[i] !== 0) {
+            if (druglimit3_6_0[i] !== 0) {
                 usedrug = true;
             }
         }
