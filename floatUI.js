@@ -8645,7 +8645,7 @@ function algo_init() {
             }
             apinfo = getAP();
             log("当前AP:" + apinfo.value + "/" + apinfo.total);
-        } while (usedrug && limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul));
+        } while (usedrug && limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.apmul));
         // now close the window
         revive_title_element = find(string3_6_0.revive_title, 2000); //不加这一行的时候，会出现卡在AP药选择窗口的问题（国服MuMu模拟器主线214上出现）
         while (revive_title_element != null && revive_title_element.refresh()) {
@@ -8778,7 +8778,7 @@ function algo_init() {
                         apinfo.total
                     );
                     if (
-                        ((limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul)) ||
+                        ((limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.apmul)) ||
                             (apcost && apinfo.value < apcost * 2)) &&
                         usedrug &&
                         tryusedrug
