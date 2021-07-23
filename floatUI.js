@@ -2172,6 +2172,13 @@ function algo_init() {
         var it = 0;
         do {
             it++;
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                logException(e);
+                sleep(100);
+                continue;
+            }
             result = textMatches(reg).find();
             result = result.filter((x) => x.refresh());
             if (result.length >= 1) break;
@@ -8669,7 +8676,7 @@ function algo_init() {
                         break;
                     }
                     // if we need to refill AP
-                    let apinfo = getAP(1000);
+                    let apinfo = getAP(5000);
                     let apcost = getCostAP();
                     log(
                         "消费AP",
