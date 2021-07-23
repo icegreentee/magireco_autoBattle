@@ -341,7 +341,12 @@ var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
             openedDialogsLock.lock();//先加锁，dismiss会等待解锁后再开始删
             for (let key in openedDialogs) {
                 if (key != "openedDialogCount") {
-                    openedDialogs[key].node.dialog.dismiss();
+                    try {
+                        openedDialogs[key].node.dialog.dismiss();
+                    } catch (e) {
+                        logException(e);
+                        delete openedDialogs[key];
+                    }
                 }
             }
         } catch (e) {
@@ -5711,7 +5716,8 @@ function algo_init() {
             try {
                 result = requestScreenCapture(screencap_landscape);
             } catch (e) {
-                logException(e);
+                //logException(e); issue #126
+                try {log(e);} catch (e2) {};
             }
             if (result) {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
