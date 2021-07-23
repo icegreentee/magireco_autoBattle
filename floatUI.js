@@ -79,7 +79,7 @@ var requestShellPrivilegeThread = null;
 const drugCosts = [1, 1, 5, 1];
 var updateDrugLimit = () => { };
 var updateDrugConsumingStats = () => { };
-var isDrugEnabled = () = { };
+var isDrugEnabled = () => { };
 var isDrugEnough = () => { };
 // 周回数统计
 var updateCycleCount = () => { };
