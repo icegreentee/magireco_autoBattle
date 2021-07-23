@@ -8482,8 +8482,42 @@ function algo_init() {
 
     /* ~~~~~~~~ 来自3.6.0版(以及点SKIP跳过剧情bug修正)的备用周回脚本 开始 ~~~~~~~~ */
 
+
+    function initialize3_6_0() {
+        if (auto.root == null) {
+            toastLog("未开启无障碍服务");
+            //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
+        }
+        var current = [];
+        if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
+            log("检测为国服");
+            current = strings.zh_Hans;
+        } else if (packageName("com.komoe.madokagp").findOnce()) {
+            log("检测为台服");
+            current = strings.zh_Hant;
+        } else if (packageName("com.aniplex.magireco").findOnce()) {
+            log("检测为日服");
+            current = strings.ja;
+        } else {
+            toastLog("未在前台检测到魔法纪录");
+            threads.currentThread().interrupt();
+        }
+        for (let i = 0; i < strings.name.length; i++) {
+            string[strings.name[i]] = current[i];
+        }
+        usedrug = false;
+        for (let i = 0; i < 3; i++) {
+            druglimit[i] = limit["drug" + (i + 1)]
+                ? parseInt(limit["drug" + (i + 1) + "num"])
+                : 0;
+            if (druglimit[i] !== 0) {
+                usedrug = true;
+            }
+        }
+    }
+
     function taskDefault3_6_0() {
-        initialize();
+        initialize3_6_0();
         var state = STATE_MENU;
         var battlename = "";
         var charabound = null;
