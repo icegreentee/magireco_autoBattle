@@ -8485,7 +8485,7 @@ function algo_init() {
     function taskDefault3_6_0() {
         /* ~~~~ initialize begin ~~~~ */
         var usedrug = false;
-        var druglimit = [];
+        var druglimit = [NaN, NaN, NaN];
 
         if (auto.root == null) {
             toastLog("未开启无障碍服务");
