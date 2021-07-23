@@ -5528,15 +5528,16 @@ function algo_init() {
                         state = STATE_MENU;
                         log("进入关卡选择");
                         break;
-                    } else if (inautobattle) {
+                    } else if (inautobattle === null ? limit.useAuto : inautobattle) {
                         state = STATE_BATTLE;
                         break;
                     }
                     // try to skip
                     if (!id("menu").findOnce()) {
                         //这里开发者意见存在分歧
+                        // @icegreentee 认为这样最简单直接,实际上也观察到之前有误触菜单问题的用户不再反馈有这个问题
                         // @segfault-bilibili 观察到menu控件无论主菜单是否打开都存在,所以怀疑这个检测的效果
-                        // @icegreentee 则认为这样最简单直接,实际上也观察到之前有误触菜单问题的用户不再反馈有这个问题
+                        // 实际测试发现确实有效果,现在怀疑是不是和QQ等在屏幕上弹出通知有关
                         log("尝试跳过剧情");
                         click(convertCoords(clickSets.skip));
                     }
