@@ -54,13 +54,20 @@ ui.layout(
 
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
-                        <Switch id="exitOnServiceSettings" margin="0 3" w="*" checked="false" textColor="#666666" text="修正OPPO手机拒绝开启无障碍服务" />
-                        <text id="fixOPPOtext1" visibility="gone" textSize="12" text="如果不是OPPO则不建议打开这个选项" textColor="#666666" />
-                        <text id="fixOPPOtext2" visibility="gone" textSize="12" text="OPPO等部分品牌的手机在有悬浮窗(比如“加速球”)存在时会拒绝开启无障碍服务" textColor="#666666" />
-                        <text id="fixOPPOtext3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#666666" />
-                        <text id="fixOPPOtext4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#666666" />
                         <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务（常被鲨进程可以开启，按需）" />
-                        <Switch id="stopOnVolUp" margin="0 3" w="*" textColor="#000000" text="按音量上键完全退出脚本" />
+                        <Switch id="stopOnVolUp" margin="0 3" w="*" textColor="#000000" text="按音量上键停止全部脚本" />
+                        <Switch id="showExperimentalFixes" margin="0 3" w="*" checked="false" textColor="#666666" text="显示实验性问题修正选项" />
+                        <vertical id="experimentalFixes" visibility="gone" margin="5 3" w="*">
+                            <Switch id="exitOnServiceSettings" margin="0 3" w="*" checked="false" textColor="#000000" text="OPPO手机拒绝开启无障碍服务" />
+                            <text id="exitOnServiceSettingsText1" visibility="gone" textSize="12" text="如果不是OPPO则不建议打开这个选项" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText2" visibility="gone" textSize="12" text="OPPO等部分品牌的手机在有悬浮窗(比如“加速球”)存在时会拒绝开启无障碍服务" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
+                            <Switch id="killSelf" margin="0 3" w="*" textColor="#000000" checked="false" text="错误地检测到竖屏" />
+                            <text id="killSelfText1" visibility="gone" textSize="12" text="“检测到竖屏”这个警告出现时,表示脚本因为无法获取正确的屏幕数据,而无法正确运行,比如捕获点击坐标的半透明悬浮窗本来应该完整覆盖屏幕,却只覆盖了半边屏幕" textColor="#000000" />
+                            <text id="killSelfText2" visibility="gone" textSize="12" text="启用后,脚本会在按返回键退出时杀死自己的进程" textColor="#000000" />
+                            <text id="killSelfText3" visibility="gone" textSize="12" text="注意!杀死自己的进程会带来一个副作用:无障碍服务需要更频繁地重新开启" textColor="#000000" />
+                        </vertical>
                     </vertical>
 
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -485,8 +492,8 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
     }
     ui.autoService.setChecked(auto.service != null)
 });
-ui.exitOnServiceSettings.setOnCheckedChangeListener(function (widget, checked) {
-    for (let i=1; i<=4; i++) ui["fixOPPOtext"+i].setVisibility(checked?View.VISIBLE:View.GONE);
+ui.showExperimentalFixes.setOnCheckedChangeListener(function (widget, checked) {
+    ui.experimentalFixes.setVisibility(checked?View.VISIBLE:View.GONE);
 });
 //前台服务
 $settings.setEnabled('foreground_service', $settings.isEnabled('foreground_service')); //修正刚安装好后返回错误的数值，点进设置再出来又变成正确的数值的问题
@@ -580,6 +587,8 @@ var storage = storages.create("auto_mr");
 const persistParamList = [
     "foreground",
     "stopOnVolUp",
+    "exitOnServiceSettings",
+    "killSelf",
     "default",
     "autoReconnect",
     "justNPC",
@@ -671,10 +680,13 @@ function setOnChangeListener(key) {
             })
             );
             break;
-        case "Switch":
         case "CheckBox":
+        case "Switch":
             ui[key].setOnCheckedChangeListener(
             function (widget, checked) {
+                for (let i=1; ui[key+"Text"+i]!=null; i++) {
+                    ui[key+"Text"+i].setVisibility(checked?View.VISIBLE:View.GONE);
+                }
                 saveParamIfPersist(key, checked);
                 floatUI.adjust(key, checked);
             }
@@ -827,6 +839,7 @@ function toUpdate() {
                         app.launch(context.getPackageName())
                         toast("更新完毕")
                     })
+                    floatUI.isUpgrading = true; //避免把自己的后台杀了
                     engines.stopAll()
                 } else {
                     toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessage);
