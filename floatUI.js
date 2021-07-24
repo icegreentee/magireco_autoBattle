@@ -3321,9 +3321,15 @@ function algo_init() {
     }
 
     function initialize(dontStopOnError) {
-        if (!auto.service) {
-            toastLog("未开启无障碍服务");
-            selector().depth(0).findOnce();//弹出申请开启无障碍服务的弹窗
+        if (auto.service == null || auto.root == null) {
+            if (auto.service == null) toastLog("未开启无障碍服务");
+            if (auto.service != null && auto.root == null) toastLog("无障碍服务似乎工作不正常\n最好重新开启一下无障碍服务\nauto.root == null");
+            if (!dontStopOnError) {
+                app.startActivity({
+                    action: "android.settings.ACCESSIBILITY_SETTINGS"
+                });
+                stopThread();
+            }
         }
 
         if ($settings.isEnabled("stable_mode")) {
