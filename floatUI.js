@@ -3419,6 +3419,13 @@ function algo_init() {
 
         //循环嗑药到设定的AP上限倍数，并且达到关卡消耗的2倍
         var apMultiplier = parseInt(0+limit.apmul);
+
+        var initialapinfo = getAP(parseInt(limit.timeout));
+        var apinfo = {};
+        if (initialapinfo == null) {
+            apinfo = null;
+        } else for (let key in initialapinfo) apinfo[key] = initialapinfo[key];
+
         while (true) {
             if (apCost == null) {
                 //先检查是否误触，或者检测迟滞而步调不一致
@@ -3437,14 +3444,12 @@ function algo_init() {
                 toastLog("关卡AP消耗未知，不嗑药\n（可能在刷门票活动本？这方面还有待改进）");
                 break;
             }
-            var apinfo = getAP(parseInt(limit.timeout));
             if (apinfo == null) {
                 log("检测AP失败");
                 result == "error";
                 break;//后面还是要尽量把AP药选择窗口关闭，如果已经打开的话
             }
             log("当前AP:"+apinfo.value+"/"+apinfo.total);
-
             var apMax = apinfo.total * apMultiplier;
             log("要嗑药到"+apMultiplier+"倍AP上限,即"+apMax+"AP");
 
@@ -3543,6 +3548,19 @@ function algo_init() {
                         }
                         log("确认回复窗口已消失");
                         result = "drug_used";
+
+                        //推算AP增加量
+                        switch (i) {
+                            case 0://绿药50
+                                apinfo.value += 50;
+                                break;
+                            case 1://红药
+                            case 2://碎钻
+                                apinfo.value += apinfo.total;
+                                break;
+                            default:
+                                throw new Error("unkown drugtype "+i);
+                        }
 
                         //更新嗑药个数限制数值，减去用掉的数量
                         updateDrugLimit(i);
