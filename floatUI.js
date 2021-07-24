@@ -928,6 +928,7 @@ floatUI.main = function () {
                     logException(e);
                     //貌似只有完全退出脚本才可以避免getRotation错位的问题
                     toastLog("无法重设悬浮窗的大小和位置,\n可能是悬浮窗意外消失\n退出脚本...");
+                    limit.killSelf = true;//杀死自己的两个后台进程
                     engines.stopAll();
                     return; //不再继续往下执行
                 }

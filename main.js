@@ -63,10 +63,11 @@ ui.layout(
                             <text id="exitOnServiceSettingsText2" visibility="gone" textSize="12" text="OPPO等部分品牌的手机在有悬浮窗(比如“加速球”)存在时会拒绝开启无障碍服务" textColor="#000000" />
                             <text id="exitOnServiceSettingsText3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#000000" />
                             <text id="exitOnServiceSettingsText4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
-                            <Switch id="killSelf" margin="0 3" w="*" textColor="#000000" checked="false" text="错误地检测到竖屏" />
-                            <text id="killSelfText1" visibility="gone" textSize="12" text="“检测到竖屏”这个警告出现时,表示脚本因为无法获取正确的屏幕数据,而无法正确运行,比如捕获点击坐标的半透明悬浮窗本来应该完整覆盖屏幕,却只覆盖了半边屏幕" textColor="#000000" />
-                            <text id="killSelfText2" visibility="gone" textSize="12" text="启用后,脚本会在按返回键退出时杀死自己的进程" textColor="#000000" />
-                            <text id="killSelfText3" visibility="gone" textSize="12" text="注意!杀死自己的进程会带来一个副作用:无障碍服务需要更频繁地重新开启" textColor="#000000" />
+                            <Switch id="killSelf" margin="0 3" w="*" textColor="#666666" checked="false" text="错误地检测到竖屏" />
+                            <text id="killSelfText1" visibility="gone" textSize="12" text="“检测到竖屏”这个警告出现时,表示脚本因为无法获取正确的屏幕数据,而无法正确运行,比如捕获点击坐标的半透明悬浮窗本来应该完整覆盖屏幕,却只覆盖了半边屏幕" textColor="#666666" />
+                            <text id="killSelfText2" visibility="gone" textSize="12" text="启用后,脚本会在按返回键退出时杀死自己的进程" textColor="#666666" />
+                            <text id="killSelfText3" visibility="gone" textSize="12" text="注意!杀死自己的进程会带来一个副作用:无障碍服务需要更频繁地重新开启" textColor="#666666" />
+                            <text id="killSelfText4" visibility="gone" textSize="12" text="这个选项参数不会永久保存,下次启动时会重置为默认值,也就是停用" textColor="#666666" />
                         </vertical>
                     </vertical>
 
@@ -588,7 +589,6 @@ const persistParamList = [
     "foreground",
     "stopOnVolUp",
     "exitOnServiceSettings",
-    "killSelf",
     "default",
     "autoReconnect",
     "justNPC",
@@ -618,6 +618,7 @@ const tempParamList = [
     "drug3num",
     "drug4num",
     "apmul",
+    "killSelf",
 ];
 
 var idmap = {};
