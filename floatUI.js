@@ -4928,34 +4928,6 @@ function algo_init() {
         return state;
     }
 
-    function startSupportPickTestingIfNeeded() {
-        if (is_support_picking_tested) return;
-
-        if (files.isFile(supportPickingTestRecordPath)) {
-            let test_record = files.read(supportPickingTestRecordPath);
-            let tested_versions = test_record.split('\n');
-            if (tested_versions.find((val) => val == getCurrentVersion()) != null) {
-                is_support_picking_tested = true;
-            } else {
-                is_support_picking_tested = false;
-            }
-        } else {
-            is_support_picking_tested = false;
-        }
-        if (!is_support_picking_tested) {
-            if (dialogs.confirm("测试助战自动选择",
-                "安装这个版本以来还没有测试过助战自动选择是否可以正常工作。"
-                +"\n要测试吗？"))
-            {
-                replaceSelfCurrentTask(floatUI.scripts.find((val) => val.name == "测试助战自动选择"));
-                //测试完再写入文件，来记录是否曾经测试过
-            } else {
-                files.create(supportPickingTestRecordPath);
-                files.append(supportPickingTestRecordPath, "\n"+getCurrentVersion()+"\n");//会产生空行，但无所谓
-            }
-        }
-    }
-
     var isRelaunchTested = false; //只表示是否测试过,不表示是否成功过
 
     function testReLaunchRunnable() {
