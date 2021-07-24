@@ -5492,6 +5492,7 @@ function algo_init() {
                     // exit condition
                     if (findID("android:id/content") && !element) {
                         state = STATE_BATTLE;
+                        if (inautobattle === null) inautobattle = limit.useAuto;
                         log("进入战斗");
                         break;
                     }
@@ -5678,7 +5679,11 @@ function algo_init() {
                         state = STATE_MENU;
                         log("进入关卡选择");
                         break;
-                    } else if (inautobattle === null ? limit.useAuto : inautobattle) {
+                    } else if (inautobattle === null) {
+                        toastLog("无法识别状态,\n不知道是战斗/剧情播放还是其他状态,\n结束运行");
+                        stopThread();
+                        break;
+                    } else if (inautobattle) {
                         state = STATE_BATTLE;
                         break;
                     }
