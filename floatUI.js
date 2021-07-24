@@ -511,7 +511,7 @@ floatUI.main = function () {
         let sz = getWindowSize();
         if (sz.y > sz.x) {
             try {
-                if (auto.root.packageName() != context.getPackageName()) {
+                if (auto.root != null && auto.root.packageName() != context.getPackageName()) {
                     threads.start(function () {
                         for (let i=0; i<3; i++) {
                             toastLog("警告:\n检测到竖屏");
