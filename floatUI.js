@@ -5243,7 +5243,7 @@ function algo_init() {
                         break;
                     }
 
-                    // if need to click to enter battle
+                    //杜鹃花型活动需要在活动地图上点击开始按钮才能进入助战选择
                     let button = find(string.battle_confirm);
                     if (button) {
                         if (lastOpList != null && lastOpList.isEventTypeBRANCH) {
@@ -5254,6 +5254,7 @@ function algo_init() {
                         click(bound.centerX(), bound.centerY());
                         // wait for support screen for 5 seconds
                         find(string.support, parseInt(limit.timeout));
+                    //按照之前记住的坐标自动选关
                     } else if (battlepos) {
                         log("尝试点击关卡坐标");
                         click(battlepos.x, battlepos.y);
@@ -5265,9 +5266,8 @@ function algo_init() {
                             log("点击关卡坐标后,弹出带\"AP不足\"的AP药选择窗口");
                             state = STATE_SUPPORT;
                         }
-                    }
-                    // click battle if available
-                    else if (battlename) {
+                    //没有之前记住的坐标,按关卡名自动选关
+                    } else if (battlename) {
                         let battle = find(battlename);
                         if (battle) {
                             log("尝试点击关卡名称");
@@ -5282,9 +5282,10 @@ function algo_init() {
                                 state = STATE_SUPPORT;
                             }
                         }
-                    // 重放动作录制之前需要先回主页，最简单粗暴的办法就是杀进程重开
+                    //没有之前记住的坐标,没有关卡名,但有选关动作录制数据,根据情况:
                     } else if (lastOpList) {
                         toastLog("已加载动作录制数据");
+                        //(1)如果是杜鹃花型活动则从动作录制数据里提取出选关坐标;
                         if (lastOpList.isEventTypeBRANCH) {
                             log("动作录制数据是杜鹃花型活动选关动作");
                             if (match(string.regex_event_branch)) {
@@ -5321,37 +5322,60 @@ function algo_init() {
                                 toastLog("未进入活动地图,先杀掉游戏再重启重新选关");
                                 killGame(string.package_name);
                             }
+                        //(2)一般的选关动作录制数据,非杜鹃花,直接强关重开
                         } else {
                             toastLog("先杀掉游戏再重启重新选关");
                             killGame(string.package_name);
                         }
+                    //没有之前记住的坐标,没有关卡名,也没有选关动作录制数据,那就捕获一个选关点击坐标
                     } else {
-                        if (dialogs.confirm("警告",
-                               "在打完一局后,关卡列表或剧情地图会发生\"归中\"移动,然后再次选关时,点击坐标就可能错位。"
-                               +"\n为了避免点击错位,请问您是刚刚才通关过一次要周回的关卡么?"
-                               +"\n注意!"
-                               +"\n即便要周回的这一关之已经通关过不止一次,也是没用的,"
-                               +"\n只要你现在是刚刚进入关卡列表或剧情地图(或者虽然刚刚打完一局,但打的不是现在要周回的那一关),"
-                               +"\n那么你仍然必须再把这一关打通关一次。"
-                               +"\n(别偷懒!必须完整打完一局,而不是进入助战选择界面后直接点返回)"
-                               +"\n在此之后,这一关在屏幕上的坐标位置才会固定下来。"
-                               +"\n"
-                               +"\n如果你已经准备好,请点\"确定\"。"
-                               +"\n如果你点\"取消\",则脚本会尝试使用除了真正通关一次之外的替代办法,来尽量避免点击坐标错位:"
-                               +"\n脚本会提示您先点击选关一次,接着会自动拖动剧情地图或关卡列表,让关卡按钮\"归中\",然后提示您再点击选关一次。"
-                           ))
-                        {
+                        if (match(string.regex_event_branch)) {
+                            //杜鹃花型活动
+                            if (dialogs.confirm("警告",
+                                   "看上去你已进入杜鹃花型活动的剧情地图。\n"
+                                   +"请问你在本次进入剧情地图后,有没有把想刷的那一关重新通关一次？\n"
+                                   +"别着急,耐心听我说完。魔纪这个游戏有个特点:\n"
+                                   +"杜鹃花型活动在打完一局后,剧情地图会发生\"归中\"移动,导致一个严重的问题:\n"
+                                   +"因为周回脚本目前并没有识图能力,只能闭着眼按照之前记录下来的坐标点击选关,\n"
+                                   +"所以从第二轮周回开始,点击选关时就会错位,点到空白处,或者点到其他不想刷的关卡上。\n"
+                                   +"\n"
+                                   +"因此,你需要先打完一局,确保要打的那一关在剧情地图上已经\"归中\"过,这样坐标就固定下来不会变了。\n"
+                                   +"\n"
+                                   +"如果你已经这样准备好了,请点击\"确定\"。\n"
+                                   +"不要偷懒,不要点进助战选择后直接点返回,一定要完整打一遍。\n"
+                                   +"\n"
+                                   +"如果你实在想偷懒,请点击\"取消\",脚本会尽量帮你校正点击坐标(但不保证一定准确),过程是:\n"
+                                   +"  1.先提示你点击要刷的那一关;\n"
+                                   +"  2.然后会自动把你点击的位置尽量往屏幕中心缓慢拖动(需要6秒完成);\n"
+                                   +"  3.再次提示你点击要刷的那一关。"
+                               ))
+                            {
+                                log("等待捕获关卡坐标");
+                                battlepos = capture().pos_up;
+                            } else {
+                                log("等待第1次捕获杜鹃花关卡坐标");
+                                let temp_battlepos = capture("请点击需要周回的battle").pos_up;
+                                let bounds = getFragmentViewBounds();
+                                toastLog("正在自动拖动剧情地图,需要6秒完成...");
+                                swipe(temp_battlepos.x , temp_battlepos.y, bounds.centerX(), bounds.centerY(), 6000);
+                                toast("自动拖动剧情地图已完成");
+                                log("等待第2次捕获杜鹃花关卡坐标");
+                                battlepos = capture("请再点击一次需要周回的battle").pos_up;
+                            }
+                        } else {
+                            alert("警告",
+                                "马上会提示你点击想刷的关卡。\n"
+                                +"注意！关卡列表在完成一轮战斗后可能发生移动(一般是刚打完的关卡移动到列表顶端,不保证没有例外),\n"
+                                +"因为目前周回脚本没有识图能力,\n"
+                                +"所以这可能导致从第二轮周回开始,点击选关时就会错位,点到空白处,或者点到其他不想刷的关卡上。\n"
+                                +"\n"
+                                +"为了避免这个问题,在启动脚本前,请先把要刷的那一关重新打一遍,再用脚本周回。\n"
+                                +"如果你没按照这样准备好,请先停止脚本,准备好了再启动。\n"
+                                +"请不要偷懒,不要点进助战选择后直接点返回。一定要完整打一遍。\n"
+                                +"如果实在是想偷懒,那么你可以先停止脚本,直接在助战选择界面启动脚本(因为这样可以让脚本直接读取被选中的关卡名称),然后观察这样能否正常周回。"
+                            );
                             log("等待捕获关卡坐标");
                             battlepos = capture().pos_up;
-                        } else {
-                            log("等待第1次捕获关卡坐标");
-                            let temp_battlepos = capture("请点击需要周回的battle").pos_up;
-                            let bounds = getFragmentViewBounds();
-                            toastLog("正在自动拖动,需要6秒完成...");
-                            swipe(temp_battlepos.x , temp_battlepos.y, bounds.centerX(), bounds.centerY(), 6000);
-                            toast("自动拖动已完成");
-                            log("等待第2次捕获坐标");
-                            battlepos = capture("请再点击一次需要周回的battle").pos_up;
                         }
                     }
                     break;
