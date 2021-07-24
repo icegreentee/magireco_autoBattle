@@ -5035,6 +5035,7 @@ function algo_init() {
             }
         }
 
+        //检测初始状态，可以支持在更多状态下点启动，然后就是有些比较费时的检测还是不要放在周回里。
         var state = detectInitialState();
         var last_state = -1;
 
