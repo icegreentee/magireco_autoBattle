@@ -2029,6 +2029,15 @@ function getDrugNum(text) {
     return parseInt(text.slice(0, text.length - 1))
 }
 
+//立即就会显示出来、不会一个个攒起来连续冒出来的toast
+var lastToastObj = null;
+function instantToast(text) {
+    ui.run(function () {
+        if (lastToastObj != null) lastToastObj.cancel();
+        lastToastObj = new android.widget.Toast.makeText(context, text, android.widget.Toast.LENGTH_SHORT);
+        lastToastObj.show();
+    });
+}
 var canToastParamChanges = false;//启动时不弹toast
 floatUI.enableToastParamChanges = function () {
     canToastParamChanges = true;
@@ -2039,7 +2048,7 @@ floatUI.adjust = function (key, value) {
         log("更新参数：", key, value)
 
         //默认执行脚本仍然会在启动时toast,原因未知
-        if (canToastParamChanges) toast(getUIContent(key) === "" ? "(参数留空)" : getUIContent(key));
+        if (canToastParamChanges) instantToast(getUIContent(key) === "" ? "(参数留空)" : getUIContent(key));
 
         //如果需要就弹窗申请root或adb权限
         let isPrivNeeded = false;
