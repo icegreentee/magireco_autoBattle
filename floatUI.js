@@ -4990,6 +4990,8 @@ function algo_init() {
     function taskDefault() {
         isCurrentTaskPaused.set(TASK_RUNNING);//其他暂不（需要）支持暂停的脚本不需要加这一句
 
+        initialize();
+
         let lastOpListDateString = "";
         if (lastOpList == null) {
             let opList = null;
