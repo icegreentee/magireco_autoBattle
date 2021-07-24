@@ -4875,6 +4875,10 @@ function algo_init() {
             state = STATE_MENU;
         } else if (findID("questWrapTitle")) {
             state = STATE_MENU;
+        } else if (findID("helpBtn")) {//“游戏方式”按钮,一般是说明活动玩法
+            state = STATE_MENU;
+        } else if (findID("questLinkListWrap")) {//星期副本
+            state = STATE_MENU;
         } else if (find(string.support)) {
             state = STATE_SUPPORT;
         } else if (findID("nextPageBtn")) {
@@ -5211,6 +5215,7 @@ function algo_init() {
                             () => findID("questLinkList"),
                             () => findID("questWrapTitle"),
                             () => findID("nextPageBtn"),
+                            () => findID("questLinkListWrap"),
                         ],
                         3000
                     );
