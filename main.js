@@ -7,7 +7,9 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "5.0.0";
+
+var version = "5.1.0";
+
 var appName = Name + " v" + version;
 
 function getProjectVersion() {
@@ -29,7 +31,22 @@ ui.layout(
 
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
-                        <Switch id="foreground" margin="0 3" w="*" textColor="#666666" text="前台服务（常被鲨进程可以开启，按需）" />
+                        <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务（常被鲨进程可以开启，按需）" />
+                        <Switch id="stopOnVolUp" margin="0 3" w="*" textColor="#000000" text="按音量上键停止全部脚本" />
+                        <Switch id="showExperimentalFixes" margin="0 3" w="*" checked="false" textColor="#666666" text="显示实验性问题修正选项" />
+                        <vertical id="experimentalFixes" visibility="gone" margin="5 3" w="*">
+                            <Switch id="exitOnServiceSettings" margin="0 3" w="*" checked="false" textColor="#000000" text="OPPO手机拒绝开启无障碍服务" />
+                            <text id="exitOnServiceSettingsText1" visibility="gone" textSize="12" text="如果不是OPPO则不建议打开这个选项" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText2" visibility="gone" textSize="12" text="OPPO等部分品牌的手机在有悬浮窗(比如“加速球”)存在时会拒绝开启无障碍服务" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
+                            <Switch id="killSelf" margin="0 3" w="*" textColor="#666666" checked="false" text="错误地检测到竖屏" />
+                            <text id="killSelfText1" visibility="gone" textSize="12" text="“检测到竖屏”这个警告出现时,表示脚本因为无法获取正确的屏幕数据,而无法正确运行,比如捕获点击坐标的半透明悬浮窗本来应该完整覆盖屏幕,却只覆盖了半边屏幕" textColor="#666666" />
+                            <text id="killSelfText2" visibility="gone" textSize="12" text="启用后,脚本会在按返回键退出时杀死自己的进程" textColor="#666666" />
+                            <text id="killSelfText3" visibility="gone" textSize="12" text="注意!杀死自己的进程会带来一个副作用:无障碍服务需要更频繁地重新开启" textColor="#666666" />
+                            <text id="killSelfText4" visibility="gone" textSize="12" text="这个选项参数不会永久保存,下次启动时会重置为默认值,也就是停用" textColor="#666666" />
+                        </vertical>
+
                     </vertical>
 
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -116,6 +133,157 @@ ui.emitter.on("create_options_menu", menu => {
     item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
 });
 
+function setFollowRedirects(value) {
+    let newokhttp = new Packages.okhttp3.OkHttpClient.Builder().followRedirects(value);
+    http.__okhttp__.muteClient(newokhttp);
+}
+
+const logMaxSize = 1048576;
+var reportTask = null;
+function reportBug() {
+    toastLog("正在上传日志和最近一次的快照,请耐心等待...");
+
+    log(appName);
+    try{floatUI.logParams();} catch (e) {}
+    log("Android API Level", device.sdkInt);
+    log("屏幕分辨率", device.width, device.height);
+    var str = "";
+    for (let key of ["brand", "device", "model", "product", "hardware"]) {
+        str += "\n"+key+" "+device[key];
+    }
+    log(str);
+
+    var snapshotDir = files.join(files.getSdcardPath(), "auto_magireco");
+    var listedFilenames = files.listDir(snapshotDir, function (filename) {
+        return filename.match(/^\d+-\d+-\d+_\d+-\d+-\d+\.xml$/) != null && files.isFile(files.join(snapshotDir, filename));
+    });
+    var latest = [0,0,0,0,0,0];
+    if (listedFilenames != null) {
+        for (let i=0; i<listedFilenames.length; i++) {
+            let filename = listedFilenames[i];
+            let timestamp = filename.match(/^\d+-\d+-\d+_\d+-\d+-\d+/)[0];
+            let timevalues = timestamp.split('_').join('-').split('-').map((val) => parseInt(val));
+            let isNewer = false;
+            for (let j=0; j<6; j++) {
+                if (timevalues[j] > latest[j]) {
+                    isNewer = true;
+                    break;
+                } else if (timevalues[j] < latest[j]) {
+                    isNewer = false;
+                    break;
+                } //相等的话继续比下一项数值
+            }
+            if (isNewer) for (let j=0; j<6; j++) {
+                latest[j] = timevalues[j];
+            }
+        }
+    }
+    var snapshotContent = null;
+    if (listedFilenames != null && listedFilenames.length > 0) {
+        let latestSnapshotFilename = latest.slice(0, 3).join('-') + "_" + latest.slice(3, 6).join('-') + ".xml";
+        log("要上传的快照文件名", latestSnapshotFilename);
+        snapshotContent = files.read(files.join(snapshotDir, latestSnapshotFilename));
+        let snapshotBytes = files.readBytes(files.join(snapshotDir, latestSnapshotFilename));
+        let snapshotSize = snapshotBytes.length;
+        log("快照大小", snapshotSize+"字节", snapshotContent.length+"字符");
+        if (snapshotSize > logMaxSize) {
+            //大于1MB时不上传
+            snapshotContent = null;
+            toastLog("快照文件太大，请采取其他方式上传");
+        }
+    }
+
+    var parentDir = files.join(engines.myEngine().cwd(), "..");
+    var logDir = files.join(parentDir, "logs");
+    var logContent = files.read(files.join(logDir, "log.txt"));
+    let logBytes = files.readBytes(files.join(logDir, "log.txt"));
+    let logSize = logBytes.length;
+    log("日志大小", logSize+"字节", logContent.length+"字符");
+    if (logSize > logMaxSize) {
+        //大于1MB时只截取尾部
+        //算法太渣，很慢，需要改
+        let excessSize = logSize - logMaxSize;
+        let rate = logSize / logContent.length;
+        let est = excessSize / rate;
+        do {
+            var logTailContent = new java.lang.String(logContent).substring(est, logContent.length-1);
+            var logTailSize = new java.lang.String(logTailContent).getBytes().length;
+            est += (logTailSize - logMaxSize) / rate;
+            sleep(1000);
+        } while (logTailSize - logMaxSize > 0 || logTailSize - logMaxSize <= -32);
+        logContent = logTailContent;
+        log("截取尾部 日志大小", logTailSize+"字节", logContent.length+"字符");
+    }
+
+    var resultLinks = "";
+
+    var uploadContents = {
+        log: {content: logContent, syntax: "text"},
+        snapshot: {content: snapshotContent, syntax: "xml"}
+    };
+    for (let key in uploadContents) {
+        if (uploadContents[key].content == null) {
+            log("读取"+key+"内容失败");
+            continue;
+        }
+        if (uploadContents[key].content == "") {
+            log(key+"内容为空,无法上传");
+            continue;
+        }
+
+        toastLog("上传"+key+"...");
+
+        http.__okhttp__.setTimeout(60 * 1000);
+        setFollowRedirects(false);
+        let response = null;
+        try {
+            response = http.post("https://pastebin.ubuntu.com/", {
+                poster: "autojs_"+key,
+                syntax: uploadContents[key].syntax,
+                expiration: "week",
+                content: uploadContents[key].content
+            });
+        } catch (e) {
+            toastLog("请求超时,请稍后再试");
+        }
+        setFollowRedirects(true);
+
+        if (response == null) {
+            log(key+"上传失败");
+        } else if (response.statusCode != 302) {
+            log(key+"上传失败", response.statusCode, response.statusMessage);
+        } else {
+            if (resultLinks != "") resultLinks += "\n";
+            let location = response.headers["Location"];
+            resultLinks += key+"已上传至: ";
+            if (location != null) {
+                resultLinks += "https://pastebin.ubuntu.com"+location;
+            } else {
+                log(key+"链接获取失败");
+                resultLinks += "链接获取失败";
+            }
+            toastLog(key+"上传完成!\n等待2秒后继续...");
+            sleep(2000);
+        }
+    }
+
+    if (resultLinks != "") {
+        log(resultLinks);
+        ui.run(() => {
+            clip = android.content.ClipData.newPlainText("auto_bugreport_result", resultLinks);
+            activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
+            toast("内容已复制到剪贴板");
+        });
+        dialogs.build({
+            title: "上传完成",
+            content: "别忘了全选=>复制，然后粘贴给群里的小伙伴们看看哦~ 不然的话，我们也不知道你上传到哪里了啊！！！",
+            inputPrefill: resultLinks
+        }).show();
+        log("报告问题对话框已关闭");
+    }
+}
+
+
 ui.emitter.on("options_item_selected", (e, item) => {
     switch (item.getTitle()) {
         case "查看日志":
@@ -151,11 +319,35 @@ ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
     if (!checked && auto.service) auto.service.disableSelf()
     ui.autoService.setChecked(auto.service != null)
 });
+
+ui.showExperimentalFixes.setOnCheckedChangeListener(function (widget, checked) {
+    ui.experimentalFixes.setVisibility(checked?View.VISIBLE:View.GONE);
+});
 //前台服务
+$settings.setEnabled('foreground_service', $settings.isEnabled('foreground_service')); //修正刚安装好后返回错误的数值，点进设置再出来又变成正确的数值的问题
+ui.foreground.setChecked($settings.isEnabled('foreground_service'));
 ui.foreground.setOnCheckedChangeListener(function (widget, checked) {
     $settings.setEnabled('foreground_service', checked);
 });
-ui.foreground.setChecked($settings.isEnabled('foreground_service'));
+//按音量上键完全退出脚本
+$settings.setEnabled('stop_all_on_volume_up', $settings.isEnabled('stop_all_on_volume_up')); //修正刚安装好后返回错误的数值，点进设置再出来又变成正确的数值的问题
+ui.stopOnVolUp.setChecked($settings.isEnabled('stop_all_on_volume_up'));
+ui.stopOnVolUp.setOnCheckedChangeListener(function (widget, checked) {
+    $settings.setEnabled('stop_all_on_volume_up', checked);
+});
+
+//显示更多选项
+function setToggleListener(key) {
+    ui["toggle"+key+"ExtraSettings"].setOnCheckedChangeListener(function (widget, checked) {
+        for (let i=1; ui[key+"ExtraSettings"+i] != null; i++) {
+            ui[key+"ExtraSettings"+i].setVisibility(checked?View.VISIBLE:View.GONE);
+        }
+    });
+}
+for (let key of ["Default", "Mirrors", "CVAutoBattle"]) {
+    setToggleListener(key);
+}
+
 
 //回到本界面时，resume事件会被触发
 ui.emitter.on("resume", () => {
@@ -191,8 +383,43 @@ if (!floaty.checkPermission()) {
 }
 
 var storage = storages.create("auto_mr");
-const persistParamList = ["foreground", "default", "isStable", "justNPC", "helpx", "helpy", "battleNo", "useAuto"]
-const tempParamList = ["drug1", "drug2", "drug3", "jjcisuse", "drug1num", "drug2num", "drug3num", "jjcnum","drugmul"]
+
+const persistParamList = [
+    "foreground",
+    "stopOnVolUp",
+    "exitOnServiceSettings",
+    "default",
+    "autoReconnect",
+    "justNPC",
+    "helpx",
+    "helpy",
+    "battleNo",
+    "useAuto",
+    "autoFollow",
+    "breakAutoCycleDuration",
+    "forceStopTimeout",
+    "periodicallyKillTimeout",
+    "timeout",
+    "rootForceStop",
+    "rootScreencap",
+    "smartMirrorsPick",
+    "useCVAutoBattle",
+    "CVAutoBattleDebug",
+    "CVAutoBattleClickAllSkills",
+];
+const tempParamList = [
+    "drug1",
+    "drug2",
+    "drug3",
+    "drug4",
+    "drug1num",
+    "drug2num",
+    "drug3num",
+    "drug4num",
+    "apmul",
+    "killSelf",
+];
+
 
 var idmap = {};
 var field = (new Ids()).getClass().getDeclaredField("ids");
@@ -232,6 +459,81 @@ function syncValue(key, value) {
     }
 }
 
+
+function saveParamIfPersist(key, value) {
+    for (let paramName of persistParamList) {
+        if (paramName === key) {
+            log("保存参数：", key, value);
+            storage.put(key, value);
+        }
+    }
+}
+
+function setOnChangeListener(key) {
+    switch (ui[key].getClass().getSimpleName()) {
+        case "JsEditText":
+            ui[key].addTextChangedListener(
+            new android.text.TextWatcher({
+            afterTextChanged: function (s) {
+                let value = ""+s;
+                saveParamIfPersist(key, value); //直接用s作为参数会崩溃
+                floatUI.adjust(key, value);
+            }
+            })
+            );
+            break;
+        case "CheckBox":
+        case "Switch":
+            ui[key].setOnCheckedChangeListener(
+            function (widget, checked) {
+                for (let i=1; ui[key+"Text"+i]!=null; i++) {
+                    ui[key+"Text"+i].setVisibility(checked?View.VISIBLE:View.GONE);
+                }
+                saveParamIfPersist(key, checked);
+                floatUI.adjust(key, checked);
+            }
+            );
+            break;
+        case "JsSpinner":
+            ui[key].setOnItemSelectedListener(
+            new android.widget.AdapterView.OnItemSelectedListener({
+            onItemSelected: function (spinnerparent, spinnerview, spinnerposition, spinnerid) {
+                saveParamIfPersist(key, spinnerposition);
+                floatUI.adjust(key, spinnerposition);
+            }
+            })
+            );
+            break;
+        case "RadioGroup":
+            ui[key].setOnCheckedChangeListener(
+            new android.widget.RadioGroup.OnCheckedChangeListener({
+            onCheckedChanged: function (group, checkedId) {
+                let name = idmap[checkedId];
+                if (name) {
+                    saveParamIfPersist(key, name);
+                    floatUI.adjust(key, name);
+                }
+            }
+            })
+            );
+            break;
+    }
+}
+
+//限制timeout的取值
+ui["timeout"].addTextChangedListener(
+new android.text.TextWatcher({
+afterTextChanged: function (s) {
+    let str = ""+s;
+    let value = parseInt(str);
+    if (isNaN(value) || value < 100) {
+        s.replace(0, str.length, "5000");
+    }
+}
+})
+);
+
+
 for (let key of persistParamList) {
     let value = storage.get(key)
     syncValue(key, value)
@@ -255,35 +557,40 @@ ui.start.click(() => {
 });
 
 //版本获取
-http.__okhttp__.setTimeout(5000);
-try {
-    let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle/project.json");
-    if (res.statusCode != 200) {
-        log("请求失败: " + res.statusCode + " " + res.statusMessage);
+
+var refreshUpdateStatus = sync(function () {
+    http.__okhttp__.setTimeout(5000);
+    try {
+        let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
+        if (res.statusCode != 200) {
+            log("请求失败: " + res.statusCode + " " + res.statusMessage);
+
+            ui.run(function () {
+                ui.versionMsg.setText("获取失败")
+                ui.versionMsg.setTextColor(colors.parseColor("#666666"))
+            })
+        } else {
+            let resJson = res.body.json();
+            if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
+                ui.run(function () {
+                    ui.versionMsg.setText("当前无需更新")
+                    ui.versionMsg.setTextColor(colors.parseColor("#666666"))
+                });
+            } else {
+                ui.run(function () {
+                    ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
+                    ui.versionMsg.setTextColor(colors.RED)
+                });
+            }
+        }
+    } catch (e) {
         ui.run(function () {
-            ui.versionMsg.setText("获取失败")
+            ui.versionMsg.setText("请求超时")
             ui.versionMsg.setTextColor(colors.parseColor("#666666"))
         })
-    } else {
-        let resJson = res.body.json();
-        if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
-            ui.run(function () {
-                ui.versionMsg.setText("当前无需更新")
-                ui.versionMsg.setTextColor(colors.parseColor("#666666"))
-            });
-        } else {
-            ui.run(function () {
-                ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
-                ui.versionMsg.setTextColor(colors.RED)
-            });
-        }
     }
-} catch (e) {
-    ui.run(function () {
-        ui.versionMsg.setText("请求超时")
-        ui.versionMsg.setTextColor(colors.parseColor("#666666"))
-    })
-}
+});
+threads.start(function () {refreshUpdateStatus();});
 
 //版本更新
 function toUpdate() {
@@ -309,6 +616,10 @@ function toUpdate() {
                         engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
                         toast("更新完毕")
                     })
+
+                    floatUI.isUpgrading = true; //避免把自己的后台杀了
+                    engines.stopAll()
+
                 } else {
                     toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessag);
                 }
@@ -318,4 +629,8 @@ function toUpdate() {
     } catch (error) {
         toastLog("请求超时，可再一次尝试")
     }
+
 }
+
+floatUI.enableToastParamChanges();
+
