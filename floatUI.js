@@ -32,10 +32,36 @@ importClass(android.widget.Button)
 importClass(android.widget.ImageView)
 importClass(android.widget.TextView)
 
+// 捕获异常时打log记录详细的调用栈
+//（不能先声明为空函数再赋值，否则不会正常工作）
+function logException(e) {
+    try { throw e; } catch (caught) {
+        Error.captureStackTrace(caught, logException);
+        //log(e, caught.stack); //输出挤在一行里了，不好看
+        log(e);
+        log(caught.stack);
+    }
+}
+
+var origFunc = {
+    click: function () {return click.apply(this, arguments)},
+    swipe: function () {return swipe.apply(this, arguments)},
+    press: function () {return press.apply(this, arguments)},
+    buildDialog: function() {return dialogs.build.apply(this, arguments)},
+}
+
+//注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
+function getProjectVersion() {
+    var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
+    if (conf) return conf.versionName;
+}
+
+//记录当前版本是否测试过助战的文件(已经去掉，留下注释)
+//var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
+
 var tasks = algo_init();
 // touch capture, will be initialized in main
 var capture = () => { };
-
 // 停止脚本线程，尤其是防止停止自己的时候仍然继续往下执行少许语句（同上，会在main函数中初始化）
 var stopThread = () => { };
 // （不）使用Shizuku/root执行shell命令
@@ -58,19 +84,25 @@ var isDrugEnough = () => { };
 // 周回数统计
 var updateCycleCount = () => { };
 
-
 // available script list
 floatUI.scripts = [
     {
-        name: "副本周回（剧情，活动通用）",
+        name: "副本周回(剧情/活动通用)",
         fn: tasks.default,
     },
     {
         name: "镜层周回",
-        fn: jingMain,
+        fn: tasks.mirrors,
     },
     {
-
+        name: "自动点击行动盘(识图,连携)",
+        fn: tasks.CVAutoBattle,
+    },
+    {
+        name: "自动点击行动盘(无脑123盘)",
+        fn: tasks.simpleAutoBattle,
+    },
+    {
         name: "录制闪退重开选关动作",
         fn: tasks.recordSteps,
     },
@@ -362,7 +394,6 @@ function replaceSelfCurrentTask(taskItem, callback) {
     stopThread();
 }
 
-
 floatUI.main = function () {
     // space between buttons compare to button size
     var space_factor = 1.5;
@@ -370,8 +401,6 @@ floatUI.main = function () {
     var logo_factor = 7.0 / 11;
     // button size in dp
     var button_size = 44;
-    // current running thread
-    var currentTask = null;
 
     // submenu definition
     var menu_list = [
@@ -402,9 +431,40 @@ floatUI.main = function () {
         },
     ];
 
+    stopThread = function (thread) {
+        var isSelf = false;
+        if (thread == null) {
+            thread = threads.currentThread();
+            isSelf = true;
+        }
+        if (ui.isUiThread()) {
+            if (isSelf) {
+                log("不能停止UI线程!");
+            } else threads.start(function () {
+                stopThread(thread);
+            });
+        } else {
+            while (isSelf || (thread != null && thread.isAlive())) {
+                try {thread.interrupt();} catch (e) {};
+                sleep(200);
+            }
+        }
+    }
+
     function snapshotWrap() {
+        if (auto.root == null) {
+            log("auto.root == null");
+            toastLog("快照失败,无障碍服务是否开启?");
+            return;
+        }
         toastLog("开始快照");
-        var text = recordElement(auto.root, 0, "");
+        try {
+            var text = recordElement(auto.root, 0, "");
+        } catch (e) {
+            toastLog("快照出错");
+            logException(e);
+            return;
+        }
 
         var d = new Date();
         var timestamp =
@@ -429,11 +489,13 @@ floatUI.main = function () {
     }
 
     function defaultWrap() {
+        checkRotationGlitch();
         toastLog("执行 " + floatUI.scripts[limit.default].name + " 脚本");
-        currentTask = threads.start(floatUI.scripts[limit.default].fn);
+        replaceCurrentTask(floatUI.scripts[limit.default]);
     }
 
     function taskWrap() {
+        checkRotationGlitch();
         layoutTaskPopup();
         task_popup.container.setVisibility(View.VISIBLE);
         task_popup.setTouchable(true);
@@ -441,7 +503,6 @@ floatUI.main = function () {
 
     function cancelWrap() {
         toastLog("停止脚本");
-
         replaceCurrentTask({name:"未运行任何脚本", fn: function () {}});
     }
 
@@ -464,19 +525,100 @@ floatUI.main = function () {
                 logException(e);
             };
         }
-
     }
 
     // get to main activity
-    function settingsWrap() {
-        var it = new Intent();
-        var name = context.getPackageName();
-        if (name != "org.autojs.autojspro")
-            it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
-        else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
-        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        app.startActivity(it);
+    function settingsScrollToTop(isPaused) {
+        //scrollview内容有变动时滚动回顶端
+        ui.run(function() {
+            //尝试过OnGlobalLayoutListener，但仍然没解决问题；
+            //可能是这个事件被触发过很多次，然后就不知道应该在第几次触发时注销Listener
+            ui["content"].postDelayed(function () {
+                ui["content"].smoothScrollTo(0, 0);
+            }, 600);
+            if (isPaused) {
+                ui["task_paused_vertical"].setVisibility(View.VISIBLE);
+            }
+            ui["content"].smoothScrollTo(0, 0);//单靠这一句会出现滚动没到最顶端的问题
+        });
     }
+    function openSettingsRunnable() {
+        if (!isCurrentTaskPaused.compareAndSet(TASK_RUNNING, TASK_PAUSING)) {
+            replaceCurrentTask(
+                {name:"未运行任何脚本", fn: function () {}},
+                function () {
+                    //确保之前的脚本停下来后才会新开一个线程执行这个回调
+                    toastLog("打开脚本设置\n(没有脚本正在运行中)");
+                    backtoMain();
+                    settingsScrollToTop(false);
+                }
+            );
+            return;
+        }
+        toastLog("正在暂停脚本...");
+        let lastTime = new Date().getTime();
+        while (true) {
+            let breakLoop = false;
+            switch (isCurrentTaskPaused.get()) {
+                case TASK_PAUSING:
+                    sleep(200);
+                    if (new Date().getTime() > lastTime + 4000) {
+                        toast("小提示:\n有对话框时,无法暂停脚本");
+                        lastTime = new Date().getTime();
+                    }
+                    break;
+                case TASK_PAUSED:
+                    breakLoop = true;
+                    break;
+                default:
+                    toastLog("遇到意外情况,无法暂停脚本");
+                    return;
+            }
+            if (breakLoop) break;
+        }
+        toastLog("脚本已暂停");
+        lockUI(false);
+        settingsScrollToTop(true);
+        backtoMain();
+        while (true) {
+            switch (isCurrentTaskPaused.get()) {
+                case TASK_PAUSED:
+                case TASK_RESUMING:
+                    sleep(200);
+                    break;
+                case TASK_RUNNING:
+                    toastLog("继续运行脚本");
+                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    lockUI(true);
+                    return;
+                    break;
+                case TASK_STOPPED:
+                    log("脚本已停止运行");
+                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    //monitoredTask会执行lockUI(false)
+                    return;
+                    break;
+                default:
+                    toastLog("遇到意外情况,无法暂停脚本");
+                    return;
+            }
+        }
+    }
+    var openSettingsThread = null;
+    function settingsWrap() {sync(function () {
+        if (openSettingsThread != null && openSettingsThread.isAlive()) {
+            if (isCurrentTaskPaused.get() == TASK_PAUSED) {
+                toastLog("打开脚本设置\n(脚本已暂停)");
+                backtoMain();
+                settingsScrollToTop(true);
+            } else {
+                toastLog("脚本尚未暂停\n请稍后再试");
+                return;
+            }
+        } else {
+            openSettingsThread = threads.start(openSettingsRunnable);
+        }
+    })();};
 
     var task_popup = floaty.rawWindow(
         <frame id="container" w="*" h="*">
@@ -525,7 +667,7 @@ floatUI.main = function () {
         task_popup.setTouchable(false);
         if (item.fn) {
             toastLog("执行 " + item.name + " 脚本");
-            currentTask = threads.start(item.fn);
+            replaceCurrentTask(item);
         }
     });
     task_popup.close_button.click(() => {
@@ -852,11 +994,16 @@ floatUI.main = function () {
         }
     });
 
-    var touch_pos = null;
+    var touch_down_pos = null;
+    var touch_up_pos = null;
+    var touch_down_time = 0;
+    var touch_up_time = 0;
+    const default_description_text = "请点击需要周回的battle\n(请通关一次后再用，避免错位)";
     var overlay = floaty.rawWindow(
         <frame id="container" w="*" h="*">
             <frame w="*" h="*" bg="#000000" alpha="0.2"></frame>
             <text
+                id="description_text"
                 w="auto"
                 h="auto"
                 text="请点击需要周回的battle{{'\n'}}(请通关一次后再用，避免错位)"
@@ -872,23 +1019,43 @@ floatUI.main = function () {
         overlay.setTouchable(false);
     });
     overlay.container.setOnTouchListener(function (self, event) {
-        if (event.getAction() == event.ACTION_UP) {
-            touch_pos = {
-                x: parseInt(event.getRawX()),
-                y: parseInt(event.getRawY()),
-            };
-            log("捕获点击坐标", touch_pos.x, touch_pos.y);
-            overlay.setTouchable(false);
-            overlay.container.setVisibility(View.INVISIBLE);
+        switch (event.getAction()) {
+            case event.ACTION_DOWN:
+                if (touch_down_pos == null) {
+                    touch_down_time = new Date().getTime();
+                    touch_down_pos = {
+                        x: parseInt(event.getRawX()),
+                        y: parseInt(event.getRawY()),
+                    }
+                    log("捕获触控按下坐标", touch_down_pos.x, touch_down_pos.y);
+                }
+                break;
+            case event.ACTION_UP:
+                touch_up_time = new Date().getTime();
+                touch_up_pos = {
+                    x: parseInt(event.getRawX()),
+                    y: parseInt(event.getRawY()),
+                };
+                log("捕获触控松开坐标", touch_up_pos.x, touch_up_pos.y);
+                overlay.setTouchable(false);
+                overlay.container.setVisibility(View.INVISIBLE);
+                break;
         }
         return true;
     });
 
-    capture = function () {
-        touch_pos = null;
+    capture = function (description_text) {
+        if (description_text == null) {
+            description_text = default_description_text;
+        }
+        touch_down_time = 0;
+        touch_up_time = 0;
+        touch_down_pos = null;
+        touch_up_pos = null;
         ui.post(() => {
             var sz = getWindowSize();
             overlay.setSize(sz.x, sz.y);
+            overlay.container.description_text.setText(description_text);
             overlay.container.setVisibility(View.VISIBLE);
             overlay.setTouchable(true);
         });
@@ -898,9 +1065,73 @@ floatUI.main = function () {
         while (overlay.container.getVisibility() == View.VISIBLE) {
             sleep(200);
         }
-        return touch_pos;
+        if (touch_down_time == 0 || touch_up_time == 0) return null;//不应该仍然为0。实际上应该不会发生
+        let swipe_duration = touch_up_time - touch_down_time;
+        return {pos_down: touch_down_pos, pos_up: touch_up_pos, duration: swipe_duration};
     };
 
+    //初始化getWindowSize()
+    detectInitialWindowSize();
+
+    //检测刘海屏参数
+    function adjustCutoutParams() {
+        if (device.sdkInt >= 28) {
+            //Android 9或以上有原生的刘海屏API
+            let windowInsets = activity.getWindow().getDecorView().getRootWindowInsets();
+            let displayCutout = null;
+            if (windowInsets != null) {
+                displayCutout = windowInsets.getDisplayCutout();
+            }
+            let display = activity.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
+            let cutoutParams = {
+                rotation: display.getRotation(),
+                cutout: displayCutout
+            }
+            limit.cutoutParams = cutoutParams;
+        }
+    }
+    //脚本启动时反复尝试检测,4秒后停止尝试
+    threads.start(function () {
+        //Android 8.1或以下没有刘海屏API,无法检测
+        if (device.sdkInt < 28) return;
+
+        try {
+            cutoutParamsLock.lock();
+            var startTime = new Date().getTime();
+            do {
+                try {adjustCutoutParams();} catch (e) {logException(e);};
+                if (limit.cutoutParams != null && limit.cutoutParams.cutout != null) break;
+                sleep(500);
+            } while (new Date().getTime() < startTime + 4000);
+        } catch (e) {
+            logException(e);
+            throw e;
+        } finally {
+            cutoutParamsLock.unlock();
+        }
+        log("limit.cutoutParams", limit.cutoutParams);
+    });
+
+    //使用Shizuku执行shell命令
+    shizukuShell = function (shellcmd, logstring) {
+        if (logstring === true || (logstring !== false && logstring == null))
+            logstring = "执行shell命令: ["+shellcmd+"]";
+        if (logstring !== false) log("使用Shizuku"+logstring);
+        $shell.setDefaultOptions({adb: true});
+        let result = $shell(shellcmd);
+        $shell.setDefaultOptions({adb: false});
+        if (logstring !== false) log("使用Shizuku"+logstring+" 完成");
+        return result;
+    };
+    //直接使用root权限执行shell命令
+    rootShell = function (shellcmd, logstring) {
+        if (logstring === true || (logstring !== false && logstring == null))
+            logstring = "执行shell命令: ["+shellcmd+"]";
+        if (logstring !== false) log("直接使用root权限"+logstring);
+        $shell.setDefaultOptions({adb: false});
+        if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
+        return $shell(shellcmd, true);
+    };
     //根据情况使用Shizuku还是直接使用root执行shell命令
     privShell = function (shellcmd, logstring) {
         if (limit.privilege) {
@@ -1108,7 +1339,6 @@ floatUI.main = function () {
         });
     }
 
-
 };
 // ------------主要逻辑--------------------
 var langNow = "zh"
@@ -1119,19 +1349,20 @@ var language = {
 }
 var currentLang = language.zh
 var limit = {
+    version: '',
     helpx: '',
     helpy: '',
     battleNo: 'cb3',
     drug1: false,
     drug2: false,
     drug3: false,
-    isStable: false,
+    autoReconnect: false,
     justNPC: false,
-    jjcisuse: false,
-    drug1num: '',
-    drug2num: '',
-    drug3num: '',
-    jjcnum: '',
+    drug4: false,
+    drug1num: '0',
+    drug2num: '0',
+    drug3num: '0',
+    drug4num: '0',
     default: 0,
     useAuto: true,
     autoFollow: true,
@@ -1149,8 +1380,10 @@ var limit = {
     firstRequestPrivilege: true,
     killSelf: false,
     privilege: null
-
 }
+
+var cutoutParamsLock = threads.lock();
+
 var clickSets = {
     ap: {
         x: 1000,
@@ -1187,6 +1420,11 @@ var clickSets = {
         y: 1000,
         pos: "bottom"
     },
+    startAutoRestart: {
+        x: 1800,
+        y: 750,
+        pos: "bottom"
+    },
     autostart: {
         x: 1800,
         y: 750,
@@ -1207,8 +1445,13 @@ var clickSets = {
         y: 750,
         pos: "center"
     },
-    yesfocus: {
+    yesfocus: {/*其实应该是followYes，是否关注路人？“是”*/
         x: 1220,
+        y: 860,
+        pos: "center"
+    },
+    nofocus: {/*其实应该是followNo，是否关注路人？“否”*/
+        x: 699,
         y: 860,
         pos: "center"
     },
@@ -1280,6 +1523,21 @@ var clickSets = {
     helperFirst: {
         x: 1300,
         y: 350,
+        pos: "top"
+    },
+    recover_battle: {
+        x: 1230,
+        y: 730,
+        pos: "center"
+    },
+    backToHomepage: {
+        x: 960,
+        y: 830,
+        pos: "center"
+    },
+    back: {
+        x: 120,
+        y: 50,
         pos: "top"
     }
 }
@@ -1464,8 +1722,7 @@ function jingMain() {
             click(btn.centerX(), btn.centerY())
             sleep(1000)
             if (id("popupInfoDetailTitle").findOnce()) {
-                let count = parseInt(limit.jjcnum);
-                if (limit.jjcisuse && (isNaN(count) || count > 0)) {
+                if (isDrugEnough(3)) {
                     while (!id("BpCureWrap").findOnce()) {
                         screenutilClick(clickSets.bphui)
                         sleep(1500)
@@ -1478,7 +1735,12 @@ function jingMain() {
                         screenutilClick(clickSets.bphuiok)
                         sleep(1500)
                     }
-                    limit.jjcnum = '' + (count - 1);
+
+                    //更新嗑药个数限制数值，减去用掉的数量
+                    updateDrugLimit(3);
+
+                    //更新嗑药个数统计
+                    updateDrugConsumingStats(3);
                 } else {
                     screenutilClick(clickSets.bpclose)
                     log("jjc结束")
@@ -1688,7 +1950,7 @@ function BeginFunction() {
         sleep(3000)
     }
     //稳定模式点击
-    if (limit.isStable) {
+    if (limit.autoReconnect) {
         while (!id("ResultWrap").findOnce()) {
             sleep(3000)
             // 循环点击的位置为短线重连确定点
@@ -1707,7 +1969,7 @@ function autoBeginFunction() {
         sleep(3000)
     }
     //稳定模式点击
-    if (limit.isStable) {
+    if (limit.autoReconnect) {
         while (!id("ResultWrap").findOnce()) {
             sleep(3000)
             // 循环点击的位置为短线重连确定点
@@ -1800,43 +2062,166 @@ floatUI.adjust = function (key, value) {
     }
 }
 
+floatUI.logParams = function () {
+    log("\n参数:\n", limit);
+}
+
 // compatible action closure
 function algo_init() {
-    // for debug
-    // const AUTO_LIMIT = 1;
-    // click with root permission
-    function clickRoot(x, y) {
-        var result = shell("su\ninput tap " + x + " " + y + "\nexit\n");
-        // detect reason when click did not succeed
-        if (result.code != 0) {
-            result = shell("which su");
-            if (result.code == 0) {
-                // device already rooted, but permission not granted
-                toastLog("root权限获取失败");
-            } else {
-                // device not rooted
-                toastLog("Android 7 以下设备运行脚本需要root");
-            }
-            // terminate when click cannot be successfully performed
-            threads.currentThread().interrupt();
+
+    //虽然函数名里有Root，实际上用的可能还是adb shell权限
+    function clickOrSwipeRoot(x1, y1, x2, y2, duration) {
+        var shellcmd = null;
+        var logString = null;
+        switch (arguments.length) {
+            case 5:
+                shellcmd = "input swipe "+x1+" "+y1+" "+x2+" "+y2+(duration==null?"":(" "+duration));
+                logString = "模拟滑动: ["+x1+","+y1+" => "+x2+","+y2+"]"+(duration==null?"":(" ("+duration+"ms)"));
+                break;
+            case 2:
+                //shellcmd = "input tap "+x1+" "+y1; //在MuMu上会出现自动战斗时一次点不到盘的问题
+                shellcmd = "input swipe "+x1+" "+y1+" "+x1+" "+y1+" 150";
+                logString = "模拟点击: ["+x1+","+y1+"]";
+                break;
+            default:
+                throw new Error("clickOrSwipeRoot: invalid argument count");
         }
+        privShell(shellcmd, logString);
     }
 
     function click(x, y) {
+        //isGameDead和getFragmentViewBounds其实是在后面定义的
+        if (isGameDead() == "crashed") {
+            log("游戏已经闪退,放弃点击");
+            return;
+        }
+        if (y == null) {
+            var point = x;
+            x = point.x;
+            y = point.y;
+        }
         // limit range
-        var sz = getWindowSize();
-        if (x >= sz.x) {
-            x = sz.x - 1;
+
+        let xy = {};
+        xy.orig = {x: x, y: y};
+
+        var sz = getFragmentViewBounds();
+        if (x < sz.left) {
+            x = sz.left;
         }
-        if (y >= sz.y) {
-            y = sz.y - 1;
+        if (x >= sz.right) {
+            x = sz.right - 1;
         }
+        if (y < sz.top) {
+            y = sz.top;
+        }
+        if (y >= sz.bottom) {
+            y = sz.bottom - 1;
+        }
+
+        xy.clamped = {x: x, y: y};
+        for (let axis of ["x", "y"])
+            if (xy.clamped[axis] != xy.orig[axis])
+                log("点击坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
+
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             // now accessibility gesture APIs are available
-            press(x, y, 50);
+            log("使用无障碍服务模拟点击坐标 "+x+","+y);
+            origFunc.click(x, y);
+            log("点击完成");
         } else {
-            clickRoot(x, y);
+            clickOrSwipeRoot(x, y);
+        }
+    }
+
+    function getDefaultSwipeDuration(x1, x2, y1, y2) {
+        // 默认滑动时间计算，距离越长时间越长
+        let swipe_distance = Math.sqrt(Math.pow((x2 - x1), 2) + Math.pow((y2 - y1), 2));
+        let screen_diagonal = Math.sqrt(Math.pow((device.width), 2) + Math.pow((device.height), 2));
+        return parseInt(1500 + 3000 * (swipe_distance / screen_diagonal));
+    }
+
+    function swipe(x1, y1, x2, y2, duration) {
+        //isGameDead和getFragmentViewBounds其实是在后面定义的
+        if (isGameDead() == "crashed") {
+            log("游戏已经闪退,放弃滑动");
+            return;
+        }
+        // 解析参数
+        var points = [];
+        if (arguments.length > 5) throw new Error("compatSwipe: incorrect argument count");
+        for (let i=0; i<arguments.length; i++) {
+            if (isNaN(parseInt(arguments[i]))) {
+                //参数本身就（可能）是一个坐标点对象
+                points.push(arguments[i]);
+            } else {
+                //参数应该是坐标X值或滑动时长
+                if (i < arguments.length-1) {
+                    //存在下一个参数，则把这个参数视为坐标X值，下一个参数视为坐标Y值
+                    points.push({x: parseInt(arguments[i]), y: parseInt(arguments[i+1])});
+                    i++;
+                } else {
+                    //不存在下一个参数，这个参数应该是滑动时长
+                    duration = parseInt(arguments[i]);
+                }
+            }
+            //坐标X、Y值应该都是数字
+            if (isNaN(points[points.length-1].x) || isNaN(points[points.length-1].y))
+                throw new Error("compatSwipe: invalid arguments (invalid point)");
+            //又一个坐标点被加入，最多加入2个点，不允许加入第3个点
+            if (points.length > 2) {
+                throw new Error("compatSwipe invalid arguments (added more than 2 points)");
+            }
+        }
+        x1 = points[0].x;
+        y1 = points[0].y;
+        x2 = points[1].x;
+        y2 = points[1].y;
+
+        // limit range
+
+        let xy = {};
+        xy.orig = {x1: x1, y1: y1, x2: x2, y2: y2};
+
+        var sz = getFragmentViewBounds();
+        if (x1 < sz.left) {
+            x1 = sz.left;
+        }
+        if (x1 >= sz.right) {
+            x1 = sz.right - 1;
+        }
+        if (y1 < sz.top) {
+            y1 = sz.top;
+        }
+        if (y1 >= sz.bottom) {
+            y1 = sz.bottom - 1;
+        }
+        if (x2 < sz.left) {
+            x2 = sz.left;
+        }
+        if (x2 >= sz.right) {
+            x2 = sz.right - 1;
+        }
+        if (y2 < sz.top) {
+            y2 = sz.top;
+        }
+        if (y2 >= sz.bottom) {
+            y2 = sz.bottom - 1;
+        }
+
+        xy.clamped = {x1: x1, y1: y1, x2: x2, y2: y2};
+        for (let axis of ["x1", "y1", "x2", "y2"])
+            if (xy.clamped[axis] != xy.orig[axis])
+                log("滑动坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
+
+        // system version higher than Android 7.0
+        if (device.sdkInt >= 24) {
+            log("使用无障碍服务模拟滑动 "+x1+","+y1+" => "+x2+","+y2+(duration==null?"":(" ("+duration+"ms)")));
+            origFunc.swipe(x1, y1, x2, y2, duration != null ? duration : getDefaultSwipeDuration(x1, x2, y1, y2)); //最后一个参数不能缺省
+            log("滑动完成");
+        } else {
+            clickOrSwipeRoot(x1, y1, x2, y2, duration != null ? duration : getDefaultSwipeDuration(x1, x2, y1, y2));
         }
     }
 
@@ -1860,7 +2245,6 @@ function algo_init() {
                 if (wait) sleep(isFast ? 16 : 100);
                 continue;
             }
-
             result = textMatches(reg).findOnce();
             if (result && (isFast || result.refresh())) break;
             result = descMatches(reg).findOnce();
@@ -1931,7 +2315,13 @@ function algo_init() {
         var it = 0;
         do {
             it++;
-            auto.root.refresh();
+            try {
+                auto.root.refresh();
+            } catch (e) {
+                logException(e);
+                sleep(100);
+                continue;
+            }
             result = text(txt).find();
             result = result.filter((x) => x.refresh());
             if (result.length >= 1) break;
@@ -2015,9 +2405,7 @@ function algo_init() {
             result = fnlist[current]();
             if (result && (isFast || result.refresh())) break;
             current++;
-
             sleep(isFast ? 16 : 50);
-
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         if (wait)
             log(
@@ -2033,15 +2421,16 @@ function algo_init() {
     }
 
     function getContent(element) {
-        if (element) {
-            return element.text() === "" ? element.desc() : element.text();
-        }
+        if (element == null) return "";
+        let text = element.text();
+        if (text === "" || text == null) text = element.desc();
+        if (text === "" || text == null) text = "";
+        return text;
     }
 
     function checkNumber(content) {
         return !isNaN(Number(content)) && !isNaN(parseInt(content));
     }
-
 
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
     //关注追加窗口在MuMu上点这里的close坐标点不到关闭
@@ -2106,13 +2495,12 @@ function algo_init() {
     function getAP(wait) {
         var startTime = new Date().getTime();
 
-
         if (findID("baseContainer")) {
             // values and seperator are together
-            while (true) {
+            do {
                 let result = null;
                 let h = getWindowSize().y;
-                let elements = matchAll(/^\d+\/\d+$/, true);
+                let elements = matchAll(/^\d+\/\d+$/, false);
                 for (let element of elements) {
                     if (element.bounds().top < h) {
                         if (
@@ -2132,14 +2520,14 @@ function algo_init() {
                     }
                 }
                 if (result) return result;
-                sleep(500);
-            }
+                sleep(100);
+            } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         } else {
             // ... are seperate
-            while (true) {
+            do {
                 let result = null;
                 let h = getWindowSize().y;
-                let elements = findAll("/", true);
+                let elements = findAll("/", false);
                 for (let element of elements) {
                     if (element.bounds().top < h) {
                         if (
@@ -2163,15 +2551,18 @@ function algo_init() {
                     }
                 }
                 if (result) return result;
-                sleep(500);
-            }
+                sleep(100);
+            } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         }
     }
 
     function getPTList() {
-        let elements = matchAll(/^\+\d*$/);
         let results = [];
-        let left = 0;
+        //在收集可能是Pt的控件之前，应该先找到“请选择支援角色”
+        //如果找不到，那应该是出现意料之外的情况了，这里也不好应对处理
+        let string_support_element = find(string.support, parseInt(limit.timeout));
+        let left = string_support_element.bounds().left;
+        let elements = matchAll(/^\+\d*$/);
         log("PT匹配结果数量" + elements.length);
         for (var element of elements) {
             var content = getContent(element);
@@ -2184,7 +2575,6 @@ function algo_init() {
                             value: Number(getContent(next)),
                             bounds: element.bounds(),
                         });
-                        if (element.bounds().left > left) left = element.bounds().left;
                     }
                 }
             }
@@ -2195,15 +2585,15 @@ function algo_init() {
                         value: Number(content.slice(1)),
                         bounds: element.bounds(),
                     });
-                    if (element.bounds().left > left) left = element.bounds().left;
                 }
             }
         }
 
-        return results.filter((result) => result.bounds.left == left);
+        return results.filter((result) => result.bounds.left >= left);
     }
 
     function getCostAP() {
+        //正常情况下“消耗AP”文字和数字是分开的
         let elements = findAll(string.cost_ap);
         for (let element of elements) {
             if (element.indexInParent() < element.parent().childCount() - 1) {
@@ -2213,36 +2603,335 @@ function algo_init() {
                 }
             }
         }
+        //有的时候它没分开
+        let element = match(string.regex_cost_ap);
+        let text = getContent(element);
+        let matched = text != null ? text.match(/\d+/) : null;
+        if (matched != null) return parseInt(matched[0]);
     }
 
-    const STATE_LOGIN = 0;
-    const STATE_HOME = 1;
-    const STATE_MENU = 2;
-    const STATE_SUPPORT = 3;
-    const STATE_TEAM = 4;
-    const STATE_BATTLE = 5;
-    const STATE_REWARD_CHARACTER = 6;
-    const STATE_REWARD_MATERIAL = 7;
-    const STATE_REWARD_POST = 8;
+    const knownFirstPtPoint = {
+        x: 1808,
+        y: 325,
+        pos: "top"
+    }
+    const ptDistanceY = 243.75;
+
+    function pickSupportWithMostPt(isTestMode) {
+        var hasError = false;
+        //Lv/ATK/DEF/HP [Rank] 玩家名 [最终登录] Pt
+        //Lv/ATK/DEF/HP 玩家名 [Rank] [最终登录] Pt
+        let AllElements = [];
+        let uicollection = packageName(string.package_name).find();
+        for (let i=0; i<uicollection.length; i++) {
+            AllElements.push(uicollection[i]);
+        }
+
+        let finalIndex = -1;
+        AllElements.forEach(function (val, index) {
+            if (getContent(val).match(string.regex_difficulty)) finalIndex = index
+        });
+        if (finalIndex == -1) {
+            log("助战选择出错,找不到难度");
+            hasError = true;
+            finalIndex = AllElements.length-1; //先让他继续跑，虽然结果不会用
+        }
+
+        let LvLikeIndices = [];
+        AllElements.forEach(function (val, i) {
+            if (getContent(val).match(/^((Lv|ATK|DEF|HP)\d*)$/)) LvLikeIndices.push(i)
+        });
+        let RankLikeIndices = [];
+        AllElements.forEach(function (val, i) {
+            if (getContent(val).match(/^Rank\d*$/)) RankLikeIndices.push(i)
+        });
+        let LastLoginLikeIndices = [];
+        AllElements.forEach(function (val, i) {
+            if (getContent(val).match(string.regex_lastlogin)) LastLoginLikeIndices.push(i)
+        });
+        let PtLikeIndices = [];
+        AllElements.forEach(function (val, i){
+            if (getContent(val).match(/^\+\d*$/)) PtLikeIndices.push(i)
+        });
+        log("\n匹配到:"
+            +"\n  类似Lv/ATK/DEF/HP的控件个数: "+LvLikeIndices.length
+            +"\n  类似Rank的控件个数:          "+RankLikeIndices.length
+            +"\n  类似上次登录的控件个数:      "+LastLoginLikeIndices.length
+            +"\n  类似Pt的控件个数:            "+PtLikeIndices.length);
+
+        let AllLvIndices = [];
+        let PlayerLvIndices = [];
+        let NPCLvIndices = [];
+        //倒着从后往前搜寻，这样才会先碰到和Lv/ATK/DEF/HP混淆的恶搞玩家名，从而排除，而不会误排除真正的Lv/ATK/DEF/HP
+        LvLikeIndices.reverse().forEach(function (index, i, arr) {
+            //第一个(序号0)在颠倒前就是最后一个，因为后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex
+            //第二个(序号1)和后续的在颠倒前就是倒数第二个和之前的，往前推一个对应颠倒前往后推一个
+            let nextIndex = i == 0 ? finalIndex : arr[i-1];
+
+            let rankIndex = RankLikeIndices.find((val) => val > index && val < nextIndex);
+            let lastLoginIndex = LastLoginLikeIndices.find((val) => val > index && val < nextIndex);
+
+            if (rankIndex != null && lastLoginIndex != null) {
+                //在Lv/ATK/DEF/HP后找到Rank和上次登录，就是玩家的Lv/ATK/DEF/HP；否则是NPC或恶搞玩家名
+                PlayerLvIndices.push(index);
+                AllLvIndices.push(index);
+                return
+            }
+            if (rankIndex != null && lastLoginIndex == null) {
+                log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank,却没找到上次登录");
+                return;
+            }
+            if (rankIndex == null && lastLoginIndex != null) {
+                log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,没找到Rank,却找到上次登录");
+                return;
+            }
+            if (rankIndex == null && lastLoginIndex == null) {
+                //NPC一定是没有Rank也没有上次登录
+                //但是，不知道是不是有些环境下，玩家名后面本来就既没有Rank也没有上次登录
+                //预想在这种情况下，会把和Lv/ATK/DEF/HP相似的恶搞玩家名误判为NPC
+                NPCLvIndices.push(index);
+                AllLvIndices.push(index);
+                return;
+            }
+        });
+        //恢复原来的顺序
+        LvLikeIndices.reverse();
+        AllLvIndices.reverse();
+        PlayerLvIndices.reverse();
+        NPCLvIndices.reverse();
+        log("玩家助战总数: "+PlayerLvIndices.length);
+
+        //从NPC的Lv/ATK/DEF/HP里排除和Lv/ATK/DEF/HP相似的恶搞玩家名
+        //这里的假设是玩家名肯定在Lv/ATK/DEF/HP和Pt之间——如果还有更奇葩的环境不满足这个假设就没辙了
+        //假Lv/ATK/DEF/HP前面肯定还有真Lv/ATK/DEF/HP（所以需要倒着从后往前搜才能先碰到假的）
+        NPCLvIndices = NPCLvIndices.reverse().filter(function (index, i, arr) {
+            //当前Lv/ATK/DEF/HP控件在AllLvIndices中的序号
+            let i_index = AllLvIndices.findIndex((val) => val == index);
+            //已经是第一个Lv/ATK/DEF/HP控件(序号0)了，不可能是假的
+            if (i_index == 0) return true;
+            //找到前一个Lv/ATK/DEF/HP控件
+            let prevIndex = AllLvIndices[i_index-1];
+
+            let PtIndex = PtLikeIndices.find((val) => val > prevIndex && val < index);
+
+            if (PtIndex == null) {
+                //假Lv/ATK/DEF/HP和真Lv/ATK/DEF/HP之间肯定没有Pt
+                let delete_i = AllLvIndices.findIndex((val) => val == index);
+                log("第"+(delete_i+1)+"个Lv/ATK/DEF/HP控件是恶搞玩家名,排除");
+                AllLvIndices.splice(delete_i, 1);
+                return false;
+            }
+            if (PtIndex != null) {
+                //真Lv/ATK/DEF/HP之前要么已经没有更前面的Lv，如果有（无论真假），和前一个Lv/ATK/DEF/HP之间肯定有Pt
+                return true;
+            }
+        });
+        NPCLvIndices.reverse();//恢复原来的顺序
+
+        log("NPC助战个数: "+NPCLvIndices.length);
+        log("助战总数: "+AllLvIndices.length);
+        if (NPCLvIndices.length + PlayerLvIndices.length != AllLvIndices.length) {
+            hasError = true;
+            log("助战选择出错,NPC助战个数+玩家助战总数!=助战总数");
+        }
+
+        //寻找最高的Pt加成
+        let HighestPt = 0;
+        let AllPtIndices = [];
+        let NPCPtIndices = [];
+        let PlayerPtIndices = [];
+        //可以不用颠倒过来了
+        AllLvIndices.forEach(function (index, i, arr) {
+            //最后一个Lv/ATK/DEF/HP控件后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex；其余的往后推一个即可
+            let nextIndex = i >= arr.length - 1 ? finalIndex : arr[i+1];
+
+            //倒过来从后往前搜Pt控件，防止碰到类似Pt的恶搞玩家名
+            let ptIndex = PtLikeIndices.reverse().find((val) => val > index && val < nextIndex);
+            //恢复原状
+            PtLikeIndices.reverse();
+
+            if (ptIndex != null) {
+                let PtContent = getContent(AllElements[ptIndex]);
+                let Pt = parseInt(PtContent);
+                //处理+和60分开的情况
+                if (isNaN(Pt)) {
+                    PtContent = getContent(AllElements[++ptIndex]);
+                    Pt = parseInt(PtContent);
+                }
+                if (isNaN(Pt)) {
+                    log("助战选择出错,在第"+(i+1)+"个Lv/ATK/DEF/HP控件后无法读取Pt数值");
+                    hasError = true;
+                    return;
+                }
+
+                if (NPCLvIndices.find((val) => val == index) != null) {
+                    NPCPtIndices.push(ptIndex);
+                }
+                if (PlayerLvIndices.find((val) => val == index) != null) {
+                    PlayerPtIndices.push(ptIndex);
+                }
+                AllPtIndices.push(ptIndex);
+
+                if (Pt > HighestPt) {
+                    log("在第"+(i+1)+"个Lv/ATK/DEF/HP控件后找到了更高的Pt加成: "+Pt);
+                    HighestPt = Pt;
+                }
+                return;
+            }
+            if (ptIndex == null) {
+                log("助战选择出错,在第"+(i+1)+"个Lv/ATK/DEF/HP控件后,找不到Pt控件");
+                hasError = true;
+                return;
+            }
+        });
+        log("最高Pt加成: "+HighestPt);
+
+        if (NPCPtIndices.length != NPCLvIndices.length) {
+            hasError = true;
+            log("助战选择出错,NPCPt控件数!=NPCLv/ATK/DEF/HP控件数");
+        }
+        if (PlayerPtIndices.length != PlayerLvIndices.length) {
+            hasError = true;
+            log("助战选择出错,玩家Pt控件数!=玩家Lv/ATK/DEF/HP控件数");
+        }
+        if (AllPtIndices.length != AllLvIndices.length) {
+            hashError = true;
+            log("助战选择出错,Pt控件总数!=Lv/ATK/DEF/HP控件总数");
+        }
+
+        let AllHighPtIndices = AllPtIndices.filter((index) => parseInt(getContent(AllElements[index])) == HighestPt);
+        let PlayerHighPtIndices = PlayerPtIndices.filter((index) => parseInt(getContent(AllElements[index])) == HighestPt);
+        log("高Pt加成助战总数: "+AllHighPtIndices.length);
+        log("玩家高Pt加成助战个数: "+PlayerHighPtIndices.length);
+        if (NPCPtIndices.length + PlayerHighPtIndices.length != AllHighPtIndices.length) {
+            hasError = true;
+            log("助战选择出错,NPCPt控件数+玩家高Pt加成控件数!=高Pt加成控件总数");
+        }
+
+        //测试模式
+        var testOutputString = null;
+        if (isTestMode) {
+            if (!hasError) {
+                testOutputString  =
+                        "最高Pt加成:"
+                    + "\n  "+HighestPt
+                    + "\n助战总数:"
+                    + "\n| "+AllPtIndices.length
+                    + "\n+---NPC个数:"
+                    + "\n|     "+NPCPtIndices.length
+                    + "\n+---玩家总数:"
+                    + "\n    | "+PlayerPtIndices.length
+                    + "\n    +---互关好友个数:"
+                    + "\n    |     "+PlayerHighPtIndices.length
+                    + "\n    +---单FO或路人个数:"
+                    + "\n          "+(PlayerPtIndices.length-PlayerHighPtIndices.length);
+            } else {
+                testOutputString = null;
+            }
+        }
+
+        //间接推算坐标，而不是直接读取坐标
+
+        if (hasError) {
+            toastLog("助战选择过程中出错,返回第一个助战");
+            return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+        }
+
+        if (AllPtIndices.length == 0) {
+            toastLog("没有助战可供选择");
+            return {point: null, testdata: testOutputString};
+        }
+
+        if (limit.justNPC) {
+            if (NPCPtIndices.length > 0) {
+                log("仅使用NPC已开启,选择第一个助战(即第一个NPC)");
+                return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+            } else if (PlayerPtIndices.length > 0) {
+                toastLog("仅使用NPC已开启,但是没有NPC,所以没有助战可供选择");
+                return {point: null, testdata: testOutputString};
+            } else {
+                //不应该走到这里
+                toastLog("没有助战可供选择");
+                return {point: null, testdata: testOutputString};
+            }
+        }
+
+        if (PlayerHighPtIndices.length > 0) {
+            log("选择第一个互关好友");
+            let point = {
+                x: knownFirstPtPoint.x,
+                y: knownFirstPtPoint.y + ptDistanceY * NPCPtIndices.length,
+                pos: knownFirstPtPoint.pos
+            }
+            point = convertCoords(point);
+            if (point.y >= getWindowSize().y - 1) {
+                toastLog("推算出的第一个互关好友坐标已经超出屏幕范围");
+                //在click里会限制到屏幕范围之内
+            }
+            return {point: point, testdata: testOutputString};
+        } else if (NPCPtIndices.length > 0) {
+            log("没有互关好友,选择第一个助战(即第一个NPC)");
+            return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+        } else if (PlayerPtIndices.length > 0) {
+            log("没有互关好友也没有NPC,选择第一个助战(即单向关注好友或路人)");
+            return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+        } else {
+            //不应该走到这里
+            toastLog("没有助战可供选择");
+            return {point: null, testdata: testOutputString};
+        }
+    }
+
+    const STATE_CRASHED = 0;
+    const STATE_LOGIN = 1;
+    const STATE_HOME = 2;
+    const STATE_MENU = 3;
+    const STATE_SUPPORT = 4;
+    const STATE_TEAM = 5;
+    const STATE_BATTLE = 6;
+    const STATE_REWARD_CHARACTER = 7;
+    const STATE_REWARD_MATERIAL = 8;
+    const STATE_REWARD_POST = 9;
+
+    const StateNames = [
+        "STATE_CRASHED",
+        "STATE_LOGIN",
+        "STATE_HOME",
+        "STATE_MENU",
+        "STATE_SUPPORT",
+        "STATE_TEAM",
+        "STATE_BATTLE",
+        "STATE_REWARD_CHARACTER",
+        "STATE_REWARD_MATERIAL",
+        "STATE_REWARD_POST"
+    ];
 
     // strings constants
     const strings = {
         name: [
             "support",
-            "revive_title",
-            "revive_button",
-            "revive_popup",
-            "revive_confirm",
+            "ap_refill_title",
+            "ap_refill_button",
+            "ap_refill_popup",
+            "ap_refill_confirm",
             "out_of_ap",
+            "team_name_change",
             "start",
             "follow",
             "follow_append",
             "battle_confirm",
             "cost_ap",
+            "regex_cost_ap",
             "regex_drug",
             "regex_lastlogin",
             "regex_bonus",
             "regex_autobattle",
+            "regex_until",
+            "regex_event_branch",
+            "package_name",
+            "connection_lost",
+            "auth_error",
+            "generic_error",
         ],
         zh_Hans: [
             "请选择支援角色",
@@ -2251,15 +2940,23 @@ function algo_init() {
             "回复确认",
             "回复",
             "AP不足",
+            "队伍名称变更",
             "开始",
             "关注",
             "关注追加",
             "确定",
             "消耗AP",
+            /^消耗AP *\d+/,
             /^\d+个$/,
             /^最终登录.+/,
             /＋\d+个$/,
             /[\s\S]*续战/,
+            /.+截止$/,
+            /^event_branch.*/,
+            "com.bilibili.madoka.bilibili",
+            "连线超时",
+            "认证错误",//被踢下线
+            "错误",
         ],
         zh_Hant: [
             "請選擇支援角色",
@@ -2268,15 +2965,23 @@ function algo_init() {
             "回復確認",
             "進行回復",
             "AP不足",
+            "變更隊伍名稱",
             "開始",
             "關注",
             "追加關注",
             "決定",
             "消費AP",
+            /^消費AP *\d+/,
             /^\d+個$/,
             /^最終登入.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
+            /.+為止$/,
+            /^event_branch.*/,
+            "com.komoe.madokagp",
+            "連線超時",
+            "認證錯誤",//被踢下线
+            "錯誤",
         ],
         ja: [
             "サポートキャラを選んでください",
@@ -2285,148 +2990,370 @@ function algo_init() {
             "回復確認",
             "回復する",
             "AP不足",
+            "チーム名変更",
             "開始",
             "フォロー",
             "フォロー追加",
             "決定",
             "消費AP",
+            /^消費AP *\d+/,
             /^\d+個$/,
             /^最終ログイン.+/,
             /＋\d+個$/,
             /[\s\S]*周回/,
+            /.+まで$/,
+            /^event_branch.*/,
+            "com.aniplex.magireco",
+            "通信エラー",
+            "認証エラー",//这个是脑补的。实际上日服貌似只能引继，没有多端登录，所以也就没有被“顶号”、被踢下线……
+            "エラー",
         ],
     };
 
-    var string = {};
-    var druglimit = [NaN, NaN, NaN];
-    var usedrug = false;
+    function deleteDialogAndSetResult(openedDialogsNode, result) {
+        //调用origFunc.buildDialog时貌似又会触发一次dismiss，然后造成openedDialogsLock死锁，所以这里return来避免这个死锁
+        if (openedDialogsNode.alreadyDeleted.getAndIncrement() != 0) return;
 
-    function initialize() {
-        if (auto.root == null) {
-            toastLog("未开启无障碍服务");
-            //到这里还不会弹出申请开启无障碍服务的弹窗；后面执行到packageName()这个UI选择器时就会弹窗申请开启无障碍服务
+        let count = openedDialogsNode.count;
+
+        try {
+            openedDialogsLock.lock();
+            delete openedDialogs[""+count];
+        } catch (e) {
+            logException(e);
+            throw e;
+        } finally {
+            openedDialogsLock.unlock();
         }
-        var current = [];
-        if (packageName("com.bilibili.madoka.bilibili").findOnce()) {
-            log("检测为国服");
-            current = strings.zh_Hans;
-        } else if (packageName("com.komoe.madokagp").findOnce()) {
-            log("检测为台服");
-            current = strings.zh_Hant;
-        } else if (packageName("com.aniplex.magireco").findOnce()) {
-            log("检测为日服");
-            current = strings.ja;
-        } else {
-            toastLog("未在前台检测到魔法纪录");
-            threads.currentThread().interrupt();
-        }
-        for (let i = 0; i < strings.name.length; i++) {
-            string[strings.name[i]] = current[i];
-        }
-        usedrug = false;
-        for (let i = 0; i < 3; i++) {
-            druglimit[i] = limit["drug" + (i + 1)]
-                ? parseInt(limit["drug" + (i + 1) + "num"])
-                : 0;
-            if (druglimit[i] !== 0) {
-                usedrug = true;
+
+        openedDialogsNode.dialogResult.setAndNotify(result);
+    }
+    var dialogs = {
+        buildAndShow: function () { let openedDialogsNode = {}; try {
+            openedDialogsLock.lock();
+
+            let count = ++openedDialogs.openedDialogCount;
+            openedDialogs[""+count] = {node: openedDialogsNode};
+            openedDialogsNode.count = count;
+
+            var dialogType = arguments[0];
+            var title = arguments[1];
+            var content = arguments[2];
+            var prefill = content;
+            var callback1 = arguments[3];
+            var callback2 = arguments[4];
+            if (dialogType == "rawInputWithContent") {
+                prefill = arguments[3];
+                callback1 = arguments[4];
+                callback2 = arguments[5];
             }
-        }
-    }
+            if (title == null) title = "";
+            if (content == null) content = "";
+            if (prefill == null) prefill = "";
 
-    // isolate logic for future adaption
-    function ifUseDrug(index, count) {
-        // when drug is valid
-        if ((index < 2 && count > 0) || count > 4) {
-            // unlimited
-            if (isNaN(druglimit[index])) return true;
-            else if (druglimit[index] > 0) return true;
-        }
-    }
+            openedDialogsNode.dialogResult = threads.disposable();
 
-    function updateDrugLimit(index) {
-        if (!isNaN(druglimit[index])) {
-            druglimit[index]--;
-            limit["drug" + (index + 1) + "num"] = "" + druglimit[index];
-        }
-    }
+            let dialogParams = {title: title};
+            if (dialogType != "select") dialogParams.positive = "确定";
 
-    function refillAP() {
-        log("尝试使用回复药");
-        var revive_title_element = null;
-        var apinfo = null;
+            switch (dialogType) {
+                case "alert":
+                    dialogParams["content"] = content;
+                    break;
+                case "select":
+                    if (callback2 != null) dialogParams["negative"] = "取消";
+                    dialogParams["items"] = content;
+                    dialogParams["itemsSelectMode"] = "select";
+                    break;
+                case "confirm":
+                    dialogParams["negative"] = "取消";
+                    dialogParams["content"] = content;
+                    break;
+                case "rawInputWithContent":
+                    if (content != null && content != "") dialogParams["content"] = content;
+                case "rawInput":
+                    if (callback2 != null) dialogParams["negative"] = "取消";
+                    dialogParams["inputPrefill"] = prefill;
+                    break;
+            }
 
-        do {
-            let revive_title_attempt_max = 1500;
-            for (let attempt=0; attempt<revive_title_attempt_max; attempt++) {
-                log("等待AP药选择窗口出现...");
-                revive_title_element = find(string.revive_title, false);
-                if (revive_title_element != null) {
-                    log("AP药选择窗口已经出现");
+            let newDialog = origFunc.buildDialog(dialogParams);
+
+            openedDialogsNode.alreadyDeleted = threads.atomic(0);
+            newDialog = newDialog.on("dismiss", () => {
+                //dismiss应该在positive/negative/input之后，所以应该不会有总是传回null的问题
+                //其中，positive/input之后应该不会继续触发dismiss，只有negative才会
+                deleteDialogAndSetResult(openedDialogsNode, null);
+            });
+
+            if (dialogType != "rawInput" && dialogType != "rawInputWithContent" && dialogType != "select") {
+                newDialog = newDialog.on("positive", () => {
+                    if (callback1 != null) callback1();
+                    //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                    deleteDialogAndSetResult(openedDialogsNode, true);
+                });
+            }
+
+            switch (dialogType) {
+                case "alert":
+                    break;
+                case "select":
+                    newDialog = newDialog.on("item_select", (index, item, dialog) => {
+                        if (callback1 != null) callback1();
+                        deleteDialogAndSetResult(openedDialogsNode, index);
+                    });
+                    //不break
+                case "confirm":
+                    newDialog = newDialog.on("negative", () => {
+                        if (callback2 != null) callback2();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, false);
+                    });
+                    break;
+                case "rawInputWithContent":
+                case "rawInput":
+                    newDialog = newDialog.on("input", (input) => {
+                        if (callback1 != null) callback1();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, input);
+                    });
+                    newDialog = newDialog.on("negative", () => {
+                        if (callback2 != null) callback2();
+                        //如果origFunc.buildDialog是第一次触发dismiss并调用deleteDialogAndSetResult，仍然会死锁，所以这里也要避免这个问题
+                        deleteDialogAndSetResult(openedDialogsNode, null);
+                    });
+                    break;
+            }
+
+            openedDialogsNode.dialog = newDialog;
+
+            newDialog.show();
+        } catch (e) {
+            logException(e);
+            throw e;
+        } finally {
+            openedDialogsLock.unlock();
+        } return openedDialogsNode.dialogResult.blockedGet(); },
+        alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
+        select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
+        confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
+        rawInput: function(title, prefill, callback1, callback2) {return this.buildAndShow("rawInput", title, prefill, callback1, callback2)},
+        rawInputWithContent: function(title, content, prefill, callback1, callback2) {return this.buildAndShow("rawInputWithContent", title, content, prefill, callback1, callback2)},
+    };
+
+    var string = {};
+    var last_alive_lang = null; //用于游戏闪退重启
+
+    function detectGameLang() {
+        let detectedLang = null;
+        for (detectedLang in strings) {
+            if (detectedLang == "name") continue;
+            try {
+                if (findPackageName(strings[detectedLang][strings.name.findIndex((e) => e == "package_name")], 1000)) {
+                    if (detectedLang != last_alive_lang) log("区服", detectedLang);
                     break;
                 }
-                if (attempt == revive_title_attempt_max-1) {
-                    log("长时间等待后，AP药选择窗口仍然没有出现，退出");
-                    threads.currentThread().interrupt();
-                }
-                if (attempt % 5 == 0) {
-                    apinfo = getAP();
-                    if (apinfo) {
-                        log("当前AP:" + apinfo.value + "/" + apinfo.total);
-                        log("点击AP按钮");
-                        click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
-                    } else {
-                        log("检测AP失败");
-                    }
-                }
-                sleep(200);
-            }
-
-            var usedrug = false;
-            var numbers = matchAll(string.regex_drug, true);
-            var buttons = findAll(string.revive_button);
-            // when things seems to be correct
-            if (numbers.length == 3 && buttons.length == 3) {
-                for (let i = 0; i < 3; i++) {
-                    if (ifUseDrug(i, parseInt(getContent(numbers[i]).slice(0, -1)))) {
-                        log("使用第" + (i + 1) + "种回复药, 剩余" + druglimit[i] + "次");
-                        var bound = buttons[i].bounds();
-                        do {
-                            click(bound.centerX(), bound.centerY());
-                            // wait for confirmation popup
-                            var revive_popup_element = find(string.revive_popup, 2000);
-                        } while (revive_popup_element == null);
-                        bound = find(string.revive_confirm, true).bounds();
-                        while (revive_popup_element.refresh()) {
-                            log("找到确认回复窗口，点击确认回复");
-                            click(bound.centerX(), bound.centerY());
-                            waitElement(revive_popup_element, 5000);
-                        }
-                        log("确认回复窗口已消失");
-                        usedrug = true;
-                        updateDrugLimit(i);
-                        break;
-                    }
-                }
-            }
-            if (!usedrug && find(string.out_of_ap)) {
-                log("AP不足且未嗑药，退出");
-                threads.currentThread().interrupt();
-            }
-            apinfo = getAP();
-            log("当前AP:" + apinfo.value + "/" + apinfo.total);
-        } while (usedrug && limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul));
-        // now close the window
-        revive_title_element = find(string.revive_title, 2000); //不加这一行的时候，会出现卡在AP药选择窗口的问题（国服MuMu模拟器主线214上出现）
-        while (revive_title_element != null && revive_title_element.refresh()) {
-            log("关闭回复窗口");
-            bound = revive_title_element.parent().bounds();
-            click(bound.right, bound.top);
-            waitElement(revive_title_element, 5000);
+            } catch (e) {detectedLang = null;}
+            detectedLang = null;
         }
-        return usedrug;
+        if (detectedLang != null) {
+            //如果游戏不在前台的话，last_alive_lang和string不会被重新赋值
+            last_alive_lang = detectedLang;
+            for (let i = 0; i < strings.name.length; i++) {
+                string[strings.name[i]] = strings[last_alive_lang][i];
+            }
+            return detectedLang;
+        }
+        return null;
     }
 
+    //检测游戏是否闪退或掉线
+    //注意！调用后会重新检测区服，从而可能导致string、last_alive_lang变量被重新赋值
+    function isGameDead(wait) {
+        var startTime = new Date().getTime();
+        var detectedLang = null;
+        do {
+            if (last_alive_lang != null) {
+                let current_package_name = null;
+                try {
+                    auto.root.refresh();
+                    if (auto.root != null) {
+                        current_package_name = auto.root.packageName();
+                    }
+                } catch (e) {current_package_name = null;};
+                if (current_package_name == string.package_name) {
+                    detectedLang = last_alive_lang;
+                    break;
+                }
+            } else {
+                detectedLang = detectGameLang();
+                if (detectedLang != null) break;
+            }
+            sleep(50);
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+
+        if (detectedLang == null) {
+            log("游戏已经闪退");
+            return "crashed";
+        }
+
+        do {
+            let found_popup = null;
+            for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
+                try {
+                    found_popup = findPopupInfoDetailTitle(string[error_type]);
+                } catch (e) {
+                    logException(e);
+                    found_popup = null;
+                }
+                if (found_popup != null) break;
+            }
+            if (found_popup) {
+                log("游戏已经断线/登出/出错,并强制回首页");
+                return "logged_out";
+            }
+        } while (wait === true || (wait && new Date().getTime() < startTime + wait));
+
+        return false;
+    }
+
+    function getFragmentViewBounds() {
+        if (string == null || string.package_name == null || string.package_name == "") {
+            try {
+                throw new Error("getFragmentViewBounds: null/empty string.package_name");
+            } catch (e) {
+                logException(e);
+            }
+            let sz = getWindowSize();
+            return new android.graphics.Rect(0, 0, sz.x, sz.y);
+        }
+        let bounds = null;
+        try {
+            bounds = selector()
+                .packageName(string.package_name)
+                .className("android.widget.EditText")
+                .algorithm("BFS")
+                .findOnce()
+                .parent()
+                .bounds();
+        } catch (e) {
+            logException(e);
+            log("getFragmentViewBounds出错,使用getWindowSize作为替代");
+            let sz = getWindowSize();
+            return new android.graphics.Rect(0, 0, sz.x, sz.y);
+        }
+        return bounds;
+    }
+
+    var screen = {width: 0, height: 0, type: "normal"};
+    var gamebounds = null;
+    var gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
+
+    function detectScreenParams() {
+        //开始脚本前可能转过屏之类的，所以参数需要先重置
+        //如果中途有问题有问题，最终就不会修改之前的参数
+        let detected_screen = {width: 0, height: 0, type: "normal"};
+        let detected_gamebounds = null;
+        let detected_gameoffset = {x: 0, y: 0, center: {y: 0}, bottom: {y: 0}};
+
+        detected_screen.width = device.width;
+        detected_screen.height = device.height;
+        if (detected_screen.height > detected_screen.width) {
+            //魔纪只能横屏运行
+            let temp = detected_screen.height;
+            detected_screen.height = detected_screen.width;
+            detected_screen.width = temp;
+        }
+        if (detected_screen.width * 9 > detected_screen.height * 16) {
+            detected_screen.type = "wider";
+            scalerate = detected_screen.height / 1080;
+            detected_gameoffset.x = parseInt((detected_screen.width - (1920 * scalerate)) / 2);
+        } else {
+            scalerate = detected_screen.width / 1920;
+            if (detected_screen.width * 9 == detected_screen.height * 16) {
+                detected_screen.type = "normal";
+            } else {
+                detected_screen.type = "higher";
+                detected_gameoffset.bottom.y = parseInt(detected_screen.height - (1080 * scalerate));
+                detected_gameoffset.center.y = parseInt((detected_screen.height - (1080 * scalerate)) / 2);
+            }
+        }
+        log("detected_screen", detected_screen, "detected_gameoffset", detected_gameoffset);
+
+        let element = selector().packageName(string.package_name).className("android.widget.EditText").algorithm("BFS").findOnce();
+        log("EditText bounds", element.bounds());
+        element = element.parent();
+        detected_gamebounds = element.bounds();
+        log("detected_gamebounds", detected_gamebounds);
+
+        //刘海屏
+        //(1)假设发生画面裁切时，实际显示画面上下（或左右）被裁切的宽度一样（刘海总宽度的一半），
+        let isGameoffsetAdjusted = false;
+        if (device.sdkInt >= 28) {
+            //Android 9或以上有原生的刘海屏API
+            //处理转屏
+            try {
+                cutoutParamsLock.lock();
+                var initialRotation = limit.cutoutParams != null ? limit.cutoutParams.rotation : null;
+                var initialCutout = limit.cutoutParams != null ? limit.cutoutParams.cutout : null;
+            } catch (e) {
+                logException(e);
+                throw e;
+            } finally {
+                cutoutParamsLock.unlock();
+            }
+            if (initialRotation != null && initialCutout != null) {
+                let display = context.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
+                let currentRotation = display.getRotation();
+                log("currentRotation", currentRotation, "initialRotation", initialRotation);
+
+                if (currentRotation != null && initialRotation != null
+                    && currentRotation >= 0 && currentRotation <= 3
+                    && initialRotation >= 0 && initialRotation <= 3)
+                {
+                    let relativeRotation = (4 + currentRotation - initialRotation) % 4;
+                    log("relativeRotation", relativeRotation);
+
+                    let safeInsets = {};
+                    for (let key of ["Left", "Top", "Right", "Bottom"]) {
+                        safeInsets[key] = initialCutout["getSafeInset"+key]();
+                    }
+                    log("safeInsets before rotation", safeInsets);
+
+                    for (let i=0; i<relativeRotation; i++) {
+                        //顺时针旋转相应的次数
+                        let temp = safeInsets.Left;
+                        safeInsets.Left = safeInsets.Top;
+                        safeInsets.Top = safeInsets.Right;
+                        safeInsets.Right = safeInsets.Bottom;
+                        safeInsets.Bottom = temp;
+                    }
+                    log("safeInsets after rotation", safeInsets);
+
+                    detected_gameoffset.x += (safeInsets.Left - safeInsets.Right) / 2;
+                    detected_gameoffset.y += (safeInsets.Top - safeInsets.Bottom) / 2;
+
+                    isGameoffsetAdjusted = true;
+                }
+            }
+        }
+        log("isGameoffsetAdjusted", isGameoffsetAdjusted);
+        if (!isGameoffsetAdjusted) {
+            //Android 8.1或以下没有刘海屏API；或者因为未知原因虽然是Android 9或以上但没有成功获取刘海屏参数
+            //(2)假设detected_gamebounds就是实际显示的游戏画面(模拟器测试貌似有时候不对)
+            //所以结合(1)考虑，游戏画面中点减去屏幕中点就得到偏移量
+            //（因为刘海宽度未知，所以不能直接用游戏左上角当偏移量）
+            detected_gameoffset.x += parseInt(detected_gamebounds.centerX() - (detected_screen.width / 2));
+            detected_gameoffset.y += parseInt(detected_gamebounds.centerY() - (detected_screen.height / 2));
+        }
+        log("detected_gameoffset", detected_gameoffset);
+
+        return {
+            screen: detected_screen,
+            gamebounds: detected_gamebounds,
+            gameoffset: detected_gameoffset
+        };
+    }
 
     function initialize(dontStopOnError) {
         if (auto.service == null || auto.root == null) {
@@ -2801,68 +3728,77 @@ function algo_init() {
             return;
         }
         var last=Date.now();
-
         initialize();
-        var state = STATE_MENU;
-        var battlename = "";
-        var charabound = null;
-        var tryusedrug = true;
-        var battlepos = null;
-        var inautobattle = false;
+        var pkgName = auto.root.packageName();
+        var state = STATE_BATTLE;
+        if(match(string.regex_until)) state = STATE_HOME;
+        else if(find(string.support)) state = STATE_SUPPORT;
+        else if(findID("nextPageBtn")) state = STATE_TEAM;
+        else if(find("BATTLE 1")) state=STATE_MENU;
         while (true) {
             switch (state) {
-                case STATE_MENU: {
-                    waitAny(
-                        [
-                            () => find(string.support),
-                            () => findID("helpBtn"),
-                            () => match(/^BATTLE.+/),
-                        ],
-                        3000
-                    );
-                    // exit condition
+                case STATE_LOGIN:{
+                    if(match(string.regex_until)){
+                        state=STATE_HOME;
+                        log("进入主页面");
+                        break;
+                    }
+                    if(find("BATTLE 1")){
+                        state=STATE_MENU;
+                        log("进入关卡选择");
+                        break;
+                    }
                     if (find(string.support)) {
                         state = STATE_SUPPORT;
                         log("进入助战选择");
                         break;
                     }
-                    // if AP is not enough
-                    if (findID("popupInfoDetailTitle")) {
-                        // try use drug
-                        tryusedrug = refillAP();
-                        break; //下一轮循环后会切换到助战选择状态，从而避免捕获关卡坐标后，错把助战当做关卡来误点击
+                    if (findID("nextPageBtn")) {
+                        state = STATE_TEAM;
+                        log("进入队伍调整");
+                        break;
                     }
-                    // if need to click to enter battle
-                    let button = find(string.battle_confirm);
-                    if (button) {
-                        log("点击确认进入battle");
-                        let bound = button.bounds();
-                        click(bound.centerX(), bound.centerY());
-                        // wait for support screen for 5 seconds
-                        find(string.support, 5000);
-                    } else if (battlepos) {
-                        log("尝试点击关卡坐标");
-                        click(battlepos.x, battlepos.y);
-                        waitAny(
-                            [() => find(string.battle_confirm), () => find(string.support)],
-                            5000
-                        );
+                    let window=findID("android:id/content")
+                    if(window){
+                        click(convertCoords(clickSets.recover_battle))
                     }
-                    // click battle if available
-                    else if (battlename) {
-                        let battle = find(battlename);
-                        if (battle) {
-                            log("尝试点击关卡名称");
-                            let bound = battle.bounds();
-                            click(bound.centerX(), bound.centerY());
-                            waitAny(
-                                [() => find(string.battle_confirm), () => find(string.support)],
-                                5000
-                            );
+                    break;
+                }
+                case STATE_HOME:{
+                    if(find("BATTLE 1")){
+                        state=STATE_MENU;
+                        log("进入关卡选择");
+                        break;
+                    }
+                    let found_popup = findPopupInfoDetailTitle();
+                    if (found_popup != null) {
+                        log("尝试关闭弹窗 标题: \""+found_popup.title+"\"");
+                        click(found_popup.close);
+                    }
+                    let element=match(string.regex_until)
+                    if(element){
+                        click(element.bounds().centerX(),element.bounds().centerY())
+                    }
+                    break;
+                }
+
+                case STATE_MENU: {
+                    if (find(string.support)) {
+                        state = STATE_SUPPORT;
+                        log("进入助战选择");
+                        break;
+                    }
+                    let element=find("BATTLE 1")
+                    if(element){
+                        if(element.bounds().top<element.bounds().bottom){
+                            click(element.bounds().centerX(),element.bounds().centerY())
                         }
-                    } else {
-                        log("等待捕获关卡坐标");
-                        battlepos = capture();
+                        else{
+                            let sx=element.bounds().centerX()
+                            let syfrom=getWindowSize().y-100
+                            let syto=parseInt(syfrom/2)
+                            swipe(sx, syfrom, sx, syto, 100)
+                        }
                     }
                     break;
                 }
@@ -2874,57 +3810,13 @@ function algo_init() {
                         log("进入队伍调整");
                         break;
                     }
-                    // if we need to refill AP
-                    let apinfo = getAP();
-                    let apcost = getCostAP();
-                    log(
-                        "消费AP",
-                        apcost,
-                        "用药",
-                        usedrug,
-                        "当前AP",
-                        apinfo.value,
-                        "AP上限",
-                        apinfo.total
-                    );
-                    if (
-                        ((limit.useAuto && apinfo.value < apinfo.total * parseInt(limit.drugmul)) ||
-                            (apcost && apinfo.value < apcost * 2)) &&
-                        usedrug &&
-                        tryusedrug
-                    ) {
-                        // open revive window
-                        let revive_window;
-                        do {
-                            click(apinfo.bounds.centerX(), apinfo.bounds.centerY());
-                            revive_window = findID("popupInfoDetailTitle", 5000);
-                        } while (!revive_window);
-                        // try use drug
-                        tryusedrug = refillAP();
-                    }
-                    // save battle name if needed
-                    let battle = match(/^BATTLE.+/);
-                    if (battle) {
-                        battlename = getContent(battle);
-                    }
                     // pick support
                     let ptlist = getPTList();
                     let playercount = matchAll(string.regex_lastlogin).length;
                     log("候选数量" + ptlist.length + ",玩家数量" + playercount);
                     if (ptlist.length) {
-                        let bound;
-                        if (
-                            ptlist.length > playercount &&
-                            (limit.justNPC || ptlist[ptlist.length - 1].value > ptlist[0].value)
-                        ) {
-                            log("选择NPC助战");
-                            // NPC comes in the end of list if available
-                            bound = ptlist[ptlist.length - 1].bounds;
-                        } else {
-                            log("选择玩家助战");
-                            // higher PT bonus goes ahead
-                            bound = ptlist[0].bounds;
-                        }
+                        // front with more pt
+                        let bound = ptlist[0].bounds;
                         click(bound.centerX(), bound.centerY());
                         // wait for start button for 5 seconds
                         findID("nextPageBtn", 5000);
@@ -2932,30 +3824,15 @@ function algo_init() {
                     }
                     // if unexpectedly treated as long touch
                     if (findID("detailTab")) {
-                        log("误点击，尝试返回");
-                        let element = className("EditText").findOnce();
-                        if (element && element.refresh()) {
-                            let bound = element.bounds();
-                            click(bound.left, bound.top);
-                        }
+                        log("点击变长按，打开了detailTab，尝试返回");
+                        click(convertCoords(clickSets.back));
                         find(string.support, 5000);
                     }
                     break;
                 }
 
                 case STATE_TEAM: {
-                    var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
-                    if (limit.useAuto) {
-                        if (element) {
-                            inautobattle = true;
-                        } else {
-                            element = findID("nextPageBtn");
-                            if (element) {
-                                inautobattle = false;
-                                log("未发现自动续战，改用标准战斗");
-                            }
-                        }
-                    }
+                    var element = findID("nextPageBtnLoop");
                     // exit condition
                     if (findID("android:id/content") && !element) {
                         state = STATE_BATTLE;
@@ -2971,42 +3848,98 @@ function algo_init() {
                     break;
                 }
 
-                case STATE_BATTLE: {
-                    // exit condition
-                    if (findID("charaWrap")) {
-                        state = STATE_REWARD_CHARACTER;
-                        log("进入角色结算");
-                        break;
+                case STATE_BATTLE:{
+                    if (!packageName(pkgName).findOnce()) {
+                        app.launch(pkgName);
+                        sleep(2000);
+                        last=Date.now();
+                        state=STATE_LOGIN;
+                        log("重启游戏进程，进入登录页面");
+                    } else if(((Date.now()>last+1000*60*60) && findID("charaWrap"))||(Date.now()>last+1000*60*65)){
+                        log("尝试关闭游戏进程");
+                        backtoMain();
+                        sleep(5000)
+                        killBackground(pkgName);
+                        sleep(10000)
+                    } else if (limit.autoReconnect && !findID("charaWrap")) {
+                        clickReconnect();
+                        //slow down
+                        findID("charaWrap",2000);
                     }
                     break;
                 }
+            }
+            sleep(1000);
+        }
+    }
 
-                case STATE_REWARD_CHARACTER: {
-                    // exit condition
-                    if (findID("hasTotalRiche")) {
-                        state = STATE_REWARD_MATERIAL;
-                        log("进入掉落结算");
-                        break;
-                    }
-                    let element = findID("charaWrap");
-                    if (element) {
-                        if (element.bounds().height() > 0) charabound = element.bounds();
-                        let targetX = element.bounds().right;
-                        let targetY = element.bounds().bottom;
-                        // click if upgrade
-                        element = find("OK");
-                        if (element) {
-                            log("点击玩家升级确认");
-                            let bound = element.bounds();
-                            targetX = bound.centerX();
-                            targetY = bound.centerY();
-                        }
-                        click(targetX, targetY);
-                    }
-                    sleep(500);
-                    break;
+    function killGame(specified_package_name) {
+        if (specified_package_name == null && last_alive_lang == null) {
+            toastLog("不知道要强关哪个区服，退出");
+            stopThread();
+        }
+        var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
+        toastLog("强关游戏...");
+        if (limit.privilege && limit.rootForceStop) {
+            log("使用am force-stop命令...");
+            while (true) {
+                privShell("am force-stop "+name);
+                sleep(1000);
+                if (isGameDead(2000)) break;
+                log("游戏仍在运行,再次尝试强行停止...");
+            }
+        } else {
+            toastLog("为了有权限杀死进程,需要先把游戏切到后台...");
+            while (true) {
+                backtoMain();
+                sleep(2000);
+                if (detectGameLang() == null) break;
+                log("游戏仍在前台...");
+            };
+            log("再等待2秒...");
+            sleep(2000);
+            killBackground(name);
+            log("已调用杀死后台进程，等待5秒...")
+            sleep(5000);
+        }
+    }
+
+    function reLaunchGame(specified_package_name) {
+        if (specified_package_name == null && last_alive_lang == null) {
+            toastLog("不知道要重启哪个区服,退出");
+            stopThread();
+        }
+        toastLog("重新启动游戏...");
+        var it = new Intent();
+        var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
+        log("app.launch("+name+")");
+        app.launch(name);//是不是真的启动成功，在外边检测
+        log("重启游戏完成");
+        return true;
+    }
+
+    function reLogin() {
+        //循环点击继续战斗按钮位置（和放弃断线重连按钮位置重合），直到能检测到AP
+        if (last_alive_lang == null) {
+            toastLog("不知道要重新登录哪个区服,退出");
+            stopThread();
+        }
+
+        var startTime = new Date().getTime();
+
+        toastLog("重新登录...");
+        while (true) {
+            if (isGameDead(1000) == "crashed") {
+                log("检测到游戏再次闪退,无法继续登录");
+                return false;
+            }
+            var found_popup = findPopupInfoDetailTitle(null, 1000);
+            if (found_popup != null) {
+                log("发现弹窗 标题: \""+found_popup.title+"\"");
+                let expected_titles = [];
+                for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
+                    expected_titles.push(string[error_type]);
                 }
-
                 let matched_title = expected_titles.find((val) => val == found_popup.title);
                 if (matched_title != null) {
                     log("弹窗标题\""+matched_title+"\",没有关闭按钮,只有回首页按钮,点击回首页...");
@@ -6944,46 +7877,735 @@ function algo_init() {
     }
 
 
-
-                case STATE_REWARD_MATERIAL: {
-                    // exit condition
-                    let element = findID("hasTotalRiche");
-                    if (findID("android:id/content") && !element) {
-                        state = STATE_REWARD_POST;
-                        log("结算完成");
-                        break;
-                    }
-                    // try click rebattle
-                    element = findID("questRetryBtn");
-                    if (element) {
-                        log("点击再战按钮");
-                        let bound = element.bounds();
-                        click(bound.centerX(), bound.centerY());
-                    } else if (charabound) {
-                        log("点击再战区域");
-                        click(charabound.right, charabound.bottom);
-                    }
-                    sleep(500);
+    //放缩参考图像以适配当前屏幕分辨率
+    var resizeKnownImgsDone = false;
+    function resizeKnownImgs() {
+        if (resizeKnownImgsDone) return;
+        let hasError = false;
+        for (let imgName in knownImgs) {
+            let newsize = [0, 0];
+            let knownArea = null;
+            if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
+                knownArea = knownFirstDiskCoords["action"];
+            } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood") || imgName.startsWith("none")) {
+                knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
+            } else if (imgName == "connectIndicatorBtnDown") {
+                knownArea = knownFirstDiskCoords["connectIndicator"];
+            } else if (imgName == "skillLocked" || imgName.startsWith("skillEmpty")) {
+                knownArea = knownFirstSkillCoords;
+            } else if (imgName == "OKButton" || imgName == "OKButtonGray") {
+                knownArea = knownOKButtonCoords;
+            } else {
+                knownArea = knownFirstStandPointCoords.our[imgName];
+                if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
+                if (knownArea == null) knownArea = knownMirrorsWinLoseCoords[imgName];
+            }
+            if (knownArea != null) {
+                let convertedArea = getConvertedAreaNoCutout(knownArea); //刘海屏的坐标转换会把左上角的0,0加上刘海宽度，用在缩放图片这里会出错，所以要避免这个问题
+                log("缩放图片 imgName", imgName, "knownArea", knownArea, "convertedArea", convertedArea);
+                if (knownImgs[imgName] == null) {
+                    hasError = true;
+                    log("缩放图片出错 imgName", imgName);
                     break;
                 }
+                let resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(convertedArea), getAreaHeight(convertedArea)]);
+                knownImgs[imgName].recycle();
+                knownImgs[imgName] = resizedImg;
+            } else {
+                hasError = true;
+                log("缩放图片出错 imgName", imgName);
+                break;
+            }
+        }
+        resizeKnownImgsDone = !hasError;
+    }
 
-                case STATE_REWARD_POST: {
-                    // wait 5 seconds for transition
-                    match(/\d*\/\d*/, 5000);
-                    // exit condition
-                    if (findID("nextPageBtn")) {
-                        state = STATE_SUPPORT;
-                        log("进入助战选择");
-                        break;
-                    } else if (match(/\d*\/\d*/)) {
-                        state = STATE_MENU;
-                        log("进入关卡选择");
-                        break;
-                    } else if (inautobattle) {
-                        state = STATE_BATTLE;
+
+
+    function mirrorsSimpleAutoBattleMain() {
+        initialize();
+
+        var battleResultIDs = ["ArenaResult", "enemyBtn", "ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
+        var isBattleResult = false;
+
+        var battleEndIDs = ["matchingWrap", "matchingList"];
+
+        //简单镜层自动战斗
+        while (true) {
+            for (let n=0; n<8; n++) {
+                log("n="+n);
+                let isDiskClickable = [(n&4)==0, (n&2)==0, (n&1)==0];
+                let breakable = false;
+                for (let pass=1; pass<=4; pass++) {
+                    for (let i=1; i<=3; i++) {
+                        for (let resID of battleEndIDs) {
+                            if (findID(resID)) {
+                                log("找到", resID, ", 结束简单镜层自动战斗");
+                                return;
+                            } else {
+                                log("未找到", resID);
+                            }
+                        }
+                        isBattleResult = false;
+                        battleResultIDs.forEach(function (val) {
+                            if (findID(val, false) != null) {
+                                log("找到", val);
+                                isBattleResult = true;
+                            }
+                        });
+                        if (!isBattleResult) {
+                            if (isDiskClickable[i-1] || (pass >= 1 && pass <= 2)) {
+                                click(convertCoords(clickSetsMod["battlePan"+i]));
+                                sleep(1000);
+                            }
+                        } else {
+                            breakable = true;
+                            break;
+                        }
+                    }
+                    if (breakable) break;
+                }
+                if (breakable) break;
+            }
+
+            //点掉镜层结算页面
+            isBattleResult = false;
+            battleResultIDs.forEach(function (val) {
+                if (findID(val, false) != null) {
+                    log("找到", val);
+                    isBattleResult = true;
+                }
+            });
+            if (isBattleResult) {
+                click(convertCoords(clickSetsMod.levelup));
+            }
+            sleep(3000);
+
+            //点掉副本结算页面（如果用在副本而不是镜层中）
+            if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
+                id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
+                //clickResult();
+                toastLog("战斗已结束进入结算");
+                break;
+            }
+        }
+    }
+
+    function mirrorsAutoBattleMain() {
+        if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
+            toastLog("需要root或shizuku adb权限");
+            if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
+                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+            }
+            return;
+        }
+
+        downloadAllImages();
+
+        initialize();
+
+        log("缩放图片...");
+        resizeKnownImgs();//必须放在initialize后面
+        log("图片缩放完成");
+
+        if (limit.useCVAutoBattle && limit.rootScreencap) {
+            while (true) {
+                log("setupBinary...");
+                setupBinary();
+                if (binarySetupDone) break;
+                log("setupBinary失败,3秒后重试...");
+                sleep(3000);
+            }
+        } else if (limit.useCVAutoBattle && (!limit.rootScreencap)) {
+            startScreenCapture();
+        }
+
+        //利用截屏识图进行稍复杂的自动战斗（比如连携）
+        //开始一次镜界自动战斗
+        turn = 0;
+        while(true) {
+            if(!waitForOurTurn()) break;
+            //我的回合，抽盘
+            turn++;
+
+            if (limit.CVAutoBattleClickAllSkills) {
+                if (turn >= 3) {
+                    //一般在第3回合后主动技能才冷却完毕
+                    //闭着眼放出所有主动技能
+                    clickAllSkills();
+                }
+            }
+
+            //扫描行动盘和战场信息
+            scanDisks();
+            scanBattleField("our");
+            scanBattleField("their");
+
+            //优先打能克制我方的属性
+            let disadvAttribs = [];
+            disadvAttribs = getAdvDisadvAttribsOfStandPoints(getAliveStandPoints("our"), "adv");
+            let disadvAttrEnemies = [];
+            disadvAttribs.forEach((attrib) => getEnemiesByAttrib(attrib).forEach((enemy) => disadvAttrEnemies.push(enemy)));
+            if (disadvAttrEnemies.length > 0) {
+                let disadvAttribsOfEnemies = [];
+                disadvAttrEnemies.forEach(function (enemy) {
+                    if (disadvAttribsOfEnemies.find((attrib) => attrib == enemy.attrib) == null) {
+                        disadvAttribsOfEnemies.push(enemy.attrib);
+                    }
+                });
+                if (disadvAttribsOfEnemies.length == 1) {
+                    log("对面只有一种能克制我方的强势属性，优先集火");
+                    aimAtEnemy(disadvAttrEnemies[0]);
+                } else {
+                    log("对面不止一种能克制我方的强势属性");
+                    if (allActionDisks.find((disk) => disk.connectable) != null) {
+                        log("我方可以发动连携");
+                        let ourAttribs = [];
+                        getAliveStandPoints("our").forEach(function (standPoint) {
+                            if (ourAttribs.find((attrib) => attrib == standPoint.attrib) == null) {
+                                //不是重复的
+                                ourAttribs.push(standPoint.attrib);
+                            }
+                        });
+                        let ourDesiredAttribs = [];
+                        ourAttribs.forEach(function (attrib) {
+                            let attribs = getAdvDisadvAttribs(attrib, "disadv");
+                            if (attribs.length == 1) ourDesiredAttribs.push(attribs[0]);
+                        });
+                        let ourUndesiredAttribs = [];
+                        ourAttribs.forEach(function (attrib) {
+                            let attribs = getAdvDisadvAttribs(attrib, "adv");
+                            if (attribs.length == 1) ourUndesiredAttribs.push(attribs[0]);
+                        });
+                        log("寻找能被我方场上任意角色克制的敌人...");
+                        let desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                            ourDesiredAttribs.find((attrib) => attrib == enemy.attrib) != null
+                        );
+                        if (desiredEnemy != null) {
+                            log("找到能被我方场上任意角色克制的敌人");
+                            aimAtEnemy(desiredEnemy);
+                        } else {
+                            log("退而求其次，找至少不会克制我方的敌人...");
+                            let desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                                ourUndesiredAttribs.find((attrib) => attrib == enemy.attrib) == null
+                            );
+                            if (desiredEnemy != null) {
+                                log("找到至少不会克制我方的敌人");
+                                aimAtEnemy(desiredEnemy);
+                            } else {
+                                log("只有克制我方的敌人，没办法");
+                                aimAtEnemy(disadvAttrEnemies[0]);
+                            }
+                        }
+                    } else {
+                        log("我方没有连携可供发动");
+                        let sameCharaDisks = findSameCharaDisks(allActionDisks);
+                        let ourFirstDiskAttrib = null;
+                        if (sameCharaDisks.length >= 3) {
+                            log("我方可以选出Puella Combo盘");
+                            ourFirstDiskAttrib = sameCharaDisks[0].attrib;
+                        } else {
+                            log("我方选不出Puella Combo盘");
+                            let accelDisk = findSameActionDisks(allActionDisks, "accel");
+                            if (accelDisk != null) {
+                                log("没有连携也没有Puella Combo，Accel盘应会是第一个盘");
+                                ourFirstDiskAttrib = accelDisk.attrib;
+                            } else {
+                                log("连Accel盘也没有，就看顺位第一个盘吧");
+                                ourFirstDiskAttrib = allActionDisks[0].attrib;
+                            }
+                        }
+                        log("在对面找能被我方属性克制的敌人，或是至少不克制我方的...");
+                        let undesiredEnemyAttribs = getAdvDisadvAttribs(ourFirstDiskAttrib, "adv");
+                        let desiredEnemyAttribs = getAdvDisadvAttribs(ourFirstDiskAttrib, "disadv");
+                        log("寻找能被我方克制的敌人...");
+                        let desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                            desiredEnemyAttribs.find((attrib) => attrib == enemy.attrib) != null
+                        );
+                        if (desiredEnemy != null) {
+                            log("找到能被我方克制的敌人");
+                            aimAtEnemy(desiredEnemy);
+                        } else {
+                            log("退而求其次，不克制我方就行...");
+                            desiredEnemy = disadvAttrEnemies.find((enemy) =>
+                                undesiredEnemyAttribs.find((attrib) => attrib == enemy.attrib) == null
+                            );
+                            if (desiredEnemy != null) {
+                                log("找到不克制我方的敌人");
+                                aimAtEnemy(desiredEnemy);
+                            } else {
+                                log("找不到，没办法，只能逆属性攻击了");
+                                aimAtEnemy(disadvAttrEnemies[0]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (disadvAttrEnemies.length == 0) {
+                //敌方没有能克制我方的属性，推后打被我方克制的属性
+                let advAttribs = [];
+                advAttribs = getAdvDisadvAttribsOfStandPoints(getAliveStandPoints("our"), "disadv");
+                let advAttrEnemies = [];
+                if (advAttribs.length > 0) advAttrEnemies = getEnemiesByAttrib(advAttribs[0]);
+                if (advAttrEnemies.length > 0) avoidAimAtEnemies(advAttrEnemies);
+            }
+
+            //提前把不被克制的盘排到前面
+            //这样一来，如果后面既没有接连携的角色更没有进一步（同角色）的Blast Combo
+            //也没有无连携的Puella Combo和进一步（同角色）的Blast Combo
+            //应该就会顺位选到它们
+            let nonDisadvAttribDisks = findNonDisadvAttribDisks(allActionDisks, [battleField["their"].lastAimedAtEnemy]);
+            prioritiseDisks(nonDisadvAttribDisks);
+
+            //在所有盘中找第一个能连携的盘
+            let connectableDisks = [];
+            connectableDisks = getConnectableDisks(allActionDisks);
+
+            if (connectableDisks.length > 0) {
+                //如果有连携，第一个盘上连携
+                let selectedDisk = connectableDisks[0];
+                //连携尽量用blast盘
+                let blastConnectableDisks = findSameActionDisks(connectableDisks, "blast");
+                if (blastConnectableDisks.length > 0) selectedDisk = blastConnectableDisks[0];
+                prioritiseDisks([selectedDisk]); //将当前连携盘从选盘中排除
+                connectDisk(selectedDisk);
+                //上连携后，尽量用接连携的角色
+                let connectAcceptorDisks = findDisksByCharaID(allActionDisks, selectedDisk.connectedTo);
+                prioritiseDisks(connectAcceptorDisks);
+                //连携的角色尽量打出Blast Combo
+                let blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
+                prioritiseDisks(blastDisks);
+            } else {
+                //没有连携
+                //先找Puella Combo
+                let candidateDisks = allActionDisks;
+                let sameCharaDisks = findSameCharaDisks(allActionDisks);
+                if (sameCharaDisks.length >= 3) {
+                    candidateDisks = sameCharaDisks;
+                    prioritiseDisks(sameCharaDisks);
+                }
+                //再依次找Blast/Accel/Charge Combo
+                let comboDisks = [];
+                for (let action of ["blast", "accel", "charge"]) {
+                    comboDisks = findSameActionDisks(candidateDisks, action);
+                    if (comboDisks.length >= 3) {
+                        prioritiseDisks(comboDisks);
                         break;
                     }
+                }
+                let ACBDisks = [];
+                if (comboDisks.length < 3) {
+                    //再找ACB
+                    //先找Puella Combo内的ACB，再找混合ACB
+                    let ACBAttemptMax = sameCharaDisks.length >= 3 ? 2 : 1;
+                    candidateDisks = sameCharaDisks.length >= 3 ? sameCharaDisks : allActionDisks;
+                    for (let ACBAttempt=0; ACBAttempt<ACBAttemptMax; ACBAttempt++) {
+                        for (let action of ["accel", "charge", "blast"]) {
+                            let foundDisks = findSameActionDisks(candidateDisks, action);
+                            if (foundDisks.length > 0) ACBDisks.push(foundDisks[0]);
+                        }
+                        if (ACBDisks.length >= 3) {
+                            prioritiseDisks(ACBDisks);
+                            break;
+                        } else if (sameCharaDisks.length >= 3) {
+                            //有Puella Combo但Puella Combo内没有ACB，那就Puella Combo
+                            prioritiseDisks(sameCharaDisks);
+                            break;
+                        }
+                        candidateDisks = allActionDisks;
+                    }
+                }
+            }
 
+            //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
+            for (let i=clickedDisksCount; i<3; i++) {
+                let diskToClick = getDiskByPriority(allActionDisks, ordinalWord[i]);
+                //有时候点连携盘会变成长按拿起又放下，改成拖出去连携来避免这个问题
+                if (diskToClick.connectable) {
+                    //重新识别盘是否可以连携
+                    //（比如两人互相连携，A=>B后，A本来可以连携的盘现在已经不能连携了，然后B=>A后又会用A的盘，这时很显然需要重新识别）
+                    let isConnectableDown = isDiskConnectableDown(compatCaptureScreen(), diskToClick.position); //isConnectableDown.down==true也有可能是只剩一人无法连携的情况，
+                    diskToClick.connectable = isConnectableDown.connectable && (!isConnectableDown.down); //所以这里还无法区分盘是否被按下，但是可以排除只剩一人无法连携的情况
+                }
+                if (diskToClick.connectable) {
+                    connectDisk(diskToClick);
+                } else {
+                    clickDisk(diskToClick);
+                }
+            }
+        }
+
+        //战斗结算
+        //点掉结算界面
+        clickMirrorsBattleResult();
+        //调查无法判定镜层战斗输赢的问题
+        //for (i=0; i<failedScreenShots.length; i++) {
+        //    if (failedScreenShots[i] != null) {
+        //        let filename = "/sdcard/1/failed_"+i+".png";
+        //        log("saving image... "+filename);
+        //        images.save(failedScreenShots[i], filename);
+        //        log("done. saved: "+filename);
+        //    }
+        //}
+
+        //回收所有图片
+        recycleAllImages();
+    }
+
+
+
+    var knownFirstMirrorsOpponentScoreCoords = {
+        //[1246,375][1357,425]
+        //[1246,656][1357,706]
+        //[1246,937][1357,988]
+        topLeft: {x: 1236, y: 370, pos: "center"},
+        bottomRight: {x: 1400, y: 430, pos: "center"},
+        distance: 281
+    }
+    //在匹配到的三个对手中，获取指定的其中一个（1/2/3）的战力值
+    function getMirrorsScoreAt(position) {
+        let distance = knownFirstMirrorsOpponentScoreCoords.distance * (position - 1);
+        let knownArea = {
+            topLeft: {x: 0, y: distance, pos: "center"},
+            bottomRight: {x: 0, y: distance, pos: "center"}
+        }
+        for (point in knownArea) {
+            for (key in knownArea.topLeft) {
+                knownArea[point][key] += knownFirstMirrorsOpponentScoreCoords[point][key];
+            }
+        }
+        let convertedArea = getConvertedArea(knownArea);
+        let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
+        for (let i=0; i<uiObjArr.length; i++) {
+            let uiObj = uiObjArr[i];
+            let score = parseInt(getContent(uiObj));
+            if (isNaN(score)) continue;
+            log("getMirrorsScoreAt position", position, "score", score);
+            return score;
+        }
+        log("getMirrorsScoreAt position", position, "return 0");
+        return 0;
+    }
+
+    var knownMirrorsSelfScoreCoords = {
+        //[0,804][712,856]
+        topLeft: {x: 0, y: 799, pos: "bottom"},
+        bottomRight: {x: 717, y: 861, pos: "bottom"}
+    }
+    //获取自己的战力值
+    function getMirrorsSelfScore() {
+        let convertedArea = getConvertedArea(knownMirrorsSelfScoreCoords);
+        let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
+        for (let i=0; i<uiObjArr.length; i++) {
+            let uiObj = uiObjArr[i];
+            let score = parseInt(getContent(uiObj));
+            if (score != null && !isNaN(score)) {
+                log("getMirrorsSelfScore score", score);
+                return score;
+            }
+        }
+        return 0;
+    }
+
+    var knownFirstMirrorsLvCoords = {
+        //r1c1 Lv: [232,236][253,258] 100: [260,228][301,260]
+        //r3c3 Lv: [684,688][705,710] 100: [712,680][753,712]
+        topLeft: {x: 227, y: 223, pos: "center"},
+        bottomRight: {x: 306, y: 265, pos: "center"},
+        distancex: 226,
+        distancey: 226
+    }
+    //点开某个对手后会显示队伍信息。获取显示出来的角色等级
+    function getMirrorsLvAt(rowNum, columnNum) {
+        let distancex = knownFirstMirrorsLvCoords.distancex * (columnNum - 1);
+        let distancey = knownFirstMirrorsLvCoords.distancey * (rowNum - 1);
+        let knownArea = {
+            topLeft: {x: distancex, y: distancey, pos: "center"},
+            bottomRight: {x: distancex, y: distancey, pos: "center"}
+        }
+        for (point in knownArea) {
+            for (key in knownArea.topLeft) {
+                knownArea[point][key] += knownFirstMirrorsLvCoords[point][key];
+            }
+        }
+        let convertedArea = getConvertedArea(knownArea);
+        let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
+        for (let i=0; i<uiObjArr.length; i++) {
+            let uiObj = uiObjArr[i];
+            let content = getContent(uiObj);
+            if (content != null) {
+                let matched = content.match(/\d+/);
+                if (matched != null) content = matched[0];
+            }
+            lv = parseInt(content);
+            if (lv != null && !isNaN(lv)) {
+                log("getMirrorsLvAt rowNum", rowNum, "columnNum", columnNum, "lv", lv);
+                return lv;
+            }
+        }
+        return 0;
+    }
+    //在对手队伍信息中获取等级信息，用来计算人均战力
+    function getMirrorsAverageScore(totalScore) {
+        //刷新auto.root（也许只有心理安慰作用？）
+        try { auto.root != null && auto.root.refresh(); } catch (e) {}; //只刷新一次
+
+        if (totalScore == null) return 0;
+        log("getMirrorsAverageScore totalScore", totalScore);
+        let totalSqrtLv = 0;
+        let totalLv = 0;
+        let charaCount = 0;
+        let highestLv = 0;
+
+        let attemptMax = 5;
+        for (let rowNum=1; rowNum<=3; rowNum++) {
+            for (let columnNum=1; columnNum<=3; columnNum++) {
+                let Lv = 0;
+                for (let attempt=0; attempt<attemptMax; attempt++) {
+                    Lv = getMirrorsLvAt(rowNum, columnNum);
+                    if (Lv > 0) {
+                        if (Lv > highestLv) highestLv = Lv;
+                        totalLv += Lv;
+                        totalSqrtLv += Math.sqrt(Lv);
+                        charaCount += 1;
+                        break;
+                    }
+                    if (attempt < attemptMax - 1) sleep(100);
+                }
+                attemptMax = 1;
+            }
+        }
+        log("getMirrorsAverageScore charaCount", charaCount, "highestLv", highestLv, "totalLv", totalLv, "totalSqrtLv", totalSqrtLv);
+        if (charaCount == 0) return 0; //对手队伍信息还没出现
+        let avgScore = totalScore / totalSqrtLv * Math.sqrt(highestLv); //按队伍里的最高等级进行估计（往高了估，避免错把强队当作弱队）
+        log("getMirrorsAverageScore avgScore", avgScore);
+        return avgScore;
+    }
+
+    //在镜层自动挑选最弱的对手
+    function mirrorsPickWeakestOpponent() {
+        toast("挑选最弱的镜层对手...");
+
+        var startTime = new Date().getTime();
+        var deadlineTime = startTime + 60 * 1000; //最多等待一分钟
+        var stopTime = new Date().getTime() + 5000;
+
+        //刷新auto.root（也许只有心理安慰作用？）
+        for (let attempt=0; attempt<10; attempt++) {
+            try {if (auto.root != null && auto.root.refresh()) break;} catch (e) {};
+            sleep(100);
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("等待auto.root刷新时间过长");
+                return false;
+            }
+        }
+
+        stopTime = new Date().getTime() + 5000;
+
+        let lowestTotalScore = Number.MAX_SAFE_INTEGER;
+        let lowestAvgScore = Number.MAX_SAFE_INTEGER;
+        //数组第1个元素（下标0）仅用来占位
+        let totalScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
+        let avgScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
+        let lowestScorePosition = 3;
+
+        while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) {
+            log("等待对手列表出现...");
+            sleep(1000);
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到对手列表控件matchingWrap或matchingList出现,无法智能挑选最弱对手");
+                return false;
+            }
+        }
+
+        stopTime = new Date().getTime() + 5000;
+
+        if (id("matchingList").findOnce()) {
+            toastLog("当前处于演习模式");
+            //演习模式下直接点最上面第一个对手
+            while (id("matchingList").findOnce()) { //如果不小心点到战斗开始，就退出循环
+                if (getMirrorsAverageScore(totalScore[1]) > 0) break; //如果已经打开了一个对手，直接战斗开始
+                click(convertCoords(clickSetsMod["mirrorsOpponent"+"1"]));
+                sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到镜层对手队伍信息出现(也可能是虽然已经出现,但getMirrorsAverageScore没检测到导致的)");
+                }
+            }
+            return true;
+        }
+
+        stopTime = new Date().getTime() + 5000;
+
+        //如果已经打开了信息面板，先关掉
+        for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
+            if (getMirrorsAverageScore(99999999) <= 0) break; //如果没有打开队伍信息面板，那就直接退出循环，避免点到MENU
+            if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
+            sleep(1000);
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到镜层对手队伍信息面板消失");
+                return false;
+            }
+        }
+
+        stopTime = new Date().getTime() + 5000;
+
+        let selfScore = getMirrorsSelfScore();
+
+        //获取每个对手的总战力
+        for (let position=1; position<=3; position++) {
+            for (let attempt=0; attempt<10; attempt++) {
+                totalScore[position] = getMirrorsScoreAt(position);
+                if (totalScore[position] > 0) break;
+                sleep(100);
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到第"+position+"个镜层对手的队伍信息出现(也可能是虽然已经出现,但getMirrorsAverageScore没检测到导致的)");
+                    return false;
+                }
+            }
+            if (totalScore[position] <= 0) {
+                toastLog("获取某个对手的总战力失败\n请尝试退出镜层后重新进入");
+                log("获取第"+position+"个对手的总战力失败");
+                return false;
+            }
+            if (totalScore[position] < lowestTotalScore) {
+                lowestTotalScore = totalScore[position];
+                lowestScorePosition = position;
+            }
+        }
+
+        stopTime = new Date().getTime() + 5000;
+
+        //福利队
+        //因为队伍最多5人，所以总战力比我方总战力六分之一还少应该就是福利队
+        if (lowestTotalScore < selfScore / 6) {
+            toastLog("找到了战力低于我方六分之一的对手\n位于第"+lowestScorePosition+"个,战力="+totalScore[lowestScorePosition]);
+            while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
+                click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
+                sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
+                if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到镜层对手(福利队)的队伍信息出现");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        stopTime = new Date().getTime() + 5000;
+
+        //找平均战力最低的
+        for (let position=1; position<=3; position++) {
+            toast("检查第"+position+"个镜层对手的队伍情况...");
+            while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
+                click(convertCoords(clickSetsMod["mirrorsOpponent"+position]));
+                sleep(2000); //等待对手队伍信息出现（avgScore<=0表示对手队伍信息还没出现）
+                avgScore[position] = getMirrorsAverageScore(totalScore[position]);
+                if (avgScore[position] > 0) {
+                    if (avgScore[position] < lowestAvgScore) {
+                        lowestAvgScore = avgScore[position];
+                        lowestScorePosition = position;
+                    }
+                    break;
+                }
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到第"+position+"个镜层对手的队伍信息出现");
+                    return false;
+                }
+            }
+
+            //关闭信息面板
+            for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
+                if (position == 3) break; //第3个对手也有可能是最弱的，暂时不关面板
+                if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
+                sleep(1000);
+                if (getMirrorsAverageScore(totalScore[position]) <= 0) break;
+                if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                    log("没等到第"+position+"个镜层对手的队伍信息出现");
+                    return false;
+                }
+            }
+        }
+
+        stopTime = new Date().getTime() + 5000;
+
+        log("找到平均战力最低的对手", lowestScorePosition, totalScore[lowestScorePosition], avgScore[lowestScorePosition]);
+
+        if (lowestScorePosition == 3) return true; //最弱的就是第3个对手
+
+        //最弱的不是第3个对手，先关掉第3个对手的队伍信息面板
+        for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
+            if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
+            sleep(1000);
+            if (getMirrorsAverageScore(totalScore[lowestScorePosition]) <= 0) break;
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到第3个镜层对手(不是最弱)的队伍信息消失");
+                return false;
+            }
+        }
+
+        stopTime = new Date().getTime() + 5000;
+
+        //重新打开平均战力最低队伍的队伍信息面板
+        while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
+            click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
+            sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
+            if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) return true;
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到第"+lowestScorePosition+"个镜层对手(最弱)的队伍信息出现");
+                return false;
+            }
+        }
+        log("id(\"matchingWrap\").findOnce() == null");
+        return true;
+    }
+
+    function mirrorsPick3rdOpponent() {
+        toastLog("挑选第3个镜层对手...");
+        let matchWrap = id("matchingWrap").findOne().bounds()
+        for (let attempt=0; attempt<3; attempt++) {
+            if (id("battleStartBtn").findOnce()) break; //MuMu等控件树残缺环境下永远也找不到battleStartBtn（虽然实际上有战斗开始按钮）
+            click(matchWrap.centerX(), matchWrap.bottom - 50);
+            sleep(1500);
+        }
+        log("挑选第3个镜层对手完成");
+    }
+
+    function taskMirrors() {
+        toast("镜层周回\n自动战斗策略:"+(limit.useCVAutoBattle?"识图":"无脑123盘"));
+
+        if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
+            toastLog("需要root或shizuku adb权限");
+            if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
+                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+            }
+            return;
+        }
+
+        initialize();
+
+        if (limit.useCVAutoBattle && limit.rootScreencap) {
+            while (true) {
+                log("setupBinary...");
+                setupBinary();
+                if (binarySetupDone) break;
+                log("setupBinary失败,3秒后重试...");
+                sleep(3000);
+            }
+        } else if (limit.useCVAutoBattle && (!limit.rootScreencap)) {
+            startScreenCapture();
+        }
+
+        while (true) {
+            var pickedWeakest = false;
+            if (limit.smartMirrorsPick) {
+                //挑选最弱的对手
+                let pickWeakestAttemptMax = 2;
+                for (let attempt=0; attempt<pickWeakestAttemptMax; attempt++) {
+                    if (mirrorsPickWeakestOpponent()) {
+                        pickedWeakest = true;
+                        break;
+                    }
                     toastLog("挑选镜层最弱对手时出错\n3秒后重试...");
                     sleep(3000);
                 }
@@ -7031,14 +8653,22 @@ function algo_init() {
                         click(convertCoords(clickSetsMod.bpClose))
                         log("镜层周回结束")
                         return;
-
                     }
-                    break;
                 }
+                sleep(1000)
+            }
+            log("进入战斗")
+            if (limit.useCVAutoBattle) {
+                //利用截屏识图进行稍复杂的自动战斗（比如连携）
+                log("镜层周回 - 自动战斗开始：使用截屏识图");
+                mirrorsAutoBattleMain();
+            } else {
+                //简单镜层自动战斗
+                log("镜层周回 - 自动战斗开始：简单自动战斗");
+                mirrorsSimpleAutoBattleMain();
             }
         }
     }
-
 
     /* ~~~~~~~~ 镜界自动战斗 结束 ~~~~~~~~ */
 
@@ -7519,12 +9149,10 @@ function algo_init() {
         clearSteps: clearOpList,
         testSupportSel: testSupportPicking,
         testReLaunch: testReLaunchRunnable,
-
     };
 }
 
 //global utility functions
-
 //MIUI上发现有时候转屏了getSize返回的还是没转屏的数据，但getRotation的结果仍然是转过屏的，所以 #89 才改成这样
 var initialWindowSize = {};
 function detectInitialWindowSize() {
@@ -7538,10 +9166,35 @@ function detectInitialWindowSize() {
     initialWindowSize = {size: pt, rotation: rotation};
 }
 function getWindowSize() {
-    var wm = context.getSystemService(context.WINDOW_SERVICE);
-    var pt = new Point();
-    wm.getDefaultDisplay().getSize(pt);
+    let display = context.getSystemService(context.WINDOW_SERVICE).getDefaultDisplay();
+    let currentRotation = display.getRotation();
+    let relativeRotation = (4 + currentRotation - initialWindowSize.rotation) % 4;
+
+    let x = initialWindowSize.size.x;
+    let y = initialWindowSize.size.y;
+    if (relativeRotation % 2 == 1) {
+        let temp = x;
+        x = y;
+        y = temp;
+    }
+
+    let pt = new Point(x, y);
     return pt;
+}
+
+function killBackground(packageName) {
+    var am = context.getSystemService(context.ACTIVITY_SERVICE);
+    am.killBackgroundProcesses(packageName);
+}
+
+function backtoMain() {
+    var it = new Intent();
+    var name = context.getPackageName();
+    if (name != "org.autojs.autojspro")
+        it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
+    else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+    it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+    app.startActivity(it);
 }
 
 module.exports = floatUI;
