@@ -105,6 +105,9 @@ ui.layout(
                             </vertical>
                             <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#000000" text="只使用NPC(不选则先互关好友,后NPC)" />
                             <Switch id="autoReconnect" w="*" margin="0 3" checked="false" textColor="#000000" text="防断线模式(尽可能自动点击断线重连按钮)" />
+                            <vertical padding="0 3 0 0" w="*" h="auto">
+                                <text textColor="#000000" text="防断线模式仅限于在战斗中自动点击断线重连按钮,无法应对强制回首页的情况。闪退自动重开可以应对强制回首页。" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -122,11 +125,11 @@ ui.layout(
                             <vertical padding="0 8 0 0" w="*" h="auto">
                                 <Switch id="toggleDefaultExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings1" visibility="gone" padding="0 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings1" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <Switch id="autoFollow" w="*" margin="0 3" checked="true" textColor="#000000" text="自动关注路人" />
                                 <text text="启用后如果助战选到了路人,会在结算时关注他。停用这个选项则不会关注路人,在结算时如果出现询问关注的弹窗,会直接关闭。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings2" visibility="gone" padding="0 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="每隔" textColor="#000000" />
                                     <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打断" text="" textSize="14" inputType="number|none" />
@@ -134,23 +137,7 @@ ui.layout(
                                 </linear>
                                 <text text="经过设定的秒数后,长按打断官方自动周回" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="0 8 0 0" w="*" h="auto">
-                                <linear>
-                                    <text text="假死检测超时" textColor="#000000" />
-                                    <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
-                                    <text text="秒" textColor="#000000" />
-                                </linear>
-                                <text text="如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开" textColor="#000000" />
-                            </vertical>
-                            <vertical id="DefaultExtraSettings4" visibility="gone" padding="0 8 0 0" w="*" h="auto">
-                                <linear>
-                                    <text text="无条件杀进程重开,每隔" textColor="#000000" />
-                                    <input maxLength="5" id="periodicallyKillTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
-                                    <text text="秒一次" textColor="#000000" />
-                                </linear>
-                                <text text="有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。" textColor="#000000" />
-                            </vertical>
-                            <vertical id="DefaultExtraSettings5" visibility="gone" padding="0 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <linear padding="0 0 0 0" w="*" h="auto">
                                     <text text="等待控件超时" textColor="#000000" />
                                     <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
@@ -158,7 +145,27 @@ ui.layout(
                                 </linear>
                                 <text text="修改“等待控件超时”并不能让脚本变快,数值太小反而可能出错。如果不是机器特别卡(这种情况也要把这个值改得更大,而不是更小)请不要改,退格可自动恢复默认(5000毫秒)" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings6" visibility="gone" padding="0 8 0 6" w="*" h="auto">
+                            <vertical padding="0 8 0 0" w="*" h="auto">
+                                <Switch id="toggleDefaultCrashRestartExtraSettings" text="显示闪退自动重开设置" textColor="#666666" />
+                                <text text="[录制闪退重开选关动作]后即可在[副本周回(剧情/活动通用)]脚本启动时选择启用闪退自动重开,应对闪退或掉线后强制回首页的情况。" textColor="#000000" />
+                            </vertical>
+                            <vertical id="DefaultCrashRestartExtraSettings1" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <linear>
+                                    <text text="假死检测超时" textColor="#000000" />
+                                    <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开" textColor="#000000" />
+                            </vertical>
+                            <vertical id="DefaultCrashRestartExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <linear>
+                                    <text text="无条件杀进程重开,每隔" textColor="#000000" />
+                                    <input maxLength="5" id="periodicallyKillTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
+                                    <text text="秒一次" textColor="#000000" />
+                                </linear>
+                                <text text="有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。" textColor="#000000" />
+                            </vertical>
+                            <vertical id="DefaultCrashRestartExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
                                 <text text="部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
                             </vertical>
@@ -170,11 +177,11 @@ ui.layout(
                             <vertical padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="toggleMirrorsExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
                             </vertical>
-                            <vertical id="MirrorsExtraSettings1" visibility="gone" padding="0 8 0 6" w="*" h="auto">
+                            <vertical id="MirrorsExtraSettings1" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="smartMirrorsPick" w="*" margin="0 3" checked="true" textColor="#000000" text="智能挑选最弱对手" />
                                 <text text="开启此项后会先找总战力低于我方六分之一的弱队,如果找不到就挨个点开队伍详情计算平均战力,从而找到最弱对手。如果碰到问题可以关闭这个选项,然后就只会挑选第3个对手" textColor="#000000" />
                             </vertical>
-                            <vertical id="MirrorsExtraSettings2" visibility="gone" padding="0 8 0 6" w="*" h="auto">
+                            <vertical id="MirrorsExtraSettings2" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="useCVAutoBattle" w="*" margin="0 3" checked="true" textColor="#000000" text="在周回中使用识图自动战斗" />
                                 <text text="开启此项,可以通过截屏识图自动完成连携。关闭此项,则镜层周回使用简单无脑点第1/2/3个盘来自动完成战斗" textColor="#000000" />
                             </vertical>
@@ -186,23 +193,23 @@ ui.layout(
                             <vertical padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="toggleCVAutoBattleExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
                             </vertical>
-                            <vertical id="CVAutoBattleExtraSettings1" visibility="gone" padding="0 8 0 6" w="*" h="auto">
+                            <vertical id="CVAutoBattleExtraSettings1" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="rootScreencap" w="*" margin="0 3" checked="false" textColor="#000000" text="使用root或adb权限截屏" />
                                 <text text="部分环境下截屏权限会在一段时间后丢失,或者出现截屏后处理数据时报错崩溃的问题。这些情况下可以开启这个选项,但开启后截图效率会下降" textColor="#000000" />
                                 <text text="注意!超级用户授权通知会遮挡屏幕、干扰截屏识图,所以务必要关掉这个通知(对模拟器来说,一般可以在系统设置里找到超级用户设置)。也可以改用不会弹出通知的Shizuku来授权" textColor="#FF0000" />
                             </vertical>
-                            <vertical id="CVAutoBattleExtraSettings2" visibility="gone" padding="0 8 0 6" w="*" h="auto">
+                            <vertical id="CVAutoBattleExtraSettings2" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleDebug" w="*" margin="0 3" checked="false" textColor="#000000" text="识图自动战斗启用调试模式" />
                                 <text text="开启后,识图自动战斗将不会点击行动盘,只会在保存一些图片后结束运行,以方便排查bug" textColor="#000000" />
                             </vertical>
-                            <vertical id="CVAutoBattleExtraSettings3" visibility="gone" padding="0 8 0 6" w="*" h="auto">
+                            <vertical id="CVAutoBattleExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
                                 <text text="开启后,从第3回合开始,会放出所有可用的主动技能。如果遇到问题可以关闭" textColor="#000000" />
                             </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
-                        <text text="备用脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
+                        <text text="副本/活动周回2(备用可选)脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <text text="活动周回关卡选择:" textColor="#000000" margin="0 5" />
                             <radiogroup id="battleNo" padding="10 3 0 3">
@@ -517,7 +524,7 @@ function setToggleListener(key) {
         }
     });
 }
-for (let key of ["Default", "Mirrors", "CVAutoBattle"]) {
+for (let key of ["Default", "DefaultCrashRestart", "Mirrors", "CVAutoBattle"]) {
     setToggleListener(key);
 }
 
