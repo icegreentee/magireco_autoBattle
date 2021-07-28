@@ -5981,6 +5981,7 @@ function algo_init() {
     }
 
 
+    var staleScreenshot = {img: null, lastTime: 0, timeout: 1000};
     var compatCaptureScreen = sync(function () {
         if (limit.rootScreencap) {
             //使用shell命令 screencap 截图
@@ -6012,7 +6013,22 @@ function algo_init() {
             return renewImage(screenshot, "screenshot", tagOnly); //回收旧图片
         } else {
             //使用AutoJS默认提供的录屏API截图
-            let screenshot = captureScreen.apply(this, arguments);
+            let screenshot = captureScreen();
+            let time = new Date().getTime();
+            if (staleScreenshot.img == null) {
+                staleScreenshot.img = screenshot;
+                staleScreenshot.lastTime = time;
+            }
+            if (time > staleScreenshot.lastTime + staleScreenshot.timeout) {
+                staleScreenshot.lastTime = time;
+                //正常情况下老图应该已经被回收了,而且回收老图肯定不应该影响新图
+                try {staleScreenshot.img.recycle();} catch (e) {}
+                staleScreenshot.img = screenshot;
+                try {images.pixel(screenshot, 0, 0);} catch (e) {
+                    toastLog("截屏出错,多次尝试后截屏数据仍未刷新,\n将停止运行脚本运行。\n请尝试开启\"使用root或adb权限截屏\"");
+                    throw e;
+                }
+            }
             if (needScreenCaptureFix) {
                 //检测到横屏强制转竖屏的截屏，需要修正
 
