@@ -926,9 +926,7 @@ floatUI.main = function () {
                     task_popup.setPosition(sz.x / 4, sz.y / 4);
                 } catch (e) {
                     logException(e);
-                    //貌似只有完全退出脚本才可以避免getWindowSize屏幕方向错位的问题
                     toastLog("无法重设悬浮窗的大小和位置,\n可能是悬浮窗意外消失\n退出脚本...");
-                    limit.killSelf = true;//杀死自己的两个后台进程
                     engines.stopAll();
                     return; //不再继续往下执行
                 }
@@ -960,37 +958,12 @@ floatUI.main = function () {
         },
     });
 
-    floatUI.isUpgrading = false;
     context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED));
     events.on("exit", function () {
-        log("注销广播接收器...");
         try {
             context.unregisterReceiver(receiver);
         } catch (e) {
             logException(e);
-        }
-        log("注销广播接收器完成");
-
-        //希望这样能避免 #110
-        if (limit.killSelf && !floatUI.isUpgrading) {
-            let mytoast = new android.widget.Toast.makeText(context, "杀死脚本自己的后台...", android.widget.Toast.LENGTH_SHORT);
-            let mytoastcb = new android.widget.Toast.Callback({
-                onToastShown: function () {
-                    threads.start(function () {
-                        sleep(500);
-                        //杀死进程名为 包名 的进程，不杀的话会自动重启另一个进程
-                        let name = context.getPackageName();
-                        log("killBackgroundProcesses(packageName=\""+name+"\")");
-                        context.getSystemService(context.ACTIVITY_SERVICE).killBackgroundProcesses(name);
-                        //杀死进程名为 包名:script 的进程
-                        let pid = android.os.Process.myPid();
-                        log("killProcess(pid="+pid+")");
-                        android.os.Process.killProcess(pid);
-                    }).waitFor();
-                }
-            });
-            mytoast.addCallback(mytoastcb);
-            mytoast.show();
         }
     });
 
@@ -1375,7 +1348,6 @@ var limit = {
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
     firstRequestPrivilege: true,
-    killSelf: false,
     privilege: null
 }
 
