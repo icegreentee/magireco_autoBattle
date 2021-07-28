@@ -5715,12 +5715,13 @@ function algo_init() {
                         state = STATE_BATTLE;
                         break;
                     }
-                    // try to skip
-                    if (!id("menu").findOnce()) {
-                        //这里开发者意见存在分歧
-                        // @icegreentee 认为这样最简单直接,实际上也观察到之前有误触菜单问题的用户不再反馈有这个问题
-                        // @segfault-bilibili 观察到menu控件无论主菜单是否打开都存在,所以怀疑这个检测的效果
-                        // 实际测试发现确实有效果,现在怀疑是不是和QQ等在屏幕上弹出通知有关
+                    //点击跳过剧情
+                    //出现这些控件中的任何一个即说明已经跳过剧情，然后就可以避免误触MENU。
+                    //有时候单单靠上面getAP检测AP余量控件是否出现还不够，还是可能偶发误触MENU按钮，
+                    //因为AP余量控件可能会概率性玄学消失（用Android SDK里的UI Automator Viewer工具抓到的布局里也完全缺失这个控件）
+                    //因此，只能尽量多检测几个控件id来尽可能降低误触MENU的风险。
+                    let IDsToFind = ["menu", "helpBtn", "sideMenu", "menuBtns", "sideBigBtns"];
+                    if (!IDsToFind.find((val) => id(val).findOnce() != null)) {
                         log("尝试跳过剧情");
                         click(convertCoords(clickSets.skip));
                     }
