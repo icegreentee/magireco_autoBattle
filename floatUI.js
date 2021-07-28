@@ -5875,11 +5875,25 @@ function algo_init() {
                 log("检测到横屏强制转竖屏的截屏");
                 needScreenCaptureFix = true;
             }
+            log("检测是否返回了空白图像...");
+            let isBlank = false;
+            for (let c of [colors.BLACK, colors.WHITE]) {
+                let p = images.findColor(screenshot, c, {threshold: 254});
+                if (p == null) {
+                    isBlank = true;
+                    break;
+                }
+            }
+            if (isBlank) {
+                toastLog("录屏API似乎返回了空白图像,\n脚本将停止运行。\n请使用root或adb权限截屏");
+                throw new Error("initializeScreenCaptureFix detected blank screenshot");
+            } else {
+                log("检测完成,并不是空白图像");
+            }
         } catch (e) {
             hasScreenCaptureError = true;
             toastLog("通过录屏API截图时出错\n请使用root或adb权限截屏");
-            logException(e);
-            stopThread();
+            throw e;
         }
     }
 
