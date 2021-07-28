@@ -506,7 +506,7 @@ floatUI.main = function () {
         replaceCurrentTask({name:"未运行任何脚本", fn: function () {}});
     }
 
-    //检测getRotation获取到的转屏方向是不是出现错误
+    //检测getWindowSize的转屏方向是不是出现错误
     function checkRotationGlitch() {
         let sz = getWindowSize();
         if (sz.y > sz.x) {
@@ -926,7 +926,7 @@ floatUI.main = function () {
                     task_popup.setPosition(sz.x / 4, sz.y / 4);
                 } catch (e) {
                     logException(e);
-                    //貌似只有完全退出脚本才可以避免getRotation错位的问题
+                    //貌似只有完全退出脚本才可以避免getWindowSize屏幕方向错位的问题
                     toastLog("无法重设悬浮窗的大小和位置,\n可能是悬浮窗意外消失\n退出脚本...");
                     limit.killSelf = true;//杀死自己的两个后台进程
                     engines.stopAll();
@@ -1069,9 +1069,6 @@ floatUI.main = function () {
         let swipe_duration = touch_up_time - touch_down_time;
         return {pos_down: touch_down_pos, pos_up: touch_up_pos, duration: swipe_duration};
     };
-
-    //初始化getWindowSize()
-    detectInitialWindowSize();
 
     //检测刘海屏参数
     function adjustCutoutParams() {
@@ -9154,18 +9151,27 @@ function algo_init() {
 
 //global utility functions
 //MIUI上发现有时候转屏了getSize返回的还是没转屏的数据，但getRotation的结果仍然是转过屏的，所以 #89 才改成这样
-var initialWindowSize = {};
+var initialWindowSize = {initialized: false};
 function detectInitialWindowSize() {
-    let display = context.getSystemService(context.WINDOW_SERVICE).getDefaultDisplay();
+    ui.run(function () {
+        if (initialWindowSize.initialized) return;
 
-    let pt = new Point();
-    display.getSize(pt);
+        let initialSize = new Point();
+        try {
+            let mWm = android.view.IWindowManager.Stub.asInterface(android.os.ServiceManager.checkService(android.content.Context.WINDOW_SERVICE));
+            mWm.getInitialDisplaySize(android.view.Display.DEFAULT_DISPLAY, initialSize);
+        } catch (e) {
+            logException(e);
+            toastLog("无法获取屏幕物理分辨率\n请尝试以竖屏模式重启");
+            initialSize = new Point(device.width, device.height);
+        }
 
-    let rotation = display.getRotation();
-
-    initialWindowSize = {size: pt, rotation: rotation};
-}
+        initialWindowSize = {size: initialSize, rotation: 0, initialized: true};
+        log("initialWindowSize", initialWindowSize);
+    });
+};
 function getWindowSize() {
+    detectInitialWindowSize();
     let display = context.getSystemService(context.WINDOW_SERVICE).getDefaultDisplay();
     let currentRotation = display.getRotation();
     let relativeRotation = (4 + currentRotation - initialWindowSize.rotation) % 4;
