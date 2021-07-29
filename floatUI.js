@@ -336,6 +336,8 @@ var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
             isCurrentTaskPaused.set(TASK_STOPPED);
             lockUI(false);
         }
+        //之前可能在STATE_TEAM状态下设置了跳过isGameDead里的掉线弹窗检查,现在恢复成不跳过
+        bypassPopupCheck.set(0);
         log("关闭所有无主对话框...");
         try {
             openedDialogsLock.lock();//先加锁，dismiss会等待解锁后再开始删
@@ -3151,7 +3153,7 @@ function algo_init() {
 
     //检测游戏是否闪退或掉线
     //注意！调用后会重新检测区服，从而可能导致string、last_alive_lang变量被重新赋值
-    var bypassPopupCheck = false;
+    var bypassPopupCheck = threads.atomic(0);
     function isGameDead(wait) {
         var startTime = new Date().getTime();
         var detectedLang = null;
@@ -3181,7 +3183,7 @@ function algo_init() {
         }
 
         //因为STATE_TEAM状态下这里的掉线弹窗检查非常慢,所以跳过头4回检查
-        if (!bypassPopupCheck) do {
+        if (bypassPopupCheck.get() == 0) do {
             let found_popup = null;
             try {
                 found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error"]);
@@ -5108,13 +5110,13 @@ function algo_init() {
             if (state == STATE_TEAM) {
                 if (last_state != STATE_TEAM) bypassPopupCheckCounter = 4;
                 if (bypassPopupCheckCounter-- > 0) {
-                    bypassPopupCheck = true;
+                    bypassPopupCheck.set(1);
                 } else {
-                    bypassPopupCheck = false;
+                    bypassPopupCheck.set(0);
                 }
             } else {
                 bypassPopupCheckCounter = 0;
-                bypassPopupCheck = false;
+                bypassPopupCheck.set(0);
             }
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
                 if (lastOpList != null) {
