@@ -3180,6 +3180,7 @@ function algo_init() {
 
     //检测游戏是否闪退或掉线
     //注意！调用后会重新检测区服，从而可能导致string、last_alive_lang变量被重新赋值
+    var bypassPopupCheck = false;
     function isGameDead(wait) {
         var startTime = new Date().getTime();
         var detectedLang = null;
@@ -3208,7 +3209,8 @@ function algo_init() {
             return "crashed";
         }
 
-        do {
+        //因为STATE_TEAM状态下这里的掉线弹窗检查非常慢,所以跳过头4回检查
+        if (!bypassPopupCheck) do {
             let found_popup = null;
             try {
                 found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error"]);
@@ -5099,6 +5101,7 @@ function algo_init() {
         var lastReLaunchTime = new Date().getTime();
         var isFirstBRANCHClick = true; //在杜鹃花型活动地图点了启动脚本,无法保证一定能正确选关
         var BRANCHclickAttemptCount = 0;
+        var bypassPopupCheckCounter = 0;
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -5130,6 +5133,18 @@ function algo_init() {
             }
 
             //然后检测游戏是否闪退或掉线
+            //因为STATE_TEAM状态下isGameDead里的掉线弹窗检查非常慢,故跳过头4回检查
+            if (state == STATE_TEAM) {
+                if (last_state != STATE_TEAM) bypassPopupCheckCounter = 4;
+                if (bypassPopupCheckCounter-- > 0) {
+                    bypassPopupCheck = true;
+                } else {
+                    bypassPopupCheck = false;
+                }
+            } else {
+                bypassPopupCheckCounter = 0;
+                bypassPopupCheck = false;
+            }
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
                 if (lastOpList != null) {
                     state = STATE_CRASHED;
