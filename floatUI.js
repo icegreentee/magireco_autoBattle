@@ -2434,6 +2434,7 @@ function algo_init() {
 
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
     //关注追加窗口在MuMu上点这里的close坐标点不到关闭
+    //title_to_find可以是数组
     function findPopupInfoDetailTitle(title_to_find, wait) {
         let default_x = getFragmentViewBounds().right - 1;
         let default_y = 0;
@@ -2477,7 +2478,17 @@ function algo_init() {
             result.title = "";
         }
 
-        if (title_to_find != null && result.title != title_to_find) return null;
+        if (
+             title_to_find != null
+             && (
+                  typeof title_to_find == "string"
+                  ? title_to_find != result.title
+                  : title_to_find.find((val) => val == result.title) == null
+                )
+           )
+        {
+            return null;
+        }
 
         let element_bounds = element.bounds();
         let half_height = parseInt(element_bounds.height() / 2);
@@ -3199,16 +3210,13 @@ function algo_init() {
 
         do {
             let found_popup = null;
-            for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
-                try {
-                    found_popup = findPopupInfoDetailTitle(string[error_type]);
-                } catch (e) {
-                    logException(e);
-                    found_popup = null;
-                }
-                if (found_popup != null) break;
+            try {
+                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error"]);
+            } catch (e) {
+                logException(e);
+                found_popup = null;
             }
-            if (found_popup) {
+            if (found_popup != null) {
                 log("游戏已经断线/登出/出错,并强制回首页");
                 return "logged_out";
             }
