@@ -309,6 +309,8 @@ function getStatusText() {
 //监视当前任务的线程
 var monitoredTask = null;
 
+var bypassPopupCheck = threads.atomic(0);
+
 var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
@@ -3182,7 +3184,6 @@ function algo_init() {
 
     //检测游戏是否闪退或掉线
     //注意！调用后会重新检测区服，从而可能导致string、last_alive_lang变量被重新赋值
-    var bypassPopupCheck = threads.atomic(0);
     function isGameDead(wait) {
         var startTime = new Date().getTime();
         var detectedLang = null;
