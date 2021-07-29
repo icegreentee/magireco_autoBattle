@@ -3196,7 +3196,8 @@ function algo_init() {
         return false;
     }
 
-    function getFragmentViewBounds() {
+    var lastFragmentViewStatus = {bounds: null, rotation: 0};
+    var getFragmentViewBounds = sync(function () {
         if (string == null || string.package_name == null || string.package_name == "") {
             try {
                 throw new Error("getFragmentViewBounds: null/empty string.package_name");
@@ -3204,8 +3205,17 @@ function algo_init() {
                 logException(e);
             }
             let sz = getWindowSize();
+            lastFragmentViewStatus = {bounds: null, rotation: 0};
             return new android.graphics.Rect(0, 0, sz.x, sz.y);
         }
+
+        //复用上次的结果,加快速度
+        let display = context.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
+        let currentRotation = display.getRotation();
+        if (lastFragmentViewStatus.bounds != null && lastFragmentViewStatus.rotation == currentRotation) {
+            return lastFragmentViewStatus.bounds;
+        }
+
         let bounds = null;
         try {
             bounds = selector()
@@ -3219,10 +3229,14 @@ function algo_init() {
             logException(e);
             log("getFragmentViewBounds出错,使用getWindowSize作为替代");
             let sz = getWindowSize();
+            lastFragmentViewStatus = {bounds: null, rotation: 0};
             return new android.graphics.Rect(0, 0, sz.x, sz.y);
         }
+
+        if (bounds != null) lastFragmentViewStatus = {bounds: bounds, rotation: currentRotation};
+
         return bounds;
-    }
+    });
 
     var screen = {width: 0, height: 0, type: "normal"};
     var gamebounds = null;
