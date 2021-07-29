@@ -2215,14 +2215,14 @@ function algo_init() {
                 auto.root.refresh();
             } catch (e) {
                 logException(e);
-                if (wait) sleep(isFast ? 16 : 100);
+                if (wait) sleep(isFast ? 32 : 100);
                 continue;
             }
             result = textMatches(reg).findOnce();
             if (result && (isFast || result.refresh())) break;
             result = descMatches(reg).findOnce();
             if (result && (isFast || result.refresh())) break;
-            if (wait) sleep(isFast ? 16 : 100);
+            if (wait) sleep(isFast ? 32 : 100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         return result;
     }
@@ -2269,14 +2269,14 @@ function algo_init() {
                 auto.root.refresh();
             } catch (e) {
                 logException(e);
-                if (wait) sleep(isFast ? 16 : 100);
+                if (wait) sleep(isFast ? 32 : 100);
                 continue;
             }
             result = text(txt).findOnce();
             if (result && (isFast || result.refresh())) break;
             result = desc(txt).findOnce();
             if (result && (isFast || result.refresh())) break;
-            if (wait) sleep(isFast ? 16 : 100);
+            if (wait) sleep(isFast ? 32 : 100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         return result;
     }
@@ -2322,12 +2322,12 @@ function algo_init() {
                 auto.root.refresh();
             } catch (e) {
                 logException(e);
-                if (wait) sleep(isFast ? 16 : 100);
+                if (wait) sleep(isFast ? 32 : 100);
                 continue;
             }
             result = id(name).findOnce();
             if (result && (isFast || result.refresh())) break;
-            if (wait) sleep(isFast ? 16 : 100);
+            if (wait) sleep(isFast ? 32 : 100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         return result;
     }
@@ -2378,7 +2378,7 @@ function algo_init() {
             result = fnlist[current]();
             if (result && (isFast || result.refresh())) break;
             current++;
-            sleep(isFast ? 16 : 50);
+            sleep(isFast ? 32 : 50);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         if (wait)
             log(
