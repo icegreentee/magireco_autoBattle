@@ -1129,8 +1129,9 @@ floatUI.main = function () {
             logstring = "执行shell命令: ["+shellcmd+"]";
         if (logstring !== false) log("直接使用root权限"+logstring);
         $shell.setDefaultOptions({adb: false});
+        let result = $shell(shellcmd, true);
         if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
-        return $shell(shellcmd, true);
+        return result;
     };
     //根据情况使用Shizuku还是直接使用root执行shell命令
     privShell = function (shellcmd, logstring) {
@@ -1155,8 +1156,9 @@ floatUI.main = function () {
             logstring = "执行shell命令: ["+shellcmd+"]";
         if (logstring !== false) log("不使用特权"+logstring);
         $shell.setDefaultOptions({adb: false});
+        let result = $shell(shellcmd);
         if (logstring !== false) log("不使用特权"+logstring+" 完成");
-        return $shell(shellcmd);
+        return result;
     }
 
     //检查并申请root或adb权限
