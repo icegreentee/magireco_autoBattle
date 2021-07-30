@@ -1,0 +1,3 @@
+[submodule "autoWebview"]
+	path = autoWebview
+	url = https://github.com/segfault-bilibili/autoWebview/
