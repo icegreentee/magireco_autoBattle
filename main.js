@@ -185,9 +185,44 @@ function reportBug() {
 
 var isDevMode = false;//TODO 以后用上Webpack了就改成根据NODE_ENV来判断
 
-var useLegacySettingsUI = false;
-if (files.isFile(files.join(files.cwd(), "use_legacy_settings_ui"))) {
-    useLegacySettingsUI = true;
+
+var floatIsActive = false;
+// 悬浮窗权限检查
+if (!$floaty.checkPermission()) {
+    toastLog("没有悬浮窗权限\n申请中...");
+    let failed = false;
+    //这里的调用都不阻塞
+    //也许$floaty.requestPermission出问题时未必会抛异常，但startActivity在MIUI上确证会抛异常
+    //所以先尝试startActivity，再尝试$floaty.requestPermission
+    try {
+        app.startActivity({
+            packageName: "com.android.settings",
+            className: "com.android.settings.Settings$AppDrawOverlaySettingsActivity",
+            data: "package:" + context.getPackageName(),
+        });
+    } catch (e) {
+        failed = true;
+        logException(e);
+    }
+    if (failed) {
+        failed = false;
+        toastLog("申请悬浮窗权限时出错\n再次申请...");
+        try {
+            $floaty.requestPermission();
+        } catch (e) {
+            failed = true;
+            logException(e);
+        }
+    }
+    if (failed) {
+        toastLog("申请悬浮窗权限时出错\n请到应用设置里手动授权");
+    } else {
+        toast("请重新启动脚本");
+    }
+    exit();
+} else {
+    floatUI.main();
+    floatIsActive = true;
 }
 
 function switchSettingsUI(mode) {
@@ -210,6 +245,43 @@ function switchSettingsUI(mode) {
         app.launch(context.getPackageName());
     });
     engines.stopAll();
+}
+
+function toggleAutoService(enable) {
+    if (enable && !auto.service) {
+        app.startActivity({
+            action: "android.settings.ACCESSIBILITY_SETTINGS"
+        });
+        //部分品牌的手机在有悬浮窗的情况下拒绝开启无障碍服务（目前只发现OPPO是这样）
+        //为了关闭悬浮窗，最简单的办法就是退出脚本
+        ui.run(function () {
+            //TODO 需要适配新版UI
+            if (ui["exitOnServiceSettings"] != null && ui["exitOnServiceSettings"].isChecked()) exit();
+        });
+    }
+    let disableSelfDone = false;
+    if (!enable && auto.service) {
+        if (device.sdkInt >= 24) {
+            try {
+                auto.service.disableSelf();
+                disableSelfDone = true;//即便禁用成功了，auto.service也不会立即变成null
+            } catch (e) {
+                logException(e);
+                disableSelfDone = false;
+            }
+        } else {
+            toastLog("Android 6.0或以下请到系统设置里手动关闭无障碍服务");
+            app.startActivity({
+                action: "android.settings.ACCESSIBILITY_SETTINGS"
+            });
+        }
+    }
+    return disableSelfDone ? false : (auto.service != null ? true : false);
+}
+
+var useLegacySettingsUI = false;
+if (files.isFile(files.join(files.cwd(), "use_legacy_settings_ui"))) {
+    useLegacySettingsUI = true;
 }
 
 if (!useLegacySettingsUI) {
@@ -239,17 +311,40 @@ if (!useLegacySettingsUI) {
     //借用prompt处理Web端主动发起的对AutoJS端的通信
     //参考：https://www.jianshu.com/p/94277cb8f835
     function handleWebViewCallAJ(fnName, paramString) {
+        let result = null;
+        let resultString = "";
+
+        let params = [];
+        try {
+            params = JSON.parse(paramString);
+        } catch (e) {
+            logException(e);
+            params = [];
+        }
+
         switch (fnName) {
             case "switchSettingsUI":
-                try {
-                    let params = JSON.parse(paramString);
-                    if (params.length > 0)
-                        switchSettingsUI(params[0]);
-                } catch (e) {logException(e);}
+                if (params.length > 0) switchSettingsUI(params[0]);
+                result = true;
+                break;
+            case "isAutoServiceEnabled":
+                result = auto.service ? true : false;
+                break;
+            case "toggleAutoService":
+                result = false;
+                if (params.length > 0) result = toggleAutoService(params[0]);
                 break;
             default:
                 toastLog("未知的callAJ命令:\n["+fnName+"]");
         }
+
+        try {
+            resultString = JSON.stringify(result);
+        } catch (e) {
+            logException(e);
+            resultString = "";
+        }
+        return resultString;
     }
     let webViewSettings = ui.webview.getSettings();
     webViewSettings.setAllowFileAccessFromFileURLs(false);
@@ -258,12 +353,52 @@ if (!useLegacySettingsUI) {
     webViewSettings.setJavaScriptEnabled(true);
     var webcc = new JavaAdapter(WebChromeClient, {
         onJsPrompt: function (view, url, message, defaultValue, jsPromptResult) {
-            handleWebViewCallAJ(message, defaultValue);
-            jsPromptResult.confirm();//这段代码是必要的，否则会弹出prompt，阻塞界面。
+            let result = "";
+            try {
+                result = handleWebViewCallAJ(message, defaultValue);
+                if (result == null) result = "";
+            } catch (e) {
+                logException(e);
+                result = "";
+            }
+            jsPromptResult.confirm(result);//必须confirm，否则会在Webview上阻塞JS继续执行
             return true;
         }
     });
-    ui.webview.setWebChromeClient(webcc)
+    ui.webview.setWebChromeClient(webcc);
+
+    //在Webview端执行JS代码
+    //参考 https://github.com/710850609/autojs-webView/blob/02ff4540618a16014e67ad2d4c4bd6f80e7da685/expand/core/webViewExpand.js#L212
+    function callWebviewJS(script, callback) {
+        try {
+            ui.webview.evaluateJavascript("javascript:"+script, new JavaAdapter(android.webkit.ValueCallback, {
+                onReceiveValue: (val) => {
+                    if (callback) {
+                        callback(val);
+                    }
+                }
+            }));
+        } catch (e) {
+            logException(e);
+            log("在Webview端执行JS代码时出错");
+        }
+    }
+
+    //回到本界面时，resume事件会被触发
+    ui.emitter.on("resume", () => {
+        // 此时根据无障碍服务的开启情况，同步开关的状态
+        let jscode = "window.updateSettingsUI(\"isAutoServiceEnabled\","+(auto.service!=null?true:false)+");";
+        callWebviewJS(jscode);
+        if (!floatIsActive) {
+            floatUI.main()
+            floatIsActive = true;
+        }
+        //TODO
+        //if ($settings.isEnabled('foreground_service') != ui.foreground.isChecked())
+        //    ui.foreground.setChecked($settings.isEnabled('foreground_service'));
+        //if ($settings.isEnabled('stop_all_on_volume_up') != ui.stopOnVolUp.isChecked())
+        //    ui.stopOnVolUp.setChecked($settings.isEnabled('stop_all_on_volume_up'));
+    });
 } else {
     //使用旧版UI
     ui.statusBarColor("#FF4FB3FF")
@@ -564,27 +699,8 @@ if (!useLegacySettingsUI) {
 
     //无障碍开关监控
     ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
-        if (checked && !auto.service) {
-            app.startActivity({
-                action: "android.settings.ACCESSIBILITY_SETTINGS"
-            });
-            //部分品牌的手机在有悬浮窗的情况下拒绝开启无障碍服务（目前只发现OPPO是这样）
-            //为了关闭悬浮窗，最简单的办法就是退出脚本
-            ui.run(function () {
-                if (ui["exitOnServiceSettings"].isChecked()) exit();
-            });
-        }
-        if (!checked && auto.service) {
-            if (device.sdkInt >= 24) {
-                auto.service.disableSelf();
-            } else {
-                toastLog("Android 6.0或以下请到系统设置里手动关闭无障碍服务");
-                app.startActivity({
-                    action: "android.settings.ACCESSIBILITY_SETTINGS"
-                });
-            }
-        }
-        ui.autoService.setChecked(auto.service != null)
+        let result = toggleAutoService(checked);
+        ui.autoService.setChecked(result);
     });
     ui.showExperimentalFixes.setOnCheckedChangeListener(function (widget, checked) {
         ui.experimentalFixes.setVisibility(checked?View.VISIBLE:View.GONE);
@@ -637,46 +753,6 @@ if (!useLegacySettingsUI) {
         },
     });
     //-----------------自定义逻辑-------------------------------------------
-
-    var floatIsActive = false;
-    // 悬浮窗权限检查
-    if (!$floaty.checkPermission()) {
-        toastLog("没有悬浮窗权限\n申请中...");
-        let failed = false;
-        //这里的调用都不阻塞
-        //也许$floaty.requestPermission出问题时未必会抛异常，但startActivity在MIUI上确证会抛异常
-        //所以先尝试startActivity，再尝试$floaty.requestPermission
-        try {
-            app.startActivity({
-                packageName: "com.android.settings",
-                className: "com.android.settings.Settings$AppDrawOverlaySettingsActivity",
-                data: "package:" + context.getPackageName(),
-            });
-        } catch (e) {
-            failed = true;
-            logException(e);
-        }
-        if (failed) {
-            failed = false;
-            toastLog("申请悬浮窗权限时出错\n再次申请...");
-            try {
-                $floaty.requestPermission();
-            } catch (e) {
-                failed = true;
-                logException(e);
-            }
-        }
-        if (failed) {
-            toastLog("申请悬浮窗权限时出错\n请到应用设置里手动授权");
-        } else {
-            toast("请重新启动脚本");
-        }
-        exit();
-    } else {
-        floatUI.main();
-        floatIsActive = true;
-    }
-
     var storage = storages.create("auto_mr");
     const persistParamList = [
         "foreground",
