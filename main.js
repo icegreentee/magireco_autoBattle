@@ -316,7 +316,7 @@ if (!useLegacySettingsUI) {
 
         let params = [];
         try {
-            params = JSON.parse(paramString);
+            if (paramString !== "") params = JSON.parse(paramString);
         } catch (e) {
             logException(e);
             params = [];
@@ -333,6 +333,18 @@ if (!useLegacySettingsUI) {
             case "toggleAutoService":
                 result = false;
                 if (params.length > 0) result = toggleAutoService(params[0]);
+                break;
+            case "getScripts":
+                result = [];
+                if (floatUI != null) {
+                    result = floatUI.scripts.map((val) => {delete val.fn; return val;});
+                }
+                break;
+            case "getSettingsParam":
+                //TODO 为保持兼容，不应使用webview里的localstorage，还是应该继续从AutoJS的storages里读取参数
+                break;
+            case "setSettingsParam":
+                //TODO 为保持兼容，不应使用webview里的localstorage，还是应该继续从AutoJS的storages里读取参数
                 break;
             default:
                 toastLog("未知的callAJ命令:\n["+fnName+"]");
@@ -390,7 +402,7 @@ if (!useLegacySettingsUI) {
         let jscode = "window.updateSettingsUI(\"isAutoServiceEnabled\","+(auto.service!=null?true:false)+");";
         callWebviewJS(jscode);
         if (!floatIsActive) {
-            floatUI.main()
+            floatUI.main();
             floatIsActive = true;
         }
         //TODO
