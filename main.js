@@ -346,6 +346,16 @@ if (!useLegacySettingsUI) {
             case "setSettingsParam":
                 //TODO 为保持兼容，不应使用webview里的localstorage，还是应该继续从AutoJS的storages里读取参数
                 break;
+            case "reportBug":
+                if (reportTask && reportTask.isAlive()) {
+                    toastLog("已经在上传了,请稍后再试");
+                } else {
+                    reportTask = threads.start(reportBug);
+                }
+                break;
+            case "openLogConsole":
+                app.startActivity("console");
+                break;
             default:
                 toastLog("未知的callAJ命令:\n["+fnName+"]");
         }
@@ -669,7 +679,7 @@ if (!useLegacySettingsUI) {
                 }
                 break;
             case "查看日志":
-                app.startActivity("console")
+                app.startActivity("console");
                 break;
             case "魔纪百科":
                 app.openUrl("https://magireco.moe/");
