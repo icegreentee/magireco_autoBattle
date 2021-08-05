@@ -3557,7 +3557,7 @@ function algo_init() {
             log("继续嗑药");
 
             //确保AP药选择窗口已经打开
-            let ap_refill_title_attempt_max = 1500;
+            let ap_refill_title_attempt_max = 50;
             for (let attempt=0; attempt<ap_refill_title_attempt_max; attempt++) {
                 log("等待AP药选择窗口出现...");
                 ap_refill_title_popup = findPopupInfoDetailTitle(string.ap_refill_title, false);
@@ -3584,8 +3584,9 @@ function algo_init() {
                     return result;
                 }
                 if (attempt == ap_refill_title_attempt_max-1) {
-                    log("长时间等待后，AP药选择窗口仍然没有出现，退出");
-                    stopThread();
+                    log("多次尝试后，AP药选择窗口仍然没有出现");
+                    result = "error";
+                    return result;
                 }
                 if (attempt % 5 == 0) {
                     log("点击AP按钮");
