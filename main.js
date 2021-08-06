@@ -145,6 +145,10 @@ ui.layout(
                                 <text text="[录制闪退重开选关动作]或[导入动作录制数据]后即可在[副本周回(剧情/活动通用)]脚本启动时选择启用闪退自动重开,应对闪退或掉线后强制回首页的情况。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings1" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <text text="使用预设选关动作录制数据:" textColor="#000000" />
+                                <spinner id="usePresetOpList" textSize="14" textColor="#000000" entries="{{floatUI.presetOpLists.map(x=>x.name).join('|')}}" />
+                            </vertical>
+                            <vertical id="DefaultCrashRestartExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="假死检测超时" textColor="#000000" />
                                     <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
@@ -152,7 +156,7 @@ ui.layout(
                                 </linear>
                                 <text text="如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开。一般用来对付黑屏上只显示一个环彩羽(或者其他角色)Live2D、而未能正常显示选关列表的问题。一般设为5到10分钟(300到600秒)。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultCrashRestartExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultCrashRestartExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="无条件杀进程重开,每隔" textColor="#000000" />
                                     <input maxLength="5" id="periodicallyKillTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
@@ -160,7 +164,7 @@ ui.layout(
                                 </linear>
                                 <text text="有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测超时、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。一般设为1小时(3600秒)左右。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultCrashRestartExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="DefaultCrashRestartExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
                                 <text text="部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
                             </vertical>
@@ -591,7 +595,8 @@ const persistParamList = [
     "foreground",
     "stopOnVolUp",
     "exitOnServiceSettings",
-    "default",
+    "usePresetOpList",
+    "default",/* 放在usePresetOpList后面,这样启动时弹的toast还是默认执行脚本 */
     "autoReconnect",
     "justNPC",
     "helpx",

@@ -152,6 +152,45 @@ floatUI.scripts = [
     }
 ];
 
+floatUI.presetOpLists = [
+    {
+        name: "不使用预设数据",
+        content: null,
+    },
+    {
+        name: "国服主线2-1-4普通本(水波祭)",
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-8-6_"
+            +"9-51-6\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventTypeBRA"
+            +"NCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":1563"
+            +",\"y\":845,\"pos\":\"bottom\"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":["
+            +"{\"x\":1207,\"y\":862,\"pos\":\"center\"},{\"x\":1264,\"y\":405,\"pos\":\"cente"
+            +"r\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\""
+            +":1228,\"y\":846,\"pos\":\"center\"},{\"x\":1223,\"y\":405,\"pos\":\"center\"}]"
+            +",\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":118"
+            +"8,\"y\":826,\"pos\":\"center\"},{\"x\":1203,\"y\":399,\"pos\":\"center\"}],\"du"
+            +"ration\":2000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1202,\"y\":"
+            +"379,\"pos\":\"center\"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":"
+            +"1180,\"y\":852,\"pos\":\"center\"},{\"x\":1211,\"y\":404,\"pos\":\"center\"}],"
+            +"\"duration\":1970}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1181"
+            +",\"y\":840,\"pos\":\"center\"},{\"x\":1200,\"y\":405,\"pos\":\"center\"}],\"dur"
+            +"ation\":1825}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1224,\"y\":5"
+            +"60,\"pos\":\"center\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3000"
+            +"}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1193,\"y\":570,\"pos\":\"t"
+            +"op\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3000}},{\"action\":\""
+            +"checkText\",\"checkText\":{\"text\":\"BATTLE 4\",\"boundsCenter\":{\"x\":30"
+            +"4,\"y\":514,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false,"
+            +"\"nextAction\":\"ignore\"},\"notFound\":{\"kill\":true,\"stopScript\":fals"
+            +"e,\"nextAction\":\"fail\"}}},{\"action\":\"checkText\",\"checkText\":{\"tex"
+            +"t\":\"第2章\",\"boundsCenter\":{\"x\":305,\"y\":250,\"pos\":\"top\"},\"found\":{\""
+            +"kill\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\""
+            +":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action"
+            +"\":\"checkText\",\"checkText\":{\"text\":\"1话\",\"boundsCenter\":{\"x\":303,\""
+            +"y\":296,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false,\"ne"
+            +"xtAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":false,"
+            +"\"nextAction\":\"fail\"}}}]}",
+    },
+];
+
 //当前正在运行的线程
 var currentTask = null;
 var currentTaskName = "未运行任何脚本";
@@ -1339,6 +1378,7 @@ var limit = {
     drug2num: '0',
     drug3num: '0',
     drug4num: '0',
+    usePresetOpList: 0,
     default: 0,
     useAuto: true,
     autoFollow: true,
@@ -4019,8 +4059,12 @@ function algo_init() {
         return true;//可能没有特权，但用户选择不获取特权
     }
 
-    //上次录制的关卡选择动作列表
+    //当前选关动作数据(预设或录制)
     var lastOpList = null;
+    //用到预设数据时,需要先备份当前的非预设数据
+    var lastNonPresetOpList = null;
+    //标记当前选关动作数据是不是预设的
+    var isLastOpListNonPreset = false;
     //默认动作录制数据保存位置
     var savedLastOpListPath = files.join(engines.myEngine().cwd(), "lastRecordedSteps.txt");
 
@@ -4553,6 +4597,8 @@ function algo_init() {
         if (result != null) {
             saveOpList(result);//写入到文件
             lastOpList = result;
+            lastNonPresetOpList = result; //备份刚刚录制好的数据
+            isLastOpListNonPreset = true; //刚刚录制好的数据很显然不是预设的
             toastLog("录制完成,共记录"+result.steps.length+"步动作");
         }
         return result;
@@ -4618,7 +4664,16 @@ function algo_init() {
         var result = false;
 
         if (opList == null) opList = lastOpList;
-        if (opList == null) opList = loadOpList();
+        if (opList == null) {
+            log("目前没有加载动作录制数据,本次重放结束后也不会加载重放过的数据");
+            if (limit.usePresetOpList > 0) {
+                opList = JSON.parse(floatUI.presetOpLists[limit.usePresetOpList].content);
+                toastLog("即将开始重放:\n预设选关动作:\n["+floatUI.presetOpLists[limit.usePresetOpList].name+"]");
+            } else {
+                opList = loadOpList();
+                toastLog("即将开始重放:\n之前录制的选关动作"+(opList.date==null?"":"\n录制日期: "+opList.date));
+            }
+        }
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
             return false;
@@ -4804,21 +4859,11 @@ function algo_init() {
     function exportOpList() {
         //initialize(); //不要求游戏在前台，所以在脚本界面也可以导出
         let lastOpListStringified = null;
-        if (lastOpList == null) {
-            //动作录制数据还没加载，那就直接尝试读取文件内容（不过不保证读出来的内容可以通过检查）
-            toastLog("未加载动作录制数据\n尝试从文件读取(但暂不加载使用)");
-            let justFileContent = true;
-            lastOpListStringified = loadOpList(justFileContent);
-            //不对lastOpList重新赋值
-        } else {
-            try {
-                lastOpListStringified = JSON.stringify(lastOpList);
-            } catch (e) {
-                logException(e);
-                toastLog("导出失败");
-                return;
-            }
-        }
+
+        //当前加载的lastOpList可能是预设的,所以不用lastOpList,直接读取文件内容
+        let justFileContent = true;
+        lastOpListStringified = loadOpList(justFileContent);
+
         if (lastOpListStringified != null && lastOpListStringified != "") {
             ui.run(() => {
                 clip = android.content.ClipData.newPlainText("auto_export_op_list", lastOpListStringified);
@@ -4863,6 +4908,8 @@ function algo_init() {
             if (importedOpList != null && typeof importedOpList != "string") {
                 if (validateOpList(importedOpList)) {
                     lastOpList = importedOpList;
+                    lastNonPresetOpList = lastOpList; //备份导入的数据
+                    isLastOpListNonPreset = true; //导入的数据很显然不是预设的
                     toastLog("导入完成");
                     saveOpList(importedOpList);//写入到文件
                 } else {
@@ -4878,6 +4925,8 @@ function algo_init() {
         if (opList != null) lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
         dialogs.confirm("清除选关动作录制数据", "确定要清除么？"+lastOpListDateString, () => {
             lastOpList = null;
+            lastNonPresetOpList = null; //备份也清除掉,否则下次启动脚本时会从备份恢复
+            isLastOpListNonPreset = false;
             if (!files.remove(savedLastOpListPath)) {
                 toastLog("删除动作录制数据文件失败");
                 return;
@@ -5092,8 +5141,28 @@ function algo_init() {
 
         initialize();
 
+        if (limit.usePresetOpList > 0) {
+            //使用预设选关动作
+            //如果当前数据不是预设的,则先备份再赋值覆盖
+            if (isLastOpListNonPreset) lastNonPresetOpList = lastOpList;
+            lastOpList = JSON.parse(floatUI.presetOpLists[limit.usePresetOpList].content);
+            isLastOpListNonPreset = false;
+        } else {
+            //不使用预设选关动作
+            //如果当前的lastOpList已被清除,或者是预设的,就用之前的非预设数据备份还原(没备份时也赋值为null)
+            if (lastOpList == null || !isLastOpListNonPreset) {
+                if (lastNonPresetOpList == null) {
+                    lastOpList = null; //没有备份可供还原,清除掉当前的数据(是预设的,或者本来就已经清除掉了)
+                    isLastOpListNonPreset = false;
+                } else {
+                    lastOpList = lastNonPresetOpList;
+                    isLastOpListNonPreset = true;
+                }
+            }
+        }
         let lastOpListDateString = "";
         if (lastOpList == null) {
+            //不使用预设选关动作,也(暂时还没)加载录制的数据
             let opList = null;
             if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
                 lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
@@ -5101,7 +5170,11 @@ function algo_init() {
                     +"\n注意:4.9版或以前录制的杜鹃花型活动选关动作记录存在bug,没考虑点击坐标校正问题,可能在选关时点击错位,推荐删除重录。"
                     +lastOpListDateString)) {
                     lastOpList = opList;
+                    lastNonPresetOpList = opList; //加载的数据视为非预设的,备份起来
+                    isLastOpListNonPreset = true; //加载的数据应该是非预设的
                 } else {
+                    lastNonPresetOpList = null; //备份也清除掉(正常情况下本来就应该是已经清除掉的状态)
+                    isLastOpListNonPreset = false;
                     if (dialogs.confirm("闪退自动重开", "要删除保存选关动作录制数据的文件么?")) {
                         if (!files.remove(savedLastOpListPath)) {
                             toastLog("删除动作录制数据文件失败");
@@ -5124,7 +5197,11 @@ function algo_init() {
                 return;
             }
             requestTestReLaunchIfNeeded();//测试是否可以正常重开
-            let loadedInfoString = "已加载动作录制数据,闪退自动重开已启用"+lastOpListDateString;
+            let presetNameString = "";
+            if (limit.usePresetOpList > 0) {
+                presetNameString = "\n使用预设选关动作录制数据: ["+floatUI.presetOpLists[limit.usePresetOpList].name+"]";
+            }
+            let loadedInfoString = "已加载动作录制数据,闪退自动重开已启用"+presetNameString+lastOpListDateString;
             if (dialogs.confirm("闪退自动重开",
                 "即将开始周回。\n"
                 +loadedInfoString+"\n"
@@ -5135,6 +5212,8 @@ function algo_init() {
                 toastLog("周回已开始。\n"+loadedInfoString);
             } else {
                 lastOpList = null;
+                lastNonPresetOpList = null; //备份也清除掉,否则下次启动脚本时会从备份恢复
+                isLastOpListNonPreset = false;
                 toastLog("周回已开始。\n已停用闪退自动重开。");
             }
         }
