@@ -4478,7 +4478,7 @@ function algo_init() {
                     op.exit.stopScript = false;
                     do {
                         dialog_selected = dialogs.confirm("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", "报告成功请点\"确定\"\n报告失败请点\"取消\"");
-                    } while (dialog_selected != null);
+                    } while (dialog_selected == null);
                     op.exit.exitStatus = dialog_selected ? true : false;
                     let warning_text = dialog_selected ? "" : "(一般别选)";
                     dialog_options = [
@@ -4488,7 +4488,7 @@ function algo_init() {
                         "不杀游戏进程,只是终止脚本执行",
                     ];
                     do {
-                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要做什么?", dialog_options);
+                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时除了"+(op.exit.exitStatus?"报告成功":"报告失败")+"还要做什么?", dialog_options);
                         dialog_selected = parseInt(dialog_selected);
                         if (isNaN(dialog_selected)) dialog_selected = -1;
                     } while (dialog_selected < 0);
