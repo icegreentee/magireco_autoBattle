@@ -4700,6 +4700,13 @@ function algo_init() {
                 case "checkText":
                     let reallyFound = false;
                     let check_result = null;
+                    if (opList.isGeneric) {
+                        if (op.checkText.boundsCenter != null) {
+                            let converted = convertCoords(op.checkText.boundsCenter);
+                            op.checkText.centerX = op.checkText.boundsCenter.bypassCheckingX ? null : converted.x;
+                            op.checkText.centerY = op.checkText.boundsCenter.bypassCheckingY ? null : converted.y;
+                        }
+                    }
                     let all_found_text = findAll(op.checkText.text, parseInt(limit.timeout));
                     if (all_found_text != null && all_found_text.length > 0) {
                         for (let j=0; j<all_found_text.length; j++) {
