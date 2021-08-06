@@ -4693,16 +4693,18 @@ function algo_init() {
             switch (isGameDead()) {
                 case "crashed":
                     log("游戏已经闪退,停止重放");
+                    log("为了尽量避免幺蛾子出现,补刀再杀一次进程...");
+                    killGame(string.package_name);
                     return false;
-                    break;
                 case "logged_out":
                     log("游戏已经登出,停止重放");
                     return false;
-                    break;
                 case false:
                     break;//没闪退
                 default:
                     log("未知闪退状态,停止重放");
+                    log("为了尽量避免幺蛾子出现,补刀再杀一次进程...");
+                    killGame(string.package_name);
                     return false;
             }
             log("执行安全检查,同时等待"+defaultOpCycleWaitTime+"毫秒...");
@@ -5234,6 +5236,7 @@ function algo_init() {
         var isFirstBRANCHClick = true; //在杜鹃花型活动地图点了启动脚本,无法保证一定能正确选关
         var BRANCHclickAttemptCount = 0;
         var bypassPopupCheckCounter = 0;
+        var ensureGameDeadCounter = 0;
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -5262,6 +5265,21 @@ function algo_init() {
                     break;
                 default:
                     throw new Error("Unknown isCurrentTaskPaused value");
+            }
+
+            //偶尔isGameDead会出现奇怪的“误判”:
+            //游戏看上去还在运行,脚本却检测不到它在前台,而且游戏可能是黑屏假死状态,动弹不得
+            //为尽量避免这个问题,这里进行“补刀”
+            if (state == STATE_CRASHED || state == STATE_LOGIN) {
+                ensureGameDeadCounter++;
+                if (ensureGameDeadCounter >= 10) {
+                    ensureGameDeadCounter = 0;
+                    log("补刀再杀一次进程...");
+                    killGame(string.package_name);
+                    continue;
+                }
+            } else {
+                ensureGameDeadCounter = 0;
             }
 
             //然后检测游戏是否闪退或掉线
