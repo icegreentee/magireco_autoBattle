@@ -3119,7 +3119,7 @@ function algo_init() {
             throw e;
         } finally {
             openedDialogsLock.unlock();
-        } return openedDialogsNode.dialogResult.blockedGet(); },
+        } let ret = openedDialogsNode.dialogResult.blockedGet(); sleep(500);/* 等待对话框消失,防止isGameDead误判 */ return ret; },
         alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
         select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
         confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
@@ -5040,7 +5040,6 @@ function algo_init() {
             sleep(5000);
             dialogs.alert("测试闪退自动重开", "如果没出问题的话,游戏现在应该已经重启了。"
                 +"\n同时你还可以观察游戏是不是回到了登录前的状态。如果没有返回到登录界面,则表示杀进程没有成功。");
-            sleep(1000); //等待前一个对话框消失,否则isGameDead会误判为游戏没重启
             if (dialogs.confirm("测试闪退自动重开",
                     "游戏成功重启了么?\n"
                     +"看上去游戏好像"+(isGameDead()?"没启动":"启动了")+"。\n"
