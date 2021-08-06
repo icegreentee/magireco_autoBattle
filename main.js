@@ -150,7 +150,7 @@ ui.layout(
                                     <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
                                     <text text="秒" textColor="#000000" />
                                 </linear>
-                                <text text="如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开" textColor="#000000" />
+                                <text text="如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开。一般用来对付黑屏上只显示一个环彩羽(或者其他角色)Live2D、而未能正常显示选关列表的问题。一般设为5到10分钟(300到600秒)。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
@@ -158,7 +158,7 @@ ui.layout(
                                     <input maxLength="5" id="periodicallyKillTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
                                     <text text="秒一次" textColor="#000000" />
                                 </linear>
-                                <text text="有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。" textColor="#000000" />
+                                <text text="有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测超时、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。一般设为1小时(3600秒)左右。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
