@@ -142,7 +142,7 @@ ui.layout(
                             </vertical>
                             <vertical padding="0 8 0 0" w="*" h="auto">
                                 <Switch id="toggleDefaultCrashRestartExtraSettings" text="显示闪退自动重开设置" textColor="#666666" />
-                                <text text="[录制闪退重开选关动作]后即可在[副本周回(剧情/活动通用)]脚本启动时选择启用闪退自动重开,应对闪退或掉线后强制回首页的情况。" textColor="#000000" />
+                                <text text="[录制闪退重开选关动作]或[导入动作录制数据]后即可在[副本周回(剧情/活动通用)]脚本启动时选择启用闪退自动重开,应对闪退或掉线后强制回首页的情况。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings1" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
