@@ -4664,7 +4664,16 @@ function algo_init() {
         var result = false;
 
         if (opList == null) opList = lastOpList;
-        if (opList == null) opList = loadOpList();
+        if (opList == null) {
+            log("目前没有加载动作录制数据,本次重放结束后也不会加载重放过的数据");
+            if (limit.usePresetOpList > 0) {
+                opList = JSON.parse(floatUI.presetOpLists[limit.usePresetOpList].content);
+                toastLog("即将开始重放:\n预设选关动作:\n["+floatUI.presetOpLists[limit.usePresetOpList].name+"]");
+            } else {
+                opList = loadOpList();
+                toastLog("即将开始重放:\n之前录制的选关动作"+(opList.date==null?"":"\n录制日期: "+opList.date));
+            }
+        }
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
             return false;
@@ -4850,21 +4859,11 @@ function algo_init() {
     function exportOpList() {
         //initialize(); //不要求游戏在前台，所以在脚本界面也可以导出
         let lastOpListStringified = null;
-        if (lastOpList == null) {
-            //动作录制数据还没加载，那就直接尝试读取文件内容（不过不保证读出来的内容可以通过检查）
-            toastLog("未加载动作录制数据\n尝试从文件读取(但暂不加载使用)");
-            let justFileContent = true;
-            lastOpListStringified = loadOpList(justFileContent);
-            //不对lastOpList重新赋值
-        } else {
-            try {
-                lastOpListStringified = JSON.stringify(lastOpList);
-            } catch (e) {
-                logException(e);
-                toastLog("导出失败");
-                return;
-            }
-        }
+
+        //当前加载的lastOpList可能是预设的,所以不用lastOpList,直接读取文件内容
+        let justFileContent = true;
+        lastOpListStringified = loadOpList(justFileContent);
+
         if (lastOpListStringified != null && lastOpListStringified != "") {
             ui.run(() => {
                 clip = android.content.ClipData.newPlainText("auto_export_op_list", lastOpListStringified);
