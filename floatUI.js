@@ -309,6 +309,8 @@ function getStatusText() {
 //监视当前任务的线程
 var monitoredTask = null;
 
+var bypassPopupCheck = threads.atomic(0);
+
 var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
@@ -336,6 +338,8 @@ var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
             isCurrentTaskPaused.set(TASK_STOPPED);
             lockUI(false);
         }
+        //之前可能在STATE_TEAM状态下设置了跳过isGameDead里的掉线弹窗检查,现在恢复成不跳过
+        bypassPopupCheck.set(0);
         log("关闭所有无主对话框...");
         try {
             openedDialogsLock.lock();//先加锁，dismiss会等待解锁后再开始删
@@ -506,7 +510,7 @@ floatUI.main = function () {
         replaceCurrentTask({name:"未运行任何脚本", fn: function () {}});
     }
 
-    //检测getRotation获取到的转屏方向是不是出现错误
+    //检测getWindowSize的转屏方向是不是出现错误
     function checkRotationGlitch() {
         let sz = getWindowSize();
         if (sz.y > sz.x) {
@@ -926,9 +930,7 @@ floatUI.main = function () {
                     task_popup.setPosition(sz.x / 4, sz.y / 4);
                 } catch (e) {
                     logException(e);
-                    //貌似只有完全退出脚本才可以避免getRotation错位的问题
                     toastLog("无法重设悬浮窗的大小和位置,\n可能是悬浮窗意外消失\n退出脚本...");
-                    limit.killSelf = true;//杀死自己的两个后台进程
                     engines.stopAll();
                     return; //不再继续往下执行
                 }
@@ -960,37 +962,12 @@ floatUI.main = function () {
         },
     });
 
-    floatUI.isUpgrading = false;
     context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED));
     events.on("exit", function () {
-        log("注销广播接收器...");
         try {
             context.unregisterReceiver(receiver);
         } catch (e) {
             logException(e);
-        }
-        log("注销广播接收器完成");
-
-        //希望这样能避免 #110
-        if (limit.killSelf && !floatUI.isUpgrading) {
-            let mytoast = new android.widget.Toast.makeText(context, "杀死脚本自己的后台...", android.widget.Toast.LENGTH_SHORT);
-            let mytoastcb = new android.widget.Toast.Callback({
-                onToastShown: function () {
-                    threads.start(function () {
-                        sleep(500);
-                        //杀死进程名为 包名 的进程，不杀的话会自动重启另一个进程
-                        let name = context.getPackageName();
-                        log("killBackgroundProcesses(packageName=\""+name+"\")");
-                        context.getSystemService(context.ACTIVITY_SERVICE).killBackgroundProcesses(name);
-                        //杀死进程名为 包名:script 的进程
-                        let pid = android.os.Process.myPid();
-                        log("killProcess(pid="+pid+")");
-                        android.os.Process.killProcess(pid);
-                    }).waitFor();
-                }
-            });
-            mytoast.addCallback(mytoastcb);
-            mytoast.show();
         }
     });
 
@@ -1070,9 +1047,6 @@ floatUI.main = function () {
         return {pos_down: touch_down_pos, pos_up: touch_up_pos, duration: swipe_duration};
     };
 
-    //初始化getWindowSize()
-    detectInitialWindowSize();
-
     //检测刘海屏参数
     function adjustCutoutParams() {
         if (device.sdkInt >= 28) {
@@ -1129,8 +1103,9 @@ floatUI.main = function () {
             logstring = "执行shell命令: ["+shellcmd+"]";
         if (logstring !== false) log("直接使用root权限"+logstring);
         $shell.setDefaultOptions({adb: false});
+        let result = $shell(shellcmd, true);
         if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
-        return $shell(shellcmd, true);
+        return result;
     };
     //根据情况使用Shizuku还是直接使用root执行shell命令
     privShell = function (shellcmd, logstring) {
@@ -1155,8 +1130,9 @@ floatUI.main = function () {
             logstring = "执行shell命令: ["+shellcmd+"]";
         if (logstring !== false) log("不使用特权"+logstring);
         $shell.setDefaultOptions({adb: false});
+        let result = $shell(shellcmd);
         if (logstring !== false) log("不使用特权"+logstring+" 完成");
-        return $shell(shellcmd);
+        return result;
     }
 
     //检查并申请root或adb权限
@@ -1378,7 +1354,6 @@ var limit = {
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
     firstRequestPrivilege: true,
-    killSelf: false,
     privilege: null
 }
 
@@ -2242,14 +2217,14 @@ function algo_init() {
                 auto.root.refresh();
             } catch (e) {
                 logException(e);
-                if (wait) sleep(isFast ? 16 : 100);
+                if (wait) sleep(isFast ? 32 : 100);
                 continue;
             }
             result = textMatches(reg).findOnce();
             if (result && (isFast || result.refresh())) break;
             result = descMatches(reg).findOnce();
             if (result && (isFast || result.refresh())) break;
-            if (wait) sleep(isFast ? 16 : 100);
+            if (wait) sleep(isFast ? 32 : 100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         return result;
     }
@@ -2296,14 +2271,14 @@ function algo_init() {
                 auto.root.refresh();
             } catch (e) {
                 logException(e);
-                if (wait) sleep(isFast ? 16 : 100);
+                if (wait) sleep(isFast ? 32 : 100);
                 continue;
             }
             result = text(txt).findOnce();
             if (result && (isFast || result.refresh())) break;
             result = desc(txt).findOnce();
             if (result && (isFast || result.refresh())) break;
-            if (wait) sleep(isFast ? 16 : 100);
+            if (wait) sleep(isFast ? 32 : 100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         return result;
     }
@@ -2349,12 +2324,12 @@ function algo_init() {
                 auto.root.refresh();
             } catch (e) {
                 logException(e);
-                if (wait) sleep(isFast ? 16 : 100);
+                if (wait) sleep(isFast ? 32 : 100);
                 continue;
             }
             result = id(name).findOnce();
             if (result && (isFast || result.refresh())) break;
-            if (wait) sleep(isFast ? 16 : 100);
+            if (wait) sleep(isFast ? 32 : 100);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         return result;
     }
@@ -2405,7 +2380,7 @@ function algo_init() {
             result = fnlist[current]();
             if (result && (isFast || result.refresh())) break;
             current++;
-            sleep(isFast ? 16 : 50);
+            sleep(isFast ? 32 : 50);
         } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         if (wait)
             log(
@@ -2434,6 +2409,7 @@ function algo_init() {
 
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
     //关注追加窗口在MuMu上点这里的close坐标点不到关闭
+    //title_to_find可以是数组
     function findPopupInfoDetailTitle(title_to_find, wait) {
         let default_x = getFragmentViewBounds().right - 1;
         let default_y = 0;
@@ -2477,7 +2453,17 @@ function algo_init() {
             result.title = "";
         }
 
-        if (title_to_find != null && result.title != title_to_find) return null;
+        if (
+             title_to_find != null
+             && (
+                  typeof title_to_find == "string"
+                  ? title_to_find != result.title
+                  : title_to_find.find((val) => val == result.title) == null
+                )
+           )
+        {
+            return null;
+        }
 
         let element_bounds = element.bounds();
         let half_height = parseInt(element_bounds.height() / 2);
@@ -3197,18 +3183,16 @@ function algo_init() {
             return "crashed";
         }
 
-        do {
+        //因为STATE_TEAM状态下这里的掉线弹窗检查非常慢,所以跳过头4回检查
+        if (bypassPopupCheck.get() == 0) do {
             let found_popup = null;
-            for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
-                try {
-                    found_popup = findPopupInfoDetailTitle(string[error_type]);
-                } catch (e) {
-                    logException(e);
-                    found_popup = null;
-                }
-                if (found_popup != null) break;
+            try {
+                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error"]);
+            } catch (e) {
+                logException(e);
+                found_popup = null;
             }
-            if (found_popup) {
+            if (found_popup != null) {
                 log("游戏已经断线/登出/出错,并强制回首页");
                 return "logged_out";
             }
@@ -3217,7 +3201,8 @@ function algo_init() {
         return false;
     }
 
-    function getFragmentViewBounds() {
+    var lastFragmentViewStatus = {bounds: null, rotation: 0};
+    var getFragmentViewBounds = sync(function () {
         if (string == null || string.package_name == null || string.package_name == "") {
             try {
                 throw new Error("getFragmentViewBounds: null/empty string.package_name");
@@ -3225,8 +3210,17 @@ function algo_init() {
                 logException(e);
             }
             let sz = getWindowSize();
+            lastFragmentViewStatus = {bounds: null, rotation: 0};
             return new android.graphics.Rect(0, 0, sz.x, sz.y);
         }
+
+        //复用上次的结果,加快速度
+        let display = context.getSystemService(android.content.Context.WINDOW_SERVICE).getDefaultDisplay();
+        let currentRotation = display.getRotation();
+        if (lastFragmentViewStatus.bounds != null && lastFragmentViewStatus.rotation == currentRotation) {
+            return lastFragmentViewStatus.bounds;
+        }
+
         let bounds = null;
         try {
             bounds = selector()
@@ -3240,10 +3234,14 @@ function algo_init() {
             logException(e);
             log("getFragmentViewBounds出错,使用getWindowSize作为替代");
             let sz = getWindowSize();
+            lastFragmentViewStatus = {bounds: null, rotation: 0};
             return new android.graphics.Rect(0, 0, sz.x, sz.y);
         }
+
+        if (bounds != null) lastFragmentViewStatus = {bounds: bounds, rotation: currentRotation};
+
         return bounds;
-    }
+    });
 
     var screen = {width: 0, height: 0, type: "normal"};
     var gamebounds = null;
@@ -3491,7 +3489,7 @@ function algo_init() {
             log("继续嗑药");
 
             //确保AP药选择窗口已经打开
-            let ap_refill_title_attempt_max = 1500;
+            let ap_refill_title_attempt_max = 50;
             for (let attempt=0; attempt<ap_refill_title_attempt_max; attempt++) {
                 log("等待AP药选择窗口出现...");
                 ap_refill_title_popup = findPopupInfoDetailTitle(string.ap_refill_title, false);
@@ -3518,8 +3516,9 @@ function algo_init() {
                     return result;
                 }
                 if (attempt == ap_refill_title_attempt_max-1) {
-                    log("长时间等待后，AP药选择窗口仍然没有出现，退出");
-                    stopThread();
+                    log("多次尝试后，AP药选择窗口仍然没有出现");
+                    result = "error";
+                    return result;
                 }
                 if (attempt % 5 == 0) {
                     log("点击AP按钮");
@@ -4139,8 +4138,12 @@ function algo_init() {
             isEventTypeBRANCH: false,//杜鹃花型活动
             steps: []
         }
-        dialogs.alert("请务必先回到首页再开始录制！", "录制将会在5秒后开始");
-        sleep(5000);
+        while (true) {
+            let result = dialogs.confirm("请务必先回到首页再开始录制！", "请确保游戏已经回到首页,然后才能点\"确定\"。\n否则请点\"取消\",然后将会在5秒后再次询问。");
+            if (result) break;
+            toast("5秒后会再次询问");
+            sleep(5000);
+        }
         let new_sleep_time = -1;
         do {
             new_sleep_time = dialogs.rawInput("每一步操作之间的默认等待时长设为多少毫秒？（除了强制要求的500毫秒安全检查之外）", "1500");
@@ -4156,7 +4159,10 @@ function algo_init() {
         let isEventTypeBRANCH = null;
         do {
             isEventTypeBRANCH = dialogs.confirm("要录制的是杜鹃花型活动的选关动作么？",
-                "杜鹃花型活动选关步骤一般是:\n"
+                "如果是,请点\"确定\"。\n"
+                +"如果并不是杜鹃花型活动,请点\"取消\"。\n"
+                +"\n"
+                +"杜鹃花型活动选关步骤一般是:\n"
                 +"1.从首页点进活动地图,\n"
                 +"2.(如果有需要)点击切换剧情第一/二部,\n"
                 +"3.(如果有需要)拖动活动地图,\n"
@@ -4172,12 +4178,14 @@ function algo_init() {
                 "录制下来的选关动作一般包含这几个步骤:\n"
                 +"1.在首页点击,进入主线/支线/活动剧情,\n"
                 +"2.点击选择要打的关卡所在的章节,\n"
-                +"3.利用\"检测文字是否出现\"来确保章节没有选错,如果检测到正确的章节文字就\"什么也不做,继续\",检测不到就\"先强关游戏再报告失败\",\n"
+                +"3.利用\"检测文字是否出现\"来确保章节没有选错,如果检测到正确的章节文字就\"继续回放下一步\",检测不到就\"结束回放,报告失败\"并\"杀进程重开游戏\",\n"
                 +"4.点击选择要打的关卡,进入助战选择界面,\n"
                 +"5.在助战选择界面再次利用\"检测文字是否出现\"来确保章节和关卡都没有选错,原理同上,\n"
-                +"6.结束并报告成功。"
+                +"6.\"结束回放\"并\"报告成功\",并且在结束时\"什么也不做,继续执行脚本\"。"
             );
         }
+
+        dialogs.alert("录制时请务必跟着提示一步一步来", "尤其是在录制点击和滑动操作时,请务必在屏幕变暗、并显示出相关操作提示后,再进行点击或滑动操作!");
 
         let endRecording = false;
         for (let step=0; !endRecording; step++) {
@@ -4347,7 +4355,12 @@ function algo_init() {
                     for (let found_or_not_found of ["found", "notFound"]) {
                         op.checkText[found_or_not_found] = {};
                         op.checkText[found_or_not_found].kill = false;
-                        dialog_options = ["什么也不做,继续执行", "报告成功并结束", "报告失败并结束", "先强关游戏再报告成功并结束", "先强关游戏再报告失败并结束"];
+                        op.checkText[found_or_not_found].stopScript = false;
+                        dialog_options = [
+                            "继续回放下一步",
+                            "结束回放,报告成功",
+                            "结束回放,报告失败",
+                        ];
                         do {
                             dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字\""+op.checkText.text+"\"时要做什么?", dialog_options);
                             dialog_selected = parseInt(dialog_selected);
@@ -4358,13 +4371,9 @@ function algo_init() {
                                 op.checkText[found_or_not_found].nextAction = "ignore";
                                 deadEnd = false;
                                 break;
-                            case 3:
-                                op.checkText[found_or_not_found].kill = true;//不break
                             case 1:
                                 op.checkText[found_or_not_found].nextAction = "success";
                                 break;
-                            case 4:
-                                op.checkText[found_or_not_found].kill = true;//不break
                             case 2:
                                 op.checkText[found_or_not_found].nextAction = "fail";
                                 break;
@@ -4373,6 +4382,39 @@ function algo_init() {
                                 stopThread();
                         }
                         toastLog("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字时要\n"+dialog_options[dialog_selected]);
+                        if (dialog_selected == 1 || dialog_selected == 2) {
+                            let dialog_selected_text = dialog_options[dialog_selected];//上一个对话框选中的选项文字
+                            let warning_text = op.checkText[found_or_not_found].nextAction == "fail" ? "(一般别选)" : "";
+                            dialog_options = [
+                                warning_text+"什么也不做,继续执行脚本",
+                                "杀进程重开游戏,继续执行脚本(让脚本重开游戏)",
+                                "杀进程关掉游戏,终止脚本执行",
+                                "不杀游戏进程,只是终止脚本执行",
+                            ];
+                            do {
+                                dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+dialog_selected_text+"时要做什么?", dialog_options);
+                                dialog_selected = parseInt(dialog_selected);
+                                if (isNaN(dialog_selected)) dialog_selected = -1;
+                            } while (dialog_selected < 0);
+                            switch (dialog_selected) {
+                                case 0:
+                                    break;
+                                case 1:
+                                    op.checkText[found_or_not_found].kill = true;
+                                    break;
+                                case 2:
+                                    op.checkText[found_or_not_found].stopScript = true;
+                                    break;
+                                case 3:
+                                    op.checkText[found_or_not_found].kill = true;
+                                    op.checkText[found_or_not_found].stopScript = true;
+                                    break;
+                                default:
+                                    toastLog("询问检测文字后结束回放时要做什么时出错");
+                                    stopThread();
+                            }
+                            toastLog("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字时要\n"+dialog_options[dialog_selected]);
+                        }
                     }
                     if (
                           deadEnd
@@ -4432,28 +4474,41 @@ function algo_init() {
                     //现在不考虑加入循环跳转什么的
                     op.exit = {};
                     op.exit.kill = false;
-                    dialog_options = ["报告成功", "报告失败", "先强关游戏再报告成功", "先强关游戏再报告失败"];
+                    op.exit.stopScript = false;
                     do {
-                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", dialog_options);
+                        dialog_selected = dialogs.confirm("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", "报告成功请点\"确定\"\n报告失败请点\"取消\"");
+                    } while (dialog_selected == null);
+                    op.exit.exitStatus = dialog_selected ? true : false;
+                    let warning_text = dialog_selected ? "" : "(一般别选)";
+                    dialog_options = [
+                        warning_text+"什么也不做,继续执行脚本",
+                        "杀进程重开游戏,继续执行脚本(让脚本重开游戏)",
+                        "杀进程关掉游戏,终止脚本执行",
+                        "不杀游戏进程,只是终止脚本执行",
+                    ];
+                    do {
+                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时除了"+(op.exit.exitStatus?"报告成功":"报告失败")+"还要做什么?", dialog_options);
                         dialog_selected = parseInt(dialog_selected);
                         if (isNaN(dialog_selected)) dialog_selected = -1;
                     } while (dialog_selected < 0);
                     switch (dialog_selected) {
-                        case 2:
-                            op.exit.kill = true;//不break
                         case 0:
-                            op.exit.exitStatus = true;
+                            break;
+                        case 1:
+                            op.exit.kill = true;
+                            break;
+                        case 2:
+                            op.exit.kill = true;
+                            op.exit.stopScript = true;
                             break;
                         case 3:
-                            op.exit.kill = true;//不break
-                        case 1:
-                            op.exit.exitStatus = false;
+                            op.exit.stopScript = true;
                             break;
                         default:
-                            toastLog("询问结束时报告成功还是失败时出错");
+                            toastLog("询问结束时要做什么时出错");
                             stopThread();
                     }
-                    toastLog("录制第"+(step+1)+"步操作\n结束时要"+dialog_options[dialog_selected]);
+                    toastLog("录制第"+(step+1)+"步操作\n结束时要"+(op.exit.exitStatus?"报告成功":"报告失败")+",并且"+dialog_options[dialog_selected]);
                     result.steps.push(op);
                     toastLog("录制结束");
                     endRecording = true;
@@ -4645,6 +4700,13 @@ function algo_init() {
                 case "checkText":
                     let reallyFound = false;
                     let check_result = null;
+                    if (opList.isGeneric) {
+                        if (op.checkText.boundsCenter != null) {
+                            let converted = convertCoords(op.checkText.boundsCenter);
+                            op.checkText.centerX = op.checkText.boundsCenter.bypassCheckingX ? null : converted.x;
+                            op.checkText.centerY = op.checkText.boundsCenter.bypassCheckingY ? null : converted.y;
+                        }
+                    }
                     let all_found_text = findAll(op.checkText.text, parseInt(limit.timeout));
                     if (all_found_text != null && all_found_text.length > 0) {
                         for (let j=0; j<all_found_text.length; j++) {
@@ -4709,6 +4771,10 @@ function algo_init() {
                         killGame(opList.package_name);
                         log("强行停止完成");
                     }
+                    if (check_result.stopScript === true) {
+                        log("终止脚本执行");
+                        stopThread();
+                    }
                     break;
                 case "exit":
                     log("结束重放");
@@ -4718,6 +4784,10 @@ function algo_init() {
                         log("强行停止游戏", opList.package_name);
                         killGame(opList.package_name);
                         log("强行停止完成");
+                    }
+                    if (op.exit.stopScript === true) {
+                        log("终止脚本执行");
+                        stopThread();
                     }
                     break;
                 default:
@@ -5077,6 +5147,7 @@ function algo_init() {
         var lastReLaunchTime = new Date().getTime();
         var isFirstBRANCHClick = true; //在杜鹃花型活动地图点了启动脚本,无法保证一定能正确选关
         var BRANCHclickAttemptCount = 0;
+        var bypassPopupCheckCounter = 0;
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -5108,6 +5179,18 @@ function algo_init() {
             }
 
             //然后检测游戏是否闪退或掉线
+            //因为STATE_TEAM状态下isGameDead里的掉线弹窗检查非常慢,故跳过头4回检查
+            if (state == STATE_TEAM) {
+                if (last_state != STATE_TEAM) bypassPopupCheckCounter = 4;
+                if (bypassPopupCheckCounter-- > 0) {
+                    bypassPopupCheck.set(1);
+                } else {
+                    bypassPopupCheck.set(0);
+                }
+            } else {
+                bypassPopupCheckCounter = 0;
+                bypassPopupCheck.set(0);
+            }
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
                 if (lastOpList != null) {
                     state = STATE_CRASHED;
@@ -5715,12 +5798,13 @@ function algo_init() {
                         state = STATE_BATTLE;
                         break;
                     }
-                    // try to skip
-                    if (!id("menu").findOnce()) {
-                        //这里开发者意见存在分歧
-                        // @icegreentee 认为这样最简单直接,实际上也观察到之前有误触菜单问题的用户不再反馈有这个问题
-                        // @segfault-bilibili 观察到menu控件无论主菜单是否打开都存在,所以怀疑这个检测的效果
-                        // 实际测试发现确实有效果,现在怀疑是不是和QQ等在屏幕上弹出通知有关
+                    //点击跳过剧情
+                    //出现这些控件中的任何一个即说明已经跳过剧情，然后就可以避免误触MENU。
+                    //有时候单单靠上面getAP检测AP余量控件是否出现还不够，还是可能偶发误触MENU按钮，
+                    //因为AP余量控件可能会概率性玄学消失（用Android SDK里的UI Automator Viewer工具抓到的布局里也完全缺失这个控件）
+                    //因此，只能尽量多检测几个控件id来尽可能降低误触MENU的风险。
+                    let IDsToFind = ["menu", "helpBtn", "sideMenu", "menuBtns", "sideBigBtns"];
+                    if (!IDsToFind.find((val) => id(val).findOnce() != null)) {
                         log("尝试跳过剧情");
                         click(convertCoords(clickSets.skip));
                     }
@@ -5875,11 +5959,25 @@ function algo_init() {
                 log("检测到横屏强制转竖屏的截屏");
                 needScreenCaptureFix = true;
             }
+            log("检测是否返回了空白图像...");
+            let isBlank = false;
+            for (let c of [colors.BLACK, colors.WHITE]) {
+                let p = images.findColor(screenshot, c, {threshold: 254});
+                if (p == null) {
+                    isBlank = true;
+                    break;
+                }
+            }
+            if (isBlank) {
+                toastLog("录屏API似乎返回了空白图像,\n脚本将停止运行。\n请使用root或adb权限截屏");
+                throw new Error("initializeScreenCaptureFix detected blank screenshot");
+            } else {
+                log("检测完成,并不是空白图像");
+            }
         } catch (e) {
             hasScreenCaptureError = true;
             toastLog("通过录屏API截图时出错\n请使用root或adb权限截屏");
-            logException(e);
-            stopThread();
+            throw e;
         }
     }
 
@@ -5966,6 +6064,7 @@ function algo_init() {
     }
 
 
+    var staleScreenshot = {img: null, lastTime: 0, timeout: 1000};
     var compatCaptureScreen = sync(function () {
         if (limit.rootScreencap) {
             //使用shell命令 screencap 截图
@@ -5997,7 +6096,22 @@ function algo_init() {
             return renewImage(screenshot, "screenshot", tagOnly); //回收旧图片
         } else {
             //使用AutoJS默认提供的录屏API截图
-            let screenshot = captureScreen.apply(this, arguments);
+            let screenshot = captureScreen();
+            let time = new Date().getTime();
+            if (staleScreenshot.img == null) {
+                staleScreenshot.img = screenshot;
+                staleScreenshot.lastTime = time;
+            }
+            if (time > staleScreenshot.lastTime + staleScreenshot.timeout) {
+                staleScreenshot.lastTime = time;
+                //正常情况下老图应该已经被回收了,而且回收老图肯定不应该影响新图
+                try {staleScreenshot.img.recycle();} catch (e) {}
+                staleScreenshot.img = screenshot;
+                try {images.pixel(screenshot, 0, 0);} catch (e) {
+                    toastLog("截屏出错,多次尝试后截屏数据仍未刷新,\n将停止运行脚本运行。\n请尝试开启\"使用root或adb权限截屏\"");
+                    throw e;
+                }
+            }
             if (needScreenCaptureFix) {
                 //检测到横屏强制转竖屏的截屏，需要修正
 
@@ -8028,14 +8142,6 @@ function algo_init() {
             //我的回合，抽盘
             turn++;
 
-            if (limit.CVAutoBattleClickAllSkills) {
-                if (turn >= 3) {
-                    //一般在第3回合后主动技能才冷却完毕
-                    //闭着眼放出所有主动技能
-                    clickAllSkills();
-                }
-            }
-
             //扫描行动盘和战场信息
             scanDisks();
             scanBattleField("our");
@@ -8149,6 +8255,14 @@ function algo_init() {
                 let advAttrEnemies = [];
                 if (advAttribs.length > 0) advAttrEnemies = getEnemiesByAttrib(advAttribs[0]);
                 if (advAttrEnemies.length > 0) avoidAimAtEnemies(advAttrEnemies);
+            }
+
+            if (limit.CVAutoBattleClickAllSkills) {
+                if (turn >= 3) {
+                    //一般在第3回合后主动技能才冷却完毕
+                    //闭着眼放出所有主动技能
+                    clickAllSkills();
+                }
             }
 
             //提前把不被克制的盘排到前面
@@ -9154,18 +9268,27 @@ function algo_init() {
 
 //global utility functions
 //MIUI上发现有时候转屏了getSize返回的还是没转屏的数据，但getRotation的结果仍然是转过屏的，所以 #89 才改成这样
-var initialWindowSize = {};
+var initialWindowSize = {initialized: false};
 function detectInitialWindowSize() {
-    let display = context.getSystemService(context.WINDOW_SERVICE).getDefaultDisplay();
+    ui.run(function () {
+        if (initialWindowSize.initialized) return;
 
-    let pt = new Point();
-    display.getSize(pt);
+        let initialSize = new Point();
+        try {
+            let mWm = android.view.IWindowManager.Stub.asInterface(android.os.ServiceManager.checkService(android.content.Context.WINDOW_SERVICE));
+            mWm.getInitialDisplaySize(android.view.Display.DEFAULT_DISPLAY, initialSize);
+        } catch (e) {
+            logException(e);
+            toastLog("无法获取屏幕物理分辨率\n请尝试以竖屏模式重启");
+            initialSize = new Point(device.width, device.height);
+        }
 
-    let rotation = display.getRotation();
-
-    initialWindowSize = {size: pt, rotation: rotation};
-}
+        initialWindowSize = {size: initialSize, rotation: 0, initialized: true};
+        log("initialWindowSize", initialWindowSize);
+    });
+};
 function getWindowSize() {
+    detectInitialWindowSize();
     let display = context.getSystemService(context.WINDOW_SERVICE).getDefaultDisplay();
     let currentRotation = display.getRotation();
     let relativeRotation = (4 + currentRotation - initialWindowSize.rotation) % 4;
