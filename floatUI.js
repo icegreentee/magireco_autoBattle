@@ -3119,7 +3119,7 @@ function algo_init() {
             throw e;
         } finally {
             openedDialogsLock.unlock();
-        } return openedDialogsNode.dialogResult.blockedGet(); },
+        } let ret = openedDialogsNode.dialogResult.blockedGet(); sleep(500);/* 等待对话框消失,防止isGameDead误判 */ return ret; },
         alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
         select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
         confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
@@ -5031,7 +5031,7 @@ function algo_init() {
     function testReLaunchRunnable() {
         initialize();
         while (true) {
-            dialogs.alert("测试闪退自动重开", "即将回到脚本界面并杀进程退出游戏");
+            dialogs.alert("测试闪退自动重开", "即将回到脚本界面并杀进程退出游戏。\n请确保游戏没有被锁后台,不然的话可能无法正常杀进程重开!");
             killGame();
             backtoMain();
             dialogs.alert("测试闪退自动重开", "即将重启游戏。\n如果弹出提示询问是否允许关联启动,请点\"允许\"");
@@ -5042,10 +5042,12 @@ function algo_init() {
                 +"\n同时你还可以观察游戏是不是回到了登录前的状态。如果没有返回到登录界面,则表示杀进程没有成功。");
             if (dialogs.confirm("测试闪退自动重开",
                     "游戏成功重启了么?\n"
-                    +"看上去好像"+(isGameDead()?"没成功":"成功了")
-                    +"\n点\"确定\"结束测试,点\"取消\"重测一次"
-                    +"\n强烈推荐至少重测一次!"
-                    +"\n如果不能成功,请搜索你的手机品牌/型号是否有允许关联启动(白名单之类的)的设置方法")
+                    +"看上去游戏好像"+(isGameDead()?"没启动":"启动了")+"。\n"
+                    +"请自己观察判断有没有成功杀掉进程并重启游戏。(而不只是切到后台又原封不动地切回来)\n"
+                    +"如果游戏只是原封不动地切到后台又切回来了,请检查游戏是不是被锁了后台!\n"
+                    +"点\"确定\"结束测试,点\"取消\"重测一次\n"
+                    +"强烈推荐至少重测一次!\n"
+                    +"如果不能成功,请搜索你的手机品牌/型号是否有允许关联启动(白名单之类的)的设置方法")
                )
             {
                 isRelaunchTested = true; //只表示是否测试过,不表示是否成功过
@@ -5124,7 +5126,11 @@ function algo_init() {
             requestTestReLaunchIfNeeded();//测试是否可以正常重开
             let loadedInfoString = "已加载动作录制数据,闪退自动重开已启用"+lastOpListDateString;
             if (dialogs.confirm("闪退自动重开",
-                "即将开始周回。\n"+loadedInfoString+"\n点\"确定\"继续。\n点\"取消\"停用闪退自动重开。"))
+                "即将开始周回。\n"
+                +loadedInfoString+"\n"
+                +"请务必确保游戏没有被锁后台,否则可能无法正常杀掉进程!\n"
+                +"点\"确定\"继续。\n"
+                +"点\"取消\"停用闪退自动重开。"))
             {
                 toastLog("周回已开始。\n"+loadedInfoString);
             } else {
