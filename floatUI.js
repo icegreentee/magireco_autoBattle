@@ -4139,8 +4139,12 @@ function algo_init() {
             isEventTypeBRANCH: false,//杜鹃花型活动
             steps: []
         }
-        dialogs.alert("请务必先回到首页再开始录制！", "录制将会在5秒后开始");
-        sleep(5000);
+        while (true) {
+            let result = dialogs.confirm("请务必先回到首页再开始录制！", "请确保游戏已经回到首页,然后才能点\"确定\"。\n否则请点\"取消\",然后将会在5秒后再次询问。");
+            if (result) break;
+            toast("5秒后会再次询问");
+            sleep(5000);
+        }
         let new_sleep_time = -1;
         do {
             new_sleep_time = dialogs.rawInput("每一步操作之间的默认等待时长设为多少毫秒？（除了强制要求的500毫秒安全检查之外）", "1500");
@@ -4156,7 +4160,10 @@ function algo_init() {
         let isEventTypeBRANCH = null;
         do {
             isEventTypeBRANCH = dialogs.confirm("要录制的是杜鹃花型活动的选关动作么？",
-                "杜鹃花型活动选关步骤一般是:\n"
+                "如果是,请点\"确定\"。\n"
+                +"如果并不是杜鹃花型活动,请点\"取消\"。\n"
+                +"\n"
+                +"杜鹃花型活动选关步骤一般是:\n"
                 +"1.从首页点进活动地图,\n"
                 +"2.(如果有需要)点击切换剧情第一/二部,\n"
                 +"3.(如果有需要)拖动活动地图,\n"
@@ -4172,12 +4179,14 @@ function algo_init() {
                 "录制下来的选关动作一般包含这几个步骤:\n"
                 +"1.在首页点击,进入主线/支线/活动剧情,\n"
                 +"2.点击选择要打的关卡所在的章节,\n"
-                +"3.利用\"检测文字是否出现\"来确保章节没有选错,如果检测到正确的章节文字就\"什么也不做,继续\",检测不到就\"先强关游戏再报告失败\",\n"
+                +"3.利用\"检测文字是否出现\"来确保章节没有选错,如果检测到正确的章节文字就\"继续回放下一步\",检测不到就\"结束回放,报告失败\"并\"杀进程重开游戏\",\n"
                 +"4.点击选择要打的关卡,进入助战选择界面,\n"
                 +"5.在助战选择界面再次利用\"检测文字是否出现\"来确保章节和关卡都没有选错,原理同上,\n"
-                +"6.结束并报告成功。"
+                +"6.\"结束回放\"并\"报告成功\",并且在结束时\"什么也不做,继续执行脚本\"。"
             );
         }
+
+        dialogs.alert("录制时请务必跟着提示一步一步来", "尤其是在录制点击和滑动操作时,请务必在屏幕变暗、并显示出相关操作提示后,再进行点击或滑动操作!");
 
         let endRecording = false;
         for (let step=0; !endRecording; step++) {
@@ -4347,7 +4356,12 @@ function algo_init() {
                     for (let found_or_not_found of ["found", "notFound"]) {
                         op.checkText[found_or_not_found] = {};
                         op.checkText[found_or_not_found].kill = false;
-                        dialog_options = ["什么也不做,继续执行", "报告成功并结束", "报告失败并结束", "先强关游戏再报告成功并结束", "先强关游戏再报告失败并结束"];
+                        op.checkText[found_or_not_found].stopScript = false;
+                        dialog_options = [
+                            "继续回放下一步",
+                            "结束回放,报告成功",
+                            "结束回放,报告失败",
+                        ];
                         do {
                             dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字\""+op.checkText.text+"\"时要做什么?", dialog_options);
                             dialog_selected = parseInt(dialog_selected);
@@ -4358,13 +4372,9 @@ function algo_init() {
                                 op.checkText[found_or_not_found].nextAction = "ignore";
                                 deadEnd = false;
                                 break;
-                            case 3:
-                                op.checkText[found_or_not_found].kill = true;//不break
                             case 1:
                                 op.checkText[found_or_not_found].nextAction = "success";
                                 break;
-                            case 4:
-                                op.checkText[found_or_not_found].kill = true;//不break
                             case 2:
                                 op.checkText[found_or_not_found].nextAction = "fail";
                                 break;
@@ -4373,6 +4383,39 @@ function algo_init() {
                                 stopThread();
                         }
                         toastLog("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字时要\n"+dialog_options[dialog_selected]);
+                        if (dialog_selected == 1 || dialog_selected == 2) {
+                            let dialog_selected_text = dialog_options[dialog_selected];//上一个对话框选中的选项文字
+                            let warning_text = op.checkText[found_or_not_found].nextAction == "fail" ? "(一般别选)" : "";
+                            dialog_options = [
+                                warning_text+"什么也不做,继续执行脚本",
+                                "杀进程重开游戏,继续执行脚本(让脚本重开游戏)",
+                                "杀进程关掉游戏,终止脚本执行",
+                                "不杀游戏进程,只是终止脚本执行",
+                            ];
+                            do {
+                                dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n"+dialog_selected_text+"时要做什么?", dialog_options);
+                                dialog_selected = parseInt(dialog_selected);
+                                if (isNaN(dialog_selected)) dialog_selected = -1;
+                            } while (dialog_selected < 0);
+                            switch (dialog_selected) {
+                                case 0:
+                                    break;
+                                case 1:
+                                    op.checkText[found_or_not_found].kill = true;
+                                    break;
+                                case 2:
+                                    op.checkText[found_or_not_found].stopScript = true;
+                                    break;
+                                case 3:
+                                    op.checkText[found_or_not_found].kill = true;
+                                    op.checkText[found_or_not_found].stopScript = true;
+                                    break;
+                                default:
+                                    toastLog("询问检测文字后结束回放时要做什么时出错");
+                                    stopThread();
+                            }
+                            toastLog("录制第"+(step+1)+"步操作\n"+(found_or_not_found=="notFound"?"未":"")+"检测到文字时要\n"+dialog_options[dialog_selected]);
+                        }
                     }
                     if (
                           deadEnd
@@ -4432,28 +4475,41 @@ function algo_init() {
                     //现在不考虑加入循环跳转什么的
                     op.exit = {};
                     op.exit.kill = false;
-                    dialog_options = ["报告成功", "报告失败", "先强关游戏再报告成功", "先强关游戏再报告失败"];
+                    op.exit.stopScript = false;
                     do {
-                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", dialog_options);
+                        dialog_selected = dialogs.confirm("录制第"+(step+1)+"步操作\n结束时要报告成功还是失败?", "报告成功请点\"确定\"\n报告失败请点\"取消\"");
+                    } while (dialog_selected != null);
+                    op.exit.exitStatus = dialog_selected ? true : false;
+                    let warning_text = dialog_selected ? "" : "(一般别选)";
+                    dialog_options = [
+                        warning_text+"什么也不做,继续执行脚本",
+                        "杀进程重开游戏,继续执行脚本(让脚本重开游戏)",
+                        "杀进程关掉游戏,终止脚本执行",
+                        "不杀游戏进程,只是终止脚本执行",
+                    ];
+                    do {
+                        dialog_selected = dialogs.select("录制第"+(step+1)+"步操作\n结束时要做什么?", dialog_options);
                         dialog_selected = parseInt(dialog_selected);
                         if (isNaN(dialog_selected)) dialog_selected = -1;
                     } while (dialog_selected < 0);
                     switch (dialog_selected) {
-                        case 2:
-                            op.exit.kill = true;//不break
                         case 0:
-                            op.exit.exitStatus = true;
+                            break;
+                        case 1:
+                            op.exit.kill = true;
+                            break;
+                        case 2:
+                            op.exit.kill = true;
+                            op.exit.stopScript = true;
                             break;
                         case 3:
-                            op.exit.kill = true;//不break
-                        case 1:
-                            op.exit.exitStatus = false;
+                            op.exit.stopScript = true;
                             break;
                         default:
-                            toastLog("询问结束时报告成功还是失败时出错");
+                            toastLog("询问结束时要做什么时出错");
                             stopThread();
                     }
-                    toastLog("录制第"+(step+1)+"步操作\n结束时要"+dialog_options[dialog_selected]);
+                    toastLog("录制第"+(step+1)+"步操作\n结束时要"+(op.exit.exitStatus?"报告成功":"报告失败")+",并且"+dialog_options[dialog_selected]);
                     result.steps.push(op);
                     toastLog("录制结束");
                     endRecording = true;
@@ -4709,6 +4765,10 @@ function algo_init() {
                         killGame(opList.package_name);
                         log("强行停止完成");
                     }
+                    if (check_result.stopScript === true) {
+                        log("终止脚本执行");
+                        stopThread();
+                    }
                     break;
                 case "exit":
                     log("结束重放");
@@ -4718,6 +4778,10 @@ function algo_init() {
                         log("强行停止游戏", opList.package_name);
                         killGame(opList.package_name);
                         log("强行停止完成");
+                    }
+                    if (op.exit.stopScript === true) {
+                        log("终止脚本执行");
+                        stopThread();
                     }
                     break;
                 default:
