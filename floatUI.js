@@ -3187,7 +3187,7 @@ function algo_init() {
         if (bypassPopupCheck.get() == 0) do {
             let found_popup = null;
             try {
-                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error"]);
+                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error"].map((val) => string[val]));
             } catch (e) {
                 logException(e);
                 found_popup = null;
