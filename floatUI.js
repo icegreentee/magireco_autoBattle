@@ -1190,7 +1190,13 @@ floatUI.main = function () {
         } else {
             log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
         }
-        result = rootShell(shellcmd);
+        try {
+            result = rootShell(shellcmd);
+        } catch (e) {
+            logException(e);
+            result = {code: 1, result: "-1", err: ""};
+        }
+        euid = -1;
         if (result.code == 0) euid = getEUID(result.result);
         if (euid == 0) {
             log("直接获取root权限成功");
