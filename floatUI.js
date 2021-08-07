@@ -5212,6 +5212,8 @@ function algo_init() {
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
                 if (lastOpList != null) {
                     state = STATE_CRASHED;
+                    log("进入闪退/登出重启前,先补刀再杀一次进程...");
+                    killGame(string.package_name);
                     toastLog("进入闪退/登出重启...");
                     continue;
                 } else {
