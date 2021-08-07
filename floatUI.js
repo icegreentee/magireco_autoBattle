@@ -1332,7 +1332,7 @@ var limit = {
     drug1: false,
     drug2: false,
     drug3: false,
-    autoReconnect: false,
+    autoReconnect: true,
     justNPC: false,
     drug4: false,
     drug1num: '0',

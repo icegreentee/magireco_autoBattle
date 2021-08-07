@@ -99,7 +99,7 @@ ui.layout(
                                 <text text="注意:回复药开关状态和个数限制不会永久保存,在脚本完全退出后,这些设置会被重置!" textColor="#666666" />
                             </vertical>
                             <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#000000" text="只使用NPC(不选则先互关好友,后NPC)" />
-                            <Switch id="autoReconnect" w="*" margin="0 3" checked="false" textColor="#000000" text="防断线模式(尽可能自动点击断线重连按钮)" />
+                            <Switch id="autoReconnect" w="*" margin="0 3" checked="true" textColor="#000000" text="防断线模式(尽可能自动点击断线重连按钮)" />
                             <vertical padding="0 3 0 0" w="*" h="auto">
                                 <text textColor="#000000" text="防断线模式仅限于在战斗中自动点击断线重连按钮,无法应对强制回首页的情况。闪退自动重开可以应对强制回首页。" />
                             </vertical>
