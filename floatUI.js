@@ -152,6 +152,46 @@ floatUI.scripts = [
     }
 ];
 
+floatUI.presetOpLists = [
+    {
+        name: "不使用预设数据",
+        content: null,
+    },
+    {
+        name: "国服主线2-1-4普通本(水波祭)",
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-8-6_"
+            +"9-51-6\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventTypeBRA"
+            +"NCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":1563"
+            +",\"y\":845,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime"
+            +"\":3000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1207,\"y\":862,"
+            +"\"pos\":\"center\"},{\"x\":1264,\"y\":405,\"pos\":\"center\"}],\"duration\":20"
+            +"00}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1228,\"y\":846,\"pos"
+            +"\":\"center\"},{\"x\":1223,\"y\":405,\"pos\":\"center\"}],\"duration\":2000}}"
+            +",{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1188,\"y\":826,\"pos\":\"c"
+            +"enter\"},{\"x\":1203,\"y\":399,\"pos\":\"center\"}],\"duration\":2000}},{\"a"
+            +"ction\":\"click\",\"click\":{\"point\":{\"x\":1202,\"y\":379,\"pos\":\"center\""
+            +"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1180,\"y\":852,\"pos\""
+            +":\"center\"},{\"x\":1211,\"y\":404,\"pos\":\"center\"}],\"duration\":1970}},"
+            +"{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1181,\"y\":840,\"pos\":\"ce"
+            +"nter\"},{\"x\":1200,\"y\":405,\"pos\":\"center\"}],\"duration\":1825}},{\"ac"
+            +"tion\":\"click\",\"click\":{\"point\":{\"x\":1224,\"y\":560,\"pos\":\"center\"}"
+            +"}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3000}},{\"action\":\"clic"
+            +"k\",\"click\":{\"point\":{\"x\":1193,\"y\":570,\"pos\":\"top\"}}},{\"action\":\""
+            +"sleep\",\"sleep\":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkT"
+            +"ext\":{\"text\":\"BATTLE 4\",\"boundsCenter\":{\"x\":304,\"y\":514,\"pos\":\"t"
+            +"op\"},\"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"igno"
+            +"re\"},\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fa"
+            +"il\"}}},{\"action\":\"checkText\",\"checkText\":{\"text\":\"第2章\",\"boundsCe"
+            +"nter\":{\"x\":305,\"y\":250,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopS"
+            +"cript\":false,\"nextAction\":\"ignore\"},\"notFound\":{\"kill\":true,\"sto"
+            +"pScript\":false,\"nextAction\":\"fail\"}}},{\"action\":\"checkText\",\"che"
+            +"ckText\":{\"text\":\"1话\",\"boundsCenter\":{\"x\":303,\"y\":296,\"pos\":\"top\""
+            +"},\"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"success"
+            +"\"},\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail"
+            +"\"}}}]}",
+    },
+];
+
 //当前正在运行的线程
 var currentTask = null;
 var currentTaskName = "未运行任何脚本";
@@ -1190,7 +1230,13 @@ floatUI.main = function () {
         } else {
             log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
         }
-        result = rootShell(shellcmd);
+        try {
+            result = rootShell(shellcmd);
+        } catch (e) {
+            logException(e);
+            result = {code: 1, result: "-1", err: ""};
+        }
+        euid = -1;
         if (result.code == 0) euid = getEUID(result.result);
         if (euid == 0) {
             log("直接获取root权限成功");
@@ -1332,13 +1378,14 @@ var limit = {
     drug1: false,
     drug2: false,
     drug3: false,
-    autoReconnect: false,
+    autoReconnect: true,
     justNPC: false,
     drug4: false,
     drug1num: '0',
     drug2num: '0',
     drug3num: '0',
     drug4num: '0',
+    usePresetOpList: 0,
     default: 0,
     useAuto: true,
     autoFollow: true,
@@ -2918,6 +2965,7 @@ function algo_init() {
             "connection_lost",
             "auth_error",
             "generic_error",
+            "error_occurred",
         ],
         zh_Hans: [
             "请选择支援角色",
@@ -2943,6 +2991,7 @@ function algo_init() {
             "连线超时",
             "认证错误",//被踢下线
             "错误",
+            "发生错误",//出现场景(之一)是登录时掉线
         ],
         zh_Hant: [
             "請選擇支援角色",
@@ -2968,6 +3017,7 @@ function algo_init() {
             "連線超時",
             "認證錯誤",//被踢下线
             "錯誤",
+            "發生錯誤",
         ],
         ja: [
             "サポートキャラを選んでください",
@@ -2993,6 +3043,7 @@ function algo_init() {
             "通信エラー",
             "認証エラー",//这个是脑补的。实际上日服貌似只能引继，没有多端登录，所以也就没有被“顶号”、被踢下线……
             "エラー",
+            "エラー",//不是非常确定
         ],
     };
 
@@ -3119,7 +3170,7 @@ function algo_init() {
             throw e;
         } finally {
             openedDialogsLock.unlock();
-        } return openedDialogsNode.dialogResult.blockedGet(); },
+        } let ret = openedDialogsNode.dialogResult.blockedGet(); sleep(500);/* 等待对话框消失,防止isGameDead误判 */ return ret; },
         alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
         select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
         confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
@@ -3187,7 +3238,7 @@ function algo_init() {
         if (bypassPopupCheck.get() == 0) do {
             let found_popup = null;
             try {
-                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error"]);
+                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error", "error_occurred"].map((val) => string[val]));
             } catch (e) {
                 logException(e);
                 found_popup = null;
@@ -3936,7 +3987,7 @@ function algo_init() {
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
                 let expected_titles = [];
-                for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
+                for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred"]) {
                     expected_titles.push(string[error_type]);
                 }
                 let matched_title = expected_titles.find((val) => val == found_popup.title);
@@ -4019,8 +4070,12 @@ function algo_init() {
         return true;//可能没有特权，但用户选择不获取特权
     }
 
-    //上次录制的关卡选择动作列表
+    //当前选关动作数据(预设或录制)
     var lastOpList = null;
+    //用到预设数据时,需要先备份当前的非预设数据
+    var lastNonPresetOpList = null;
+    //标记当前选关动作数据是不是预设的
+    var isLastOpListNonPreset = false;
     //默认动作录制数据保存位置
     var savedLastOpListPath = files.join(engines.myEngine().cwd(), "lastRecordedSteps.txt");
 
@@ -4185,7 +4240,9 @@ function algo_init() {
             );
         }
 
-        dialogs.alert("录制时请务必跟着提示一步一步来", "尤其是在录制点击和滑动操作时,请务必在屏幕变暗、并显示出相关操作提示后,再进行点击或滑动操作!");
+        dialogs.alert("最后的叮嘱",
+            "1.录制完成后会覆盖之前的数据！如果不想覆盖,接下来请选择\"放弃录制\",然后在脚本选单里选择启动\"导出动作录制数据\",保存妥当后,再重新开始录制。\n"
+            +"2.录制时请务必跟着提示一步一步来,尤其是在录制点击和滑动操作时,请务必在屏幕变暗、并显示出相关操作提示后,再进行点击或滑动操作!");
 
         let endRecording = false;
         for (let step=0; !endRecording; step++) {
@@ -4553,6 +4610,8 @@ function algo_init() {
         if (result != null) {
             saveOpList(result);//写入到文件
             lastOpList = result;
+            lastNonPresetOpList = result; //备份刚刚录制好的数据
+            isLastOpListNonPreset = true; //刚刚录制好的数据很显然不是预设的
             toastLog("录制完成,共记录"+result.steps.length+"步动作");
         }
         return result;
@@ -4618,7 +4677,16 @@ function algo_init() {
         var result = false;
 
         if (opList == null) opList = lastOpList;
-        if (opList == null) opList = loadOpList();
+        if (opList == null) {
+            log("目前没有加载动作录制数据,本次重放结束后也不会加载重放过的数据");
+            if (limit.usePresetOpList > 0) {
+                opList = JSON.parse(floatUI.presetOpLists[limit.usePresetOpList].content);
+                toastLog("即将开始重放:\n预设选关动作:\n["+floatUI.presetOpLists[limit.usePresetOpList].name+"]");
+            } else {
+                opList = loadOpList();
+                toastLog("即将开始重放:\n之前录制的选关动作"+(opList.date==null?"":"\n录制日期: "+opList.date));
+            }
+        }
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
             return false;
@@ -4637,16 +4705,18 @@ function algo_init() {
             switch (isGameDead()) {
                 case "crashed":
                     log("游戏已经闪退,停止重放");
+                    log("为了尽量避免幺蛾子出现,补刀再杀一次进程...");
+                    killGame(string.package_name);
                     return false;
-                    break;
                 case "logged_out":
                     log("游戏已经登出,停止重放");
                     return false;
-                    break;
                 case false:
                     break;//没闪退
                 default:
                     log("未知闪退状态,停止重放");
+                    log("为了尽量避免幺蛾子出现,补刀再杀一次进程...");
+                    killGame(string.package_name);
                     return false;
             }
             log("执行安全检查,同时等待"+defaultOpCycleWaitTime+"毫秒...");
@@ -4804,21 +4874,11 @@ function algo_init() {
     function exportOpList() {
         //initialize(); //不要求游戏在前台，所以在脚本界面也可以导出
         let lastOpListStringified = null;
-        if (lastOpList == null) {
-            //动作录制数据还没加载，那就直接尝试读取文件内容（不过不保证读出来的内容可以通过检查）
-            toastLog("未加载动作录制数据\n尝试从文件读取(但暂不加载使用)");
-            let justFileContent = true;
-            lastOpListStringified = loadOpList(justFileContent);
-            //不对lastOpList重新赋值
-        } else {
-            try {
-                lastOpListStringified = JSON.stringify(lastOpList);
-            } catch (e) {
-                logException(e);
-                toastLog("导出失败");
-                return;
-            }
-        }
+
+        //当前加载的lastOpList可能是预设的,所以不用lastOpList,直接读取文件内容
+        let justFileContent = true;
+        lastOpListStringified = loadOpList(justFileContent);
+
         if (lastOpListStringified != null && lastOpListStringified != "") {
             ui.run(() => {
                 clip = android.content.ClipData.newPlainText("auto_export_op_list", lastOpListStringified);
@@ -4863,6 +4923,8 @@ function algo_init() {
             if (importedOpList != null && typeof importedOpList != "string") {
                 if (validateOpList(importedOpList)) {
                     lastOpList = importedOpList;
+                    lastNonPresetOpList = lastOpList; //备份导入的数据
+                    isLastOpListNonPreset = true; //导入的数据很显然不是预设的
                     toastLog("导入完成");
                     saveOpList(importedOpList);//写入到文件
                 } else {
@@ -4878,6 +4940,8 @@ function algo_init() {
         if (opList != null) lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
         dialogs.confirm("清除选关动作录制数据", "确定要清除么？"+lastOpListDateString, () => {
             lastOpList = null;
+            lastNonPresetOpList = null; //备份也清除掉,否则下次启动脚本时会从备份恢复
+            isLastOpListNonPreset = false;
             if (!files.remove(savedLastOpListPath)) {
                 toastLog("删除动作录制数据文件失败");
                 return;
@@ -4979,7 +5043,7 @@ function algo_init() {
             log("弹窗检测结果", found_popup);
             if (found_popup == null) break;
             let expected_titles = [];
-            for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
+            for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred"]) {
                 expected_titles.push(string[error_type]);
             }
             let matched_title = expected_titles.find((val) => val == found_popup.title);
@@ -5013,7 +5077,21 @@ function algo_init() {
             state = STATE_REWARD_MATERIAL;
         } else if (getAP() == null) {
             sleep(2000);
-            toastLog("进入战斗状态\n如果当前不在战斗中，请停止脚本运行");
+            if (limit.autoReconnect) {
+                let dialog_selected = dialogs.confirm("警告",
+                    "脚本猜测游戏正处于战斗状态。\n"
+                    +"如果游戏并不是在战斗中,而是正在登录中/还没完成登录,请点击\"取消\"停止运行脚本！\n"
+                    +"当前已经启用\"防断线模式\",然而\"防断线模式\"点击的断线重连按钮所在位置正好与重新登录并恢复战斗的放弃战斗按钮重合。\n"
+                    +"点击\"取消\"即可避免因误触放弃战斗按钮而导致AP或门票白白损失。\n"
+                    +"如果你确定当前确实是已经在战斗中了,或者虽然正在登录中,但并没有战斗要恢复,可以点击\"确定\",然后脚本会照常运行。"
+                );
+                if (!dialog_selected) {
+                    toastLog("在登录游戏恢复战斗时,\n可能误触放弃战斗按钮,\n为防止误触,已停止运行脚本");
+                    stopThread();
+                }
+            } else {
+                toastLog("进入战斗状态\n如果当前不在战斗中，请停止脚本运行");
+            }
             sleep(2000);
             state = STATE_BATTLE;
         } else {
@@ -5031,7 +5109,7 @@ function algo_init() {
     function testReLaunchRunnable() {
         initialize();
         while (true) {
-            dialogs.alert("测试闪退自动重开", "即将回到脚本界面并杀进程退出游戏");
+            dialogs.alert("测试闪退自动重开", "即将回到脚本界面并杀进程退出游戏。\n请确保游戏没有被锁后台,不然的话可能无法正常杀进程重开!");
             killGame();
             backtoMain();
             dialogs.alert("测试闪退自动重开", "即将重启游戏。\n如果弹出提示询问是否允许关联启动,请点\"允许\"");
@@ -5042,10 +5120,12 @@ function algo_init() {
                 +"\n同时你还可以观察游戏是不是回到了登录前的状态。如果没有返回到登录界面,则表示杀进程没有成功。");
             if (dialogs.confirm("测试闪退自动重开",
                     "游戏成功重启了么?\n"
-                    +"看上去好像"+(isGameDead()?"没成功":"成功了")
-                    +"\n点\"确定\"结束测试,点\"取消\"重测一次"
-                    +"\n强烈推荐至少重测一次!"
-                    +"\n如果不能成功,请搜索你的手机品牌/型号是否有允许关联启动(白名单之类的)的设置方法")
+                    +"看上去游戏好像"+(isGameDead()?"没启动":"启动了")+"。\n"
+                    +"请自己观察判断有没有成功杀掉进程并重启游戏。(而不只是切到后台又原封不动地切回来)\n"
+                    +"如果游戏只是原封不动地切到后台又切回来了,请检查游戏是不是被锁了后台!\n"
+                    +"点\"确定\"结束测试,点\"取消\"重测一次\n"
+                    +"强烈推荐至少重测一次!\n"
+                    +"如果不能成功,请搜索你的手机品牌/型号是否有允许关联启动(白名单之类的)的设置方法")
                )
             {
                 isRelaunchTested = true; //只表示是否测试过,不表示是否成功过
@@ -5090,8 +5170,28 @@ function algo_init() {
 
         initialize();
 
+        if (limit.usePresetOpList > 0) {
+            //使用预设选关动作
+            //如果当前数据不是预设的,则先备份再赋值覆盖
+            if (isLastOpListNonPreset) lastNonPresetOpList = lastOpList;
+            lastOpList = JSON.parse(floatUI.presetOpLists[limit.usePresetOpList].content);
+            isLastOpListNonPreset = false;
+        } else {
+            //不使用预设选关动作
+            //如果当前的lastOpList已被清除,或者是预设的,就用之前的非预设数据备份还原(没备份时也赋值为null)
+            if (lastOpList == null || !isLastOpListNonPreset) {
+                if (lastNonPresetOpList == null) {
+                    lastOpList = null; //没有备份可供还原,清除掉当前的数据(是预设的,或者本来就已经清除掉了)
+                    isLastOpListNonPreset = false;
+                } else {
+                    lastOpList = lastNonPresetOpList;
+                    isLastOpListNonPreset = true;
+                }
+            }
+        }
         let lastOpListDateString = "";
         if (lastOpList == null) {
+            //不使用预设选关动作,也(暂时还没)加载录制的数据
             let opList = null;
             if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
                 lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
@@ -5099,7 +5199,11 @@ function algo_init() {
                     +"\n注意:4.9版或以前录制的杜鹃花型活动选关动作记录存在bug,没考虑点击坐标校正问题,可能在选关时点击错位,推荐删除重录。"
                     +lastOpListDateString)) {
                     lastOpList = opList;
+                    lastNonPresetOpList = opList; //加载的数据视为非预设的,备份起来
+                    isLastOpListNonPreset = true; //加载的数据应该是非预设的
                 } else {
+                    lastNonPresetOpList = null; //备份也清除掉(正常情况下本来就应该是已经清除掉的状态)
+                    isLastOpListNonPreset = false;
                     if (dialogs.confirm("闪退自动重开", "要删除保存选关动作录制数据的文件么?")) {
                         if (!files.remove(savedLastOpListPath)) {
                             toastLog("删除动作录制数据文件失败");
@@ -5122,13 +5226,23 @@ function algo_init() {
                 return;
             }
             requestTestReLaunchIfNeeded();//测试是否可以正常重开
-            let loadedInfoString = "已加载动作录制数据,闪退自动重开已启用"+lastOpListDateString;
+            let presetNameString = "";
+            if (limit.usePresetOpList > 0) {
+                presetNameString = "\n使用预设选关动作录制数据: ["+floatUI.presetOpLists[limit.usePresetOpList].name+"]";
+            }
+            let loadedInfoString = "已加载动作录制数据,闪退自动重开已启用"+presetNameString+lastOpListDateString;
             if (dialogs.confirm("闪退自动重开",
-                "即将开始周回。\n"+loadedInfoString+"\n点\"确定\"继续。\n点\"取消\"停用闪退自动重开。"))
+                "即将开始周回。\n"
+                +loadedInfoString+"\n"
+                +"请务必确保游戏没有被锁后台,否则可能无法正常杀掉进程!\n"
+                +"点\"确定\"继续。\n"
+                +"点\"取消\"停用闪退自动重开。"))
             {
                 toastLog("周回已开始。\n"+loadedInfoString);
             } else {
                 lastOpList = null;
+                lastNonPresetOpList = null; //备份也清除掉,否则下次启动脚本时会从备份恢复
+                isLastOpListNonPreset = false;
                 toastLog("周回已开始。\n已停用闪退自动重开。");
             }
         }
@@ -5148,6 +5262,7 @@ function algo_init() {
         var isFirstBRANCHClick = true; //在杜鹃花型活动地图点了启动脚本,无法保证一定能正确选关
         var BRANCHclickAttemptCount = 0;
         var bypassPopupCheckCounter = 0;
+        var ensureGameDeadCounter = 0;
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -5178,6 +5293,21 @@ function algo_init() {
                     throw new Error("Unknown isCurrentTaskPaused value");
             }
 
+            //偶尔isGameDead会出现奇怪的“误判”:
+            //游戏看上去还在运行,脚本却检测不到它在前台,而且游戏可能是黑屏假死状态,动弹不得
+            //为尽量避免这个问题,这里进行“补刀”
+            if (state == STATE_CRASHED || state == STATE_LOGIN) {
+                ensureGameDeadCounter++;
+                if (ensureGameDeadCounter >= 10) {
+                    ensureGameDeadCounter = 0;
+                    log("补刀再杀一次进程...");
+                    killGame(string.package_name);
+                    continue;
+                }
+            } else {
+                ensureGameDeadCounter = 0;
+            }
+
             //然后检测游戏是否闪退或掉线
             //因为STATE_TEAM状态下isGameDead里的掉线弹窗检查非常慢,故跳过头4回检查
             if (state == STATE_TEAM) {
@@ -5194,6 +5324,8 @@ function algo_init() {
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
                 if (lastOpList != null) {
                     state = STATE_CRASHED;
+                    log("进入闪退/登出重启前,先补刀再杀一次进程...");
+                    killGame(string.package_name);
                     toastLog("进入闪退/登出重启...");
                     continue;
                 } else {
