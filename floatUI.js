@@ -7774,10 +7774,20 @@ function algo_init() {
         pos: "top"
     };
 
+    //用于防误触：
+    //镜层角色详细信息出现时,返回按钮上,这里也是白色
+    //剧情副本(而不是镜层)的MENU按钮可用时,这里就不是白色了
+    //RGB=142,109,66
+    const knownMenuButtonPoint = {
+        x: 82,
+        y: 54,
+        pos: "top"
+    }
+
     //检测返回按钮是否出现
     function isBackButtonAppearing(screenshot) {
-        let point = convertCoords(knownBackButtonPoint);
-        if (images.detectsColor(screenshot, colors.WHITE, point.x, point.y, 32, "diff")) {
+        let points = [knownBackButtonPoint, knownMenuButtonPoint].map((val) => convertCoords(val));
+        if (points.find((val) => !images.detectsColor(screenshot, colors.WHITE, val.x, val.y, 32, "diff")) == null) {
             log("似乎出现了返回按钮");
             return true;
         } else {
