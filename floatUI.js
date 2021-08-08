@@ -7773,10 +7773,43 @@ function algo_init() {
         pos: "top"
     };
 
+    //用于防误触：
+    //镜层角色详细信息出现时,返回按钮上,这里也是白色
+    //剧情副本(而不是镜层)的MENU按钮可用时,这里就不是白色了
+    //RGB=142,109,66
+    const knownMenuButtonPoint = {
+        x: 82,
+        y: 54,
+        pos: "top"
+    };
+
+    //进一步防误触：
+    //没打开战斗任务内容窗口（三星任务等，auto设置也在这里）时,这里不是白色
+    //打开战斗任务内容窗口后,这里就变成白色了
+    const battleMenuCloseButtonPoints = [
+        {
+            x: 1763,
+            y: 68,
+            pos: "top"
+        },
+        {
+            x: 1781,
+            y: 73,
+            pos: "top"
+        },
+    ];
+
+    //点击时往下点,避免误触倍速按钮
+    const battleMenuCloseButtonClickPoint = {
+        x: 1777,
+        y: 113,
+        pos: "top"
+    };
+
     //检测返回按钮是否出现
     function isBackButtonAppearing(screenshot) {
-        let point = convertCoords(knownBackButtonPoint);
-        if (images.detectsColor(screenshot, colors.WHITE, point.x, point.y, 32, "diff")) {
+        let points = [knownBackButtonPoint, knownMenuButtonPoint].map((val) => convertCoords(val));
+        if (points.find((val) => !images.detectsColor(screenshot, colors.WHITE, val.x, val.y, 32, "diff")) == null) {
             log("似乎出现了返回按钮");
             return true;
         } else {
@@ -7785,23 +7818,44 @@ function algo_init() {
         }
     }
 
-    //有返回按钮出现时点击
+    //检测战斗任务内容窗口是否出现
+    function isBattleMenuCloseButtonAppearing(screenshot) {
+        let points = battleMenuCloseButtonPoints.map((val) => convertCoords(val));
+        if (points.find((val) => !images.detectsColor(screenshot, colors.WHITE, val.x, val.y, 32, "diff")) == null) {
+            log("似乎出现了战斗任务内容窗口");
+            return true;
+        } else {
+            log("似乎没出现战斗任务内容窗口");
+            return false;
+        }
+    }
+
+    //有返回按钮出现时点击返回,或者出现战斗任务内容窗口时点击关闭
     function clickBackButtonIfShowed() {
         let lastClickTime = 0;
         let attemptMax = 10;
         for (let attempt=0; attempt<attemptMax; attempt++) {
-            if (!isBackButtonAppearing(compatCaptureScreen())) {
+            let screenshot = compatCaptureScreen();
+            let isClickingBackNeeded = isBackButtonAppearing(screenshot);
+            let isClickingCloseNeeded = isBattleMenuCloseButtonAppearing(screenshot);
+            if (!(isClickingBackNeeded || isClickingCloseNeeded)) {
                 return true;
             }
             let clickTime = new Date().getTime();
             if (lastClickTime == 0 || clickTime - lastClickTime > 2000) {
                 lastClickTime = clickTime;
-                log("点击返回");
-                click(convertCoords(clickSetsMod.back));
+                if (isClickingBackNeeded) {
+                    log("点击返回");
+                    click(convertCoords(clickSetsMod.back));
+                }
+                if (isClickingCloseNeeded) {
+                    log("点击关闭战斗任务内容窗口");
+                    click(convertCoords(battleMenuCloseButtonClickPoint));
+                }
             }
             sleep(500);
         }
-        log("尝试点击返回多次仍然没有效果");
+        log("尝试点击返回或关闭多次仍然没有效果");
         return false;
     }
 
