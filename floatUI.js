@@ -7784,6 +7784,22 @@ function algo_init() {
         pos: "top"
     }
 
+    //进一步防误触：
+    //没打开战斗任务内容窗口（三星任务等，auto设置也在这里）时,这里不是白色
+    //打开战斗任务内容窗口后,这里就变成白色了
+    const battleMenuCloseButtonPoints = [
+        {
+            x: 1763,
+            y: 68,
+            pos: "top"
+        },
+        {
+            x: 1781,
+            y: 73,
+            pos: "top"
+        },
+    ];
+
     //检测返回按钮是否出现
     function isBackButtonAppearing(screenshot) {
         let points = [knownBackButtonPoint, knownMenuButtonPoint].map((val) => convertCoords(val));
@@ -7796,23 +7812,44 @@ function algo_init() {
         }
     }
 
-    //有返回按钮出现时点击
+    //检测战斗任务内容窗口是否出现
+    function isBattleMenuCloseButtonAppearing(screenshot) {
+        let points = battleMenuCloseButtonPoints.map((val) => convertCoords(val));
+        if (points.find((val) => !images.detectsColor(screenshot, colors.WHITE, val.x, val.y, 32, "diff")) == null) {
+            log("似乎出现了战斗任务内容窗口");
+            return true;
+        } else {
+            log("似乎没出现战斗任务内容窗口");
+            return false;
+        }
+    }
+
+    //有返回按钮出现时点击返回,或者出现战斗任务内容窗口时点击关闭
     function clickBackButtonIfShowed() {
         let lastClickTime = 0;
         let attemptMax = 10;
         for (let attempt=0; attempt<attemptMax; attempt++) {
-            if (!isBackButtonAppearing(compatCaptureScreen())) {
+            let screenshot = compatCaptureScreen();
+            let isClickingBackNeeded = isBackButtonAppearing(screenshot);
+            let isClickingCloseNeeded = isBattleMenuCloseButtonAppearing(screenshot);
+            if (!(isClickingBackNeeded || isClickingCloseNeeded)) {
                 return true;
             }
             let clickTime = new Date().getTime();
             if (lastClickTime == 0 || clickTime - lastClickTime > 2000) {
                 lastClickTime = clickTime;
-                log("点击返回");
-                click(convertCoords(clickSetsMod.back));
+                if (isClickingBackNeeded) {
+                    log("点击返回");
+                    click(convertCoords(clickSetsMod.back));
+                }
+                if (isClickingCloseNeeded) {
+                    log("点击关闭战斗任务内容窗口");
+                    click(convertCoords(battleMenuCloseButtonPoints[0]));
+                }
             }
             sleep(500);
         }
-        log("尝试点击返回多次仍然没有效果");
+        log("尝试点击返回或关闭多次仍然没有效果");
         return false;
     }
 
