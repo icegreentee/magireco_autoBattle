@@ -6431,12 +6431,14 @@ function algo_init() {
     }
 
     //已知参照图像，包括A/B/C盘等
-    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.6.0";
+    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@5.5.0";
     var knownImgs = {};
     const knownImgURLs = {
         accel: ImgURLBase+"/images/accel.png",
         blast: ImgURLBase+"/images/blast.png",
         charge: ImgURLBase+"/images/charge.png",
+        magia: ImgURLBase+"/images/magia.png",
+        doppel: ImgURLBase+"/images/doppel.png",
         connectIndicator: ImgURLBase+"/images/connectIndicator.png",
         connectIndicatorBtnDown: ImgURLBase+"/images/connectIndicatorBtnDown.png",
         light: ImgURLBase+"/images/light.png",
@@ -6846,17 +6848,24 @@ function algo_init() {
 
     var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
     var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
-    var diskActions = ["accel", "blast", "charge"];
+    var diskActions = ["accel", "blast", "charge", "magia", "doppel"];
     var diskAttribs = ["light", "dark", "water", "fire", "wood", "none"];
     var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs.length; i++) { diskAttribsBtnDown.push(diskAttribs[i]+"BtnDown"); }
 
     function logDiskInfo(disk) {
+        let isMagiaDoppel = false;
+        if (disk.action == "magia" || disk.action == "doppel") isMagiaDoppel = true;
         let connectableStr = "不可连携";
-        if (disk.connectable) connectableStr = "【连携】";
+        if (!isMagiaDoppel) {
+            if (disk.connectable) connectableStr = "【连携】";
+        }
         let downStr = "未按下"
         if (disk.down) downStr = "【按下】"
-        log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
-
+        if (isMagiaDoppel) {
+            log("第", disk.position+1, "号盘", disk.action, /*"角色", disk.charaID, */"属性", disk.attrib, downStr);
+        } else {
+            log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
+        }
     }
 
     //获取换算后的行动盘所需部分（A/B/C盘，角色头像，连携指示灯等）的坐标
@@ -7728,27 +7737,54 @@ function algo_init() {
     }
 
     //是否有我方行动盘出现
-    function isDiskAppearing(screenshot) {
+    function detectAppearingDiskType(screenshot) {
         let img = getDiskImg(screenshot, 0, "action");
         if (img != null) {
             log("已截取第一个盘的动作图片");
         } else {
             log("截取第一个盘的动作图片时出现问题");
         }
-        let diskAppeared = true;
+        let result = null;
         try {
-            recognizeDisk(img, "action", 2.1);
+            result = recognizeDisk(img, "action", 2.1);
+            switch (result) {
+                case "accel":
+                case "blast":
+                case "charge":
+                    result = "abc";
+                    break;
+                case "magia":
+                case "doppel":
+                    result = "magiadoppel";
+                    break;
+                default:
+                    throw new Error("detectAppearingDiskType: unknown disk action type");
+            }
         } catch(e) {
             if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
-            diskAppeared = false;
+            result = null;
         }
-        return diskAppeared;
+        return result;
+    }
+    function isMagiaDiskAppearing(screenshot) {
+        return detectAppearingDiskType(screenshot) == "magiadoppel" ? true : false;
+    }
+    function isABCDiskAppearing(screenshot) {
+        return detectAppearingDiskType(screenshot) == "abc" ? true : false;
+    }
+    function isDiskAppearing(screenshot) {
+        switch (detectAppearingDiskType(screenshot)) {
+            case "abc":
+            case "magiadoppel":
+                return true;
+        }
+        return false;
     }
 
     //打开或关闭技能面板
     function toggleSkillPanel(open) {
         log((open?"打开":"关闭")+"技能面板...");
-        for (let attempt=0; isDiskAppearing(compatCaptureScreen())==open; attempt++) {
+        for (let attempt=0; isABCDiskAppearing(compatCaptureScreen())==open; attempt++) {
             if (attempt >= 10) {
                 log((open?"打开":"关闭")+"技能面板时出错");
                 stopThread();
@@ -7936,6 +7972,121 @@ function algo_init() {
         //关闭技能面板
         toggleSkillPanel(false);
         return false;
+    }
+
+    var knownMagiaButtonCoords = {
+        topLeft: {
+            x: 78, y: 894, pos: "bottom"
+        },
+        bottomRight: {
+            x: 224, y: 976, pos: "bottom"
+        }
+    };
+
+    function getMagiaButtonArea() {
+        return getConvertedArea(knownMagiaButtonCoords);
+    }
+
+    function getMagiaButtonImg(screenshot) {
+        let area = getMagiaButtonArea();
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+
+    //有Magia/Doppel可用的时候,无论是否打开Magia面板,左边的切换按钮都不是灰色的
+    //这是一个取巧的办法,如果行动盘还没显示出来,就可能误判成Magia可用
+    function isMagiaAvailable(screenshot) {
+        let img = getMagiaButtonImg(screenshot);
+        let imgGRAY = renewImage(images.grayscale(img));
+        let imgGray = renewImage(images.cvtColor(imgGRAY, "GRAY2BGRA"));
+        let imgBGRA = renewImage(images.cvtColor(img, "BGR2BGRA"));
+        let isGray = false;
+        let similarity = images.getSimilarity(imgBGRA, imgGray, {"type": "MSSIM"});
+        log("判断按钮区域图像是否为灰度 MSSIM=", similarity);
+        if (similarity > 2.9) {
+            log("Magia不可用");
+            return false;
+        } else {
+            log("Magia可用,或者行动盘尚未显示");
+            return true;
+        }
+    }
+
+    //打开或关闭Magia面板
+    function toggleMagiaPanel(open) {
+        log((open?"打开":"关闭")+"Magia面板...");
+        let screenshot = compatCaptureScreen();
+        if (!isMagiaAvailable(screenshot)) return false;
+        for (let attempt=0; open?!isMagiaDiskAppearing(screenshot):!isABCDiskAppearing(screenshot); attempt++) {
+            if (attempt >= 10) {
+                log((open?"打开":"关闭")+"Magia面板时出错");
+                stopThread();
+            }
+            log("点击切换Magia面板/行动盘面板");
+            click(convertCoords(getAreaCenter(getMagiaButtonArea())));
+            sleep(1000);
+            screenshot = compatCaptureScreen();
+        }
+    }
+
+    function scanMagiaDisks() {
+        let result = [];
+
+        //截屏，对盘进行识别
+        //这里还是假设没有盘被按下
+        let screenshot = compatCaptureScreen();
+        for (let i=0; i<allActionDisks.length; i++) {
+            let disk = {
+                position:    i,
+                down:        false,
+                action:      "magia",
+                attrib:      "none",
+                //charaImg:    null,
+                //charaID:     0
+            };
+            let action = getDiskAction(screenshot, i);
+            if (action != "magia" && action != "doppel") break;
+            disk.action = action;
+            //disk.charaImg = getDiskCharaImg(screenshot, i);
+            let diskAttribDown = getDiskAttribDown(screenshot, i);
+            disk.attrib = diskAttribDown.attrib;
+            disk.down = diskAttribDown.down; //这里，虽然getDiskAttribDown()可以识别盘是否按下，但是因为后面分辨不同的角色的问题还无法解决，所以意义不是很大
+            result.push(disk);
+        }
+        //分辨不同的角色，用charaID标记
+        //如果有盘被点击过，在有属性克制的情况下，这个检测可能被闪光特效干扰
+        //如果有按下的盘，这里也会把同一位角色误判为不同角色
+        //for (let i=0; i<result.length-1; i++) {
+        //    let diskI = result[i];
+        //    for (let j=i+1; j<allActionDisks.length; j++) {
+        //        let diskJ = allActionDisks[j];
+        //        if (areDisksSimilar(screenshot, i, j)) {
+        //            diskJ.charaID = diskI.charaID;
+        //        }
+        //    }
+        //}
+
+        log("行动盘扫描结果：");
+        for (let i=0; i<result.length; i++) {
+            logDiskInfo(result[i]);
+        }
+
+        return result;
+    }
+
+    //闭着眼放出所有Magia/Doppel大招
+    function clickAllMagiaDisks() {
+        //打开技能面板
+        if (!toggleMagiaPanel(true)) return;
+
+        let magiaDisks = scanMagiaDisks();
+        for (let disk of magiaDisks) {
+            clickDisk(disk);
+            //如果已经点完3个盘就不用继续往下点了
+            if (clickedDisksCount >= 3) return;
+        }
+
+        //关闭技能面板
+        toggleMagiaPanel(false);
     }
 
     //等待己方回合
@@ -8274,6 +8425,11 @@ function algo_init() {
             //我的回合，抽盘
             turn++;
 
+            //扫描行动盘之前，先确保Magia面板没开
+            if (isMagiaDiskAppearing(compatCaptureScreen())) {
+                toggleMagiaPanel(false);
+            }
+
             //扫描行动盘和战场信息
             scanDisks();
             scanBattleField("our");
@@ -8395,6 +8551,13 @@ function algo_init() {
                     //闭着眼放出所有主动技能
                     clickAllSkills();
                 }
+            }
+
+            if (limit.CVAutoBattleClickAllMagiaDisks) {
+                //闭着眼放出所有Magia/Doppel大招
+                clickAllMagiaDisks();
+                //如果三个盘都是Magia/Doppel那就不用选A/B/C盘了
+                if (clickedDisksCount >= 3) continue;
             }
 
             //提前把不被克制的盘排到前面
