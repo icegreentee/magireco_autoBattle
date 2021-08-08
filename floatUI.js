@@ -1400,6 +1400,8 @@ var limit = {
     useCVAutoBattle: true,
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
+    CVAutoBattleClickAllMagiaDisks: true,
+    CVAutoBattlePreferAccel: false,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -8561,8 +8563,8 @@ function algo_init() {
             }
 
             //提前把不被克制的盘排到前面
-            //这样一来，如果后面既没有接连携的角色更没有进一步（同角色）的Blast Combo
-            //也没有无连携的Puella Combo和进一步（同角色）的Blast Combo
+            //这样一来，如果后面既没有接连携的角色更没有进一步（同角色）的Accel/Blast Combo
+            //也没有无连携的Puella Combo和进一步（同角色）的Accel/Blast Combo
             //应该就会顺位选到它们
             let nonDisadvAttribDisks = findNonDisadvAttribDisks(allActionDisks, [battleField["their"].lastAimedAtEnemy]);
             prioritiseDisks(nonDisadvAttribDisks);
@@ -8574,17 +8576,31 @@ function algo_init() {
             if (connectableDisks.length > 0) {
                 //如果有连携，第一个盘上连携
                 let selectedDisk = connectableDisks[0];
-                //连携尽量用blast盘
-                let blastConnectableDisks = findSameActionDisks(connectableDisks, "blast");
-                if (blastConnectableDisks.length > 0) selectedDisk = blastConnectableDisks[0];
+                //连携尽量用accel/blast盘
+                let AorBConnectableDisks = findSameActionDisks(connectableDisks, limit.CVAutoBattlePreferAccel ? "accel" : "blast");
+                if (AorBConnectableDisks.length > 0) selectedDisk = AorBConnectableDisks[0];
                 prioritiseDisks([selectedDisk]); //将当前连携盘从选盘中排除
                 connectDisk(selectedDisk);
                 //上连携后，尽量用接连携的角色
                 let connectAcceptorDisks = findDisksByCharaID(allActionDisks, selectedDisk.connectedTo);
                 prioritiseDisks(connectAcceptorDisks);
-                //连携的角色尽量打出Blast Combo
-                let blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
-                prioritiseDisks(blastDisks);
+                //连携的角色尽量打出Accel/Blast/Charge Combo
+                let sameActionComboDisks = findSameActionDisks(connectAcceptorDisks, selectedDisk.action);
+                if (sameActionComboDisks.length >= 2) {
+                    prioritiseDisks(sameActionComboDisks);
+                } else {
+                    //凑不够Accel/Blast/Charge Combo，再试试XCA/XCB
+                    let chargeDisks = findSameActionDisks(connectAcceptorDisks, "charge");
+                    if (chargeDisks.length > 0) {
+                        let AccelOrBlastDisks = findSameActionDisks(connectAcceptorDisks, limit.CVAutoBattlePreferAccel ? "accel" : "blast");
+                        if (AccelOrBlastDisks.length == 0) {
+                            AccelOrBlastDisks = findSameActionDisks(connectAcceptorDisks, limit.CVAutoBattlePreferAccel ? "blast" : "accel");
+                        }
+                        if (AccelOrBlastDisks.length > 0) {
+                            prioritiseDisks([chargeDisks[0], AccelOrBlastDisks[0]]);
+                        }
+                    }
+                }
             } else {
                 //没有连携
                 //先找Puella Combo
@@ -8596,29 +8612,43 @@ function algo_init() {
                 }
                 //再依次找Blast/Accel/Charge Combo
                 let comboDisks = [];
-                for (let action of ["blast", "accel", "charge"]) {
+                let sameactionseq = limit.CVAutoBattlePreferAccel ? ["accel", "blast", "charge"] : ["blast", "accel", "charge"];
+                for (let action of sameactionseq) {
                     comboDisks = findSameActionDisks(candidateDisks, action);
                     if (comboDisks.length >= 3) {
                         prioritiseDisks(comboDisks);
                         break;
                     }
                 }
-                let ACBDisks = [];
+                let lastPreferredDisks = [];
+                let lastPreferredDisksCandidates = {};
                 if (comboDisks.length < 3) {
-                    //再找ACB
-                    //先找Puella Combo内的ACB，再找混合ACB
-                    let ACBAttemptMax = sameCharaDisks.length >= 3 ? 2 : 1;
+                    //再找ACA、ACB
+                    //先找Puella Combo内的ACA、ACB，再找混合ACA、ACB
                     candidateDisks = sameCharaDisks.length >= 3 ? sameCharaDisks : allActionDisks;
-                    for (let ACBAttempt=0; ACBAttempt<ACBAttemptMax; ACBAttempt++) {
-                        for (let action of ["accel", "charge", "blast"]) {
-                            let foundDisks = findSameActionDisks(candidateDisks, action);
-                            if (foundDisks.length > 0) ACBDisks.push(foundDisks[0]);
+                    for (let attempt=0,attemptMax=sameCharaDisks.length>=3?2:1; attempt<attemptMax; attempt++) {
+                        let nonsameactionsequences = {
+                            ACA: ["accel", "charge", "accel"],
+                            ACB: ["accel", "charge", "blast"],
+                        };
+                        for (let name in nonsameactionsequences) {
+                            if (lastPreferredDisksCandidates[name] == null)
+                                lastPreferredDisksCandidates[name] = [];
+                            let nonsameactionseq = nonsameactionsequences[name];
+                            for (let action of nonsameactionseq) {
+                                let foundDisks = findSameActionDisks(candidateDisks, action);
+                                if (foundDisks.length > 0) lastPreferredDisksCandidates[name].push(foundDisks[0]);
+                            }
+                            if (lastPreferredDisksCandidates[name].length >= 3) {
+                                lastPreferredDisks = lastPreferredDisksCandidates[name];
+                                break;
+                            }
                         }
-                        if (ACBDisks.length >= 3) {
-                            prioritiseDisks(ACBDisks);
+                        if (lastPreferredDisks.length >= 3) {
+                            prioritiseDisks(lastPreferredDisks);
                             break;
                         } else if (sameCharaDisks.length >= 3) {
-                            //有Puella Combo但Puella Combo内没有ACB，那就Puella Combo
+                            //有Puella Combo但Puella Combo内没有ACA/ACB，那就Puella Combo
                             prioritiseDisks(sameCharaDisks);
                             break;
                         }

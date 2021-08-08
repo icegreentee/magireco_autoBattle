@@ -205,6 +205,14 @@ ui.layout(
                                 <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
                                 <text text="开启后,从第3回合开始,会放出所有可用的主动技能。如果遇到问题可以关闭" textColor="#000000" />
                             </vertical>
+                            <vertical id="CVAutoBattleExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <Switch id="CVAutoBattleClickAllMagiaDisks" w="*" margin="0 3" checked="true" textColor="#000000" text="使用Magia/Doppel大招" />
+                                <text text="开启后,会放出所有可用Magia/Doppel大招。如果遇到问题可以关闭" textColor="#000000" />
+                            </vertical>
+                            <vertical id="CVAutoBattleExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <Switch id="CVAutoBattlePreferAccel" w="*" margin="0 3" checked="false" textColor="#000000" text="优先用Accel盘" />
+                                <text text="默认选盘倾向于用Blast盘。开启后,改为倾向于Accel。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -614,6 +622,8 @@ const persistParamList = [
     "useCVAutoBattle",
     "CVAutoBattleDebug",
     "CVAutoBattleClickAllSkills",
+    "CVAutoBattleClickAllMagiaDisks",
+    "CVAutoBattlePreferAccel",
 ];
 const tempParamList = [
     "drug1",
