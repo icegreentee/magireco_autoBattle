@@ -1391,8 +1391,8 @@ var limit = {
     useAuto: true,
     autoFollow: true,
     breakAutoCycleDuration: "",
-    forceStopTimeout: "",
-    periodicallyKillTimeout: "",
+    forceStopTimeout: "600",
+    periodicallyKillTimeout: "3600",
     apmul: "",
     timeout: "5000",
     rootForceStop: false,
@@ -4049,7 +4049,7 @@ function algo_init() {
 
         if (limit.rootForceStop || limit.firstRequestPrivilege) {
             limit.firstRequestPrivilege = false;
-            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
+            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏！真机则大多没有这个问题（但游戏不能被锁后台）。\n要使用root或adb权限么?"))
             {
                 limit.firstRequestPrivilege = true;//如果这次没申请到权限，下次还会提醒
                 ui.run(() => {
