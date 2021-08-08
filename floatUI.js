@@ -1412,19 +1412,19 @@ var clickSets = {
         y: 50,
         pos: "top"
     },
-    ap50: {
-        x: 400,
-        y: 900,
+    apdrugbtn1: {
+        x: 440,
+        y: 908,
         pos: "center"
     },
-    apfull: {
-        x: 900,
-        y: 900,
+    apdrugbtn2: {
+        x: 960,
+        y: 908,
         pos: "center"
     },
-    apjin: {
-        x: 1500,
-        y: 900,
+    apdrugbtn3: {
+        x: 1480,
+        y: 908,
         pos: "center"
     },
     aphui: {
@@ -1843,7 +1843,7 @@ function ApsFunction(druglimit) {
             }
             while (!text(currentLang[0]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.ap50)
+                screenutilClick(clickSets.apdrugbtn1)
                 sleep(2000)
             }
             text(currentLang[1]).findOne()
@@ -1860,7 +1860,7 @@ function ApsFunction(druglimit) {
             }
             while (!text(currentLang[0]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.apfull)
+                screenutilClick(clickSets.apdrugbtn2)
                 sleep(2000)
             }
             text(currentLang[1]).findOne()
@@ -1878,7 +1878,7 @@ function ApsFunction(druglimit) {
             }
             while (!text(currentLang[0]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.apjin)
+                screenutilClick(clickSets.apdrugbtn3)
                 sleep(2000)
             }
             text(currentLang[1]).findOne()
@@ -3591,15 +3591,14 @@ function algo_init() {
                     //检查还剩余多少个药
                     let remainingDrugCount = parseInt(getContent(numbers[i]).slice(0, -1));
                     if (isDrugEnough(i, remainingDrugCount)) {
-                        var bound = buttons[i].bounds();
                         do {
                             log("点击使用第"+(i+1)+"种回复药");
-                            click(bound.centerX(), bound.centerY());
+                            click(convertCoords(clickSets["apdrugbtn"+(i+1)]));
                             // wait for confirmation popup
                             var ap_refill_confirm_popup = findPopupInfoDetailTitle(string.ap_refill_popup, 2000);
                         } while (ap_refill_confirm_popup == null);
 
-                        bound = find(string.ap_refill_confirm, true).bounds();
+                        var bound = find(string.ap_refill_confirm, true).bounds();
                         while (ap_refill_confirm_popup.element.refresh()) {
                             log("找到确认回复窗口，点击确认回复");
                             click(bound.centerX(), bound.centerY());
