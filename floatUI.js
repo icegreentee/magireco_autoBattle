@@ -1385,6 +1385,7 @@ var limit = {
     drug2num: '0',
     drug3num: '0',
     drug4num: '0',
+    promptAutoRelaunch: true,
     usePresetOpList: 0,
     default: 0,
     useAuto: true,
@@ -5193,7 +5194,9 @@ function algo_init() {
         if (lastOpList == null) {
             //不使用预设选关动作,也(暂时还没)加载录制的数据
             let opList = null;
-            if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
+            if (!limit.promptAutoRelaunch) {
+                log("不弹窗询问是否加载选关动作录制数据");
+            } else if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
                 lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
                 if (dialogs.confirm("闪退自动重开", "要加载之前保存的选关动作录制数据吗?"
                     +"\n注意:4.9版或以前录制的杜鹃花型活动选关动作记录存在bug,没考虑点击坐标校正问题,可能在选关时点击错位,推荐删除重录。"
@@ -5210,6 +5213,15 @@ function algo_init() {
                         } else {
                             toastLog("已删除动作录制数据文件");
                         }
+                    } else if (false === dialogs.confirm("闪退自动重开",
+                        "下次启动周回时,还要询问是否使用自动重开功能吗？\n"
+                        +"点击\"取消\"后,将不再询问是否自动重开,并且默认不使用自动重开功能。\n"
+                        +"如果暂时不想用自动重开,又不想清除掉导入进来或录制下来的选关动作数据,请点\"确定\"。\n"
+                        +"点击\"取消\"后,如果又重新开始想要使用自动重开功能,可以在脚本设置中重新开启\"启动周回脚本时询问是否自动重开\"。\n"))
+                    {
+                        ui.run(function () {
+                            ui["promptAutoRelaunch"].setChecked(false);
+                        });
                     }
                 }
             }
@@ -5218,7 +5230,10 @@ function algo_init() {
         }
 
         if (lastOpList == null) {
-            toastLog("周回已开始。\n因为没有动作录制数据,\n所以未启用闪退自动重开功能。");
+            toastLog("周回已开始。\n"+(limit.promptAutoRelaunch?"因为没有加载动作录制数据,\n所以":"")+"未启用闪退自动重开功能。");
+        } else if (!limit.promptAutoRelaunch) {
+            log("不弹窗询问是否启用自动重开");
+            lastOpList = null;
         } else {
             if (!requestPrivilegeIfNeeded()) {
                 log("用户选择获取特权,但还没获取到,退出录制");
