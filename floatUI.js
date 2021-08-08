@@ -7782,7 +7782,7 @@ function algo_init() {
         x: 82,
         y: 54,
         pos: "top"
-    }
+    };
 
     //进一步防误触：
     //没打开战斗任务内容窗口（三星任务等，auto设置也在这里）时,这里不是白色
@@ -7799,6 +7799,13 @@ function algo_init() {
             pos: "top"
         },
     ];
+
+    //点击时往下点,避免误触倍速按钮
+    const battleMenuCloseButtonClickPoint = {
+        x: 1777,
+        y: 113,
+        pos: "top"
+    };
 
     //检测返回按钮是否出现
     function isBackButtonAppearing(screenshot) {
@@ -7844,7 +7851,7 @@ function algo_init() {
                 }
                 if (isClickingCloseNeeded) {
                     log("点击关闭战斗任务内容窗口");
-                    click(convertCoords(battleMenuCloseButtonPoints[0]));
+                    click(convertCoords(battleMenuCloseButtonClickPoint));
                 }
             }
             sleep(500);
