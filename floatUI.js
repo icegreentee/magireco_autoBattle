@@ -7046,8 +7046,15 @@ function algo_init() {
         return result;
     }
     function isDiskDown(screenshot, diskPos) {
+        //也可以接受disk作为参数，点击Magia/Doppel盘时可避免属性对不上
+        let disk = null;
+        if (typeof diskPos != "number") {
+            disk = diskPos;
+            diskPos = disk.position;
+        } else {
+            disk = allActionDisks[diskPos];
+        }
         let attribImg = getDiskImg(screenshot, diskPos, "attrib");
-        let disk = allActionDisks[diskPos];
         log("识别第", diskPos+1, "盘 (", disk.attrib, ") 是否被按下...");
         let recogResult = null;
         try {
@@ -7523,7 +7530,7 @@ function algo_init() {
             sleep(333);
             let screenshot = compatCaptureScreen();
             try {
-                disk.down = isDiskDown(screenshot, disk.position);
+                disk.down = isDiskDown(screenshot, disk);
             } catch (e) {
                 if (e.toString() == "isDiskDownInconclusive") {
                     inconclusiveCount++;
