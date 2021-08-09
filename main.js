@@ -52,6 +52,10 @@ ui.layout(
                         <button id="task_paused_button" text="返回游戏并继续运行脚本" textColor="#000000" textSize="16" w="wrap_content" h="wrap_content"/>
                     </vertical>
 
+                    <vertical id="versionMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
+                        <text id="versionMsg" layout_weight="1" w="*" gravity="center" color="#666666" text="获取最新版本信息..." />
+                    </vertical>
+
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
                         <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务（常被鲨进程可以开启，按需）" />
@@ -225,9 +229,6 @@ ui.layout(
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="关于" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
-                        <linear padding="10 6" bg="#ffffff">
-                            <text id="versionMsg" layout_weight="1" w="*" gravity="center" color="#666666" text="尝试获取最新版本信息" />
-                        </linear>
                         <linear padding="10 6" bg="#ffffff">
                             <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，且永久免费，不可进行出售盈利。作者bilibili 虹之宝玉  群号：453053507" />
                         </linear>
@@ -544,9 +545,7 @@ ui.emitter.on("resume", () => {
 //监听刷新事件
 ui.swipe.setOnRefreshListener({
     onRefresh: function () {
-        //为了看效果延迟一下
-        toUpdate()
-        ui.swipe.setRefreshing(false);
+        threads.start(function () {toUpdate();});
     },
 });
 //-----------------自定义逻辑-------------------------------------------
@@ -798,8 +797,9 @@ var refreshUpdateStatus = sync(function () {
         if (res.statusCode != 200) {
             log("请求失败: " + res.statusCode + " " + res.statusMessage);
             ui.run(function () {
-                ui.versionMsg.setText("获取失败")
+                ui.versionMsg.setText("更新信息获取失败 "+res.statusCode+" "+res.statusMessage)
                 ui.versionMsg.setTextColor(colors.parseColor("#666666"))
+                ui.versionMsg_vertical.setVisibility(View.VISIBLE);
             })
         } else {
             let resJson = res.body.json();
@@ -807,25 +807,34 @@ var refreshUpdateStatus = sync(function () {
                 ui.run(function () {
                     ui.versionMsg.setText("当前无需更新")
                     ui.versionMsg.setTextColor(colors.parseColor("#666666"))
+                    ui.versionMsg_vertical.setVisibility(View.GONE);
                 });
             } else {
                 ui.run(function () {
                     ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
                     ui.versionMsg.setTextColor(colors.RED)
+                    ui.versionMsg_vertical.setVisibility(View.VISIBLE);
                 });
             }
         }
     } catch (e) {
         ui.run(function () {
-            ui.versionMsg.setText("请求超时")
+            ui.versionMsg.setText("获取更新信息时出错")
             ui.versionMsg.setTextColor(colors.parseColor("#666666"))
+            ui.versionMsg_vertical.setVisibility(View.VISIBLE);
         })
     }
 });
 threads.start(function () {refreshUpdateStatus();});
 
 //版本更新
-function toUpdate() {
+var updateRestartPending = false;
+var toUpdate = sync(function () {
+    refreshUpdateStatus();
+    if (updateRestartPending) {
+        ui.run(function() {ui.swipe.setRefreshing(false);});
+        return;
+    }
     try {
         let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
         if (res.statusCode != 200) {
@@ -849,6 +858,7 @@ function toUpdate() {
                         app.launch(context.getPackageName())
                         toast("更新完毕")
                     })
+                    updateRestartPending = true;
                     engines.stopAll()
                 } else {
                     toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessage);
@@ -858,7 +868,9 @@ function toUpdate() {
 
     } catch (error) {
         toastLog("请求超时，可再一次尝试")
+    } finally {
+        ui.run(function() {ui.swipe.setRefreshing(false);});
     }
-}
+});
 
 floatUI.enableToastParamChanges();
