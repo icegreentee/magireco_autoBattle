@@ -8658,7 +8658,13 @@ function algo_init() {
                             let nonsameactionseq = nonsameactionsequences[name];
                             for (let action of nonsameactionseq) {
                                 let foundDisks = findSameActionDisks(candidateDisks, action);
-                                if (foundDisks.length > 0) lastPreferredDisksCandidates[name].push(foundDisks[0]);
+                                //找到之前没加进来过的
+                                let foundDisk = foundDisks.find((disk) =>
+                                    lastPreferredDisksCandidates[name].find((val) => val.position == disk.position) == null
+                                );
+                                if (foundDisk != null) {
+                                    lastPreferredDisksCandidates[name].push(foundDisk);
+                                }
                             }
                             if (lastPreferredDisksCandidates[name].length >= 3) {
                                 lastPreferredDisks = lastPreferredDisksCandidates[name];
