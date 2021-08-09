@@ -8284,9 +8284,9 @@ function algo_init() {
         for (let imgName in knownImgs) {
             let newsize = [0, 0];
             let knownArea = null;
-            if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
+            if (diskActions.find((val) => val == imgName) != null) {
                 knownArea = knownFirstDiskCoords["action"];
-            } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood") || imgName.startsWith("none")) {
+            } else if (diskAttribs.find((val) => val == imgName || val == imgName+"BtnDown") != null) {
                 knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
             } else if (imgName == "connectIndicatorBtnDown") {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
