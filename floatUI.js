@@ -3485,6 +3485,9 @@ function algo_init() {
         } else for (let key in initialapinfo) apinfo[key] = initialapinfo[key];
 
         while (true) {
+            //避免AP余量没磕到满足要求，但之前有一轮磕过药、而且把药的剩余数量磕完了的情况下死循环
+            result = "drug_not_used";
+
             if (apCost == null) {
                 //先检查是否误触，或者检测迟滞而步调不一致
                 //如果AP药选择窗口还没出现，检查是不是已经切换到队伍调整
