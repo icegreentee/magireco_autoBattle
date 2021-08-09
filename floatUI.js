@@ -8024,7 +8024,7 @@ function algo_init() {
                 stopThread();
             }
             log("点击切换Magia面板/行动盘面板");
-            click(convertCoords(getAreaCenter(getMagiaButtonArea())));
+            click(getAreaCenter(getMagiaButtonArea()));
             sleep(1000);
             screenshot = compatCaptureScreen();
         }
