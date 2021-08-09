@@ -6864,9 +6864,9 @@ function algo_init() {
         let downStr = "未按下"
         if (disk.down) downStr = "【按下】"
         if (isMagiaDoppel) {
-            log("第", disk.position+1, "号盘", disk.action, /*"角色", disk.charaID, */"属性", disk.attrib, downStr);
+            log("第", disk.position+1, "号盘", disk.action, disk.priority, /*"角色", disk.charaID, */"属性", disk.attrib, downStr);
         } else {
-            log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
+            log("第", disk.position+1, "号盘", disk.action, disk.priority, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
         }
     }
 
