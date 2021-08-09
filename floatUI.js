@@ -4730,6 +4730,17 @@ function algo_init() {
                 sleep(50);
             } while (new Date().getTime() < opCycleStartTime + defaultOpCycleWaitTime);
 
+            let lastOp = i > 0 ? opList.steps[i-1] : null;
+            if (lastOp != null) switch (lastOp.action) {
+                case "click":
+                case "swipe":
+                    //如果AP不足就进不去助战选择
+                    if (findPopupInfoDetailTitle(string.ap_refill_title) && find(string.out_of_ap)) {
+                        refillAP();
+                    }
+                    break;
+            }
+
             let op = opList.steps[i];
             log("第"+(i+1)+"步", op);
             switch (op.action) {
