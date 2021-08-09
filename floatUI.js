@@ -6432,7 +6432,7 @@ function algo_init() {
         }
     }
 
-    //已知参照图像，包括A/B/C盘等
+    //已知参照图像，包括A/B/C/M/D盘等
     const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@5.5.0";
     var knownImgs = {};
     const knownImgURLs = {
@@ -6999,10 +6999,23 @@ function algo_init() {
         }
         return result;
     }
-    function getDiskAction(screenshot, diskPos) {
+    function getDiskActionABC(screenshot, diskPos) {
         let actionImg = getDiskImg(screenshot, diskPos, "action");
         log("识别第", diskPos+1, "盘的A/B/C类型...");
         return recognizeDisk(actionImg, "action");
+    }
+    function getDiskActionMagiaDoppel(screenshot, diskPos) {
+        let actionImg = getDiskImg(screenshot, diskPos, "action");
+        log("识别第", diskPos+1, "盘的Magia/Doppel类型...");
+        let result = null;
+        try {
+            result = recognizeDisk(actionImg, "action", 2.1);
+        } catch (e) {
+            if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+            result = null;
+            log("第", diskPos+1, "盘处看上去没有盘");
+        }
+        return result;
     }
     function getDiskAttribDown(screenshot, diskPos) {
         let result = {attrib: null, down: false};
@@ -7153,7 +7166,7 @@ function algo_init() {
         let screenshot = compatCaptureScreen();
         for (let i=0; i<allActionDisks.length; i++) {
             let disk = allActionDisks[i];
-            disk.action = getDiskAction(screenshot, i);
+            disk.action = getDiskActionABC(screenshot, i);
             disk.charaImg = getDiskCharaImg(screenshot, i);
             let isConnectableDown = isDiskConnectableDown(screenshot, i); //isConnectableDown.down==true也有可能是只剩一人无法连携的情况，
             disk.connectable = isConnectableDown.connectable && (!isConnectableDown.down); //所以这里还无法区分盘是否被按下，但是可以排除只剩一人无法连携的情况
@@ -8046,7 +8059,7 @@ function algo_init() {
                 //charaImg:    null,
                 //charaID:     0
             };
-            let action = getDiskAction(screenshot, i);
+            let action = getDiskActionMagiaDoppel(screenshot, i);
             if (action != "magia" && action != "doppel") break;
             disk.action = action;
             //disk.charaImg = getDiskCharaImg(screenshot, i);
