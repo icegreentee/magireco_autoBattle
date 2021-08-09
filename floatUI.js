@@ -8028,6 +8028,7 @@ function algo_init() {
             sleep(1000);
             screenshot = compatCaptureScreen();
         }
+        return open ? true : false;
     }
 
     function scanMagiaDisks() {
