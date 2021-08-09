@@ -7452,7 +7452,7 @@ function algo_init() {
             logDiskInfo(disks[i]);
         }
         let replaceDiskAtThisPriority = clickedDisksCount;
-        for (let i=0; i<disks.length; i++) {
+        for (let i=0; i<disks.length&&replaceDiskAtThisPriority<ordinalWord.length; i++) {
             let targetDisk = getDiskByPriority(allActionDisks, ordinalWord[replaceDiskAtThisPriority]);
             let diskToPrioritise = disks[i];
             let posA = targetDisk.position;
