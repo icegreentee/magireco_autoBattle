@@ -2967,6 +2967,7 @@ function algo_init() {
             "auth_error",
             "generic_error",
             "error_occurred",
+            "story_updated",
         ],
         zh_Hans: [
             "请选择支援角色",
@@ -2993,6 +2994,7 @@ function algo_init() {
             "认证错误",//被踢下线
             "错误",
             "发生错误",//出现场景(之一)是登录时掉线
+            "更新资料",//一般是(活动)剧情数据更新(开放新关卡)后出现
         ],
         zh_Hant: [
             "請選擇支援角色",
@@ -3019,6 +3021,7 @@ function algo_init() {
             "認證錯誤",//被踢下线
             "錯誤",
             "發生錯誤",
+            "更新資料",//台服还不知道是什么,这是在线翻译得到的,待补齐
         ],
         ja: [
             "サポートキャラを選んでください",
@@ -3045,6 +3048,7 @@ function algo_init() {
             "認証エラー",//这个是脑补的。实际上日服貌似只能引继，没有多端登录，所以也就没有被“顶号”、被踢下线……
             "エラー",
             "エラー",//不是非常确定
+            "アップデート",//日服还不知道是什么,这是在线翻译得到的,待补齐
         ],
     };
 
@@ -3239,7 +3243,7 @@ function algo_init() {
         if (bypassPopupCheck.get() == 0) do {
             let found_popup = null;
             try {
-                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error", "error_occurred"].map((val) => string[val]));
+                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated"].map((val) => string[val]));
             } catch (e) {
                 logException(e);
                 found_popup = null;
@@ -3990,7 +3994,7 @@ function algo_init() {
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
                 let expected_titles = [];
-                for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred"]) {
+                for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated"]) {
                     expected_titles.push(string[error_type]);
                 }
                 let matched_title = expected_titles.find((val) => val == found_popup.title);
@@ -5057,7 +5061,7 @@ function algo_init() {
             log("弹窗检测结果", found_popup);
             if (found_popup == null) break;
             let expected_titles = [];
-            for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred"]) {
+            for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated"]) {
                 expected_titles.push(string[error_type]);
             }
             let matched_title = expected_titles.find((val) => val == found_popup.title);
