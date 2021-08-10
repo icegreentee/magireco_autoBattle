@@ -72,15 +72,15 @@ var syncer = {
         this.lockers.push(currentLocker);
         let syncerobj = this;
         return function () {
-            while (!currentLocker.lock.tryLock(1000, java.util.concurrent.TimeUnit.MILLISECONDS)) {
-                syncerobj.renewLockerIfDead(currentLocker, true, true, false);
-            }
-            syncerobj.renewLockerIfDead(currentLocker, false, true, true);
             let ret = undefined;
             try {
+                while (!currentLocker.lock.tryLock(1000, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                    syncerobj.renewLockerIfDead(currentLocker, true, true, false);
+                }
+                syncerobj.renewLockerIfDead(currentLocker, false, true, true);
                 ret = func.apply(this, arguments);
             } finally {
-                currentLocker.lock.unlock();
+                while (currentLocker.lock.getHoldCount() > 0) currentLocker.lock.unlock();
             }
             return ret;
         }
@@ -6137,7 +6137,9 @@ function algo_init() {
 
     //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
     var needScreenCaptureFix = false;
+    var needResizeWorkaround = null;
     function initializeScreenCaptureFix() {
+        needResizeWorkaround = null;
         try {
             log("测试录屏API是否可用...");
             let screenshot = captureScreen();
@@ -6334,6 +6336,23 @@ function algo_init() {
 
                 //把裁剪出来的图像重新放大回屏幕尺寸
                 let resizedImg = images.resize(croppedImg, [screenX, screenY]);
+
+                if (needResizeWorkaround == null) {
+                    try {
+                        let testPixel = images.pixel(resizedImg, resizedImg.getWidth()-1, resizedImg.getHeight()-1);
+                    } catch (e) {
+                        logException(e);
+                        needResizeWorkaround = true;
+                        log("检测到AutoJS Pro的缩放截图崩溃bug,启用绕过措施");
+                    }
+                    if (needResizeWorkaround == null) needResizeWorkaround = false;
+                }
+                if (needResizeWorkaround) {
+                    let reclippedImg = images.clip(resizedImg, 0, 0, resizedImg.getWidth(), resizedImg.getHeight());
+                    resizedImg.recycle();
+                    resizedImg = reclippedImg;
+                }
+
                 return renewImage(resizedImg, "fixedScreenshot", tagOnly);
             } else {
                 return screenshot;
@@ -8425,7 +8444,7 @@ function algo_init() {
             let knownArea = null;
             if (diskActions.find((val) => val == imgName) != null) {
                 knownArea = knownFirstDiskCoords["action"];
-            } else if (diskAttribs.find((val) => val == imgName || val == imgName+"BtnDown") != null) {
+            } else if (diskAttribs.find((val) => val == imgName || val+"BtnDown" == imgName) != null) {
                 knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
             } else if (imgName == "connectIndicatorBtnDown") {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
