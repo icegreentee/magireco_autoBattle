@@ -56,6 +56,37 @@ function getProjectVersion() {
     if (conf) return conf.versionName;
 }
 
+//sync锁的是this对象，于是A函数锁定后B函数得等A函数返回
+//这个syncer就不会让B函数等待A函数返回
+//必须是syncer.syn(func)这样调用
+var syncer = {
+    lockers: [],
+    renewLockerIfDead: sync(function (locker, renewLock, renewThread, force) {
+        if (force || locker.thread == null || !locker.thread.isAlive()) {
+            if (renewLock) locker.lock = threads.lock();
+            if (renewThread) locker.thread = threads.currentThread();
+        }
+    }),
+    syn: function (func) {
+        let currentLocker = {lock: threads.lock(), thread: null};
+        this.lockers.push(currentLocker);
+        let syncerobj = this;
+        return function () {
+            while (!currentLocker.lock.tryLock(1000, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                syncerobj.renewLockerIfDead(currentLocker, true, true, false);
+            }
+            syncerobj.renewLockerIfDead(currentLocker, false, true, true);
+            let ret = undefined;
+            try {
+                ret = func.apply(this, arguments);
+            } finally {
+                currentLocker.lock.unlock();
+            }
+            return ret;
+        }
+    }
+}
+
 //记录当前版本是否测试过助战的文件(已经去掉，留下注释)
 //var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
 
@@ -351,7 +382,7 @@ var monitoredTask = null;
 
 var bypassPopupCheck = threads.atomic(0);
 
-var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
+var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
         isCurrentTaskPaused.set(TASK_STOPPED);
@@ -649,7 +680,7 @@ floatUI.main = function () {
         }
     }
     var openSettingsThread = null;
-    function settingsWrap() {sync(function () {
+    function settingsWrap() {syncer.syn(function () {
         if (openSettingsThread != null && openSettingsThread.isAlive()) {
             if (isCurrentTaskPaused.get() == TASK_PAUSED) {
                 toastLog("打开脚本设置\n(脚本已暂停)");
@@ -1385,13 +1416,14 @@ var limit = {
     drug2num: '0',
     drug3num: '0',
     drug4num: '0',
+    promptAutoRelaunch: true,
     usePresetOpList: 0,
     default: 0,
     useAuto: true,
     autoFollow: true,
     breakAutoCycleDuration: "",
-    forceStopTimeout: "",
-    periodicallyKillTimeout: "",
+    forceStopTimeout: "600",
+    periodicallyKillTimeout: "3600",
     apmul: "",
     timeout: "5000",
     rootForceStop: false,
@@ -1400,6 +1432,9 @@ var limit = {
     useCVAutoBattle: true,
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
+    CVAutoBattleClickAllMagiaDisks: true,
+    CVAutoBattlePreferAccel: false,
+    CVAutoBattlePreferABCCombo: false,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -1412,19 +1447,19 @@ var clickSets = {
         y: 50,
         pos: "top"
     },
-    ap50: {
-        x: 400,
-        y: 900,
+    apdrugbtn1: {
+        x: 440,
+        y: 908,
         pos: "center"
     },
-    apfull: {
-        x: 900,
-        y: 900,
+    apdrugbtn2: {
+        x: 960,
+        y: 908,
         pos: "center"
     },
-    apjin: {
-        x: 1500,
-        y: 900,
+    apdrugbtn3: {
+        x: 1480,
+        y: 908,
         pos: "center"
     },
     aphui: {
@@ -1843,7 +1878,7 @@ function ApsFunction(druglimit) {
             }
             while (!text(currentLang[0]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.ap50)
+                screenutilClick(clickSets.apdrugbtn1)
                 sleep(2000)
             }
             text(currentLang[1]).findOne()
@@ -1860,7 +1895,7 @@ function ApsFunction(druglimit) {
             }
             while (!text(currentLang[0]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.apfull)
+                screenutilClick(clickSets.apdrugbtn2)
                 sleep(2000)
             }
             text(currentLang[1]).findOne()
@@ -1878,7 +1913,7 @@ function ApsFunction(druglimit) {
             }
             while (!text(currentLang[0]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.apjin)
+                screenutilClick(clickSets.apdrugbtn3)
                 sleep(2000)
             }
             text(currentLang[1]).findOne()
@@ -2966,6 +3001,7 @@ function algo_init() {
             "auth_error",
             "generic_error",
             "error_occurred",
+            "story_updated",
         ],
         zh_Hans: [
             "请选择支援角色",
@@ -2992,6 +3028,7 @@ function algo_init() {
             "认证错误",//被踢下线
             "错误",
             "发生错误",//出现场景(之一)是登录时掉线
+            "更新资料",//一般是(活动)剧情数据更新(开放新关卡)后出现
         ],
         zh_Hant: [
             "請選擇支援角色",
@@ -3018,6 +3055,7 @@ function algo_init() {
             "認證錯誤",//被踢下线
             "錯誤",
             "發生錯誤",
+            "更新資料",//台服还不知道是什么,这是在线翻译得到的,待补齐
         ],
         ja: [
             "サポートキャラを選んでください",
@@ -3044,6 +3082,7 @@ function algo_init() {
             "認証エラー",//这个是脑补的。实际上日服貌似只能引继，没有多端登录，所以也就没有被“顶号”、被踢下线……
             "エラー",
             "エラー",//不是非常确定
+            "アップデート",//日服还不知道是什么,这是在线翻译得到的,待补齐
         ],
     };
 
@@ -3238,7 +3277,7 @@ function algo_init() {
         if (bypassPopupCheck.get() == 0) do {
             let found_popup = null;
             try {
-                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error", "error_occurred"].map((val) => string[val]));
+                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated"].map((val) => string[val]));
             } catch (e) {
                 logException(e);
                 found_popup = null;
@@ -3253,7 +3292,7 @@ function algo_init() {
     }
 
     var lastFragmentViewStatus = {bounds: null, rotation: 0};
-    var getFragmentViewBounds = sync(function () {
+    var getFragmentViewBounds = syncer.syn(function () {
         if (string == null || string.package_name == null || string.package_name == "") {
             try {
                 throw new Error("getFragmentViewBounds: null/empty string.package_name");
@@ -3485,6 +3524,9 @@ function algo_init() {
         } else for (let key in initialapinfo) apinfo[key] = initialapinfo[key];
 
         while (true) {
+            //避免AP余量没磕到满足要求，但之前有一轮磕过药、而且把药的剩余数量磕完了的情况下死循环
+            result = "drug_not_used";
+
             if (apCost == null) {
                 //先检查是否误触，或者检测迟滞而步调不一致
                 //如果AP药选择窗口还没出现，检查是不是已经切换到队伍调整
@@ -3591,15 +3633,14 @@ function algo_init() {
                     //检查还剩余多少个药
                     let remainingDrugCount = parseInt(getContent(numbers[i]).slice(0, -1));
                     if (isDrugEnough(i, remainingDrugCount)) {
-                        var bound = buttons[i].bounds();
                         do {
                             log("点击使用第"+(i+1)+"种回复药");
-                            click(bound.centerX(), bound.centerY());
+                            click(convertCoords(clickSets["apdrugbtn"+(i+1)]));
                             // wait for confirmation popup
                             var ap_refill_confirm_popup = findPopupInfoDetailTitle(string.ap_refill_popup, 2000);
                         } while (ap_refill_confirm_popup == null);
 
-                        bound = find(string.ap_refill_confirm, true).bounds();
+                        var bound = find(string.ap_refill_confirm, true).bounds();
                         while (ap_refill_confirm_popup.element.refresh()) {
                             log("找到确认回复窗口，点击确认回复");
                             click(bound.centerX(), bound.centerY());
@@ -3987,7 +4028,7 @@ function algo_init() {
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
                 let expected_titles = [];
-                for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred"]) {
+                for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated"]) {
                     expected_titles.push(string[error_type]);
                 }
                 let matched_title = expected_titles.find((val) => val == found_popup.title);
@@ -4048,7 +4089,7 @@ function algo_init() {
 
         if (limit.rootForceStop || limit.firstRequestPrivilege) {
             limit.firstRequestPrivilege = false;
-            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
+            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏！真机则大多没有这个问题（但游戏不能被锁后台）。\n要使用root或adb权限么?"))
             {
                 limit.firstRequestPrivilege = true;//如果这次没申请到权限，下次还会提醒
                 ui.run(() => {
@@ -4730,6 +4771,17 @@ function algo_init() {
                 sleep(50);
             } while (new Date().getTime() < opCycleStartTime + defaultOpCycleWaitTime);
 
+            let lastOp = i > 0 ? opList.steps[i-1] : null;
+            if (lastOp != null) switch (lastOp.action) {
+                case "click":
+                case "swipe":
+                    //如果AP不足就进不去助战选择
+                    if (findPopupInfoDetailTitle(string.ap_refill_title) && find(string.out_of_ap)) {
+                        refillAP();
+                    }
+                    break;
+            }
+
             let op = opList.steps[i];
             log("第"+(i+1)+"步", op);
             switch (op.action) {
@@ -5043,7 +5095,7 @@ function algo_init() {
             log("弹窗检测结果", found_popup);
             if (found_popup == null) break;
             let expected_titles = [];
-            for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred"]) {
+            for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated"]) {
                 expected_titles.push(string[error_type]);
             }
             let matched_title = expected_titles.find((val) => val == found_popup.title);
@@ -5193,7 +5245,9 @@ function algo_init() {
         if (lastOpList == null) {
             //不使用预设选关动作,也(暂时还没)加载录制的数据
             let opList = null;
-            if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
+            if (!limit.promptAutoRelaunch) {
+                log("不弹窗询问是否加载选关动作录制数据");
+            } else if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
                 lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
                 if (dialogs.confirm("闪退自动重开", "要加载之前保存的选关动作录制数据吗?"
                     +"\n注意:4.9版或以前录制的杜鹃花型活动选关动作记录存在bug,没考虑点击坐标校正问题,可能在选关时点击错位,推荐删除重录。"
@@ -5210,6 +5264,15 @@ function algo_init() {
                         } else {
                             toastLog("已删除动作录制数据文件");
                         }
+                    } else if (false === dialogs.confirm("闪退自动重开",
+                        "下次启动周回时,还要询问是否使用自动重开功能吗？\n"
+                        +"点击\"取消\"后,将不再询问是否自动重开,并且默认不使用自动重开功能。\n"
+                        +"如果暂时不想用自动重开,又不想清除掉导入进来或录制下来的选关动作数据,请点\"确定\"。\n"
+                        +"点击\"取消\"后,如果又重新开始想要使用自动重开功能,可以在脚本设置中重新开启\"启动周回脚本时询问是否自动重开\"。\n"))
+                    {
+                        ui.run(function () {
+                            ui["promptAutoRelaunch"].setChecked(false);
+                        });
                     }
                 }
             }
@@ -5218,7 +5281,10 @@ function algo_init() {
         }
 
         if (lastOpList == null) {
-            toastLog("周回已开始。\n因为没有动作录制数据,\n所以未启用闪退自动重开功能。");
+            toastLog("周回已开始。\n"+(limit.promptAutoRelaunch?"因为没有加载动作录制数据,\n所以":"")+"未启用闪退自动重开功能。");
+        } else if (!limit.promptAutoRelaunch) {
+            log("不弹窗询问是否启用自动重开");
+            lastOpList = null;
         } else {
             if (!requestPrivilegeIfNeeded()) {
                 log("用户选择获取特权,但还没获取到,退出录制");
@@ -6020,6 +6086,7 @@ function algo_init() {
     //应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
     //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
     var canCaptureScreen = false;
+    var requestScreenCaptureSuccess = false;
     var hasScreenCaptureError = false;
     function startScreenCapture() {
         if (canCaptureScreen) {
@@ -6037,14 +6104,13 @@ function algo_init() {
         sleep(500);
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
-            let result = false;
-            try {
-                result = requestScreenCapture(screencap_landscape);
+            if (!requestScreenCaptureSuccess) try {
+                requestScreenCaptureSuccess = requestScreenCapture(screencap_landscape);
             } catch (e) {
                 //logException(e); issue #126
                 try {log(e);} catch (e2) {};
             }
-            if (result) {
+            if (requestScreenCaptureSuccess) {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
                 initializeScreenCaptureFix();
 
@@ -6197,7 +6263,7 @@ function algo_init() {
 
 
     var staleScreenshot = {img: null, lastTime: 0, timeout: 1000};
-    var compatCaptureScreen = sync(function () {
+    var compatCaptureScreen = syncer.syn(function () {
         if (limit.rootScreencap) {
             //使用shell命令 screencap 截图
             try {screencapShellCmdThread.interrupt();} catch (e) {};
@@ -6430,13 +6496,15 @@ function algo_init() {
         }
     }
 
-    //已知参照图像，包括A/B/C盘等
-    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.6.0";
+    //已知参照图像，包括A/B/C/M/D盘等
+    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@5.5.0";
     var knownImgs = {};
     const knownImgURLs = {
         accel: ImgURLBase+"/images/accel.png",
         blast: ImgURLBase+"/images/blast.png",
         charge: ImgURLBase+"/images/charge.png",
+        magia: ImgURLBase+"/images/magia.png",
+        doppel: ImgURLBase+"/images/doppel.png",
         connectIndicator: ImgURLBase+"/images/connectIndicator.png",
         connectIndicatorBtnDown: ImgURLBase+"/images/connectIndicatorBtnDown.png",
         light: ImgURLBase+"/images/light.png",
@@ -6461,7 +6529,7 @@ function algo_init() {
         OKButtonGray: ImgURLBase+"/images/OKButtonGray.png",
     };
 
-    var downloadAllImages = sync(function () {
+    var downloadAllImages = syncer.syn(function () {
         while (true) {
             let hasNull = false;
             for (let key in knownImgURLs) {
@@ -6845,18 +6913,25 @@ function algo_init() {
     var clickedDisksCount = 0;
 
     var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
-    var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
-    var diskActions = ["accel", "blast", "charge"];
+    var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3, fifth: 4};
+    var diskActions = ["accel", "blast", "charge", "magia", "doppel"];
     var diskAttribs = ["light", "dark", "water", "fire", "wood", "none"];
     var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs.length; i++) { diskAttribsBtnDown.push(diskAttribs[i]+"BtnDown"); }
 
     function logDiskInfo(disk) {
+        let isMagiaDoppel = false;
+        if (disk.action == "magia" || disk.action == "doppel") isMagiaDoppel = true;
         let connectableStr = "不可连携";
-        if (disk.connectable) connectableStr = "【连携】";
+        if (!isMagiaDoppel) {
+            if (disk.connectable) connectableStr = "【连携】";
+        }
         let downStr = "未按下"
         if (disk.down) downStr = "【按下】"
-        log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
-
+        if (isMagiaDoppel) {
+            log("第", disk.position+1, "号盘", disk.action, disk.priority, /*"角色", disk.charaID, */"属性", disk.attrib, downStr);
+        } else {
+            log("第", disk.position+1, "号盘", disk.action, disk.priority, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
+        }
     }
 
     //获取换算后的行动盘所需部分（A/B/C盘，角色头像，连携指示灯等）的坐标
@@ -6988,10 +7063,23 @@ function algo_init() {
         }
         return result;
     }
-    function getDiskAction(screenshot, diskPos) {
+    function getDiskActionABC(screenshot, diskPos) {
         let actionImg = getDiskImg(screenshot, diskPos, "action");
         log("识别第", diskPos+1, "盘的A/B/C类型...");
         return recognizeDisk(actionImg, "action");
+    }
+    function getDiskActionMagiaDoppel(screenshot, diskPos) {
+        let actionImg = getDiskImg(screenshot, diskPos, "action");
+        log("识别第", diskPos+1, "盘的Magia/Doppel类型...");
+        let result = null;
+        try {
+            result = recognizeDisk(actionImg, "action", 2.1);
+        } catch (e) {
+            if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+            result = null;
+            log("第", diskPos+1, "盘处看上去没有盘");
+        }
+        return result;
     }
     function getDiskAttribDown(screenshot, diskPos) {
         let result = {attrib: null, down: false};
@@ -7022,8 +7110,15 @@ function algo_init() {
         return result;
     }
     function isDiskDown(screenshot, diskPos) {
+        //也可以接受disk作为参数，点击Magia/Doppel盘时可避免属性对不上
+        let disk = null;
+        if (typeof diskPos != "number") {
+            disk = diskPos;
+            diskPos = disk.position;
+        } else {
+            disk = allActionDisks[diskPos];
+        }
         let attribImg = getDiskImg(screenshot, diskPos, "attrib");
-        let disk = allActionDisks[diskPos];
         log("识别第", diskPos+1, "盘 (", disk.attrib, ") 是否被按下...");
         let recogResult = null;
         try {
@@ -7142,7 +7237,7 @@ function algo_init() {
         let screenshot = compatCaptureScreen();
         for (let i=0; i<allActionDisks.length; i++) {
             let disk = allActionDisks[i];
-            disk.action = getDiskAction(screenshot, i);
+            disk.action = getDiskActionABC(screenshot, i);
             disk.charaImg = getDiskCharaImg(screenshot, i);
             let isConnectableDown = isDiskConnectableDown(screenshot, i); //isConnectableDown.down==true也有可能是只剩一人无法连携的情况，
             disk.connectable = isConnectableDown.connectable && (!isConnectableDown.down); //所以这里还无法区分盘是否被按下，但是可以排除只剩一人无法连携的情况
@@ -7421,7 +7516,7 @@ function algo_init() {
             logDiskInfo(disks[i]);
         }
         let replaceDiskAtThisPriority = clickedDisksCount;
-        for (let i=0; i<disks.length; i++) {
+        for (let i=0; i<disks.length&&replaceDiskAtThisPriority<ordinalWord.length; i++) {
             let targetDisk = getDiskByPriority(allActionDisks, ordinalWord[replaceDiskAtThisPriority]);
             let diskToPrioritise = disks[i];
             let posA = targetDisk.position;
@@ -7499,7 +7594,7 @@ function algo_init() {
             sleep(333);
             let screenshot = compatCaptureScreen();
             try {
-                disk.down = isDiskDown(screenshot, disk.position);
+                disk.down = isDiskDown(screenshot, disk);
             } catch (e) {
                 if (e.toString() == "isDiskDownInconclusive") {
                     inconclusiveCount++;
@@ -7728,27 +7823,54 @@ function algo_init() {
     }
 
     //是否有我方行动盘出现
-    function isDiskAppearing(screenshot) {
+    function detectAppearingDiskType(screenshot) {
         let img = getDiskImg(screenshot, 0, "action");
         if (img != null) {
             log("已截取第一个盘的动作图片");
         } else {
             log("截取第一个盘的动作图片时出现问题");
         }
-        let diskAppeared = true;
+        let result = null;
         try {
-            recognizeDisk(img, "action", 2.1);
+            result = recognizeDisk(img, "action", 2.1);
+            switch (result) {
+                case "accel":
+                case "blast":
+                case "charge":
+                    result = "abc";
+                    break;
+                case "magia":
+                case "doppel":
+                    result = "magiadoppel";
+                    break;
+                default:
+                    throw new Error("detectAppearingDiskType: unknown disk action type");
+            }
         } catch(e) {
             if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
-            diskAppeared = false;
+            result = null;
         }
-        return diskAppeared;
+        return result;
+    }
+    function isMagiaDiskAppearing(screenshot) {
+        return detectAppearingDiskType(screenshot) == "magiadoppel" ? true : false;
+    }
+    function isABCDiskAppearing(screenshot) {
+        return detectAppearingDiskType(screenshot) == "abc" ? true : false;
+    }
+    function isDiskAppearing(screenshot) {
+        switch (detectAppearingDiskType(screenshot)) {
+            case "abc":
+            case "magiadoppel":
+                return true;
+        }
+        return false;
     }
 
     //打开或关闭技能面板
     function toggleSkillPanel(open) {
         log((open?"打开":"关闭")+"技能面板...");
-        for (let attempt=0; isDiskAppearing(compatCaptureScreen())==open; attempt++) {
+        for (let attempt=0; isABCDiskAppearing(compatCaptureScreen())==open; attempt++) {
             if (attempt >= 10) {
                 log((open?"打开":"关闭")+"技能面板时出错");
                 stopThread();
@@ -7774,10 +7896,43 @@ function algo_init() {
         pos: "top"
     };
 
+    //用于防误触：
+    //镜层角色详细信息出现时,返回按钮上,这里也是白色
+    //剧情副本(而不是镜层)的MENU按钮可用时,这里就不是白色了
+    //RGB=142,109,66
+    const knownMenuButtonPoint = {
+        x: 82,
+        y: 54,
+        pos: "top"
+    };
+
+    //进一步防误触：
+    //没打开战斗任务内容窗口（三星任务等，auto设置也在这里）时,这里不是白色
+    //打开战斗任务内容窗口后,这里就变成白色了
+    const battleMenuCloseButtonPoints = [
+        {
+            x: 1763,
+            y: 68,
+            pos: "top"
+        },
+        {
+            x: 1781,
+            y: 73,
+            pos: "top"
+        },
+    ];
+
+    //点击时往下点,避免误触倍速按钮
+    const battleMenuCloseButtonClickPoint = {
+        x: 1777,
+        y: 113,
+        pos: "top"
+    };
+
     //检测返回按钮是否出现
     function isBackButtonAppearing(screenshot) {
-        let point = convertCoords(knownBackButtonPoint);
-        if (images.detectsColor(screenshot, colors.WHITE, point.x, point.y, 32, "diff")) {
+        let points = [knownBackButtonPoint, knownMenuButtonPoint].map((val) => convertCoords(val));
+        if (points.find((val) => !images.detectsColor(screenshot, colors.WHITE, val.x, val.y, 32, "diff")) == null) {
             log("似乎出现了返回按钮");
             return true;
         } else {
@@ -7786,23 +7941,44 @@ function algo_init() {
         }
     }
 
-    //有返回按钮出现时点击
+    //检测战斗任务内容窗口是否出现
+    function isBattleMenuCloseButtonAppearing(screenshot) {
+        let points = battleMenuCloseButtonPoints.map((val) => convertCoords(val));
+        if (points.find((val) => !images.detectsColor(screenshot, colors.WHITE, val.x, val.y, 32, "diff")) == null) {
+            log("似乎出现了战斗任务内容窗口");
+            return true;
+        } else {
+            log("似乎没出现战斗任务内容窗口");
+            return false;
+        }
+    }
+
+    //有返回按钮出现时点击返回,或者出现战斗任务内容窗口时点击关闭
     function clickBackButtonIfShowed() {
         let lastClickTime = 0;
         let attemptMax = 10;
         for (let attempt=0; attempt<attemptMax; attempt++) {
-            if (!isBackButtonAppearing(compatCaptureScreen())) {
+            let screenshot = compatCaptureScreen();
+            let isClickingBackNeeded = isBackButtonAppearing(screenshot);
+            let isClickingCloseNeeded = isBattleMenuCloseButtonAppearing(screenshot);
+            if (!(isClickingBackNeeded || isClickingCloseNeeded)) {
                 return true;
             }
             let clickTime = new Date().getTime();
             if (lastClickTime == 0 || clickTime - lastClickTime > 2000) {
                 lastClickTime = clickTime;
-                log("点击返回");
-                click(convertCoords(clickSetsMod.back));
+                if (isClickingBackNeeded) {
+                    log("点击返回");
+                    click(convertCoords(clickSetsMod.back));
+                }
+                if (isClickingCloseNeeded) {
+                    log("点击关闭战斗任务内容窗口");
+                    click(convertCoords(battleMenuCloseButtonClickPoint));
+                }
             }
             sleep(500);
         }
-        log("尝试点击返回多次仍然没有效果");
+        log("尝试点击返回或关闭多次仍然没有效果");
         return false;
     }
 
@@ -7936,6 +8112,122 @@ function algo_init() {
         //关闭技能面板
         toggleSkillPanel(false);
         return false;
+    }
+
+    var knownMagiaButtonCoords = {
+        topLeft: {
+            x: 78, y: 894, pos: "bottom"
+        },
+        bottomRight: {
+            x: 224, y: 976, pos: "bottom"
+        }
+    };
+
+    function getMagiaButtonArea() {
+        return getConvertedArea(knownMagiaButtonCoords);
+    }
+
+    function getMagiaButtonImg(screenshot) {
+        let area = getMagiaButtonArea();
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+
+    //有Magia/Doppel可用的时候,无论是否打开Magia面板,左边的切换按钮都不是灰色的
+    //这是一个取巧的办法,如果行动盘还没显示出来,就可能误判成Magia可用
+    function isMagiaAvailable(screenshot) {
+        let img = getMagiaButtonImg(screenshot);
+        let imgGRAY = renewImage(images.grayscale(img));
+        let imgGray = renewImage(images.cvtColor(imgGRAY, "GRAY2BGRA"));
+        let imgBGRA = renewImage(images.cvtColor(img, "BGR2BGRA"));
+        let isGray = false;
+        let similarity = images.getSimilarity(imgBGRA, imgGray, {"type": "MSSIM"});
+        log("判断按钮区域图像是否为灰度 MSSIM=", similarity);
+        if (similarity > 2.9) {
+            log("Magia不可用");
+            return false;
+        } else {
+            log("Magia可用,或者行动盘尚未显示");
+            return true;
+        }
+    }
+
+    //打开或关闭Magia面板
+    function toggleMagiaPanel(open) {
+        log((open?"打开":"关闭")+"Magia面板...");
+        let screenshot = compatCaptureScreen();
+        if (!isMagiaAvailable(screenshot)) return false;
+        for (let attempt=0; open?!isMagiaDiskAppearing(screenshot):!isABCDiskAppearing(screenshot); attempt++) {
+            if (attempt >= 10) {
+                log((open?"打开":"关闭")+"Magia面板时出错");
+                stopThread();
+            }
+            log("点击切换Magia面板/行动盘面板");
+            click(getAreaCenter(getMagiaButtonArea()));
+            sleep(1000);
+            screenshot = compatCaptureScreen();
+        }
+        return open ? true : false;
+    }
+
+    function scanMagiaDisks() {
+        let result = [];
+
+        //截屏，对盘进行识别
+        //这里还是假设没有盘被按下
+        let screenshot = compatCaptureScreen();
+        for (let i=0; i<allActionDisks.length; i++) {
+            let disk = {
+                position:    i,
+                down:        false,
+                action:      "magia",
+                attrib:      "none",
+                //charaImg:    null,
+                //charaID:     0
+            };
+            let action = getDiskActionMagiaDoppel(screenshot, i);
+            if (action != "magia" && action != "doppel") break;
+            disk.action = action;
+            //disk.charaImg = getDiskCharaImg(screenshot, i);
+            let diskAttribDown = getDiskAttribDown(screenshot, i);
+            disk.attrib = diskAttribDown.attrib;
+            disk.down = diskAttribDown.down; //这里，虽然getDiskAttribDown()可以识别盘是否按下，但是因为后面分辨不同的角色的问题还无法解决，所以意义不是很大
+            result.push(disk);
+        }
+        //分辨不同的角色，用charaID标记
+        //如果有盘被点击过，在有属性克制的情况下，这个检测可能被闪光特效干扰
+        //如果有按下的盘，这里也会把同一位角色误判为不同角色
+        //for (let i=0; i<result.length-1; i++) {
+        //    let diskI = result[i];
+        //    for (let j=i+1; j<allActionDisks.length; j++) {
+        //        let diskJ = allActionDisks[j];
+        //        if (areDisksSimilar(screenshot, i, j)) {
+        //            diskJ.charaID = diskI.charaID;
+        //        }
+        //    }
+        //}
+
+        log("行动盘扫描结果：");
+        for (let i=0; i<result.length; i++) {
+            logDiskInfo(result[i]);
+        }
+
+        return result;
+    }
+
+    //闭着眼放出所有Magia/Doppel大招
+    function clickAllMagiaDisks() {
+        //打开技能面板
+        if (!toggleMagiaPanel(true)) return;
+
+        let magiaDisks = scanMagiaDisks();
+        for (let disk of magiaDisks) {
+            clickDisk(disk);
+            //如果已经点完3个盘就不用继续往下点了
+            if (clickedDisksCount >= 3) return;
+        }
+
+        //关闭技能面板
+        toggleMagiaPanel(false);
     }
 
     //等待己方回合
@@ -8131,9 +8423,9 @@ function algo_init() {
         for (let imgName in knownImgs) {
             let newsize = [0, 0];
             let knownArea = null;
-            if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
+            if (diskActions.find((val) => val == imgName) != null) {
                 knownArea = knownFirstDiskCoords["action"];
-            } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood") || imgName.startsWith("none")) {
+            } else if (diskAttribs.find((val) => val == imgName || val == imgName+"BtnDown") != null) {
                 knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
             } else if (imgName == "connectIndicatorBtnDown") {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
@@ -8274,6 +8566,11 @@ function algo_init() {
             //我的回合，抽盘
             turn++;
 
+            //扫描行动盘之前，先确保Magia面板没开
+            if (isMagiaDiskAppearing(compatCaptureScreen())) {
+                toggleMagiaPanel(false);
+            }
+
             //扫描行动盘和战场信息
             scanDisks();
             scanBattleField("our");
@@ -8397,9 +8694,16 @@ function algo_init() {
                 }
             }
 
+            if (limit.CVAutoBattleClickAllMagiaDisks) {
+                //闭着眼放出所有Magia/Doppel大招
+                clickAllMagiaDisks();
+                //如果三个盘都是Magia/Doppel那就不用选A/B/C盘了
+                if (clickedDisksCount >= 3) continue;
+            }
+
             //提前把不被克制的盘排到前面
-            //这样一来，如果后面既没有接连携的角色更没有进一步（同角色）的Blast Combo
-            //也没有无连携的Puella Combo和进一步（同角色）的Blast Combo
+            //这样一来，如果后面既没有接连携的角色更没有进一步（同角色）的Accel/Blast Combo
+            //也没有无连携的Puella Combo和进一步（同角色）的Accel/Blast Combo
             //应该就会顺位选到它们
             let nonDisadvAttribDisks = findNonDisadvAttribDisks(allActionDisks, [battleField["their"].lastAimedAtEnemy]);
             prioritiseDisks(nonDisadvAttribDisks);
@@ -8411,51 +8715,101 @@ function algo_init() {
             if (connectableDisks.length > 0) {
                 //如果有连携，第一个盘上连携
                 let selectedDisk = connectableDisks[0];
-                //连携尽量用blast盘
-                let blastConnectableDisks = findSameActionDisks(connectableDisks, "blast");
-                if (blastConnectableDisks.length > 0) selectedDisk = blastConnectableDisks[0];
+                //连携尽量用accel/blast盘
+                let AorBConnectableDisks = findSameActionDisks(connectableDisks, limit.CVAutoBattlePreferAccel ? "accel" : "blast");
+                if (AorBConnectableDisks.length > 0) selectedDisk = AorBConnectableDisks[0];
                 prioritiseDisks([selectedDisk]); //将当前连携盘从选盘中排除
                 connectDisk(selectedDisk);
                 //上连携后，尽量用接连携的角色
                 let connectAcceptorDisks = findDisksByCharaID(allActionDisks, selectedDisk.connectedTo);
                 prioritiseDisks(connectAcceptorDisks);
-                //连携的角色尽量打出Blast Combo
-                let blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
-                prioritiseDisks(blastDisks);
+                //连携的角色尽量打出Accel/Blast/Charge Combo
+                let sameActionComboDisks = findSameActionDisks(
+                    limit.CVAutoBattlePreferABCCombo
+                        ? allActionDisks.filter((val) => ordinalNum[val.priority] >= clickedDisksCount)
+                        : connectAcceptorDisks,
+                    selectedDisk.action
+                );
+                if (sameActionComboDisks.length >= 2) {
+                    prioritiseDisks(sameActionComboDisks);
+                    if (limit.CVAutoBattlePreferABCCombo) {
+                        prioritiseDisks(sameActionComboDisks.filter(
+                            (disk) => connectAcceptorDisks.find((val) => disk.position == val.position) != null
+                        ));
+                    }
+                } else {
+                    //凑不够Accel/Blast/Charge Combo，再试试XCA/XCB
+                    let chargeDisks = findSameActionDisks(connectAcceptorDisks, "charge");
+                    if (chargeDisks.length > 0) {
+                        let AccelOrBlastDisks = findSameActionDisks(connectAcceptorDisks, limit.CVAutoBattlePreferAccel ? "accel" : "blast");
+                        if (AccelOrBlastDisks.length == 0) {
+                            AccelOrBlastDisks = findSameActionDisks(connectAcceptorDisks, limit.CVAutoBattlePreferAccel ? "blast" : "accel");
+                        }
+                        if (AccelOrBlastDisks.length > 0) {
+                            prioritiseDisks([chargeDisks[0], AccelOrBlastDisks[0]]);
+                        }
+                    }
+                }
             } else {
                 //没有连携
-                //先找Puella Combo
                 let candidateDisks = allActionDisks;
+                //默认先找Puella Combo
                 let sameCharaDisks = findSameCharaDisks(allActionDisks);
                 if (sameCharaDisks.length >= 3) {
-                    candidateDisks = sameCharaDisks;
-                    prioritiseDisks(sameCharaDisks);
+                    candidateDisks = limit.CVAutoBattlePreferABCCombo ? allActionDisks : sameCharaDisks;
+                    if (!limit.CVAutoBattlePreferABCCombo) {
+                        prioritiseDisks(sameCharaDisks);
+                    }
                 }
-                //再依次找Blast/Accel/Charge Combo
+                //再依次找Accel/Blast/Charge Combo
                 let comboDisks = [];
-                for (let action of ["blast", "accel", "charge"]) {
+                let sameactionseq = limit.CVAutoBattlePreferAccel ? ["accel", "blast", "charge"] : ["blast", "accel", "charge"];
+                for (let action of sameactionseq) {
                     comboDisks = findSameActionDisks(candidateDisks, action);
                     if (comboDisks.length >= 3) {
                         prioritiseDisks(comboDisks);
+                        if (limit.CVAutoBattlePreferABCCombo) {
+                            //已经优先凑出了Accel/Blast/Charge Combo，继续尝试在Accel/Blast/Charge Combo凑出Puella Combo
+                            prioritiseDisks(findSameCharaDisks(comboDisks));
+                        }
                         break;
                     }
                 }
-                let ACBDisks = [];
+                let lastPreferredDisks = [];
+                let lastPreferredDisksCandidates = {};
                 if (comboDisks.length < 3) {
-                    //再找ACB
-                    //先找Puella Combo内的ACB，再找混合ACB
-                    let ACBAttemptMax = sameCharaDisks.length >= 3 ? 2 : 1;
+                    //再找ACA、ACB
+                    //先找Puella Combo内的ACA、ACB，再找混合ACA、ACB
                     candidateDisks = sameCharaDisks.length >= 3 ? sameCharaDisks : allActionDisks;
-                    for (let ACBAttempt=0; ACBAttempt<ACBAttemptMax; ACBAttempt++) {
-                        for (let action of ["accel", "charge", "blast"]) {
-                            let foundDisks = findSameActionDisks(candidateDisks, action);
-                            if (foundDisks.length > 0) ACBDisks.push(foundDisks[0]);
+                    for (let attempt=0,attemptMax=sameCharaDisks.length>=3?2:1; attempt<attemptMax; attempt++) {
+                        let nonsameactionsequences = {
+                            ACA: ["accel", "charge", "accel"],
+                            ACB: ["accel", "charge", "blast"],
+                        };
+                        for (let name in nonsameactionsequences) {
+                            if (lastPreferredDisksCandidates[name] == null)
+                                lastPreferredDisksCandidates[name] = [];
+                            let nonsameactionseq = nonsameactionsequences[name];
+                            for (let action of nonsameactionseq) {
+                                let foundDisks = findSameActionDisks(candidateDisks, action);
+                                //找到之前没加进来过的
+                                let foundDisk = foundDisks.find((disk) =>
+                                    lastPreferredDisksCandidates[name].find((val) => val.position == disk.position) == null
+                                );
+                                if (foundDisk != null) {
+                                    lastPreferredDisksCandidates[name].push(foundDisk);
+                                }
+                            }
+                            if (lastPreferredDisksCandidates[name].length >= 3) {
+                                lastPreferredDisks = lastPreferredDisksCandidates[name];
+                                break;
+                            }
                         }
-                        if (ACBDisks.length >= 3) {
-                            prioritiseDisks(ACBDisks);
+                        if (lastPreferredDisks.length >= 3) {
+                            prioritiseDisks(lastPreferredDisks);
                             break;
                         } else if (sameCharaDisks.length >= 3) {
-                            //有Puella Combo但Puella Combo内没有ACB，那就Puella Combo
+                            //有Puella Combo但Puella Combo内没有ACA/ACB，那就Puella Combo
                             prioritiseDisks(sameCharaDisks);
                             break;
                         }

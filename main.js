@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "5.4.0";
+var version = "5.5.0";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -50,6 +50,10 @@ ui.layout(
                     <vertical id="task_paused_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <text id="task_paused_title" text="脚本已暂停" textColor="#FFCC00" textSize="20" w="wrap_content" h="wrap_content"/>
                         <button id="task_paused_button" text="返回游戏并继续运行脚本" textColor="#000000" textSize="16" w="wrap_content" h="wrap_content"/>
+                    </vertical>
+
+                    <vertical id="versionMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
+                        <text id="versionMsg" layout_weight="1" w="*" gravity="center" color="#666666" text="获取最新版本信息..." />
                     </vertical>
 
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
@@ -130,7 +134,7 @@ ui.layout(
                                     <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打断" text="" textSize="14" inputType="number|none" />
                                     <text text="秒打断官方自动续战" textColor="#000000" />
                                 </linear>
-                                <text text="经过设定的秒数后,长按打断官方自动周回" textColor="#000000" />
+                                <text text="经过设定的秒数后,长按打断官方自动周回。这样可以一定程度上兼顾周回速度和照顾互关好友。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <linear padding="0 0 0 0" w="*" h="auto">
@@ -149,24 +153,28 @@ ui.layout(
                                 <spinner id="usePresetOpList" textSize="14" textColor="#000000" entries="{{floatUI.presetOpLists.map(x=>x.name).join('|')}}" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
-                                <linear>
-                                    <text text="假死检测超时" textColor="#000000" />
-                                    <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
-                                    <text text="秒" textColor="#000000" />
-                                </linear>
-                                <text text="如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开。一般用来对付黑屏上只显示一个环彩羽(或者其他角色)Live2D、而未能正常显示选关列表的问题。一般设为5到10分钟(300到600秒)。" textColor="#000000" />
+                                <Switch id="promptAutoRelaunch" text="启动周回脚本时询问是否自动重开" checked="true" textColor="#000000" />
+                                <text text="想要使用自动重开功能的话,务必开启这个选项。如果暂时不想使用自动重开功能,感觉每次启动都弹出对话框很烦人,又不想清除掉导入进来或录制下来的选关动作数据,可以在这里关闭弹窗提示。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
+                                    <text text="假死检测超时" textColor="#000000" />
+                                    <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="600" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="（只有在启用自动重开功能时才会杀进程）如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开。一般用来对付黑屏上只显示一个环彩羽(或者其他角色)Live2D、而未能正常显示选关列表的问题。一般设为5到10分钟(300到600秒)。" textColor="#000000" />
+                            </vertical>
+                            <vertical id="DefaultCrashRestartExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <linear>
                                     <text text="无条件杀进程重开,每隔" textColor="#000000" />
-                                    <input maxLength="5" id="periodicallyKillTimeout" hint="留空即不强关重开" text="" textSize="14" inputType="number|none" />
+                                    <input maxLength="5" id="periodicallyKillTimeout" hint="留空即不强关重开" text="3600" textSize="14" inputType="number|none" />
                                     <text text="秒一次" textColor="#000000" />
                                 </linear>
-                                <text text="有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测超时、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。一般设为1小时(3600秒)左右。" textColor="#000000" />
+                                <text text="（只有在启用自动重开功能时才会杀进程）有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测超时、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。一般设为1小时(3600秒)左右。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultCrashRestartExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="DefaultCrashRestartExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
-                                <text text="部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
+                                <text text="（只有在启用自动重开功能时才会杀进程）部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般没有这个问题（但游戏不能被锁后台）,脚本可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
                             </vertical>
                         </vertical>
                     </vertical>
@@ -205,6 +213,18 @@ ui.layout(
                                 <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
                                 <text text="开启后,从第3回合开始,会放出所有可用的主动技能。如果遇到问题可以关闭" textColor="#000000" />
                             </vertical>
+                            <vertical id="CVAutoBattleExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <Switch id="CVAutoBattleClickAllMagiaDisks" w="*" margin="0 3" checked="true" textColor="#000000" text="使用Magia/Doppel大招" />
+                                <text text="开启后,会放出所有可用Magia/Doppel大招。如果遇到问题可以关闭" textColor="#000000" />
+                            </vertical>
+                            <vertical id="CVAutoBattleExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <Switch id="CVAutoBattlePreferAccel" w="*" margin="0 3" checked="false" textColor="#000000" text="优先用Accel盘" />
+                                <text text="默认选盘倾向于用Blast盘。开启后,改为倾向于Accel。" textColor="#000000" />
+                            </vertical>
+                            <vertical id="CVAutoBattleExtraSettings6" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <Switch id="CVAutoBattlePreferABCCombo" w="*" margin="0 3" checked="false" textColor="#000000" text="优先凑A/B/C Combo" />
+                                <text text="默认优先凑出Puella Combo(3个盘都是同一个角色)。开启后,改为优先凑出Accel/Blast/Charge Combo(比如3个盘都是Accel)。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -225,9 +245,6 @@ ui.layout(
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="关于" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
-                        <linear padding="10 6" bg="#ffffff">
-                            <text id="versionMsg" layout_weight="1" w="*" gravity="center" color="#666666" text="尝试获取最新版本信息" />
-                        </linear>
                         <linear padding="10 6" bg="#ffffff">
                             <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，且永久免费，不可进行出售盈利。作者bilibili 虹之宝玉  群号：453053507" />
                         </linear>
@@ -544,9 +561,7 @@ ui.emitter.on("resume", () => {
 //监听刷新事件
 ui.swipe.setOnRefreshListener({
     onRefresh: function () {
-        //为了看效果延迟一下
-        toUpdate()
-        ui.swipe.setRefreshing(false);
+        threads.start(function () {toUpdate();});
     },
 });
 //-----------------自定义逻辑-------------------------------------------
@@ -595,6 +610,7 @@ const persistParamList = [
     "foreground",
     "stopOnVolUp",
     "exitOnServiceSettings",
+    "promptAutoRelaunch",
     "usePresetOpList",
     "default",/* 放在usePresetOpList后面,这样启动时弹的toast还是默认执行脚本 */
     "autoReconnect",
@@ -614,6 +630,9 @@ const persistParamList = [
     "useCVAutoBattle",
     "CVAutoBattleDebug",
     "CVAutoBattleClickAllSkills",
+    "CVAutoBattleClickAllMagiaDisks",
+    "CVAutoBattlePreferAccel",
+    "CVAutoBattlePreferABCCombo",
 ];
 const tempParamList = [
     "drug1",
@@ -798,8 +817,9 @@ var refreshUpdateStatus = sync(function () {
         if (res.statusCode != 200) {
             log("请求失败: " + res.statusCode + " " + res.statusMessage);
             ui.run(function () {
-                ui.versionMsg.setText("获取失败")
+                ui.versionMsg.setText("更新信息获取失败 "+res.statusCode+" "+res.statusMessage)
                 ui.versionMsg.setTextColor(colors.parseColor("#666666"))
+                ui.versionMsg_vertical.setVisibility(View.VISIBLE);
             })
         } else {
             let resJson = res.body.json();
@@ -807,25 +827,34 @@ var refreshUpdateStatus = sync(function () {
                 ui.run(function () {
                     ui.versionMsg.setText("当前无需更新")
                     ui.versionMsg.setTextColor(colors.parseColor("#666666"))
+                    ui.versionMsg_vertical.setVisibility(View.GONE);
                 });
             } else {
                 ui.run(function () {
                     ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
                     ui.versionMsg.setTextColor(colors.RED)
+                    ui.versionMsg_vertical.setVisibility(View.VISIBLE);
                 });
             }
         }
     } catch (e) {
         ui.run(function () {
-            ui.versionMsg.setText("请求超时")
+            ui.versionMsg.setText("获取更新信息时出错")
             ui.versionMsg.setTextColor(colors.parseColor("#666666"))
+            ui.versionMsg_vertical.setVisibility(View.VISIBLE);
         })
     }
 });
 threads.start(function () {refreshUpdateStatus();});
 
 //版本更新
-function toUpdate() {
+var updateRestartPending = false;
+var toUpdate = sync(function () {
+    refreshUpdateStatus();
+    if (updateRestartPending) {
+        ui.run(function() {ui.swipe.setRefreshing(false);});
+        return;
+    }
     try {
         let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
         if (res.statusCode != 200) {
@@ -849,6 +878,7 @@ function toUpdate() {
                         app.launch(context.getPackageName())
                         toast("更新完毕")
                     })
+                    updateRestartPending = true;
                     engines.stopAll()
                 } else {
                     toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessage);
@@ -858,7 +888,9 @@ function toUpdate() {
 
     } catch (error) {
         toastLog("请求超时，可再一次尝试")
+    } finally {
+        ui.run(function() {ui.swipe.setRefreshing(false);});
     }
-}
+});
 
 floatUI.enableToastParamChanges();
