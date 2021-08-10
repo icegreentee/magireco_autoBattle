@@ -221,6 +221,10 @@ ui.layout(
                                 <Switch id="CVAutoBattlePreferAccel" w="*" margin="0 3" checked="false" textColor="#000000" text="优先用Accel盘" />
                                 <text text="默认选盘倾向于用Blast盘。开启后,改为倾向于Accel。" textColor="#000000" />
                             </vertical>
+                            <vertical id="CVAutoBattleExtraSettings6" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <Switch id="CVAutoBattlePreferABCCombo" w="*" margin="0 3" checked="false" textColor="#000000" text="优先凑A/B/C Combo" />
+                                <text text="默认优先凑出Puella Combo(3个盘都是同一个角色)。开启后,改为优先凑出Accel/Blast/Charge Combo。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -628,6 +632,7 @@ const persistParamList = [
     "CVAutoBattleClickAllSkills",
     "CVAutoBattleClickAllMagiaDisks",
     "CVAutoBattlePreferAccel",
+    "CVAutoBattlePreferABCCombo",
 ];
 const tempParamList = [
     "drug1",

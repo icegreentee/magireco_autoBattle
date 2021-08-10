@@ -1434,6 +1434,7 @@ var limit = {
     CVAutoBattleClickAllSkills: true,
     CVAutoBattleClickAllMagiaDisks: true,
     CVAutoBattlePreferAccel: false,
+    CVAutoBattlePreferABCCombo: false,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -6912,7 +6913,7 @@ function algo_init() {
     var clickedDisksCount = 0;
 
     var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
-    var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
+    var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3, fifth: 4};
     var diskActions = ["accel", "blast", "charge", "magia", "doppel"];
     var diskAttribs = ["light", "dark", "water", "fire", "wood", "none"];
     var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs.length; i++) { diskAttribsBtnDown.push(diskAttribs[i]+"BtnDown"); }
@@ -8723,9 +8724,19 @@ function algo_init() {
                 let connectAcceptorDisks = findDisksByCharaID(allActionDisks, selectedDisk.connectedTo);
                 prioritiseDisks(connectAcceptorDisks);
                 //连携的角色尽量打出Accel/Blast/Charge Combo
-                let sameActionComboDisks = findSameActionDisks(connectAcceptorDisks, selectedDisk.action);
+                let sameActionComboDisks = findSameActionDisks(
+                    limit.CVAutoBattlePreferABCCombo
+                        ? allActionDisks.filter((val) => ordinalNum[val.priority] >= clickedDisksCount)
+                        : connectAcceptorDisks,
+                    selectedDisk.action
+                );
                 if (sameActionComboDisks.length >= 2) {
                     prioritiseDisks(sameActionComboDisks);
+                    if (limit.CVAutoBattlePreferABCCombo) {
+                        prioritiseDisks(sameActionComboDisks.filter(
+                            (disk) => connectAcceptorDisks.find((val) => disk.position == val.position) != null
+                        ));
+                    }
                 } else {
                     //凑不够Accel/Blast/Charge Combo，再试试XCA/XCB
                     let chargeDisks = findSameActionDisks(connectAcceptorDisks, "charge");
@@ -8741,20 +8752,26 @@ function algo_init() {
                 }
             } else {
                 //没有连携
-                //先找Puella Combo
                 let candidateDisks = allActionDisks;
+                //默认先找Puella Combo
                 let sameCharaDisks = findSameCharaDisks(allActionDisks);
                 if (sameCharaDisks.length >= 3) {
-                    candidateDisks = sameCharaDisks;
-                    prioritiseDisks(sameCharaDisks);
+                    candidateDisks = limit.CVAutoBattlePreferABCCombo ? allActionDisks : sameCharaDisks;
+                    if (!limit.CVAutoBattlePreferABCCombo) {
+                        prioritiseDisks(sameCharaDisks);
+                    }
                 }
-                //再依次找Blast/Accel/Charge Combo
+                //再依次找Accel/Blast/Charge Combo
                 let comboDisks = [];
                 let sameactionseq = limit.CVAutoBattlePreferAccel ? ["accel", "blast", "charge"] : ["blast", "accel", "charge"];
                 for (let action of sameactionseq) {
                     comboDisks = findSameActionDisks(candidateDisks, action);
                     if (comboDisks.length >= 3) {
                         prioritiseDisks(comboDisks);
+                        if (limit.CVAutoBattlePreferABCCombo) {
+                            //已经优先凑出了Accel/Blast/Charge Combo，继续尝试在Accel/Blast/Charge Combo凑出Puella Combo
+                            prioritiseDisks(findSameCharaDisks(comboDisks));
+                        }
                         break;
                     }
                 }
