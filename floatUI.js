@@ -6137,7 +6137,9 @@ function algo_init() {
 
     //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
     var needScreenCaptureFix = false;
+    var needResizeWorkaround = null;
     function initializeScreenCaptureFix() {
+        needResizeWorkaround = null;
         try {
             log("测试录屏API是否可用...");
             let screenshot = captureScreen();
@@ -6334,6 +6336,23 @@ function algo_init() {
 
                 //把裁剪出来的图像重新放大回屏幕尺寸
                 let resizedImg = images.resize(croppedImg, [screenX, screenY]);
+
+                if (needResizeWorkaround == null) {
+                    try {
+                        let testPixel = images.pixel(resizedImg, resizedImg.getWidth()-1, resizedImg.getHeight()-1);
+                    } catch (e) {
+                        logException(e);
+                        needResizeWorkaround = true;
+                        log("检测到AutoJS Pro的缩放截图崩溃bug,启用绕过措施");
+                    }
+                    if (needResizeWorkaround == null) needResizeWorkaround = false;
+                }
+                if (needResizeWorkaround) {
+                    let reclippedImg = images.clip(resizedImg, 0, 0, resizedImg.getWidth(), resizedImg.getHeight());
+                    resizedImg.recycle();
+                    resizedImg = reclippedImg;
+                }
+
                 return renewImage(resizedImg, "fixedScreenshot", tagOnly);
             } else {
                 return screenshot;
