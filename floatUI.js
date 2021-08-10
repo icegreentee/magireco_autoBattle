@@ -56,6 +56,37 @@ function getProjectVersion() {
     if (conf) return conf.versionName;
 }
 
+//sync锁的是this对象，于是A函数锁定后B函数得等A函数返回
+//这个syncer就不会让B函数等待A函数返回
+//必须是syncer.syn(func)这样调用
+var syncer = {
+    lockers: [],
+    renewLockerIfDead: sync(function (locker, renewLock, renewThread, force) {
+        if (force || locker.thread == null || !locker.thread.isAlive()) {
+            if (renewLock) locker.lock = threads.lock();
+            if (renewThread) locker.thread = threads.currentThread();
+        }
+    }),
+    syn: function (func) {
+        let currentLocker = {lock: threads.lock(), thread: null};
+        this.lockers.push(currentLocker);
+        let syncerobj = this;
+        return function () {
+            while (!currentLocker.lock.tryLock(1000, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                syncerobj.renewLockerIfDead(currentLocker, true, true, false);
+            }
+            syncerobj.renewLockerIfDead(currentLocker, false, true, true);
+            let ret = undefined;
+            try {
+                ret = func.apply(this, arguments);
+            } finally {
+                currentLocker.lock.unlock();
+            }
+            return ret;
+        }
+    }
+}
+
 //记录当前版本是否测试过助战的文件(已经去掉，留下注释)
 //var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
 
@@ -351,7 +382,7 @@ var monitoredTask = null;
 
 var bypassPopupCheck = threads.atomic(0);
 
-var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
+var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
         isCurrentTaskPaused.set(TASK_STOPPED);
@@ -649,7 +680,7 @@ floatUI.main = function () {
         }
     }
     var openSettingsThread = null;
-    function settingsWrap() {sync(function () {
+    function settingsWrap() {syncer.syn(function () {
         if (openSettingsThread != null && openSettingsThread.isAlive()) {
             if (isCurrentTaskPaused.get() == TASK_PAUSED) {
                 toastLog("打开脚本设置\n(脚本已暂停)");
@@ -3260,7 +3291,7 @@ function algo_init() {
     }
 
     var lastFragmentViewStatus = {bounds: null, rotation: 0};
-    var getFragmentViewBounds = sync(function () {
+    var getFragmentViewBounds = syncer.syn(function () {
         if (string == null || string.package_name == null || string.package_name == "") {
             try {
                 throw new Error("getFragmentViewBounds: null/empty string.package_name");
@@ -6231,7 +6262,7 @@ function algo_init() {
 
 
     var staleScreenshot = {img: null, lastTime: 0, timeout: 1000};
-    var compatCaptureScreen = sync(function () {
+    var compatCaptureScreen = syncer.syn(function () {
         if (limit.rootScreencap) {
             //使用shell命令 screencap 截图
             try {screencapShellCmdThread.interrupt();} catch (e) {};
@@ -6497,7 +6528,7 @@ function algo_init() {
         OKButtonGray: ImgURLBase+"/images/OKButtonGray.png",
     };
 
-    var downloadAllImages = sync(function () {
+    var downloadAllImages = syncer.syn(function () {
         while (true) {
             let hasNull = false;
             for (let key in knownImgURLs) {
