@@ -6020,6 +6020,7 @@ function algo_init() {
     //应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
     //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
     var canCaptureScreen = false;
+    var requestScreenCaptureSuccess = false;
     var hasScreenCaptureError = false;
     function startScreenCapture() {
         if (canCaptureScreen) {
@@ -6037,14 +6038,13 @@ function algo_init() {
         sleep(500);
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
-            let result = false;
-            try {
-                result = requestScreenCapture(screencap_landscape);
+            if (!requestScreenCaptureSuccess) try {
+                requestScreenCaptureSuccess = requestScreenCapture(screencap_landscape);
             } catch (e) {
                 //logException(e); issue #126
                 try {log(e);} catch (e2) {};
             }
-            if (result) {
+            if (requestScreenCaptureSuccess) {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
                 initializeScreenCaptureFix();
 
