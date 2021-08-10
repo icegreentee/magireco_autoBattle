@@ -8425,7 +8425,7 @@ function algo_init() {
             let knownArea = null;
             if (diskActions.find((val) => val == imgName) != null) {
                 knownArea = knownFirstDiskCoords["action"];
-            } else if (diskAttribs.find((val) => val == imgName || val == imgName+"BtnDown") != null) {
+            } else if (diskAttribs.find((val) => val == imgName || val+"BtnDown" == imgName) != null) {
                 knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
             } else if (imgName == "connectIndicatorBtnDown") {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
