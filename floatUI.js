@@ -72,15 +72,15 @@ var syncer = {
         this.lockers.push(currentLocker);
         let syncerobj = this;
         return function () {
-            while (!currentLocker.lock.tryLock(1000, java.util.concurrent.TimeUnit.MILLISECONDS)) {
-                syncerobj.renewLockerIfDead(currentLocker, true, true, false);
-            }
-            syncerobj.renewLockerIfDead(currentLocker, false, true, true);
             let ret = undefined;
             try {
+                while (!currentLocker.lock.tryLock(1000, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                    syncerobj.renewLockerIfDead(currentLocker, true, true, false);
+                }
+                syncerobj.renewLockerIfDead(currentLocker, false, true, true);
                 ret = func.apply(this, arguments);
             } finally {
-                currentLocker.lock.unlock();
+                while (currentLocker.lock.getHoldCount() > 0) currentLocker.lock.unlock();
             }
             return ret;
         }
