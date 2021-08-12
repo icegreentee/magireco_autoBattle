@@ -859,13 +859,13 @@ threads.start(function () {refreshUpdateStatus();});
 //版本更新
 var updateRestartPending = false;
 var toUpdate = sync(function () {
-/*
-    refreshUpdateStatus();
+    //refreshUpdateStatus();
     if (updateRestartPending) {
         ui.run(function() {ui.swipe.setRefreshing(false);});
         return;
     }
     try {
+/*
         let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
         if (res.statusCode != 200) {
             toastLog("请求超时")
@@ -895,13 +895,12 @@ var toUpdate = sync(function () {
                 }
             }
         }
-
+*/
     } catch (error) {
         toastLog("请求超时，可再一次尝试")
     } finally {
         ui.run(function() {ui.swipe.setRefreshing(false);});
     }
-*/
 });
 
 floatUI.enableToastParamChanges();
