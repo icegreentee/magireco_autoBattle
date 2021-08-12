@@ -469,6 +469,8 @@ function replaceSelfCurrentTask(taskItem, callback) {
     stopThread();
 }
 
+var snapshotWrap = () => {};
+
 floatUI.main = function () {
     // space between buttons compare to button size
     var space_factor = 1.5;
@@ -526,7 +528,7 @@ floatUI.main = function () {
         }
     }
 
-    function snapshotWrap() {
+    snapshotWrap = function () {
         if (auto.root == null) {
             log("auto.root == null");
             toastLog("快照失败,无障碍服务是否开启?");
