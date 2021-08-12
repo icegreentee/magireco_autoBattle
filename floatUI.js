@@ -3806,6 +3806,9 @@ function algo_init() {
     function clickReconnect() {
         log("点击断线重连按钮所在区域");
         click(convertCoords(clickSets.reconection));
+        sleep(300);
+        log("点击OK按钮区域");
+        click(convertCoords(clickSets.dataDownloadOK));
     }
 
     function selectBattle() { }
