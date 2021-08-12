@@ -1596,6 +1596,11 @@ var clickSets = {
         x: 120,
         y: 50,
         pos: "top"
+    },
+    dataDownloadOK: {
+        x: 960,
+        y: 769,
+        pos: "center"
     }
 }
 
@@ -4074,6 +4079,10 @@ function algo_init() {
             log("点击恢复战斗按钮区域...");
             click(convertCoords(clickSets.recover_battle));
             log("点击恢复战斗按钮区域完成,等待1秒...");
+            sleep(1000);
+            log("点击OK按钮区域...");
+            click(convertCoords(clickSets.dataDownloadOK));
+            log("点击OK按钮区域完成,等待1秒...");
             sleep(1000);
         }
         return false;
