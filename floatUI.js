@@ -93,6 +93,8 @@ var syncer = {
 var tasks = algo_init();
 // touch capture, will be initialized in main
 var capture = () => { };
+//伪息屏
+var delay = () => {};
 // 停止脚本线程，尤其是防止停止自己的时候仍然继续往下执行少许语句（同上，会在main函数中初始化）
 var stopThread = () => { };
 // （不）使用Shizuku/root执行shell命令
@@ -409,6 +411,7 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
             isCurrentTaskPaused.set(TASK_STOPPED);
             lockUI(false);
         }
+        pseudoScreenOff(false);//停止伪息屏
         //之前可能在STATE_TEAM状态下设置了跳过isGameDead里的掉线弹窗检查,现在恢复成不跳过
         bypassPopupCheck.set(0);
         log("关闭所有无主对话框...");
@@ -932,13 +935,38 @@ floatUI.main = function () {
 
     var touch_x = 0,
         touch_y = 0,
-        touch_move = false;
+        touch_move = false,
+        touch_significant_move = false;
     var win_x = 0,
         win_y = 0;
+    var menu_touch_down_time = null;
+    var menu_touch_show_one_time_hint = true;
+    var menu_in_pseudo_screen_off_mode = false;
     menu.logo.setOnTouchListener(function (self, event) {
         switch (event.getAction()) {
             case event.ACTION_DOWN:
                 touch_move = false;
+                touch_significant_move = false;
+                menu_in_pseudo_screen_off_mode = false;
+                menu_touch_down_time = new Date().getTime();
+                if (menu_touch_show_one_time_hint) {
+                    menu_touch_show_one_time_hint = false;
+                    toast("长按5秒,可进入【伪·息屏挂机】模式");
+                }
+                ui.post(function () {
+                    if (
+                          !touch_significant_move
+                          && menu_touch_down_time != null
+                          && new Date().getTime() > menu_touch_down_time + 4500
+                       )
+                    {
+                        menu_in_pseudo_screen_off_mode = true;
+                        toastLog("即将进入伪息屏挂机模式");
+                        ui.post(function () {
+                            pseudoScreenOff(true);
+                        }, 2000);
+                    }
+                }, 5000);
                 touch_x = event.getRawX();
                 touch_y = event.getRawY();
                 win_x = menu.getX();
@@ -955,6 +983,9 @@ floatUI.main = function () {
                         }
                     }
                     if (touch_move) menu.setPosition(win_x + dx, win_y + dy);
+                    //determine whether to enter pseudoScreenOff mode
+                    let threshold = parseInt((device.width > device.height ? device.width : device.height) / 10);
+                    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) touch_significant_move = true;
                 }
                 break;
             case event.ACTION_UP:
@@ -982,8 +1013,15 @@ floatUI.main = function () {
                     animator.setDuration(300);
                     animator.start();
                 } else {
-                    hideMenu(submenu.container.getVisibility() == View.VISIBLE);
+                    hideMenu(
+                        submenu.container.getVisibility() == View.VISIBLE
+                        ? true    /* submenu is open, so close it */
+                        : menu_in_pseudo_screen_off_mode
+                          ? true  /* entered pseudoScreenOff mode, do not open submenu */
+                          : false /* not in pseudoScreenOff mode, just (re)open submenu */
+                    );
                 }
+                menu_touch_down_time = null;
         }
         return true;
     });
@@ -1042,10 +1080,53 @@ floatUI.main = function () {
         }
     });
 
+    //伪息屏
+    //放在submenu/menu之后就会覆盖整个屏幕
+    //放在overlay之前就不会覆盖坐标捕获
+    var dark_overlay = floaty.rawWindow(
+        <frame id="container" w="*" h="*" visibility="gone">
+            <frame w="*" h="*" bg="#000000" gravity="center">
+            </frame>
+        </frame>
+    );
+    ui.post(() => {
+        dark_overlay.setPosition(0, 0);
+        dark_overlay.setTouchable(false);
+    });
+    pseudoScreenOff = function (turnOff) {
+        ui.run(function() {
+            try {
+                let sz = getWindowSize();
+                dark_overlay.setPosition(0, 0);
+                dark_overlay.setSize(sz.x, sz.y);
+                dark_overlay.container.setVisibility(turnOff ? View.VISIBLE : View.GONE);
+            } catch (e) {logException(e);}
+        });
+    }
+    var screenOnOffReceiver = new BroadcastReceiver({
+        onReceive: function (ctx, it) {
+            pseudoScreenOff(false);
+        }
+    });
+    context.registerReceiver(screenOnOffReceiver, (() => {
+        let filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_SCREEN_ON);
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+        return filter;
+    })());
+    events.on("exit", function () {
+        try{
+            context.unregisterReceiver(screenOnOffReceiver);
+        } catch (e) {
+            logException(e);
+        }
+    });
+
     var touch_down_pos = null;
     var touch_up_pos = null;
     var touch_down_time = 0;
     var touch_up_time = 0;
+    var isCaptureDone = threads.atomic(0);
     const default_description_text = "请点击需要周回的battle\n(请通关一次后再用，避免错位)";
     var overlay = floaty.rawWindow(
         <frame id="container" w="*" h="*">
@@ -1087,12 +1168,14 @@ floatUI.main = function () {
                 log("捕获触控松开坐标", touch_up_pos.x, touch_up_pos.y);
                 overlay.setTouchable(false);
                 overlay.container.setVisibility(View.INVISIBLE);
+                isCaptureDone.set(1);
                 break;
         }
         return true;
     });
 
     capture = function (description_text) {
+        pseudoScreenOff(false);//停止伪息屏
         if (description_text == null) {
             description_text = default_description_text;
         }
@@ -1100,6 +1183,7 @@ floatUI.main = function () {
         touch_up_time = 0;
         touch_down_pos = null;
         touch_up_pos = null;
+        isCaptureDone.set(0);
         ui.post(() => {
             var sz = getWindowSize();
             overlay.setSize(sz.x, sz.y);
@@ -1107,12 +1191,7 @@ floatUI.main = function () {
             overlay.container.setVisibility(View.VISIBLE);
             overlay.setTouchable(true);
         });
-        while (overlay.container.getVisibility() == View.INVISIBLE) {
-            sleep(200);
-        }
-        while (overlay.container.getVisibility() == View.VISIBLE) {
-            sleep(200);
-        }
+        while (isCaptureDone.get() == 0) sleep(200);
         if (touch_down_time == 0 || touch_up_time == 0) return null;//不应该仍然为0。实际上应该不会发生
         let swipe_duration = touch_up_time - touch_down_time;
         return {pos_down: touch_down_pos, pos_up: touch_up_pos, duration: swipe_duration};
@@ -5463,6 +5542,7 @@ function algo_init() {
             //然后，再继续自动周回处理
             switch (state) {
                 case STATE_CRASHED: {
+                    pseudoScreenOff(false);//停止伪息屏
                     if (lastOpList == null) {
                         toastLog("没有动作录制数据,退出");
                         stopThread();
