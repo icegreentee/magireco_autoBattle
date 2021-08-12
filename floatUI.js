@@ -2803,6 +2803,15 @@ function algo_init() {
             log("助战选择出错,NPC助战个数+玩家助战总数!=助战总数");
         }
 
+        //监视诊断助战选择问题
+        //214水波有且只有一个NPC，如果NPC没有出现或者多于一个那肯定有问题
+        if (NPCLvIndices.length != 1) {
+            toastLog("发现NPC数量不为1！");
+            snapshotWrap();
+            toastLog("快照拍摄完成，停止运行脚本");
+            stopThread();
+        }
+
         //寻找最高的Pt加成
         let HighestPt = 0;
         let AllPtIndices = [];
