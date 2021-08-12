@@ -43,6 +43,11 @@ ui.layout(
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout id="swipe" layout_below="appbar">
             <ScrollView id="content">
                 <vertical gravity="center" layout_weight="1">
+                    <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
+                        <text text="为确保快照数据能顺利保存，请务必一定要授予存储权限！" textSize="20" textColor="#FF0000"/>
+                        <text text="这是临时诊断问题专用版本。刷214水波那一关的时候，有且只有一个NPC，所以如果脚本检测到没有NPC或者多于一个NPC就会拍下UI控件快照（XML格式，记录了控件的各项参数，比如位置、大小、文字等等，并不是图像数据）并停止运行。" textColor="#000000" />
+                        <text text="发现脚本停止运行后，可以先截屏，再回到脚本界面，点击右上角菜单里的“报告问题”。" textColor="#000000" />
+                    </vertical>
                     <vertical id="autojs_ver_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <text id="autojs_ver_text" text="AutoJS Pro 引擎版本过低" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
                     </vertical>
