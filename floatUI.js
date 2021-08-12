@@ -469,7 +469,7 @@ function replaceSelfCurrentTask(taskItem, callback) {
     stopThread();
 }
 
-var snapshotWrap = () => {};
+var snapshotWrap_ = () => {};
 
 floatUI.main = function () {
     // space between buttons compare to button size
@@ -528,7 +528,9 @@ floatUI.main = function () {
         }
     }
 
-    snapshotWrap = function () {
+    function snapshotWrap() {return snapshotWrap_();}
+
+    snapshotWrap_ = function () {
         if (auto.root == null) {
             log("auto.root == null");
             toastLog("快照失败,无障碍服务是否开启?");
@@ -2809,7 +2811,7 @@ function algo_init() {
         //214水波有且只有一个NPC，如果NPC没有出现或者多于一个那肯定有问题
         if (NPCLvIndices.length != 1) {
             toastLog("发现NPC数量不为1！");
-            snapshotWrap();
+            snapshotWrap_();
             toastLog("快照拍摄完成，停止运行脚本");
             stopThread();
         }
