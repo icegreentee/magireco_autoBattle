@@ -9,7 +9,7 @@ importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
 var version = "5.6.0";
-var appName = Name + " v" + version;
+var appName = Name + " v" + version + "诊断版";
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
@@ -809,6 +809,7 @@ ui["task_paused_button"].setOnClickListener(new android.view.View.OnClickListene
     }
 }));
 
+/*
 //版本获取
 var refreshUpdateStatus = sync(function () {
     http.__okhttp__.setTimeout(5000);
@@ -824,11 +825,13 @@ var refreshUpdateStatus = sync(function () {
         } else {
             let resJson = res.body.json();
             if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
+*/
                 ui.run(function () {
                     ui.versionMsg.setText("当前无需更新")
                     ui.versionMsg.setTextColor(colors.parseColor("#666666"))
                     ui.versionMsg_vertical.setVisibility(View.GONE);
                 });
+/*
             } else {
                 ui.run(function () {
                     ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
@@ -846,10 +849,12 @@ var refreshUpdateStatus = sync(function () {
     }
 });
 threads.start(function () {refreshUpdateStatus();});
+*/
 
 //版本更新
 var updateRestartPending = false;
 var toUpdate = sync(function () {
+/*
     refreshUpdateStatus();
     if (updateRestartPending) {
         ui.run(function() {ui.swipe.setRefreshing(false);});
@@ -891,6 +896,7 @@ var toUpdate = sync(function () {
     } finally {
         ui.run(function() {ui.swipe.setRefreshing(false);});
     }
+*/
 });
 
 floatUI.enableToastParamChanges();

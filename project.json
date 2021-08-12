@@ -1,10 +1,10 @@
 {
-    "name": "auto",
+    "name": "auto5.6.0诊断版",
     "main": "main.js",
     "ignore": [
         "build"
     ],
-    "packageName": "top.momoe.auto",
+    "packageName": "top.momoe.auto.diag",
     "versionName": "5.6.0",
     "versionInfo": "",
     "versionCode": 1,
