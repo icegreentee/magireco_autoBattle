@@ -951,7 +951,7 @@ floatUI.main = function () {
     var menu_touch_down_time = null;
     var menu_touch_show_one_time_hint = true;
     var menu_in_pseudo_screen_off_mode = null;
-    const menu_press_threshold = 5000;
+    const menu_press_threshold = 3000;
     var menu_last_toggle_time = 0;
     menu.logo.setOnTouchListener(function (self, event) {
         switch (event.getAction()) {
@@ -965,7 +965,7 @@ floatUI.main = function () {
                 }
                 if (menu_touch_show_one_time_hint) {
                     menu_touch_show_one_time_hint = false;
-                    toast("长按5秒,可进入【伪·息屏挂机】模式");
+                    toast("长按3秒,可进入【伪·息屏挂机】模式");
                 }
                 ui.post(function () {
                     let toggle_time = new Date().getTime();
@@ -979,8 +979,8 @@ floatUI.main = function () {
                         menu_last_toggle_time = toggle_time;
                         menu_in_pseudo_screen_off_mode = !menu_in_pseudo_screen_off_mode;
                         toastLog(menu_in_pseudo_screen_off_mode
-                                 ? "即将进入【伪·息屏挂机模式】\n再次长按5秒即可退出"
-                                 : "已退出【伪·息屏挂机模式】\n长按5秒可再次进入");
+                                 ? "即将进入【伪·息屏挂机模式】\n再次长按3秒即可退出"
+                                 : "已退出【伪·息屏挂机模式】\n长按3秒可再次进入");
                         ui.post(function () {
                             pseudoScreenOff(menu_in_pseudo_screen_off_mode);
                         }, menu_in_pseudo_screen_off_mode ? 2000 : 0);
