@@ -93,8 +93,6 @@ var syncer = {
 var tasks = algo_init();
 // touch capture, will be initialized in main
 var capture = () => { };
-//伪息屏
-var delay = () => {};
 // 停止脚本线程，尤其是防止停止自己的时候仍然继续往下执行少许语句（同上，会在main函数中初始化）
 var stopThread = () => { };
 // （不）使用Shizuku/root执行shell命令
