@@ -958,8 +958,11 @@ floatUI.main = function () {
             case event.ACTION_DOWN:
                 touch_move = false;
                 touch_significant_move = false;
-                if (menu_in_pseudo_screen_off_mode == null) menu_in_pseudo_screen_off_mode = false;
                 menu_touch_down_time = new Date().getTime();
+                if (menu_in_pseudo_screen_off_mode == null) menu_in_pseudo_screen_off_mode = false;
+                if (menu_in_pseudo_screen_off_mode) {
+                    showPhantom(true);
+                }
                 if (menu_touch_show_one_time_hint) {
                     menu_touch_show_one_time_hint = false;
                     toast("长按5秒,可进入【伪·息屏挂机】模式");
@@ -1119,7 +1122,7 @@ floatUI.main = function () {
                 dark_overlay.setSize(sz.x, sz.y);
                 dark_overlay.container.setVisibility(off ? View.VISIBLE : View.GONE);
             } catch (e) {logException(e);}
-            loopShowPhantom(off);
+            loopBlinkPhantom(off);
         });
     }
     var screenOnOffReceiver = new BroadcastReceiver({
@@ -1146,6 +1149,9 @@ floatUI.main = function () {
     phantom_menu.hint_text.setVisibility(View.VISIBLE);
     phantom_menu.img_logo.setVisibility(View.INVISIBLE);
     phantom_menu.logo.attr("alpha", "0.25");
+    var showPhantomAnimIntr = null;
+    var isPhantomFadingOut = false;
+    var isLastPhantomAnimationEnd = true;
     function showPhantom(show) {
         ui.run(function () {
             if (show === undefined) show = true;
@@ -1154,45 +1160,68 @@ floatUI.main = function () {
             let animator = ObjectAnimator.ofFloat(phantom_menu.logo, "alpha", show ? 0 : 0.25, show ? 0.25 : 0);
             animator.addUpdateListener({onAnimationUpdate: (animation) => {
                 phantom_menu.setPosition(menu.getX(), menu.getY());
+                if (showPhantomAnimIntr != null) {
+                    if (isPhantomFadingOut != !showPhantomAnimIntr) {
+                        isPhantomFadingOut = !showPhantomAnimIntr;
+                        animator.reverse();
+                    }
+                    showPhantomAnimIntr = null;
+                }
             }});
             animators.push(animator);
             let set = new AnimatorSet();
-            if (!show) set.addListener({
+            set.addListener({
                 onAnimationEnd: (anim) => {
-                    phantom_menu.logo.setVisibility(View.INVISIBLE);
+                    //(seems like) animator.reverse() inside the last cycle of onAnimationUpdate may not take effect
+                    //therefore, alpha must be reset here
+                    phantom_menu.logo.attr("alpha", isPhantomFadingOut ? "0" : "0.25");
+                    phantom_menu.logo.setVisibility(isPhantomFadingOut ? View.INVISIBLE : View.VISIBLE);
+                    isPhantomFadingOut = false;
+                    isLastPhantomAnimationEnd = true;
                 }
             });
             set.playTogether.apply(set, animators);
             set.setDuration(1000);
-            if (show != (phantom_menu.logo.getVisibility() == View.VISIBLE)) {
+            if (isLastPhantomAnimationEnd && show != (phantom_menu.logo.getVisibility() == View.VISIBLE && !isPhantomFadingOut)) {
                 if (show) {
                     phantom_menu.logo.attr("alpha", "0");
                     phantom_menu.logo.setVisibility(View.VISIBLE);
+                    isPhantomFadingOut = false;
+                } else {
+                    isPhantomFadingOut = true;
                 }
+                isLastPhantomAnimationEnd = false;
+                showPhantomAnimIntr = null;
                 set.start();
+            } else {
+                showPhantomAnimIntr = show; //notify previous animator to reverse
             }
         });
     }
     var lastPhantomBlinkTime = 0;
-    const blinkPhantomPeriod = 10000;
-    const blinkPhantomDuration = 2000;
-    function blinkPhantom() {
+    const loopBlinkPhantomPeriod = 10000;
+    const loopBlinkPhantomDuration = 2000;
+    function loopBlinkPhantom() {
         ui.run(function () {
-            if (!isPseudoScreenOffActive) return;
+            if (!isPseudoScreenOffActive) {
+                showPhantom(false);
+                return;
+            } else {
+                showPhantom(true);
+            }
             let blinkTime = new Date().getTime();
-            if (blinkTime < lastPhantomBlinkTime + blinkPhantomPeriod - 100) return;
+            if (blinkTime < lastPhantomBlinkTime + loopBlinkPhantomPeriod - 100) return;
             lastPhantomBlinkTime = blinkTime;
-            showPhantom(true);
-            ui.post(function () {showPhantom(false);}, blinkPhantomDuration);
-            ui.post(function () {blinkPhantom();}, blinkPhantomPeriod);
+            ui.post(function () {
+                if (
+                      isPseudoScreenOffActive
+                      && menu_touch_down_time != null
+                      && new Date().getTime() < menu_touch_down_time + menu_press_threshold
+                   ) return;
+                showPhantom(false);
+            }, loopBlinkPhantomDuration);
+            ui.post(function () {loopBlinkPhantom();}, loopBlinkPhantomPeriod);
         });
-    }
-    function loopShowPhantom(show) {
-        showPhantom(show);
-        if (show) {
-            ui.post(function () {showPhantom(false);}, blinkPhantomDuration);
-            ui.post(function () {blinkPhantom();}, blinkPhantomPeriod);
-        }
     }
 
     var touch_down_pos = null;
