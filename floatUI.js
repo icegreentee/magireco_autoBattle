@@ -1111,15 +1111,17 @@ floatUI.main = function () {
         dark_overlay.setPosition(0, 0);
         dark_overlay.setTouchable(false);
     });
+    var isPseudoScreenOffActive = false;
     pseudoScreenOff = function (off) {
         ui.run(function() {
+            isPseudoScreenOffActive = off;
             try {
                 let sz = getWindowSize();
                 dark_overlay.setPosition(0, 0);
                 dark_overlay.setSize(sz.x, sz.y);
                 dark_overlay.container.setVisibility(off ? View.VISIBLE : View.GONE);
             } catch (e) {logException(e);}
-            showPhantom(off);
+            loopShowPhantom(off);
         });
     }
     var screenOnOffReceiver = new BroadcastReceiver({
@@ -1149,6 +1151,7 @@ floatUI.main = function () {
     function showPhantom(show) {
         ui.run(function () {
             if (show === undefined) show = true;
+            show = show ? true : false;
             let animators = [];
             let animator = ObjectAnimator.ofFloat(phantom_menu.logo, "alpha", show ? 0 : 0.25, show ? 0.25 : 0);
             animator.addUpdateListener({onAnimationUpdate: (animation) => {
@@ -1163,12 +1166,35 @@ floatUI.main = function () {
             });
             set.playTogether.apply(set, animators);
             set.setDuration(1000);
-            if (show && phantom_menu.logo.getVisibility() != View.VISIBLE) {
-                phantom_menu.logo.attr("alpha", "0");
-                phantom_menu.logo.setVisibility(View.VISIBLE);
+            if (show != (phantom_menu.logo.getVisibility() == View.VISIBLE)) {
+                if (show) {
+                    phantom_menu.logo.attr("alpha", "0");
+                    phantom_menu.logo.setVisibility(View.VISIBLE);
+                }
+                set.start();
             }
-            set.start();
         });
+    }
+    var lastPhantomBlinkTime = 0;
+    const blinkPhantomPeriod = 10000;
+    const blinkPhantomDuration = 2000;
+    function blinkPhantom() {
+        ui.run(function () {
+            if (!isPseudoScreenOffActive) return;
+            let blinkTime = new Date().getTime();
+            if (blinkTime < lastPhantomBlinkTime + blinkPhantomPeriod - 100) return;
+            lastPhantomBlinkTime = blinkTime;
+            showPhantom(true);
+            ui.post(function () {showPhantom(false);}, blinkPhantomDuration);
+            ui.post(function () {blinkPhantom();}, blinkPhantomPeriod);
+        });
+    }
+    function loopShowPhantom(show) {
+        showPhantom(show);
+        if (show) {
+            ui.post(function () {showPhantom(false);}, blinkPhantomDuration);
+            ui.post(function () {blinkPhantom();}, blinkPhantomPeriod);
+        }
     }
 
     var touch_down_pos = null;
