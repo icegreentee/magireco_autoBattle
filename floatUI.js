@@ -906,7 +906,7 @@ floatUI.main = function () {
     }
 
     // float button
-    var menu = floaty.rawWindow(
+    var menuXML = (
         <frame id="logo" w="44" h="44" alpha="0.4">
             <img w="44" h="44" src="#ffffff" circle="true" />
             <img
@@ -916,8 +916,19 @@ floatUI.main = function () {
                 src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png"
                 layout_gravity="center"
             />
+            <text id="hint_text"
+                w="auto"
+                h="auto"
+                text="长按{{'\n'}}亮屏"
+                textSize="14"
+                textColor="#000000"
+                layout_gravity="center"
+                textAlignment="center"
+                visibility="invisible"
+            />
         </frame>
     );
+    var menu = floaty.rawWindow(menuXML);
 
     ui.post(() => {
         menu.setPosition(0, parseInt(getWindowSize().y / 4));
@@ -941,32 +952,39 @@ floatUI.main = function () {
         win_y = 0;
     var menu_touch_down_time = null;
     var menu_touch_show_one_time_hint = true;
-    var menu_in_pseudo_screen_off_mode = false;
+    var menu_in_pseudo_screen_off_mode = null;
+    const menu_press_threshold = 5000;
+    var menu_last_toggle_time = 0;
     menu.logo.setOnTouchListener(function (self, event) {
         switch (event.getAction()) {
             case event.ACTION_DOWN:
                 touch_move = false;
                 touch_significant_move = false;
-                menu_in_pseudo_screen_off_mode = false;
+                if (menu_in_pseudo_screen_off_mode == null) menu_in_pseudo_screen_off_mode = false;
                 menu_touch_down_time = new Date().getTime();
                 if (menu_touch_show_one_time_hint) {
                     menu_touch_show_one_time_hint = false;
                     toast("长按5秒,可进入【伪·息屏挂机】模式");
                 }
                 ui.post(function () {
+                    let toggle_time = new Date().getTime();
                     if (
                           !touch_significant_move
                           && menu_touch_down_time != null
-                          && new Date().getTime() > menu_touch_down_time + 4500
+                          && toggle_time > menu_touch_down_time + menu_press_threshold - 100
+                          && toggle_time > menu_last_toggle_time + menu_press_threshold
                        )
                     {
-                        menu_in_pseudo_screen_off_mode = true;
-                        toastLog("即将进入伪息屏挂机模式");
+                        menu_last_toggle_time = toggle_time;
+                        menu_in_pseudo_screen_off_mode = !menu_in_pseudo_screen_off_mode;
+                        toastLog(menu_in_pseudo_screen_off_mode
+                                 ? "即将进入【伪·息屏挂机模式】\n再次长按5秒即可退出"
+                                 : "已退出【伪·息屏挂机模式】\n长按5秒可再次进入");
                         ui.post(function () {
-                            pseudoScreenOff(true);
-                        }, 2000);
+                            pseudoScreenOff(menu_in_pseudo_screen_off_mode);
+                        }, menu_in_pseudo_screen_off_mode ? 2000 : 0);
                     }
-                }, 5000);
+                }, menu_press_threshold);
                 touch_x = event.getRawX();
                 touch_y = event.getRawY();
                 win_x = menu.getX();
@@ -982,7 +1000,7 @@ floatUI.main = function () {
                             menu.logo.attr("alpha", "1");
                         }
                     }
-                    if (touch_move) menu.setPosition(win_x + dx, win_y + dy);
+                    if (touch_move) for (let fw of [menu, phantom_menu]) fw != null && fw.setPosition(win_x + dx, win_y + dy);
                     //determine whether to enter pseudoScreenOff mode
                     let threshold = parseInt((device.width > device.height ? device.width : device.height) / 10);
                     if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) touch_significant_move = true;
@@ -1000,7 +1018,7 @@ floatUI.main = function () {
                     let menu_y = calcMenuY();
                     animator.addUpdateListener({
                         onAnimationUpdate: (animation) => {
-                            menu.setPosition(parseInt(animation.getAnimatedValue()), menu_y);
+                            for (let fw of [menu, phantom_menu]) fw != null && fw.setPosition(parseInt(animation.getAnimatedValue()), menu_y);
                         },
                     });
                     animator.addListener({
@@ -1093,14 +1111,15 @@ floatUI.main = function () {
         dark_overlay.setPosition(0, 0);
         dark_overlay.setTouchable(false);
     });
-    pseudoScreenOff = function (turnOff) {
+    pseudoScreenOff = function (off) {
         ui.run(function() {
             try {
                 let sz = getWindowSize();
                 dark_overlay.setPosition(0, 0);
                 dark_overlay.setSize(sz.x, sz.y);
-                dark_overlay.container.setVisibility(turnOff ? View.VISIBLE : View.GONE);
+                dark_overlay.container.setVisibility(off ? View.VISIBLE : View.GONE);
             } catch (e) {logException(e);}
+            showPhantom(off);
         });
     }
     var screenOnOffReceiver = new BroadcastReceiver({
@@ -1121,6 +1140,36 @@ floatUI.main = function () {
             logException(e);
         }
     });
+    var phantom_menu = floaty.rawWindow(menuXML);
+    phantom_menu.setTouchable(false);
+    phantom_menu.logo.setVisibility(View.INVISIBLE);
+    phantom_menu.hint_text.setVisibility(View.VISIBLE);
+    phantom_menu.img_logo.setVisibility(View.INVISIBLE);
+    phantom_menu.logo.attr("alpha", "0.25");
+    function showPhantom(show) {
+        ui.run(function () {
+            if (show === undefined) show = true;
+            let animators = [];
+            let animator = ObjectAnimator.ofFloat(phantom_menu.logo, "alpha", show ? 0 : 0.25, show ? 0.25 : 0);
+            animator.addUpdateListener({onAnimationUpdate: (animation) => {
+                phantom_menu.setPosition(menu.getX(), menu.getY());
+            }});
+            animators.push(animator);
+            let set = new AnimatorSet();
+            if (!show) set.addListener({
+                onAnimationEnd: (anim) => {
+                    phantom_menu.logo.setVisibility(View.INVISIBLE);
+                }
+            });
+            set.playTogether.apply(set, animators);
+            set.setDuration(1000);
+            if (show && phantom_menu.logo.getVisibility() != View.VISIBLE) {
+                phantom_menu.logo.attr("alpha", "0");
+                phantom_menu.logo.setVisibility(View.VISIBLE);
+            }
+            set.start();
+        });
+    }
 
     var touch_down_pos = null;
     var touch_up_pos = null;
