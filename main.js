@@ -102,7 +102,6 @@ ui.layout(
                                 </linear>
                                 <text text="注意:回复药开关状态和个数限制不会永久保存,在脚本完全退出后,这些设置会被重置!" textColor="#666666" />
                             </vertical>
-                            <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#000000" text="只使用NPC(不选则先互关好友,后NPC)" />
                             <Switch id="autoReconnect" w="*" margin="0 3" checked="true" textColor="#000000" text="防断线模式(尽可能自动点击断线重连按钮)" />
                             <vertical padding="0 3 0 0" w="*" h="auto">
                                 <text textColor="#000000" text="防断线模式仅限于在战斗中自动点击断线重连按钮,无法应对强制回首页的情况。闪退自动重开可以应对强制回首页。" />
@@ -125,10 +124,20 @@ ui.layout(
                                 <Switch id="toggleDefaultExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
                             </vertical>
                             <vertical id="DefaultExtraSettings1" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <text text="智能助战选择模式:" textColor="#000000" />
+                                <spinner id="supportPickingMode" textSize="14" textColor="#000000" entries="{{floatUI.supportPickingModes.map(x=>x.name).join('|')}}" />
+                                <linear>
+                                    <text text="关闭智能选择时,用第" textColor="#000000"/>
+                                    <input maxLength="1" id="pickSupportAt" hint="留空视为1" text="1" textSize="14" inputType="number|none" />
+                                    <text text="个助战" textColor="#000000"/>
+                                </linear>
+                                <text text="关闭智能选择时,请务必要用NPC助战!否则互关好友耗尽后就会选择Pt性价比降至NPC三分之一的单向好友和路人!" textColor="#000000"/>
+                            </vertical>
+                            <vertical id="DefaultExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <Switch id="autoFollow" w="*" margin="0 3" checked="true" textColor="#000000" text="自动关注路人" />
                                 <text text="启用后如果助战选到了路人,会在结算时关注他。停用这个选项则不会关注路人,在结算时如果出现询问关注的弹窗,会直接关闭。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="每隔" textColor="#000000" />
                                     <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打断" text="" textSize="14" inputType="number|none" />
@@ -136,7 +145,7 @@ ui.layout(
                                 </linear>
                                 <text text="经过设定的秒数后,长按打断官方自动周回。这样可以一定程度上兼顾周回速度和照顾互关好友。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <linear padding="0 0 0 0" w="*" h="auto">
                                     <text text="等待控件超时" textColor="#000000" />
                                     <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
@@ -230,6 +239,7 @@ ui.layout(
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="副本/活动周回2(备用可选)脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
+                            <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#000000" text="只使用NPC(不选则先互关好友,后NPC)" />
                             <text text="活动周回关卡选择:" textColor="#000000" margin="0 5" />
                             <radiogroup id="battleNo" padding="10 3 0 3">
                                 <radio id="cb1" text="初级" />
@@ -612,13 +622,15 @@ const persistParamList = [
     "exitOnServiceSettings",
     "promptAutoRelaunch",
     "usePresetOpList",
-    "default",/* 放在usePresetOpList后面,这样启动时弹的toast还是默认执行脚本 */
     "autoReconnect",
     "justNPC",
     "helpx",
     "helpy",
     "battleNo",
     "useAuto",
+    "supportPickingMode",
+    "default",/* 放在usePresetOpList和supportPickingMode后面,这样启动时弹的toast还是默认执行脚本 */
+    "pickSupportAt",
     "autoFollow",
     "breakAutoCycleDuration",
     "forceStopTimeout",
@@ -799,6 +811,16 @@ getInputType: function() {
 },
 getAcceptedChars: function () {
     return ['0', '1', '2', '3', '4'];
+}
+}));
+
+//限制pickSupportAt取值
+ui["pickSupportAt"].setKeyListener(new android.text.method.NumberKeyListener({
+getInputType: function() {
+    return android.text.InputType.TYPE_MASK_VARIATION;
+},
+getAcceptedChars: function () {
+    return ['1', '2', '3', '4'];
 }
 }));
 

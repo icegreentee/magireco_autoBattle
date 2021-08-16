@@ -1410,6 +1410,8 @@ var limit = {
     drug2: false,
     drug3: false,
     autoReconnect: true,
+    supportPickingMode: 0,
+    pickSupportAt: "1",
     justNPC: false,
     drug4: false,
     drug1num: '0',
@@ -2685,7 +2687,9 @@ function algo_init() {
     }
     const ptDistanceY = 243.75;
 
-    function pickSupportWithMostPt(isTestMode) {
+    //无障碍服务智能助战选择
+    //用无障碍服务“数数”数出来各类助战分别有多少个，然后间接推算要点击的坐标
+    function pickSupportWithMostPtAccessibility(isTestMode) {
         var hasError = false;
         //Lv/ATK/DEF/HP [Rank] 玩家名 [最终登录] Pt
         //Lv/ATK/DEF/HP 玩家名 [Rank] [最终登录] Pt
@@ -2973,6 +2977,54 @@ function algo_init() {
             toastLog("没有助战可供选择");
             return {point: null, testdata: testOutputString};
         }
+    }
+
+    //截屏识图智能选助战
+    function pickSupportCV(isTestMode) {
+    }
+
+    //直接点击指定位置的助战
+    function pickSupportAtPosition(position) {
+        if (typeof position != "number" || isNaN(position)) throw new Error("pickSupportAtPosition: position is not a number");
+        let point = {
+            x: knownFirstPtPoint.x,
+            y: knownFirstPtPoint.y + ptDistanceY * position,/* position从0开始 */
+            pos: knownFirstPtPoint.pos
+        }
+        point = convertCoords(point);
+        if (point.y >= getWindowSize().y - 1) {
+            toastLog("推算出的第一个互关好友坐标已经超出屏幕范围");
+            //在click里会限制到屏幕范围之内
+        }
+        let testOutputString = "选择第"+(position+1)+"个助战";
+        return {point: point, testdata: testOutputString};
+    }
+    function pickSupportAtFixedPosition(isTestMode) {
+        if (isTestMode) toast("已关闭智能助战选择");
+        let position = limit.pickSupportAt == null || limit.pickSupportAt === ""
+                       ? 0
+                       : parseInt(limit.pickSupportAt) - 1;
+        return pickSupportAtPosition(position);
+    }
+
+    floatUI.supportPickingModes = [
+        {
+            name: "截屏识图+无障碍服务",
+            fn: pickSupportCV,
+        },
+        {
+            name: "纯无障碍服务",
+            fn: pickSupportWithMostPtAccessibility,
+        },
+        {
+            name: "关闭智能助战选择",
+            fn: pickSupportAtFixedPosition,
+        },
+    ];
+
+    function pickSupport(isTestMode) {
+        log("助战选择模式:", floatUI.supportPickingModes[limit.supportPickingMode].name);
+        return floatUI.supportPickingModes[limit.supportPickingMode].fn(isTestMode);
     }
 
     const STATE_CRASHED = 0;
@@ -5059,7 +5111,7 @@ function algo_init() {
 
         //开始测试
         let testMode = true;
-        let result = pickSupportWithMostPt(testMode);
+        let result = pickSupport(testMode);
         if (result == null || result.testdata == null || result.testdata == "") {
             sleep(2000);
             toastLog("选择助战时出错");
@@ -5780,7 +5832,7 @@ function algo_init() {
                         log("已记下关卡名: \""+battlename+"\"");
                     }
                     // pick support
-                    let pt_point = pickSupportWithMostPt();
+                    let pt_point = pickSupport();
                     if (pt_point != null) pt_point = pt_point.point;
                     if (pt_point != null) {
                         toast("请勿拖动助战列表!\n自动点击助战...");
