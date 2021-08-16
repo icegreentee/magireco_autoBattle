@@ -2689,6 +2689,7 @@ function algo_init() {
         var hasError = false;
         //Lv/ATK/DEF/HP [Rank] 玩家名 [最终登录] Pt
         //Lv/ATK/DEF/HP 玩家名 [Rank] [最终登录] Pt
+        //如果助战玩家未设定当前属性的角色，则缺失Lv/ATK/DEF/HP，但仍然有Rank、玩家名、最终登录和Pt
         let AllElements = [];
         let uicollection = packageName(string.package_name).find();
         for (let i=0; i<uicollection.length; i++) {
@@ -2741,9 +2742,20 @@ function algo_init() {
 
             if (rankIndex != null && lastLoginIndex != null) {
                 //在Lv/ATK/DEF/HP后找到Rank和上次登录，就是玩家的Lv/ATK/DEF/HP；否则是NPC或恶搞玩家名
-                PlayerLvIndices.push(index);
+                //但是还要排除一种可能：未设定助战角色
+                let ptIndex = PtLikeIndices.find((val) => val > rankIndex && val > lastLoginIndex);
+                if (ptIndex == null) {
+                    log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank和上次登录,却没找到Pt");
+                    return;
+                }
+                if (AllElements.slice(index + 1, ptIndex).find((val) => getContent(val) == string.support_chara_not_set) != null) {
+                    log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank和上次登录,匹配到了未设定角色(不可点击)的助战,视为NPC");
+                    NPCLvIndices.push(index);
+                } else {
+                    PlayerLvIndices.push(index);
+                }
                 AllLvIndices.push(index);
-                return
+                return;
             }
             if (rankIndex != null && lastLoginIndex == null) {
                 log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank,却没找到上次登录");
@@ -2978,6 +2990,7 @@ function algo_init() {
     const strings = {
         name: [
             "support",
+            "support_chara_not_set",
             "ap_refill_title",
             "ap_refill_button",
             "ap_refill_popup",
@@ -3005,6 +3018,7 @@ function algo_init() {
         ],
         zh_Hans: [
             "请选择支援角色",
+            "未设定",
             "AP回复",
             "回复",
             "回复确认",
@@ -3032,6 +3046,7 @@ function algo_init() {
         ],
         zh_Hant: [
             "請選擇支援角色",
+            "未設定",
             "AP回復",
             "回復",
             "回復確認",
@@ -3059,6 +3074,7 @@ function algo_init() {
         ],
         ja: [
             "サポートキャラを選んでください",
+            "未設定",
             "AP回復",
             "回復",
             "回復確認",
