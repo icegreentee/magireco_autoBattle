@@ -2743,14 +2743,22 @@ function algo_init() {
             if (rankIndex != null && lastLoginIndex != null) {
                 //在Lv/ATK/DEF/HP后找到Rank和上次登录，就是玩家的Lv/ATK/DEF/HP；否则是NPC或恶搞玩家名
                 //但是还要排除一种可能：未设定助战角色
+                //在（疑似）Rank和上次登录时间之后找Pt，尽量确保找到的Pt不是恶搞玩家名（比如“+60”）
                 let ptIndex = PtLikeIndices.find((val) => val > rankIndex && val > lastLoginIndex);
                 if (ptIndex == null) {
-                    log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank和上次登录,却没找到Pt");
+                    log("助战选择出错,在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank和上次登录,却没找到Pt");
+                    hasError = true;
                     return;
                 }
                 if (AllElements.slice(index + 1, ptIndex).find((val) => getContent(val) == string.support_chara_not_set) != null) {
-                    log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank和上次登录,匹配到了未设定角色(不可点击)的助战,视为NPC");
-                    NPCLvIndices.push(index);
+                    log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank和上次登录,还有\"未设定\"");
+                    if (PtLikeIndices.find((val) => val > index && val < ptIndex) != null) {
+                        log("应该是NPC");
+                        NPCLvIndices.push(index);
+                    } else {
+                        log("应该是恶搞玩家名\"未设定\"");
+                        PlayerLvIndices.push(index);
+                    }
                 } else {
                     PlayerLvIndices.push(index);
                 }
