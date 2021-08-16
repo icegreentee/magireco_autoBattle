@@ -2825,10 +2825,15 @@ function algo_init() {
             //最后一个Lv/ATK/DEF/HP控件后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex；其余的往后推一个即可
             let nextIndex = i >= arr.length - 1 ? finalIndex : arr[i+1];
 
-            //倒过来从后往前搜Pt控件，防止碰到类似Pt的恶搞玩家名
-            let ptIndex = PtLikeIndices.reverse().find((val) => val > index && val < nextIndex);
-            //恢复原状
-            PtLikeIndices.reverse();
+            //从前往后找到所有像是Pt的控件
+            let ptPossibleIndices = PtLikeIndices
+                .filter((val) => val > index && val < nextIndex)
+                .filter(
+                         (val) => AllElements.slice(index + 1, val)/* 避免未设定角色的助战插入进来干扰 */
+                                             .find((element) => getContent(element) == string.support_chara_not_set) == null
+                       );
+            //取最后一个，防止碰到恶搞玩家名
+            let ptIndex = ptPossibleIndices.length > 0 ? ptPossibleIndices[ptPossibleIndices.length-1] : null;
 
             if (ptIndex != null) {
                 let PtContent = getContent(AllElements[ptIndex]);
