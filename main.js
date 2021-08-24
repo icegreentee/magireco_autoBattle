@@ -102,6 +102,10 @@ ui.layout(
                                 </linear>
                                 <text text="注意:回复药开关状态和个数限制不会永久保存,在脚本完全退出后,这些设置会被重置!" textColor="#666666" />
                             </vertical>
+                            <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#000000" text="只使用NPC(不选则先互关好友,后NPC)" />
+                            <vertical padding="0 3 0 0" w="*" h="auto">
+                                <text text="注意:“只使用NPC”在智能助战选择处于“截屏识图+无障碍服务”模式下的时候会被忽略!" textColor="#000000"/>
+                            </vertical>
                             <Switch id="autoReconnect" w="*" margin="0 3" checked="true" textColor="#000000" text="防断线模式(尽可能自动点击断线重连按钮)" />
                             <vertical padding="0 3 0 0" w="*" h="auto">
                                 <text textColor="#000000" text="防断线模式仅限于在战斗中自动点击断线重连按钮,无法应对强制回首页的情况。闪退自动重开可以应对强制回首页。" />
@@ -124,20 +128,45 @@ ui.layout(
                                 <Switch id="toggleDefaultExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
                             </vertical>
                             <vertical id="DefaultExtraSettings1" visibility="gone" padding="10 8 0 0" w="*" h="auto">
-                                <text text="智能助战选择模式:" textColor="#000000" />
+                                <text text="智能助战选择模式:" textColor="#000000"/>
                                 <spinner id="supportPickingMode" textSize="14" textColor="#000000" entries="{{floatUI.supportPickingModes.map(x=>x.name).join('|')}}" />
+                                <text text="关闭智能助战选择时,直接点击选择:" textColor="#000000"/>
                                 <linear>
-                                    <text text="关闭智能选择时,用第" textColor="#000000"/>
-                                    <input maxLength="1" id="pickSupportAt" hint="留空视为1" text="1" textSize="14" inputType="number|none" />
+                                    <text text="第" textColor="#000000"/>
+                                    <input maxLength="1" id="pickSupportAt" hint="留空视为1" text="1" textSize="14" inputType="number|none"/>
                                     <text text="个助战" textColor="#000000"/>
                                 </linear>
-                                <text text="关闭智能选择时,请务必要用NPC助战!否则互关好友耗尽后就会选择Pt性价比降至NPC三分之一的单向好友和路人!" textColor="#000000"/>
+                                <text text="关闭智能助战选择时,请务必要用NPC助战!" textColor="#000000"/>
+                                <text text="否则,互关好友耗尽后,就会选到Pt性价比降至NPC三分之一的单向好友和路人助战!" textColor="#000000"/>
+                                <vertical bg="#eeeeee" h="10"/>
                             </vertical>
                             <vertical id="DefaultExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <text text="优先选择活动加成记忆结晶:" textColor="#000000"/>
+                                <spinner id="preferredMemoria" textSize="14" textColor="#000000" entries="{{floatUI.presetMemoriaCards.map(x=>x.name).join('|')}}" />
+                                <text text="智能助战选择必须调到有截屏识图的模式,然后“优先选择活动加成记忆结晶”设置才会生效!" textColor="#FF0000"/>
+                                <text text="“优先选择活动加成记忆结晶”只有在“优先选择角色”未开启时才会生效!" textColor="#FF0000"/>
+                                <text text="注意:默认情况下,会优先在Pt收益最高的互关好友和NPC(虽然NPC一般没活动加成)中寻找,如果这样找不到带活动加成的助战,才会转而去单向好友和路人里找高活动加成助战,可以在下面的“优先考虑加成而不是Pt”设置中改变这个行为。" textColor="#000000"/>
+                            </vertical>
+                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <Switch id="preferMemoriaOverPt" text="优先考虑加成而不是Pt" checked="false" textColor="#000000"/>
+                                <text text="智能助战选择必须调到有截屏识图的模式,然后“优先考虑加成而不是Pt”设置才会生效!" textColor="#FF0000"/>
+                                <text text="“优先考虑加成而不是Pt”只有在“优先选择角色”未开启时才会生效!" textColor="#FF0000"/>
+                                <text text="开启“优先选择活动加成记忆结晶”之后,默认只会优先在Pt收益最高的互关好友和NPC(虽然NPC一般没活动加成)中寻找高活动加成助战,只有在这两类高Pt收益助战里找不到活动加成时才会转头去单向好友和路人里找。把这个选项改为启用后,就会优先考虑活动加成而不是Pt收益,如果单向好友或路人带有更高Pt加成则优先使用。" textColor="#000000"/>
+                                <text text="小提示:开启“优先考虑加成而不是Pt”后,推荐同时开启“自动关注路人”!" textColor="#000000"/>
+                            </vertical>
+                            <vertical id="DefaultExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <text text="优先选择角色:" textColor="#000000"/>
+                                <spinner id="preferredChara" textSize="14" textColor="#000000" entries="{{floatUI.presetSupportCharacters.map(x=>x.name).join('|')}}" />
+                                <text text="智能助战选择必须调到有截屏识图的模式,然后“优先选择角色”设置才会生效!" textColor="#FF0000"/>
+                                <text text="启用“优先选择角色”的情况下,“优先选择活动加成记忆结晶”和“优先考虑加成而不是Pt”将会被无视!" textColor="#FF0000"/>
+                                <text text="开启“优先选择角色”后,会在Pt收益最高的互关好友和NPC两类助战中优先挑选指定的角色(比如龙城明日香),主要用途是加快门票型活动低难度剧情副本的通关速度,方便在此类活动里刷Pt和刷活动币两不误。" textColor="#000000"/>
+                                <text text="在“优先选择角色”开启的情况下,“优先使用官方自动续战”设置会被无视:找到指定角色则优先使用官方续战;找不到则不使用官方续战直接开始战斗。" textColor="#FF00FF"/>
+                            </vertical>
+                            <vertical id="DefaultExtraSettings5" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <Switch id="autoFollow" w="*" margin="0 3" checked="true" textColor="#000000" text="自动关注路人" />
                                 <text text="启用后如果助战选到了路人,会在结算时关注他。停用这个选项则不会关注路人,在结算时如果出现询问关注的弹窗,会直接关闭。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings6" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="每隔" textColor="#000000" />
                                     <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打断" text="" textSize="14" inputType="number|none" />
@@ -145,7 +174,7 @@ ui.layout(
                                 </linear>
                                 <text text="经过设定的秒数后,长按打断官方自动周回。这样可以一定程度上兼顾周回速度和照顾互关好友。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings7" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <linear padding="0 0 0 0" w="*" h="auto">
                                     <text text="等待控件超时" textColor="#000000" />
                                     <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
@@ -158,7 +187,7 @@ ui.layout(
                                 <text text="[录制闪退重开选关动作]或[导入动作录制数据]后即可在[副本周回(剧情/活动通用)]脚本启动时选择启用闪退自动重开,应对闪退或掉线后强制回首页的情况。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings1" visibility="gone" padding="10 8 0 0" w="*" h="auto">
-                                <text text="使用预设选关动作录制数据:" textColor="#000000" />
+                                <text text="使用预设选关动作录制数据:" textColor="#000000"/>
                                 <spinner id="usePresetOpList" textSize="14" textColor="#000000" entries="{{floatUI.presetOpLists.map(x=>x.name).join('|')}}" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
@@ -239,7 +268,6 @@ ui.layout(
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="副本/活动周回2(备用可选)脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
-                            <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#000000" text="只使用NPC(不选则先互关好友,后NPC)" />
                             <text text="活动周回关卡选择:" textColor="#000000" margin="0 5" />
                             <radiogroup id="battleNo" padding="10 3 0 3">
                                 <radio id="cb1" text="初级" />
@@ -629,8 +657,11 @@ const persistParamList = [
     "battleNo",
     "useAuto",
     "supportPickingMode",
-    "default",/* 放在usePresetOpList和supportPickingMode后面,这样启动时弹的toast还是默认执行脚本 */
+    "preferredMemoria",
+    "preferredChara",
+    "preferMemoriaOverPt",
     "pickSupportAt",
+    "default",/* 放在pickSupportAt后面,这样启动时弹的toast还是默认执行脚本 */
     "autoFollow",
     "breakAutoCycleDuration",
     "forceStopTimeout",

@@ -1412,6 +1412,9 @@ var limit = {
     autoReconnect: true,
     supportPickingMode: 0,
     pickSupportAt: "1",
+    preferredMemoria: 0,
+    preferredChara: 0,
+    preferMemoriaOverPt: false,
     justNPC: false,
     drug4: false,
     drug1num: '0',
@@ -3006,6 +3009,65 @@ function algo_init() {
                        : parseInt(limit.pickSupportAt) - 1;
         return pickSupportAtPosition(position);
     }
+
+    floatUI.presetMemoriaCards = [
+        {
+            name: "不优先挑选记忆结晶",
+            cards: [],
+        },
+        {
+            name: "不使用预设数据,自行指定",
+            cards: [],
+        },
+        {
+            name: "与你谱写的日记",
+            cards: [
+                {
+                    name: "和你在这里",
+                    eventBonus: {
+                        limited: 3,
+                        limitBroken: 7,
+                    },
+                    img: null,
+                },
+                {
+                    name: "并非美好的事物",
+                    eventBonus: {
+                        limited: 1,
+                        limitBroken: 2,
+                    },
+                    img: null,
+                },
+                {
+                    name: "梦在醒来后延续",
+                    eventBonus: {
+                        limited: 2,
+                        limitBroken: 3,
+                    },
+                    img: null,
+                },
+                {
+                    name: "在这个世界生存下去",
+                    eventBonus: {
+                        limited: 3,
+                        limitBroken: 7,
+                    },
+                    img: null,
+                },
+            ],
+        },
+    ];
+
+    floatUI.presetSupportCharacters = [
+        {
+            name: "不优先挑选角色",
+            img: null,
+        },
+        {
+            name: "龙城明日香",
+            img: null,
+        },
+    ];
 
     floatUI.supportPickingModes = [
         {
