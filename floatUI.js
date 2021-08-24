@@ -5989,8 +5989,14 @@ function algo_init() {
                         log("进入关卡选择");
                         break;
                     } else if (inautobattle === null) {
-                        toastLog("无法识别状态,\n不知道是战斗/剧情播放还是其他状态,\n结束运行");
-                        stopThread();
+                        toastLog("无法识别状态,\n不知道是战斗/剧情播放还是其他状态");
+                        if (lastOpList == null) {
+                            toastLog("结束运行");
+                            stopThread();
+                        } else {
+                            toastLog("杀进程重开游戏...");
+                            killGame(string.package_name);
+                        }
                         break;
                     } else if (inautobattle) {
                         state = STATE_BATTLE;
