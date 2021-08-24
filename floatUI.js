@@ -1497,6 +1497,11 @@ var clickSets = {
         y: 1000,
         pos: "bottom"
     },
+    restartIntoLoop: {
+        x: 1460,
+        y: 1000,
+        pos: "bottom"
+    },
     reconection: {
         x: 700,
         y: 750,
@@ -5958,19 +5963,24 @@ function algo_init() {
                     }
                     */
                     // try click rebattle
-                    element = findID("questRetryBtn");
+                    //设置了使用自动续战的时候，在结算界面优先点击自动续战而不是再战按钮
+                    //inautobattle只有在（之前队伍调整界面检测过）确定知道有自动续战按钮时才才会是true，否则会是false（确定知道没有）或null（不知道有没有）
+                    //然后，如果已经检测到了或加载了关卡名/关卡坐标/选关动作录制数据，即便点到了空白处（除非AP耗尽，这不应该发生）也仍然能自动选关
+                    let clickLoopBtn = false;
+                    if (inautobattle && (battlename || battlepos || lastOpList)) clickLoopBtn = true;
+                    element = findID(clickLoopBtn ? "questLoopBtn" : "questRetryBtn");
                     if (element) {
-                        log("点击再战按钮");
+                        log("点击"+(clickLoopBtn?"自动续战":"再战")+"按钮");
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
                     } else {
                         //走到这里的可能情况:
                         //(1) AP不够再战一局（常见原因是官方自动续战）
                         //(2) UI控件树残缺，明明有再战按钮却检测不到
-                        log("点击再战区域");
+                        log("点击"+(clickLoopBtn?"自动续战":"再战")+"按钮区域");
                         //    (如果屏幕是宽高比低于16:9的“方块屏”，还会因为再战按钮距离charabound右下角太远而点不到再战按钮，然后就会回到关卡选择)
                         //if (charabound) click(charabound.right, charabound.bottom);
-                        click(convertCoords(clickSets.restart));
+                        click(convertCoords(clickLoopBtn ? clickSets.restartIntoLoop : clickSets.restart));
                     }
                     sleep(500);
                     break;
