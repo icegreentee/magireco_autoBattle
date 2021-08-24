@@ -1601,6 +1601,11 @@ var clickSets = {
         x: 120,
         y: 50,
         pos: "top"
+    },
+    dataDownloadOK: {
+        x: 960,
+        y: 769,
+        pos: "center"
     }
 }
 
@@ -3806,6 +3811,10 @@ function algo_init() {
     function clickReconnect() {
         log("点击断线重连按钮所在区域");
         click(convertCoords(clickSets.reconection));
+        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
+        log("点击OK按钮区域");
+        click(convertCoords(clickSets.dataDownloadOK));
+        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
     }
 
     function selectBattle() { }
@@ -4079,6 +4088,10 @@ function algo_init() {
             log("点击恢复战斗按钮区域...");
             click(convertCoords(clickSets.recover_battle));
             log("点击恢复战斗按钮区域完成,等待1秒...");
+            sleep(1000);
+            log("点击OK按钮区域...");
+            click(convertCoords(clickSets.dataDownloadOK));
+            log("点击OK按钮区域完成,等待1秒...");
             sleep(1000);
         }
         return false;
@@ -5790,6 +5803,7 @@ function algo_init() {
                     //一开始不知道能不能用自动续战,inautobattle还是null,这个时候就按照是否启用官方自动续战的设置来
                     //后面检测按钮后就给inautobattle赋值了,就按照inautobattle是true或false的情况来
                     click(convertCoords(clickSets[(inautobattle===null?limit.useAuto:inautobattle)?"startAutoRestart":"start"]));
+                    sleep(300);//避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
 
                     var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
                     if (limit.useAuto) {
@@ -5815,7 +5829,8 @@ function algo_init() {
                         battleStartBtnClickTime = new Date().getTime();
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
-                        waitElement(element, 500);
+                        sleep(300);//避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
+                        waitElement(element, 200);
                     }
 
                     //如果之前误触了队伍名称变更，尝试关闭
