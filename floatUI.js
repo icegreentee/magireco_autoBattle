@@ -2699,6 +2699,7 @@ function algo_init() {
         var hasError = false;
         //Lv/ATK/DEF/HP [Rank] 玩家名 [最终登录] Pt
         //Lv/ATK/DEF/HP 玩家名 [Rank] [最终登录] Pt
+        //如果助战玩家未设定当前属性的角色，则缺失Lv/ATK/DEF/HP，但仍然有Rank、玩家名、最终登录和Pt
         let AllElements = [];
         let uicollection = packageName(string.package_name).find();
         for (let i=0; i<uicollection.length; i++) {
@@ -2751,9 +2752,28 @@ function algo_init() {
 
             if (rankIndex != null && lastLoginIndex != null) {
                 //在Lv/ATK/DEF/HP后找到Rank和上次登录，就是玩家的Lv/ATK/DEF/HP；否则是NPC或恶搞玩家名
-                PlayerLvIndices.push(index);
+                //但是还要排除一种可能：未设定助战角色
+                //在（疑似）Rank和上次登录时间之后找Pt，尽量确保找到的Pt不是恶搞玩家名（比如“+60”）
+                let ptIndex = PtLikeIndices.find((val) => val > rankIndex && val > lastLoginIndex);
+                if (ptIndex == null) {
+                    log("助战选择出错,在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank和上次登录,却没找到Pt");
+                    hasError = true;
+                    return;
+                }
+                if (AllElements.slice(index + 1, ptIndex).find((val) => getContent(val) == string.support_chara_not_set) != null) {
+                    log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank和上次登录,还有\"未设定\"");
+                    if (PtLikeIndices.find((val) => val > index && val < ptIndex) != null) {
+                        log("应该是NPC");
+                        NPCLvIndices.push(index);
+                    } else {
+                        log("应该是恶搞玩家名\"未设定\"");
+                        PlayerLvIndices.push(index);
+                    }
+                } else {
+                    PlayerLvIndices.push(index);
+                }
                 AllLvIndices.push(index);
-                return
+                return;
             }
             if (rankIndex != null && lastLoginIndex == null) {
                 log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank,却没找到上次登录");
@@ -2823,10 +2843,15 @@ function algo_init() {
             //最后一个Lv/ATK/DEF/HP控件后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex；其余的往后推一个即可
             let nextIndex = i >= arr.length - 1 ? finalIndex : arr[i+1];
 
-            //倒过来从后往前搜Pt控件，防止碰到类似Pt的恶搞玩家名
-            let ptIndex = PtLikeIndices.reverse().find((val) => val > index && val < nextIndex);
-            //恢复原状
-            PtLikeIndices.reverse();
+            //从前往后找到所有像是Pt的控件
+            let ptPossibleIndices = PtLikeIndices
+                .filter((val) => val > index && val < nextIndex)
+                .filter(
+                         (val) => AllElements.slice(index + 1, val)/* 避免未设定角色的助战插入进来干扰 */
+                                             .find((element) => getContent(element) == string.support_chara_not_set) == null
+                       );
+            //取最后一个，防止碰到恶搞玩家名
+            let ptIndex = ptPossibleIndices.length > 0 ? ptPossibleIndices[ptPossibleIndices.length-1] : null;
 
             if (ptIndex != null) {
                 let PtContent = getContent(AllElements[ptIndex]);
@@ -2988,6 +3013,7 @@ function algo_init() {
     const strings = {
         name: [
             "support",
+            "support_chara_not_set",
             "ap_refill_title",
             "ap_refill_button",
             "ap_refill_popup",
@@ -3016,6 +3042,7 @@ function algo_init() {
         ],
         zh_Hans: [
             "请选择支援角色",
+            "未设定",
             "AP回复",
             "回复",
             "回复确认",
@@ -3044,6 +3071,7 @@ function algo_init() {
         ],
         zh_Hant: [
             "請選擇支援角色",
+            "未設定",
             "AP回復",
             "回復",
             "回復確認",
@@ -3072,6 +3100,7 @@ function algo_init() {
         ],
         ja: [
             "サポートキャラを選んでください",
+            "未設定",
             "AP回復",
             "回復",
             "回復確認",
