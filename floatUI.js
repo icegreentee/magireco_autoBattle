@@ -3480,6 +3480,18 @@ function algo_init() {
             }
         }//detectGameLang会修改string和last_alive_lang
 
+        if (!dontStopOnError) switch (last_alive_lang) {
+            case "ja":
+                dialogs.alert(
+                    "检测到日服",
+                    "自日服游戏客户端强制升级至2.4.1版之后,绝大多数脚本在日服上都已失效!\n"
+                    +"失效原因是:无障碍服务在游戏内只能抓取到一个空壳webview控件,除此之外无法抓取到任何控件信息。\n"
+                    +"点击\"确定\"后脚本将继续运行,但副本周回或镜层周回等脚本都无法正常工作。\n"
+                    +"自动点击行动盘脚本应该仍然可以工作,但因为未修正的bug,可能无法正常识别出战斗已经结束。"
+                );
+                break;
+        }
+
         //检测屏幕参数
         let detected_screen_params = null;
         try {
