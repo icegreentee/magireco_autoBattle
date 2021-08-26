@@ -56,6 +56,37 @@ function getProjectVersion() {
     if (conf) return conf.versionName;
 }
 
+//sync锁的是this对象，于是A函数锁定后B函数得等A函数返回
+//这个syncer就不会让B函数等待A函数返回
+//必须是syncer.syn(func)这样调用
+var syncer = {
+    lockers: [],
+    renewLockerIfDead: sync(function (locker, renewLock, renewThread, force) {
+        if (force || locker.thread == null || !locker.thread.isAlive()) {
+            if (renewLock) locker.lock = threads.lock();
+            if (renewThread) locker.thread = threads.currentThread();
+        }
+    }),
+    syn: function (func) {
+        let currentLocker = {lock: threads.lock(), thread: null};
+        this.lockers.push(currentLocker);
+        let syncerobj = this;
+        return function () {
+            let ret = undefined;
+            try {
+                while (!currentLocker.lock.tryLock(1000, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                    syncerobj.renewLockerIfDead(currentLocker, true, true, false);
+                }
+                syncerobj.renewLockerIfDead(currentLocker, false, true, true);
+                ret = func.apply(this, arguments);
+            } finally {
+                while (currentLocker.lock.getHoldCount() > 0) currentLocker.lock.unlock();
+            }
+            return ret;
+        }
+    }
+}
+
 //记录当前版本是否测试过助战的文件(已经去掉，留下注释)
 //var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
 
@@ -220,6 +251,46 @@ floatUI.scripts = [
     }
 ];
 
+floatUI.presetOpLists = [
+    {
+        name: "不使用预设数据",
+        content: null,
+    },
+    {
+        name: "国服主线2-1-4普通本(水波祭)",
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-8-6_"
+            +"9-51-6\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventTypeBRA"
+            +"NCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":1563"
+            +",\"y\":845,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime"
+            +"\":3000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1207,\"y\":862,"
+            +"\"pos\":\"center\"},{\"x\":1264,\"y\":405,\"pos\":\"center\"}],\"duration\":20"
+            +"00}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1228,\"y\":846,\"pos"
+            +"\":\"center\"},{\"x\":1223,\"y\":405,\"pos\":\"center\"}],\"duration\":2000}}"
+            +",{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1188,\"y\":826,\"pos\":\"c"
+            +"enter\"},{\"x\":1203,\"y\":399,\"pos\":\"center\"}],\"duration\":2000}},{\"a"
+            +"ction\":\"click\",\"click\":{\"point\":{\"x\":1202,\"y\":379,\"pos\":\"center\""
+            +"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1180,\"y\":852,\"pos\""
+            +":\"center\"},{\"x\":1211,\"y\":404,\"pos\":\"center\"}],\"duration\":1970}},"
+            +"{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1181,\"y\":840,\"pos\":\"ce"
+            +"nter\"},{\"x\":1200,\"y\":405,\"pos\":\"center\"}],\"duration\":1825}},{\"ac"
+            +"tion\":\"click\",\"click\":{\"point\":{\"x\":1224,\"y\":560,\"pos\":\"center\"}"
+            +"}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3000}},{\"action\":\"clic"
+            +"k\",\"click\":{\"point\":{\"x\":1193,\"y\":570,\"pos\":\"top\"}}},{\"action\":\""
+            +"sleep\",\"sleep\":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkT"
+            +"ext\":{\"text\":\"BATTLE 4\",\"boundsCenter\":{\"x\":304,\"y\":514,\"pos\":\"t"
+            +"op\"},\"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"igno"
+            +"re\"},\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fa"
+            +"il\"}}},{\"action\":\"checkText\",\"checkText\":{\"text\":\"第2章\",\"boundsCe"
+            +"nter\":{\"x\":305,\"y\":250,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopS"
+            +"cript\":false,\"nextAction\":\"ignore\"},\"notFound\":{\"kill\":true,\"sto"
+            +"pScript\":false,\"nextAction\":\"fail\"}}},{\"action\":\"checkText\",\"che"
+            +"ckText\":{\"text\":\"1话\",\"boundsCenter\":{\"x\":303,\"y\":296,\"pos\":\"top\""
+            +"},\"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"success"
+            +"\"},\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail"
+            +"\"}}}]}",
+    },
+];
+
 //当前正在运行的线程
 var currentTask = null;
 var currentTaskName = "未运行任何脚本";
@@ -379,7 +450,7 @@ var monitoredTask = null;
 
 var bypassPopupCheck = threads.atomic(0);
 
-var syncedReplaceCurrentTask = sync(function(taskItem, callback) {
+var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
         isCurrentTaskPaused.set(TASK_STOPPED);
@@ -677,7 +748,7 @@ floatUI.main = function () {
         }
     }
     var openSettingsThread = null;
-    function settingsWrap() {sync(function () {
+    function settingsWrap() {syncer.syn(function () {
         if (openSettingsThread != null && openSettingsThread.isAlive()) {
             if (isCurrentTaskPaused.get() == TASK_PAUSED) {
                 toastLog("打开脚本设置\n(脚本已暂停)");
@@ -1258,7 +1329,13 @@ floatUI.main = function () {
         } else {
             log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
         }
-        result = rootShell(shellcmd);
+        try {
+            result = rootShell(shellcmd);
+        } catch (e) {
+            logException(e);
+            result = {code: 1, result: "-1", err: ""};
+        }
+        euid = -1;
         if (result.code == 0) euid = getEUID(result.result);
         if (euid == 0) {
             log("直接获取root权限成功");
@@ -1400,19 +1477,21 @@ var limit = {
     drug1: false,
     drug2: false,
     drug3: false,
-    autoReconnect: false,
+    autoReconnect: true,
     justNPC: false,
     drug4: false,
     drug1num: '0',
     drug2num: '0',
     drug3num: '0',
     drug4num: '0',
+    promptAutoRelaunch: true,
+    usePresetOpList: 0,
     default: 0,
     useAuto: true,
     autoFollow: true,
     breakAutoCycleDuration: "",
-    forceStopTimeout: "",
-    periodicallyKillTimeout: "",
+    forceStopTimeout: "600",
+    periodicallyKillTimeout: "3600",
     apmul: "",
     timeout: "5000",
     rootForceStop: false,
@@ -1421,6 +1500,9 @@ var limit = {
     useCVAutoBattle: true,
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
+    CVAutoBattleClickAllMagiaDisks: true,
+    CVAutoBattlePreferAccel: false,
+    CVAutoBattlePreferABCCombo: false,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -1433,19 +1515,19 @@ var clickSets = {
         y: 50,
         pos: "top"
     },
-    ap50: {
-        x: 400,
-        y: 900,
+    apdrugbtn1: {
+        x: 440,
+        y: 908,
         pos: "center"
     },
-    apfull: {
-        x: 900,
-        y: 900,
+    apdrugbtn2: {
+        x: 960,
+        y: 908,
         pos: "center"
     },
-    apjin: {
-        x: 1500,
-        y: 900,
+    apdrugbtn3: {
+        x: 1480,
+        y: 908,
         pos: "center"
     },
     aphui: {
@@ -1480,6 +1562,11 @@ var clickSets = {
     },
     restart: {
         x: 1800,
+        y: 1000,
+        pos: "bottom"
+    },
+    restartIntoLoop: {
+        x: 1460,
         y: 1000,
         pos: "bottom"
     },
@@ -1582,6 +1669,11 @@ var clickSets = {
         x: 120,
         y: 50,
         pos: "top"
+    },
+    dataDownloadOK: {
+        x: 960,
+        y: 769,
+        pos: "center"
     }
 }
 
@@ -1864,7 +1956,7 @@ function ApsFunction(druglimit) {
             }
             while (!text(currentLang[0]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.ap50)
+                screenutilClick(clickSets.apdrugbtn1)
                 sleep(2000)
             }
             text(currentLang[1]).findOne()
@@ -1881,7 +1973,7 @@ function ApsFunction(druglimit) {
             }
             while (!text(currentLang[0]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.apfull)
+                screenutilClick(clickSets.apdrugbtn2)
                 sleep(2000)
             }
             text(currentLang[1]).findOne()
@@ -1899,7 +1991,7 @@ function ApsFunction(druglimit) {
             }
             while (!text(currentLang[0]).findOnce()) {
                 sleep(1000)
-                screenutilClick(clickSets.apjin)
+                screenutilClick(clickSets.apdrugbtn3)
                 sleep(2000)
             }
             text(currentLang[1]).findOne()
@@ -2675,6 +2767,7 @@ function algo_init() {
         var hasError = false;
         //Lv/ATK/DEF/HP [Rank] 玩家名 [最终登录] Pt
         //Lv/ATK/DEF/HP 玩家名 [Rank] [最终登录] Pt
+        //如果助战玩家未设定当前属性的角色，则缺失Lv/ATK/DEF/HP，但仍然有Rank、玩家名、最终登录和Pt
         let AllElements = [];
         let uicollection = packageName(string.package_name).find();
         for (let i=0; i<uicollection.length; i++) {
@@ -2727,9 +2820,28 @@ function algo_init() {
 
             if (rankIndex != null && lastLoginIndex != null) {
                 //在Lv/ATK/DEF/HP后找到Rank和上次登录，就是玩家的Lv/ATK/DEF/HP；否则是NPC或恶搞玩家名
-                PlayerLvIndices.push(index);
+                //但是还要排除一种可能：未设定助战角色
+                //在（疑似）Rank和上次登录时间之后找Pt，尽量确保找到的Pt不是恶搞玩家名（比如“+60”）
+                let ptIndex = PtLikeIndices.find((val) => val > rankIndex && val > lastLoginIndex);
+                if (ptIndex == null) {
+                    log("助战选择出错,在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank和上次登录,却没找到Pt");
+                    hasError = true;
+                    return;
+                }
+                if (AllElements.slice(index + 1, ptIndex).find((val) => getContent(val) == string.support_chara_not_set) != null) {
+                    log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank和上次登录,还有\"未设定\"");
+                    if (PtLikeIndices.find((val) => val > index && val < ptIndex) != null) {
+                        log("应该是NPC");
+                        NPCLvIndices.push(index);
+                    } else {
+                        log("应该是恶搞玩家名\"未设定\"");
+                        PlayerLvIndices.push(index);
+                    }
+                } else {
+                    PlayerLvIndices.push(index);
+                }
                 AllLvIndices.push(index);
-                return
+                return;
             }
             if (rankIndex != null && lastLoginIndex == null) {
                 log("在第"+(arr.length-i)+"个Lv/ATK/DEF/HP控件后,找到了Rank,却没找到上次登录");
@@ -2799,10 +2911,15 @@ function algo_init() {
             //最后一个Lv/ATK/DEF/HP控件后面已经没有下一个Lv/ATK/DEF/HP控件了，用finalIndex；其余的往后推一个即可
             let nextIndex = i >= arr.length - 1 ? finalIndex : arr[i+1];
 
-            //倒过来从后往前搜Pt控件，防止碰到类似Pt的恶搞玩家名
-            let ptIndex = PtLikeIndices.reverse().find((val) => val > index && val < nextIndex);
-            //恢复原状
-            PtLikeIndices.reverse();
+            //从前往后找到所有像是Pt的控件
+            let ptPossibleIndices = PtLikeIndices
+                .filter((val) => val > index && val < nextIndex)
+                .filter(
+                         (val) => AllElements.slice(index + 1, val)/* 避免未设定角色的助战插入进来干扰 */
+                                             .find((element) => getContent(element) == string.support_chara_not_set) == null
+                       );
+            //取最后一个，防止碰到恶搞玩家名
+            let ptIndex = ptPossibleIndices.length > 0 ? ptPossibleIndices[ptPossibleIndices.length-1] : null;
 
             if (ptIndex != null) {
                 let PtContent = getContent(AllElements[ptIndex]);
@@ -2964,6 +3081,7 @@ function algo_init() {
     const strings = {
         name: [
             "support",
+            "support_chara_not_set",
             "ap_refill_title",
             "ap_refill_button",
             "ap_refill_popup",
@@ -2986,9 +3104,13 @@ function algo_init() {
             "connection_lost",
             "auth_error",
             "generic_error",
+            "error_occurred",
+            "story_updated",
+            "unexpected_error",
         ],
         zh_Hans: [
             "请选择支援角色",
+            "未设定",
             "AP回复",
             "回复",
             "回复确认",
@@ -3011,9 +3133,13 @@ function algo_init() {
             "连线超时",
             "认证错误",//被踢下线
             "错误",
+            "发生错误",//出现场景(之一)是登录时掉线
+            "更新资料",//一般是(活动)剧情数据更新(开放新关卡)后出现
+            "发生错误",//发生无法预期的错误。
         ],
         zh_Hant: [
             "請選擇支援角色",
+            "未設定",
             "AP回復",
             "回復",
             "回復確認",
@@ -3036,9 +3162,13 @@ function algo_init() {
             "連線超時",
             "認證錯誤",//被踢下线
             "錯誤",
+            "發生錯誤",
+            "更新資料",
+            "發生錯誤",
         ],
         ja: [
             "サポートキャラを選んでください",
+            "未設定",
             "AP回復",
             "回復",
             "回復確認",
@@ -3061,6 +3191,9 @@ function algo_init() {
             "通信エラー",
             "認証エラー",//这个是脑补的。实际上日服貌似只能引继，没有多端登录，所以也就没有被“顶号”、被踢下线……
             "エラー",
+            "エラー",
+            "データ更新",
+            "予期せぬエラー",
         ],
     };
 
@@ -3187,7 +3320,7 @@ function algo_init() {
             throw e;
         } finally {
             openedDialogsLock.unlock();
-        } return openedDialogsNode.dialogResult.blockedGet(); },
+        } let ret = openedDialogsNode.dialogResult.blockedGet(); sleep(500);/* 等待对话框消失,防止isGameDead误判 */ return ret; },
         alert: function(title, content, callback) {return this.buildAndShow("alert", title, content, callback)},
         select: function(title, items, callback1, callback2) {return this.buildAndShow("select", title, items, callback1, callback2)},
         confirm: function(title, content, callback1, callback2) {return this.buildAndShow("confirm", title, content, callback1, callback2)},
@@ -3255,7 +3388,7 @@ function algo_init() {
         if (bypassPopupCheck.get() == 0) do {
             let found_popup = null;
             try {
-                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error"]);
+                found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated", "unexpected_error"].map((val) => string[val]));
             } catch (e) {
                 logException(e);
                 found_popup = null;
@@ -3270,7 +3403,7 @@ function algo_init() {
     }
 
     var lastFragmentViewStatus = {bounds: null, rotation: 0};
-    var getFragmentViewBounds = sync(function () {
+    var getFragmentViewBounds = syncer.syn(function () {
         if (string == null || string.package_name == null || string.package_name == "") {
             try {
                 throw new Error("getFragmentViewBounds: null/empty string.package_name");
@@ -3458,6 +3591,18 @@ function algo_init() {
             }
         }//detectGameLang会修改string和last_alive_lang
 
+        if (!dontStopOnError) switch (last_alive_lang) {
+            case "ja":
+                dialogs.alert(
+                    "检测到日服",
+                    "自日服游戏客户端强制升级至2.4.1版之后,绝大多数脚本在日服上都已失效!\n"
+                    +"失效原因是:无障碍服务在游戏内只能抓取到一个空壳webview控件,除此之外无法抓取到任何控件信息。\n"
+                    +"点击\"确定\"后脚本将继续运行,但副本周回或镜层周回等脚本都无法正常工作。\n"
+                    +"自动点击行动盘脚本应该仍然可以工作,但因为未修正的bug,可能无法正常识别出战斗已经结束。"
+                );
+                break;
+        }
+
         //检测屏幕参数
         let detected_screen_params = null;
         try {
@@ -3502,6 +3647,9 @@ function algo_init() {
         } else for (let key in initialapinfo) apinfo[key] = initialapinfo[key];
 
         while (true) {
+            //避免AP余量没磕到满足要求，但之前有一轮磕过药、而且把药的剩余数量磕完了的情况下死循环
+            result = "drug_not_used";
+
             if (apCost == null) {
                 //先检查是否误触，或者检测迟滞而步调不一致
                 //如果AP药选择窗口还没出现，检查是不是已经切换到队伍调整
@@ -3608,15 +3756,14 @@ function algo_init() {
                     //检查还剩余多少个药
                     let remainingDrugCount = parseInt(getContent(numbers[i]).slice(0, -1));
                     if (isDrugEnough(i, remainingDrugCount)) {
-                        var bound = buttons[i].bounds();
                         do {
                             log("点击使用第"+(i+1)+"种回复药");
-                            click(bound.centerX(), bound.centerY());
+                            click(convertCoords(clickSets["apdrugbtn"+(i+1)]));
                             // wait for confirmation popup
                             var ap_refill_confirm_popup = findPopupInfoDetailTitle(string.ap_refill_popup, 2000);
                         } while (ap_refill_confirm_popup == null);
 
-                        bound = find(string.ap_refill_confirm, true).bounds();
+                        var bound = find(string.ap_refill_confirm, true).bounds();
                         while (ap_refill_confirm_popup.element.refresh()) {
                             log("找到确认回复窗口，点击确认回复");
                             click(bound.centerX(), bound.centerY());
@@ -3777,6 +3924,10 @@ function algo_init() {
     function clickReconnect() {
         log("点击断线重连按钮所在区域");
         click(convertCoords(clickSets.reconection));
+        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
+        log("点击OK按钮区域");
+        click(convertCoords(clickSets.dataDownloadOK));
+        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
     }
 
     function selectBattle() { }
@@ -4004,7 +4155,7 @@ function algo_init() {
             if (found_popup != null) {
                 log("发现弹窗 标题: \""+found_popup.title+"\"");
                 let expected_titles = [];
-                for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
+                for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated", "unexpected_error"]) {
                     expected_titles.push(string[error_type]);
                 }
                 let matched_title = expected_titles.find((val) => val == found_popup.title);
@@ -4051,6 +4202,10 @@ function algo_init() {
             click(convertCoords(clickSets.recover_battle));
             log("点击恢复战斗按钮区域完成,等待1秒...");
             sleep(1000);
+            log("点击OK按钮区域...");
+            click(convertCoords(clickSets.dataDownloadOK));
+            log("点击OK按钮区域完成,等待1秒...");
+            sleep(1000);
         }
         return false;
     }
@@ -4065,7 +4220,7 @@ function algo_init() {
 
         if (limit.rootForceStop || limit.firstRequestPrivilege) {
             limit.firstRequestPrivilege = false;
-            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏!\n要使用root或adb权限么?"))
+            if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏！真机则大多没有这个问题（但游戏不能被锁后台）。\n要使用root或adb权限么?"))
             {
                 limit.firstRequestPrivilege = true;//如果这次没申请到权限，下次还会提醒
                 ui.run(() => {
@@ -4087,8 +4242,12 @@ function algo_init() {
         return true;//可能没有特权，但用户选择不获取特权
     }
 
-    //上次录制的关卡选择动作列表
+    //当前选关动作数据(预设或录制)
     var lastOpList = null;
+    //用到预设数据时,需要先备份当前的非预设数据
+    var lastNonPresetOpList = null;
+    //标记当前选关动作数据是不是预设的
+    var isLastOpListNonPreset = false;
     //默认动作录制数据保存位置
     var savedLastOpListPath = files.join(engines.myEngine().cwd(), "lastRecordedSteps.txt");
 
@@ -4253,7 +4412,9 @@ function algo_init() {
             );
         }
 
-        dialogs.alert("录制时请务必跟着提示一步一步来", "尤其是在录制点击和滑动操作时,请务必在屏幕变暗、并显示出相关操作提示后,再进行点击或滑动操作!");
+        dialogs.alert("最后的叮嘱",
+            "1.录制完成后会覆盖之前的数据！如果不想覆盖,接下来请选择\"放弃录制\",然后在脚本选单里选择启动\"导出动作录制数据\",保存妥当后,再重新开始录制。\n"
+            +"2.录制时请务必跟着提示一步一步来,尤其是在录制点击和滑动操作时,请务必在屏幕变暗、并显示出相关操作提示后,再进行点击或滑动操作!");
 
         let endRecording = false;
         for (let step=0; !endRecording; step++) {
@@ -4621,6 +4782,8 @@ function algo_init() {
         if (result != null) {
             saveOpList(result);//写入到文件
             lastOpList = result;
+            lastNonPresetOpList = result; //备份刚刚录制好的数据
+            isLastOpListNonPreset = true; //刚刚录制好的数据很显然不是预设的
             toastLog("录制完成,共记录"+result.steps.length+"步动作");
         }
         return result;
@@ -4686,7 +4849,16 @@ function algo_init() {
         var result = false;
 
         if (opList == null) opList = lastOpList;
-        if (opList == null) opList = loadOpList();
+        if (opList == null) {
+            log("目前没有加载动作录制数据,本次重放结束后也不会加载重放过的数据");
+            if (limit.usePresetOpList > 0) {
+                opList = JSON.parse(floatUI.presetOpLists[limit.usePresetOpList].content);
+                toastLog("即将开始重放:\n预设选关动作:\n["+floatUI.presetOpLists[limit.usePresetOpList].name+"]");
+            } else {
+                opList = loadOpList();
+                toastLog("即将开始重放:\n之前录制的选关动作"+(opList.date==null?"":"\n录制日期: "+opList.date));
+            }
+        }
         if (opList == null) {
             toastLog("不知道要重放什么动作,退出");
             return false;
@@ -4705,16 +4877,18 @@ function algo_init() {
             switch (isGameDead()) {
                 case "crashed":
                     log("游戏已经闪退,停止重放");
+                    log("为了尽量避免幺蛾子出现,补刀再杀一次进程...");
+                    killGame(string.package_name);
                     return false;
-                    break;
                 case "logged_out":
                     log("游戏已经登出,停止重放");
                     return false;
-                    break;
                 case false:
                     break;//没闪退
                 default:
                     log("未知闪退状态,停止重放");
+                    log("为了尽量避免幺蛾子出现,补刀再杀一次进程...");
+                    killGame(string.package_name);
                     return false;
             }
             log("执行安全检查,同时等待"+defaultOpCycleWaitTime+"毫秒...");
@@ -4727,6 +4901,17 @@ function algo_init() {
                 }
                 sleep(50);
             } while (new Date().getTime() < opCycleStartTime + defaultOpCycleWaitTime);
+
+            let lastOp = i > 0 ? opList.steps[i-1] : null;
+            if (lastOp != null) switch (lastOp.action) {
+                case "click":
+                case "swipe":
+                    //如果AP不足就进不去助战选择
+                    if (findPopupInfoDetailTitle(string.ap_refill_title) && find(string.out_of_ap)) {
+                        refillAP();
+                    }
+                    break;
+            }
 
             let op = opList.steps[i];
             log("第"+(i+1)+"步", op);
@@ -4872,21 +5057,11 @@ function algo_init() {
     function exportOpList() {
         //initialize(); //不要求游戏在前台，所以在脚本界面也可以导出
         let lastOpListStringified = null;
-        if (lastOpList == null) {
-            //动作录制数据还没加载，那就直接尝试读取文件内容（不过不保证读出来的内容可以通过检查）
-            toastLog("未加载动作录制数据\n尝试从文件读取(但暂不加载使用)");
-            let justFileContent = true;
-            lastOpListStringified = loadOpList(justFileContent);
-            //不对lastOpList重新赋值
-        } else {
-            try {
-                lastOpListStringified = JSON.stringify(lastOpList);
-            } catch (e) {
-                logException(e);
-                toastLog("导出失败");
-                return;
-            }
-        }
+
+        //当前加载的lastOpList可能是预设的,所以不用lastOpList,直接读取文件内容
+        let justFileContent = true;
+        lastOpListStringified = loadOpList(justFileContent);
+
         if (lastOpListStringified != null && lastOpListStringified != "") {
             ui.run(() => {
                 clip = android.content.ClipData.newPlainText("auto_export_op_list", lastOpListStringified);
@@ -4931,6 +5106,8 @@ function algo_init() {
             if (importedOpList != null && typeof importedOpList != "string") {
                 if (validateOpList(importedOpList)) {
                     lastOpList = importedOpList;
+                    lastNonPresetOpList = lastOpList; //备份导入的数据
+                    isLastOpListNonPreset = true; //导入的数据很显然不是预设的
                     toastLog("导入完成");
                     saveOpList(importedOpList);//写入到文件
                 } else {
@@ -4946,6 +5123,8 @@ function algo_init() {
         if (opList != null) lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
         dialogs.confirm("清除选关动作录制数据", "确定要清除么？"+lastOpListDateString, () => {
             lastOpList = null;
+            lastNonPresetOpList = null; //备份也清除掉,否则下次启动脚本时会从备份恢复
+            isLastOpListNonPreset = false;
             if (!files.remove(savedLastOpListPath)) {
                 toastLog("删除动作录制数据文件失败");
                 return;
@@ -5047,7 +5226,7 @@ function algo_init() {
             log("弹窗检测结果", found_popup);
             if (found_popup == null) break;
             let expected_titles = [];
-            for (let error_type of ["connection_lost", "auth_error", "generic_error"]) {
+            for (let error_type of ["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated", "unexpected_error"]) {
                 expected_titles.push(string[error_type]);
             }
             let matched_title = expected_titles.find((val) => val == found_popup.title);
@@ -5081,7 +5260,21 @@ function algo_init() {
             state = STATE_REWARD_MATERIAL;
         } else if (getAP() == null) {
             sleep(2000);
-            toastLog("进入战斗状态\n如果当前不在战斗中，请停止脚本运行");
+            if (limit.autoReconnect) {
+                let dialog_selected = dialogs.confirm("警告",
+                    "脚本猜测游戏正处于战斗状态。\n"
+                    +"如果游戏并不是在战斗中,而是正在登录中/还没完成登录,请点击\"取消\"停止运行脚本！\n"
+                    +"当前已经启用\"防断线模式\",然而\"防断线模式\"点击的断线重连按钮所在位置正好与重新登录并恢复战斗的放弃战斗按钮重合。\n"
+                    +"点击\"取消\"即可避免因误触放弃战斗按钮而导致AP或门票白白损失。\n"
+                    +"如果你确定当前确实是已经在战斗中了,或者虽然正在登录中,但并没有战斗要恢复,可以点击\"确定\",然后脚本会照常运行。"
+                );
+                if (!dialog_selected) {
+                    toastLog("在登录游戏恢复战斗时,\n可能误触放弃战斗按钮,\n为防止误触,已停止运行脚本");
+                    stopThread();
+                }
+            } else {
+                toastLog("进入战斗状态\n如果当前不在战斗中，请停止脚本运行");
+            }
             sleep(2000);
             state = STATE_BATTLE;
         } else {
@@ -5099,7 +5292,7 @@ function algo_init() {
     function testReLaunchRunnable() {
         initialize();
         while (true) {
-            dialogs.alert("测试闪退自动重开", "即将回到脚本界面并杀进程退出游戏");
+            dialogs.alert("测试闪退自动重开", "即将回到脚本界面并杀进程退出游戏。\n请确保游戏没有被锁后台,不然的话可能无法正常杀进程重开!");
             killGame();
             backtoMain();
             dialogs.alert("测试闪退自动重开", "即将重启游戏。\n如果弹出提示询问是否允许关联启动,请点\"允许\"");
@@ -5110,10 +5303,12 @@ function algo_init() {
                 +"\n同时你还可以观察游戏是不是回到了登录前的状态。如果没有返回到登录界面,则表示杀进程没有成功。");
             if (dialogs.confirm("测试闪退自动重开",
                     "游戏成功重启了么?\n"
-                    +"看上去好像"+(isGameDead()?"没成功":"成功了")
-                    +"\n点\"确定\"结束测试,点\"取消\"重测一次"
-                    +"\n强烈推荐至少重测一次!"
-                    +"\n如果不能成功,请搜索你的手机品牌/型号是否有允许关联启动(白名单之类的)的设置方法")
+                    +"看上去游戏好像"+(isGameDead()?"没启动":"启动了")+"。\n"
+                    +"请自己观察判断有没有成功杀掉进程并重启游戏。(而不只是切到后台又原封不动地切回来)\n"
+                    +"如果游戏只是原封不动地切到后台又切回来了,请检查游戏是不是被锁了后台!\n"
+                    +"点\"确定\"结束测试,点\"取消\"重测一次\n"
+                    +"强烈推荐至少重测一次!\n"
+                    +"如果不能成功,请搜索你的手机品牌/型号是否有允许关联启动(白名单之类的)的设置方法")
                )
             {
                 isRelaunchTested = true; //只表示是否测试过,不表示是否成功过
@@ -5158,22 +5353,57 @@ function algo_init() {
 
         initialize();
 
+        if (limit.usePresetOpList > 0) {
+            //使用预设选关动作
+            //如果当前数据不是预设的,则先备份再赋值覆盖
+            if (isLastOpListNonPreset) lastNonPresetOpList = lastOpList;
+            lastOpList = JSON.parse(floatUI.presetOpLists[limit.usePresetOpList].content);
+            isLastOpListNonPreset = false;
+        } else {
+            //不使用预设选关动作
+            //如果当前的lastOpList已被清除,或者是预设的,就用之前的非预设数据备份还原(没备份时也赋值为null)
+            if (lastOpList == null || !isLastOpListNonPreset) {
+                if (lastNonPresetOpList == null) {
+                    lastOpList = null; //没有备份可供还原,清除掉当前的数据(是预设的,或者本来就已经清除掉了)
+                    isLastOpListNonPreset = false;
+                } else {
+                    lastOpList = lastNonPresetOpList;
+                    isLastOpListNonPreset = true;
+                }
+            }
+        }
         let lastOpListDateString = "";
         if (lastOpList == null) {
+            //不使用预设选关动作,也(暂时还没)加载录制的数据
             let opList = null;
-            if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
+            if (!limit.promptAutoRelaunch) {
+                log("不弹窗询问是否加载选关动作录制数据");
+            } else if (files.isFile(savedLastOpListPath) && ((opList = loadOpList()) != null)) {
                 lastOpListDateString = ((opList.date == null) ? "" : ("\n录制日期: "+opList.date));
                 if (dialogs.confirm("闪退自动重开", "要加载之前保存的选关动作录制数据吗?"
                     +"\n注意:4.9版或以前录制的杜鹃花型活动选关动作记录存在bug,没考虑点击坐标校正问题,可能在选关时点击错位,推荐删除重录。"
                     +lastOpListDateString)) {
                     lastOpList = opList;
+                    lastNonPresetOpList = opList; //加载的数据视为非预设的,备份起来
+                    isLastOpListNonPreset = true; //加载的数据应该是非预设的
                 } else {
+                    lastNonPresetOpList = null; //备份也清除掉(正常情况下本来就应该是已经清除掉的状态)
+                    isLastOpListNonPreset = false;
                     if (dialogs.confirm("闪退自动重开", "要删除保存选关动作录制数据的文件么?")) {
                         if (!files.remove(savedLastOpListPath)) {
                             toastLog("删除动作录制数据文件失败");
                         } else {
                             toastLog("已删除动作录制数据文件");
                         }
+                    } else if (false === dialogs.confirm("闪退自动重开",
+                        "下次启动周回时,还要询问是否使用自动重开功能吗？\n"
+                        +"点击\"取消\"后,将不再询问是否自动重开,并且默认不使用自动重开功能。\n"
+                        +"如果暂时不想用自动重开,又不想清除掉导入进来或录制下来的选关动作数据,请点\"确定\"。\n"
+                        +"点击\"取消\"后,如果又重新开始想要使用自动重开功能,可以在脚本设置中重新开启\"启动周回脚本时询问是否自动重开\"。\n"))
+                    {
+                        ui.run(function () {
+                            ui["promptAutoRelaunch"].setChecked(false);
+                        });
                     }
                 }
             }
@@ -5182,7 +5412,10 @@ function algo_init() {
         }
 
         if (lastOpList == null) {
-            toastLog("周回已开始。\n因为没有动作录制数据,\n所以未启用闪退自动重开功能。");
+            toastLog("周回已开始。\n"+(limit.promptAutoRelaunch?"因为没有加载动作录制数据,\n所以":"")+"未启用闪退自动重开功能。");
+        } else if (!limit.promptAutoRelaunch) {
+            log("不弹窗询问是否启用自动重开");
+            lastOpList = null;
         } else {
             if (!requestPrivilegeIfNeeded()) {
                 log("用户选择获取特权,但还没获取到,退出录制");
@@ -5190,13 +5423,23 @@ function algo_init() {
                 return;
             }
             requestTestReLaunchIfNeeded();//测试是否可以正常重开
-            let loadedInfoString = "已加载动作录制数据,闪退自动重开已启用"+lastOpListDateString;
+            let presetNameString = "";
+            if (limit.usePresetOpList > 0) {
+                presetNameString = "\n使用预设选关动作录制数据: ["+floatUI.presetOpLists[limit.usePresetOpList].name+"]";
+            }
+            let loadedInfoString = "已加载动作录制数据,闪退自动重开已启用"+presetNameString+lastOpListDateString;
             if (dialogs.confirm("闪退自动重开",
-                "即将开始周回。\n"+loadedInfoString+"\n点\"确定\"继续。\n点\"取消\"停用闪退自动重开。"))
+                "即将开始周回。\n"
+                +loadedInfoString+"\n"
+                +"请务必确保游戏没有被锁后台,否则可能无法正常杀掉进程!\n"
+                +"点\"确定\"继续。\n"
+                +"点\"取消\"停用闪退自动重开。"))
             {
                 toastLog("周回已开始。\n"+loadedInfoString);
             } else {
                 lastOpList = null;
+                lastNonPresetOpList = null; //备份也清除掉,否则下次启动脚本时会从备份恢复
+                isLastOpListNonPreset = false;
                 toastLog("周回已开始。\n已停用闪退自动重开。");
             }
         }
@@ -5216,6 +5459,7 @@ function algo_init() {
         var isFirstBRANCHClick = true; //在杜鹃花型活动地图点了启动脚本,无法保证一定能正确选关
         var BRANCHclickAttemptCount = 0;
         var bypassPopupCheckCounter = 0;
+        var ensureGameDeadCounter = 0;
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -5246,6 +5490,21 @@ function algo_init() {
                     throw new Error("Unknown isCurrentTaskPaused value");
             }
 
+            //偶尔isGameDead会出现奇怪的“误判”:
+            //游戏看上去还在运行,脚本却检测不到它在前台,而且游戏可能是黑屏假死状态,动弹不得
+            //为尽量避免这个问题,这里进行“补刀”
+            if (state == STATE_CRASHED || state == STATE_LOGIN) {
+                ensureGameDeadCounter++;
+                if (ensureGameDeadCounter >= 10) {
+                    ensureGameDeadCounter = 0;
+                    log("补刀再杀一次进程...");
+                    killGame(string.package_name);
+                    continue;
+                }
+            } else {
+                ensureGameDeadCounter = 0;
+            }
+
             //然后检测游戏是否闪退或掉线
             //因为STATE_TEAM状态下isGameDead里的掉线弹窗检查非常慢,故跳过头4回检查
             if (state == STATE_TEAM) {
@@ -5262,6 +5521,8 @@ function algo_init() {
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
                 if (lastOpList != null) {
                     state = STATE_CRASHED;
+                    log("进入闪退/登出重启前,先补刀再杀一次进程...");
+                    killGame(string.package_name);
                     toastLog("进入闪退/登出重启...");
                     continue;
                 } else {
@@ -5655,6 +5916,7 @@ function algo_init() {
                     //一开始不知道能不能用自动续战,inautobattle还是null,这个时候就按照是否启用官方自动续战的设置来
                     //后面检测按钮后就给inautobattle赋值了,就按照inautobattle是true或false的情况来
                     click(convertCoords(clickSets[(inautobattle===null?limit.useAuto:inautobattle)?"startAutoRestart":"start"]));
+                    sleep(300);//避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
 
                     var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
                     if (limit.useAuto) {
@@ -5680,7 +5942,8 @@ function algo_init() {
                         battleStartBtnClickTime = new Date().getTime();
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
-                        waitElement(element, 500);
+                        sleep(300);//避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
+                        waitElement(element, 200);
                     }
 
                     //如果之前误触了队伍名称变更，尝试关闭
@@ -5828,19 +6091,24 @@ function algo_init() {
                     }
                     */
                     // try click rebattle
-                    element = findID("questRetryBtn");
+                    //设置了使用自动续战的时候，在结算界面优先点击自动续战而不是再战按钮
+                    //inautobattle只有在（之前队伍调整界面检测过）确定知道有自动续战按钮时才才会是true，否则会是false（确定知道没有）或null（不知道有没有）
+                    //然后，如果已经检测到了或加载了关卡名/关卡坐标/选关动作录制数据，即便点到了空白处（除非AP耗尽，这不应该发生）也仍然能自动选关
+                    let clickLoopBtn = false;
+                    if (inautobattle && (battlename || battlepos || lastOpList)) clickLoopBtn = true;
+                    element = findID(clickLoopBtn ? "questLoopBtn" : "questRetryBtn");
                     if (element) {
-                        log("点击再战按钮");
+                        log("点击"+(clickLoopBtn?"自动续战":"再战")+"按钮");
                         let bound = element.bounds();
                         click(bound.centerX(), bound.centerY());
                     } else {
                         //走到这里的可能情况:
                         //(1) AP不够再战一局（常见原因是官方自动续战）
                         //(2) UI控件树残缺，明明有再战按钮却检测不到
-                        log("点击再战区域");
+                        log("点击"+(clickLoopBtn?"自动续战":"再战")+"按钮区域");
                         //    (如果屏幕是宽高比低于16:9的“方块屏”，还会因为再战按钮距离charabound右下角太远而点不到再战按钮，然后就会回到关卡选择)
                         //if (charabound) click(charabound.right, charabound.bottom);
-                        click(convertCoords(clickSets.restart));
+                        click(convertCoords(clickLoopBtn ? clickSets.restartIntoLoop : clickSets.restart));
                     }
                     sleep(500);
                     break;
@@ -5859,8 +6127,14 @@ function algo_init() {
                         log("进入关卡选择");
                         break;
                     } else if (inautobattle === null) {
-                        toastLog("无法识别状态,\n不知道是战斗/剧情播放还是其他状态,\n结束运行");
-                        stopThread();
+                        toastLog("无法识别状态,\n不知道是战斗/剧情播放还是其他状态");
+                        if (lastOpList == null) {
+                            toastLog("结束运行");
+                            stopThread();
+                        } else {
+                            toastLog("杀进程重开游戏...");
+                            killGame(string.package_name);
+                        }
                         break;
                     } else if (inautobattle) {
                         state = STATE_BATTLE;
@@ -5956,6 +6230,7 @@ function algo_init() {
     //应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
     //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
     var canCaptureScreen = false;
+    var requestScreenCaptureSuccess = false;
     var hasScreenCaptureError = false;
     function startScreenCapture() {
         if (canCaptureScreen) {
@@ -5973,14 +6248,13 @@ function algo_init() {
         sleep(500);
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
-            let result = false;
-            try {
-                result = requestScreenCapture(screencap_landscape);
+            if (!requestScreenCaptureSuccess) try {
+                requestScreenCaptureSuccess = requestScreenCapture(screencap_landscape);
             } catch (e) {
                 //logException(e); issue #126
                 try {log(e);} catch (e2) {};
             }
-            if (result) {
+            if (requestScreenCaptureSuccess) {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
                 initializeScreenCaptureFix();
 
@@ -6007,7 +6281,9 @@ function algo_init() {
 
     //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
     var needScreenCaptureFix = false;
+    var needResizeWorkaround = null;
     function initializeScreenCaptureFix() {
+        needResizeWorkaround = null;
         try {
             log("测试录屏API是否可用...");
             let screenshot = captureScreen();
@@ -6133,7 +6409,7 @@ function algo_init() {
 
 
     var staleScreenshot = {img: null, lastTime: 0, timeout: 1000};
-    var compatCaptureScreen = sync(function () {
+    var compatCaptureScreen = syncer.syn(function () {
         if (limit.rootScreencap) {
             //使用shell命令 screencap 截图
             try {screencapShellCmdThread.interrupt();} catch (e) {};
@@ -6204,6 +6480,23 @@ function algo_init() {
 
                 //把裁剪出来的图像重新放大回屏幕尺寸
                 let resizedImg = images.resize(croppedImg, [screenX, screenY]);
+
+                if (needResizeWorkaround == null) {
+                    try {
+                        let testPixel = images.pixel(resizedImg, resizedImg.getWidth()-1, resizedImg.getHeight()-1);
+                    } catch (e) {
+                        logException(e);
+                        needResizeWorkaround = true;
+                        log("检测到AutoJS Pro的缩放截图崩溃bug,启用绕过措施");
+                    }
+                    if (needResizeWorkaround == null) needResizeWorkaround = false;
+                }
+                if (needResizeWorkaround) {
+                    let reclippedImg = images.clip(resizedImg, 0, 0, resizedImg.getWidth(), resizedImg.getHeight());
+                    resizedImg.recycle();
+                    resizedImg = reclippedImg;
+                }
+
                 return renewImage(resizedImg, "fixedScreenshot", tagOnly);
             } else {
                 return screenshot;
@@ -6366,13 +6659,15 @@ function algo_init() {
         }
     }
 
-    //已知参照图像，包括A/B/C盘等
-    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.6.0";
+    //已知参照图像，包括A/B/C/M/D盘等
+    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@5.5.0";
     var knownImgs = {};
     const knownImgURLs = {
         accel: ImgURLBase+"/images/accel.png",
         blast: ImgURLBase+"/images/blast.png",
         charge: ImgURLBase+"/images/charge.png",
+        magia: ImgURLBase+"/images/magia.png",
+        doppel: ImgURLBase+"/images/doppel.png",
         connectIndicator: ImgURLBase+"/images/connectIndicator.png",
         connectIndicatorBtnDown: ImgURLBase+"/images/connectIndicatorBtnDown.png",
         light: ImgURLBase+"/images/light.png",
@@ -6397,7 +6692,7 @@ function algo_init() {
         OKButtonGray: ImgURLBase+"/images/OKButtonGray.png",
     };
 
-    var downloadAllImages = sync(function () {
+    var downloadAllImages = syncer.syn(function () {
         while (true) {
             let hasNull = false;
             for (let key in knownImgURLs) {
@@ -6781,18 +7076,25 @@ function algo_init() {
     var clickedDisksCount = 0;
 
     var ordinalWord = ["first", "second", "third", "fourth", "fifth"];
-    var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3};
-    var diskActions = ["accel", "blast", "charge"];
+    var ordinalNum = {first: 0, second: 1, third: 2, fourth: 3, fifth: 4};
+    var diskActions = ["accel", "blast", "charge", "magia", "doppel"];
     var diskAttribs = ["light", "dark", "water", "fire", "wood", "none"];
     var diskAttribsBtnDown = []; for (let i=0; i<diskAttribs.length; i++) { diskAttribsBtnDown.push(diskAttribs[i]+"BtnDown"); }
 
     function logDiskInfo(disk) {
+        let isMagiaDoppel = false;
+        if (disk.action == "magia" || disk.action == "doppel") isMagiaDoppel = true;
         let connectableStr = "不可连携";
-        if (disk.connectable) connectableStr = "【连携】";
+        if (!isMagiaDoppel) {
+            if (disk.connectable) connectableStr = "【连携】";
+        }
         let downStr = "未按下"
         if (disk.down) downStr = "【按下】"
-        log("第", disk.position+1, "号盘", disk.action, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
-
+        if (isMagiaDoppel) {
+            log("第", disk.position+1, "号盘", disk.action, disk.priority, /*"角色", disk.charaID, */"属性", disk.attrib, downStr);
+        } else {
+            log("第", disk.position+1, "号盘", disk.action, disk.priority, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
+        }
     }
 
     //获取换算后的行动盘所需部分（A/B/C盘，角色头像，连携指示灯等）的坐标
@@ -6924,10 +7226,23 @@ function algo_init() {
         }
         return result;
     }
-    function getDiskAction(screenshot, diskPos) {
+    function getDiskActionABC(screenshot, diskPos) {
         let actionImg = getDiskImg(screenshot, diskPos, "action");
         log("识别第", diskPos+1, "盘的A/B/C类型...");
         return recognizeDisk(actionImg, "action");
+    }
+    function getDiskActionMagiaDoppel(screenshot, diskPos) {
+        let actionImg = getDiskImg(screenshot, diskPos, "action");
+        log("识别第", diskPos+1, "盘的Magia/Doppel类型...");
+        let result = null;
+        try {
+            result = recognizeDisk(actionImg, "action", 2.1);
+        } catch (e) {
+            if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
+            result = null;
+            log("第", diskPos+1, "盘处看上去没有盘");
+        }
+        return result;
     }
     function getDiskAttribDown(screenshot, diskPos) {
         let result = {attrib: null, down: false};
@@ -6958,8 +7273,15 @@ function algo_init() {
         return result;
     }
     function isDiskDown(screenshot, diskPos) {
+        //也可以接受disk作为参数，点击Magia/Doppel盘时可避免属性对不上
+        let disk = null;
+        if (typeof diskPos != "number") {
+            disk = diskPos;
+            diskPos = disk.position;
+        } else {
+            disk = allActionDisks[diskPos];
+        }
         let attribImg = getDiskImg(screenshot, diskPos, "attrib");
-        let disk = allActionDisks[diskPos];
         log("识别第", diskPos+1, "盘 (", disk.attrib, ") 是否被按下...");
         let recogResult = null;
         try {
@@ -7078,7 +7400,7 @@ function algo_init() {
         let screenshot = compatCaptureScreen();
         for (let i=0; i<allActionDisks.length; i++) {
             let disk = allActionDisks[i];
-            disk.action = getDiskAction(screenshot, i);
+            disk.action = getDiskActionABC(screenshot, i);
             disk.charaImg = getDiskCharaImg(screenshot, i);
             let isConnectableDown = isDiskConnectableDown(screenshot, i); //isConnectableDown.down==true也有可能是只剩一人无法连携的情况，
             disk.connectable = isConnectableDown.connectable && (!isConnectableDown.down); //所以这里还无法区分盘是否被按下，但是可以排除只剩一人无法连携的情况
@@ -7357,7 +7679,7 @@ function algo_init() {
             logDiskInfo(disks[i]);
         }
         let replaceDiskAtThisPriority = clickedDisksCount;
-        for (let i=0; i<disks.length; i++) {
+        for (let i=0; i<disks.length&&replaceDiskAtThisPriority<ordinalWord.length; i++) {
             let targetDisk = getDiskByPriority(allActionDisks, ordinalWord[replaceDiskAtThisPriority]);
             let diskToPrioritise = disks[i];
             let posA = targetDisk.position;
@@ -7435,7 +7757,7 @@ function algo_init() {
             sleep(333);
             let screenshot = compatCaptureScreen();
             try {
-                disk.down = isDiskDown(screenshot, disk.position);
+                disk.down = isDiskDown(screenshot, disk);
             } catch (e) {
                 if (e.toString() == "isDiskDownInconclusive") {
                     inconclusiveCount++;
@@ -7664,27 +7986,54 @@ function algo_init() {
     }
 
     //是否有我方行动盘出现
-    function isDiskAppearing(screenshot) {
+    function detectAppearingDiskType(screenshot) {
         let img = getDiskImg(screenshot, 0, "action");
         if (img != null) {
             log("已截取第一个盘的动作图片");
         } else {
             log("截取第一个盘的动作图片时出现问题");
         }
-        let diskAppeared = true;
+        let result = null;
         try {
-            recognizeDisk(img, "action", 2.1);
+            result = recognizeDisk(img, "action", 2.1);
+            switch (result) {
+                case "accel":
+                case "blast":
+                case "charge":
+                    result = "abc";
+                    break;
+                case "magia":
+                case "doppel":
+                    result = "magiadoppel";
+                    break;
+                default:
+                    throw new Error("detectAppearingDiskType: unknown disk action type");
+            }
         } catch(e) {
             if (e.toString() != "recognizeDiskLowerThanThreshold") log(e);
-            diskAppeared = false;
+            result = null;
         }
-        return diskAppeared;
+        return result;
+    }
+    function isMagiaDiskAppearing(screenshot) {
+        return detectAppearingDiskType(screenshot) == "magiadoppel" ? true : false;
+    }
+    function isABCDiskAppearing(screenshot) {
+        return detectAppearingDiskType(screenshot) == "abc" ? true : false;
+    }
+    function isDiskAppearing(screenshot) {
+        switch (detectAppearingDiskType(screenshot)) {
+            case "abc":
+            case "magiadoppel":
+                return true;
+        }
+        return false;
     }
 
     //打开或关闭技能面板
     function toggleSkillPanel(open) {
         log((open?"打开":"关闭")+"技能面板...");
-        for (let attempt=0; isDiskAppearing(compatCaptureScreen())==open; attempt++) {
+        for (let attempt=0; isABCDiskAppearing(compatCaptureScreen())==open; attempt++) {
             if (attempt >= 10) {
                 log((open?"打开":"关闭")+"技能面板时出错");
                 stopThread();
@@ -7710,10 +8059,43 @@ function algo_init() {
         pos: "top"
     };
 
+    //用于防误触：
+    //镜层角色详细信息出现时,返回按钮上,这里也是白色
+    //剧情副本(而不是镜层)的MENU按钮可用时,这里就不是白色了
+    //RGB=142,109,66
+    const knownMenuButtonPoint = {
+        x: 82,
+        y: 54,
+        pos: "top"
+    };
+
+    //进一步防误触：
+    //没打开战斗任务内容窗口（三星任务等，auto设置也在这里）时,这里不是白色
+    //打开战斗任务内容窗口后,这里就变成白色了
+    const battleMenuCloseButtonPoints = [
+        {
+            x: 1763,
+            y: 68,
+            pos: "top"
+        },
+        {
+            x: 1781,
+            y: 73,
+            pos: "top"
+        },
+    ];
+
+    //点击时往下点,避免误触倍速按钮
+    const battleMenuCloseButtonClickPoint = {
+        x: 1777,
+        y: 113,
+        pos: "top"
+    };
+
     //检测返回按钮是否出现
     function isBackButtonAppearing(screenshot) {
-        let point = convertCoords(knownBackButtonPoint);
-        if (images.detectsColor(screenshot, colors.WHITE, point.x, point.y, 32, "diff")) {
+        let points = [knownBackButtonPoint, knownMenuButtonPoint].map((val) => convertCoords(val));
+        if (points.find((val) => !images.detectsColor(screenshot, colors.WHITE, val.x, val.y, 32, "diff")) == null) {
             log("似乎出现了返回按钮");
             return true;
         } else {
@@ -7722,23 +8104,44 @@ function algo_init() {
         }
     }
 
-    //有返回按钮出现时点击
+    //检测战斗任务内容窗口是否出现
+    function isBattleMenuCloseButtonAppearing(screenshot) {
+        let points = battleMenuCloseButtonPoints.map((val) => convertCoords(val));
+        if (points.find((val) => !images.detectsColor(screenshot, colors.WHITE, val.x, val.y, 32, "diff")) == null) {
+            log("似乎出现了战斗任务内容窗口");
+            return true;
+        } else {
+            log("似乎没出现战斗任务内容窗口");
+            return false;
+        }
+    }
+
+    //有返回按钮出现时点击返回,或者出现战斗任务内容窗口时点击关闭
     function clickBackButtonIfShowed() {
         let lastClickTime = 0;
         let attemptMax = 10;
         for (let attempt=0; attempt<attemptMax; attempt++) {
-            if (!isBackButtonAppearing(compatCaptureScreen())) {
+            let screenshot = compatCaptureScreen();
+            let isClickingBackNeeded = isBackButtonAppearing(screenshot);
+            let isClickingCloseNeeded = isBattleMenuCloseButtonAppearing(screenshot);
+            if (!(isClickingBackNeeded || isClickingCloseNeeded)) {
                 return true;
             }
             let clickTime = new Date().getTime();
             if (lastClickTime == 0 || clickTime - lastClickTime > 2000) {
                 lastClickTime = clickTime;
-                log("点击返回");
-                click(convertCoords(clickSetsMod.back));
+                if (isClickingBackNeeded) {
+                    log("点击返回");
+                    click(convertCoords(clickSetsMod.back));
+                }
+                if (isClickingCloseNeeded) {
+                    log("点击关闭战斗任务内容窗口");
+                    click(convertCoords(battleMenuCloseButtonClickPoint));
+                }
             }
             sleep(500);
         }
-        log("尝试点击返回多次仍然没有效果");
+        log("尝试点击返回或关闭多次仍然没有效果");
         return false;
     }
 
@@ -7872,6 +8275,122 @@ function algo_init() {
         //关闭技能面板
         toggleSkillPanel(false);
         return false;
+    }
+
+    var knownMagiaButtonCoords = {
+        topLeft: {
+            x: 78, y: 894, pos: "bottom"
+        },
+        bottomRight: {
+            x: 224, y: 976, pos: "bottom"
+        }
+    };
+
+    function getMagiaButtonArea() {
+        return getConvertedArea(knownMagiaButtonCoords);
+    }
+
+    function getMagiaButtonImg(screenshot) {
+        let area = getMagiaButtonArea();
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+
+    //有Magia/Doppel可用的时候,无论是否打开Magia面板,左边的切换按钮都不是灰色的
+    //这是一个取巧的办法,如果行动盘还没显示出来,就可能误判成Magia可用
+    function isMagiaAvailable(screenshot) {
+        let img = getMagiaButtonImg(screenshot);
+        let imgGRAY = renewImage(images.grayscale(img));
+        let imgGray = renewImage(images.cvtColor(imgGRAY, "GRAY2BGRA"));
+        let imgBGRA = renewImage(images.cvtColor(img, "BGR2BGRA"));
+        let isGray = false;
+        let similarity = images.getSimilarity(imgBGRA, imgGray, {"type": "MSSIM"});
+        log("判断按钮区域图像是否为灰度 MSSIM=", similarity);
+        if (similarity > 2.9) {
+            log("Magia不可用");
+            return false;
+        } else {
+            log("Magia可用,或者行动盘尚未显示");
+            return true;
+        }
+    }
+
+    //打开或关闭Magia面板
+    function toggleMagiaPanel(open) {
+        log((open?"打开":"关闭")+"Magia面板...");
+        let screenshot = compatCaptureScreen();
+        if (!isMagiaAvailable(screenshot)) return false;
+        for (let attempt=0; open?!isMagiaDiskAppearing(screenshot):!isABCDiskAppearing(screenshot); attempt++) {
+            if (attempt >= 10) {
+                log((open?"打开":"关闭")+"Magia面板时出错");
+                stopThread();
+            }
+            log("点击切换Magia面板/行动盘面板");
+            click(getAreaCenter(getMagiaButtonArea()));
+            sleep(1000);
+            screenshot = compatCaptureScreen();
+        }
+        return open ? true : false;
+    }
+
+    function scanMagiaDisks() {
+        let result = [];
+
+        //截屏，对盘进行识别
+        //这里还是假设没有盘被按下
+        let screenshot = compatCaptureScreen();
+        for (let i=0; i<allActionDisks.length; i++) {
+            let disk = {
+                position:    i,
+                down:        false,
+                action:      "magia",
+                attrib:      "none",
+                //charaImg:    null,
+                //charaID:     0
+            };
+            let action = getDiskActionMagiaDoppel(screenshot, i);
+            if (action != "magia" && action != "doppel") break;
+            disk.action = action;
+            //disk.charaImg = getDiskCharaImg(screenshot, i);
+            let diskAttribDown = getDiskAttribDown(screenshot, i);
+            disk.attrib = diskAttribDown.attrib;
+            disk.down = diskAttribDown.down; //这里，虽然getDiskAttribDown()可以识别盘是否按下，但是因为后面分辨不同的角色的问题还无法解决，所以意义不是很大
+            result.push(disk);
+        }
+        //分辨不同的角色，用charaID标记
+        //如果有盘被点击过，在有属性克制的情况下，这个检测可能被闪光特效干扰
+        //如果有按下的盘，这里也会把同一位角色误判为不同角色
+        //for (let i=0; i<result.length-1; i++) {
+        //    let diskI = result[i];
+        //    for (let j=i+1; j<allActionDisks.length; j++) {
+        //        let diskJ = allActionDisks[j];
+        //        if (areDisksSimilar(screenshot, i, j)) {
+        //            diskJ.charaID = diskI.charaID;
+        //        }
+        //    }
+        //}
+
+        log("行动盘扫描结果：");
+        for (let i=0; i<result.length; i++) {
+            logDiskInfo(result[i]);
+        }
+
+        return result;
+    }
+
+    //闭着眼放出所有Magia/Doppel大招
+    function clickAllMagiaDisks() {
+        //打开技能面板
+        if (!toggleMagiaPanel(true)) return;
+
+        let magiaDisks = scanMagiaDisks();
+        for (let disk of magiaDisks) {
+            clickDisk(disk);
+            //如果已经点完3个盘就不用继续往下点了
+            if (clickedDisksCount >= 3) return;
+        }
+
+        //关闭技能面板
+        toggleMagiaPanel(false);
     }
 
     //等待己方回合
@@ -8067,9 +8586,9 @@ function algo_init() {
         for (let imgName in knownImgs) {
             let newsize = [0, 0];
             let knownArea = null;
-            if (imgName == "accel" || imgName == "blast" || imgName == "charge") {
+            if (diskActions.find((val) => val == imgName) != null) {
                 knownArea = knownFirstDiskCoords["action"];
-            } else if (imgName.startsWith("light") || imgName.startsWith("dark") || imgName.startsWith("water") || imgName.startsWith("fire") || imgName.startsWith("wood") || imgName.startsWith("none")) {
+            } else if (diskAttribs.find((val) => val == imgName || val+"BtnDown" == imgName) != null) {
                 knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
             } else if (imgName == "connectIndicatorBtnDown") {
                 knownArea = knownFirstDiskCoords["connectIndicator"];
@@ -8210,6 +8729,11 @@ function algo_init() {
             //我的回合，抽盘
             turn++;
 
+            //扫描行动盘之前，先确保Magia面板没开
+            if (isMagiaDiskAppearing(compatCaptureScreen())) {
+                toggleMagiaPanel(false);
+            }
+
             //扫描行动盘和战场信息
             scanDisks();
             scanBattleField("our");
@@ -8333,9 +8857,16 @@ function algo_init() {
                 }
             }
 
+            if (limit.CVAutoBattleClickAllMagiaDisks) {
+                //闭着眼放出所有Magia/Doppel大招
+                clickAllMagiaDisks();
+                //如果三个盘都是Magia/Doppel那就不用选A/B/C盘了
+                if (clickedDisksCount >= 3) continue;
+            }
+
             //提前把不被克制的盘排到前面
-            //这样一来，如果后面既没有接连携的角色更没有进一步（同角色）的Blast Combo
-            //也没有无连携的Puella Combo和进一步（同角色）的Blast Combo
+            //这样一来，如果后面既没有接连携的角色更没有进一步（同角色）的Accel/Blast Combo
+            //也没有无连携的Puella Combo和进一步（同角色）的Accel/Blast Combo
             //应该就会顺位选到它们
             let nonDisadvAttribDisks = findNonDisadvAttribDisks(allActionDisks, [battleField["their"].lastAimedAtEnemy]);
             prioritiseDisks(nonDisadvAttribDisks);
@@ -8347,51 +8878,101 @@ function algo_init() {
             if (connectableDisks.length > 0) {
                 //如果有连携，第一个盘上连携
                 let selectedDisk = connectableDisks[0];
-                //连携尽量用blast盘
-                let blastConnectableDisks = findSameActionDisks(connectableDisks, "blast");
-                if (blastConnectableDisks.length > 0) selectedDisk = blastConnectableDisks[0];
+                //连携尽量用accel/blast盘
+                let AorBConnectableDisks = findSameActionDisks(connectableDisks, limit.CVAutoBattlePreferAccel ? "accel" : "blast");
+                if (AorBConnectableDisks.length > 0) selectedDisk = AorBConnectableDisks[0];
                 prioritiseDisks([selectedDisk]); //将当前连携盘从选盘中排除
                 connectDisk(selectedDisk);
                 //上连携后，尽量用接连携的角色
                 let connectAcceptorDisks = findDisksByCharaID(allActionDisks, selectedDisk.connectedTo);
                 prioritiseDisks(connectAcceptorDisks);
-                //连携的角色尽量打出Blast Combo
-                let blastDisks = findSameActionDisks(connectAcceptorDisks, "blast");
-                prioritiseDisks(blastDisks);
+                //连携的角色尽量打出Accel/Blast/Charge Combo
+                let sameActionComboDisks = findSameActionDisks(
+                    limit.CVAutoBattlePreferABCCombo
+                        ? allActionDisks.filter((val) => ordinalNum[val.priority] >= clickedDisksCount)
+                        : connectAcceptorDisks,
+                    selectedDisk.action
+                );
+                if (sameActionComboDisks.length >= 2) {
+                    prioritiseDisks(sameActionComboDisks);
+                    if (limit.CVAutoBattlePreferABCCombo) {
+                        prioritiseDisks(sameActionComboDisks.filter(
+                            (disk) => connectAcceptorDisks.find((val) => disk.position == val.position) != null
+                        ));
+                    }
+                } else {
+                    //凑不够Accel/Blast/Charge Combo，再试试XCA/XCB
+                    let chargeDisks = findSameActionDisks(connectAcceptorDisks, "charge");
+                    if (chargeDisks.length > 0) {
+                        let AccelOrBlastDisks = findSameActionDisks(connectAcceptorDisks, limit.CVAutoBattlePreferAccel ? "accel" : "blast");
+                        if (AccelOrBlastDisks.length == 0) {
+                            AccelOrBlastDisks = findSameActionDisks(connectAcceptorDisks, limit.CVAutoBattlePreferAccel ? "blast" : "accel");
+                        }
+                        if (AccelOrBlastDisks.length > 0) {
+                            prioritiseDisks([chargeDisks[0], AccelOrBlastDisks[0]]);
+                        }
+                    }
+                }
             } else {
                 //没有连携
-                //先找Puella Combo
                 let candidateDisks = allActionDisks;
+                //默认先找Puella Combo
                 let sameCharaDisks = findSameCharaDisks(allActionDisks);
                 if (sameCharaDisks.length >= 3) {
-                    candidateDisks = sameCharaDisks;
-                    prioritiseDisks(sameCharaDisks);
+                    candidateDisks = limit.CVAutoBattlePreferABCCombo ? allActionDisks : sameCharaDisks;
+                    if (!limit.CVAutoBattlePreferABCCombo) {
+                        prioritiseDisks(sameCharaDisks);
+                    }
                 }
-                //再依次找Blast/Accel/Charge Combo
+                //再依次找Accel/Blast/Charge Combo
                 let comboDisks = [];
-                for (let action of ["blast", "accel", "charge"]) {
+                let sameactionseq = limit.CVAutoBattlePreferAccel ? ["accel", "blast", "charge"] : ["blast", "accel", "charge"];
+                for (let action of sameactionseq) {
                     comboDisks = findSameActionDisks(candidateDisks, action);
                     if (comboDisks.length >= 3) {
                         prioritiseDisks(comboDisks);
+                        if (limit.CVAutoBattlePreferABCCombo) {
+                            //已经优先凑出了Accel/Blast/Charge Combo，继续尝试在Accel/Blast/Charge Combo凑出Puella Combo
+                            prioritiseDisks(findSameCharaDisks(comboDisks));
+                        }
                         break;
                     }
                 }
-                let ACBDisks = [];
+                let lastPreferredDisks = [];
+                let lastPreferredDisksCandidates = {};
                 if (comboDisks.length < 3) {
-                    //再找ACB
-                    //先找Puella Combo内的ACB，再找混合ACB
-                    let ACBAttemptMax = sameCharaDisks.length >= 3 ? 2 : 1;
+                    //再找ACA、ACB
+                    //先找Puella Combo内的ACA、ACB，再找混合ACA、ACB
                     candidateDisks = sameCharaDisks.length >= 3 ? sameCharaDisks : allActionDisks;
-                    for (let ACBAttempt=0; ACBAttempt<ACBAttemptMax; ACBAttempt++) {
-                        for (let action of ["accel", "charge", "blast"]) {
-                            let foundDisks = findSameActionDisks(candidateDisks, action);
-                            if (foundDisks.length > 0) ACBDisks.push(foundDisks[0]);
+                    for (let attempt=0,attemptMax=sameCharaDisks.length>=3?2:1; attempt<attemptMax; attempt++) {
+                        let nonsameactionsequences = {
+                            ACA: ["accel", "charge", "accel"],
+                            ACB: ["accel", "charge", "blast"],
+                        };
+                        for (let name in nonsameactionsequences) {
+                            if (lastPreferredDisksCandidates[name] == null)
+                                lastPreferredDisksCandidates[name] = [];
+                            let nonsameactionseq = nonsameactionsequences[name];
+                            for (let action of nonsameactionseq) {
+                                let foundDisks = findSameActionDisks(candidateDisks, action);
+                                //找到之前没加进来过的
+                                let foundDisk = foundDisks.find((disk) =>
+                                    lastPreferredDisksCandidates[name].find((val) => val.position == disk.position) == null
+                                );
+                                if (foundDisk != null) {
+                                    lastPreferredDisksCandidates[name].push(foundDisk);
+                                }
+                            }
+                            if (lastPreferredDisksCandidates[name].length >= 3) {
+                                lastPreferredDisks = lastPreferredDisksCandidates[name];
+                                break;
+                            }
                         }
-                        if (ACBDisks.length >= 3) {
-                            prioritiseDisks(ACBDisks);
+                        if (lastPreferredDisks.length >= 3) {
+                            prioritiseDisks(lastPreferredDisks);
                             break;
                         } else if (sameCharaDisks.length >= 3) {
-                            //有Puella Combo但Puella Combo内没有ACB，那就Puella Combo
+                            //有Puella Combo但Puella Combo内没有ACA/ACB，那就Puella Combo
                             prioritiseDisks(sameCharaDisks);
                             break;
                         }
