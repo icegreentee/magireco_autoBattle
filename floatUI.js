@@ -8890,8 +8890,8 @@ function algo_init() {
             bottomRight: {x: 0, y: distance, pos: "center"}
         }
         for (point in knownArea) {
-            for (key in knownArea.topLeft) {
-                knownArea[point][key] += knownFirstMirrorsOpponentScoreCoords[point][key];
+            for (axis of ["x", "y"]) {
+                knownArea[point][axis] += knownFirstMirrorsOpponentScoreCoords[point][axis];
             }
         }
         let convertedArea = getConvertedArea(knownArea);
@@ -8944,8 +8944,8 @@ function algo_init() {
             bottomRight: {x: distancex, y: distancey, pos: "center"}
         }
         for (point in knownArea) {
-            for (key in knownArea.topLeft) {
-                knownArea[point][key] += knownFirstMirrorsLvCoords[point][key];
+            for (axis of ["x", "y"]) {
+                knownArea[point][axis] += knownFirstMirrorsLvCoords[point][axis];
             }
         }
         let convertedArea = getConvertedArea(knownArea);
