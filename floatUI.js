@@ -221,6 +221,33 @@ floatUI.presetOpLists = [
             +"\"},\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail"
             +"\"}}}]}",
     },
+    {
+        name: "国服门票活动剧情1",
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-2_"
+            +"21-35-50\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventTypeB"
+            +"RANCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":16"
+            +"20,\"y\":549,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTi"
+            +"me\":3000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182,"
+            +"\"pos\":\"top\"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y"
+            +"\":1062,\"pos\":\"top\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":2"
+            +"000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"po"
+            +"s\":\"top\"},{\"x\":1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"ac"
+            +"tion\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\"}"
+            +",{\"x\":1092,\"y\":397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"sw"
+            +"ipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":114"
+            +"0,\"y\":406,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swi"
+            +"pe\":{\"points\":[{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379,"
+            +"\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"click\",\"click\":{\"poin"
+            +"t\":{\"x\":1092,\"y\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\""
+            +":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\":\""
+            +"剧情副本\",\"boundsCenter\":{\"centerX\":305,\"centerY\":467,\"pos\":\"top\"},\""
+            +"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\""
+            +"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}}"
+            +",{\"action\":\"checkText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCen"
+            +"ter\":{\"x\":298,\"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopSc"
+            +"ript\":false,\"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"sto"
+            +"pScript\":false,\"nextAction\":\"fail\"}}}]}",
+    },
 ];
 
 //当前正在运行的线程
