@@ -5624,7 +5624,7 @@ function algo_init() {
         var battlename = "";
         var charabound = null;
         var battlepos = null;
-        var inautobattle = null; //null表示状态未知
+        var inautobattle = null; //null表示状态未知,另外注意undefined !== null
         var battleStartBtnClickTime = 0;
         var stuckStartTime = new Date().getTime();
         var lastStuckRemindTime = new Date().getTime();
@@ -5634,6 +5634,7 @@ function algo_init() {
         var bypassPopupCheckCounter = 0;
         var ensureGameDeadCounter = 0;
         var lastFoundPreferredChara = null;
+        var isStartAutoRestartBtnAvailable = true; //一开始不知道自动续战按钮是否存在(后面检测了才知道),默认当作存在,详情见后
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -6089,20 +6090,30 @@ function algo_init() {
                 }
 
                 case STATE_TEAM: {
+                    //如果在开启“优先使用官方自动续战”的同时,还开启了“只对优选助战使用官方自动续战”,
+                    //那么是否要优先点击自动续战按钮还得考虑这一次(每次情况都可能不一样)有没有找到符合优选条件的助战
+                    //这里赋值为true或false,避免把object或undefined赋值进去
+                    var shouldUseAuto = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)) ? true : false;
+
                     //走到这里时肯定至少已经检测到开始按钮,即nextPageBtn
                     //因为后面检测误触弹窗和按钮比较慢,先闭着眼点一下开始或自动续战按钮
-                    //一开始不知道能不能用自动续战,inautobattle还是null,这个时候就按照是否启用官方自动续战的设置来
-                    //后面检测按钮后就给inautobattle赋值了,就按照inautobattle是true或false的情况来
-                    click(convertCoords(clickSets[(inautobattle===null?(limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)):inautobattle)?"startAutoRestart":"start"]));
+                    //一开始不知道自动续战按钮是否存在(后面检测了才知道),默认当作存在,
+                    //然后(如果需要优先点击自动续战的话)即便按钮实际不存在也只是多点空一次,无害,
+                    //即使这次点空了,后面检测完按钮仍然会再点一次补上
+                    var BtnNameStartOrAuto = shouldUseAuto && isStartAutoRestartBtnAvailable ? "startAutoRestart" : "start";
+                    click(convertCoords(clickSets[BtnNameStartOrAuto]));
                     sleep(300);//避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
 
-                    var element = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)) ? findID("nextPageBtnLoop") : findID("nextPageBtn");
-                    if ((limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara))) {
+                    //检测自动续战或开始按钮是否存在(但并不是每次都会把两个按钮都检测一遍)
+                    var element = shouldUseAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
+                    if (shouldUseAuto) {
                         if (element) {
+                            isStartAutoRestartBtnAvailable = true;
                             inautobattle = true;
                         } else {
                             element = findID("nextPageBtn");
                             if (element) {
+                                isStartAutoRestartBtnAvailable = false;
                                 inautobattle = false;
                                 log("未发现自动续战，改用标准战斗");
                             }
@@ -6111,7 +6122,9 @@ function algo_init() {
                     // exit condition
                     if (findID("android:id/content") && !element) {
                         state = STATE_BATTLE;
-                        if (inautobattle === null) inautobattle = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara));
+                        if (inautobattle == null) {
+                            inautobattle = shouldUseAuto;
+                        }
                         log("进入战斗");
                         break;
                     }
@@ -6304,7 +6317,7 @@ function algo_init() {
                         state = STATE_MENU;
                         log("进入关卡选择");
                         break;
-                    } else if (inautobattle === null) {
+                    } else if (inautobattle == null) {
                         toastLog("无法识别状态,\n不知道是战斗/剧情播放还是其他状态");
                         if (lastOpList == null) {
                             toastLog("结束运行");
