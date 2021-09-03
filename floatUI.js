@@ -3030,21 +3030,21 @@ function algo_init() {
                 : (""+limit.preferredSupportCharaNames)
                   .replace(/，|\r|\n/g, ",")
                   .split(',')
-                  .filter((val) => !val.match(/^ +$/));
+                  .filter((val) => !val.match(/^ *$/));
         let excludedSupportCharaNames =
             limit.excludedSupportCharaNames == null
                 ? []
                 : (""+limit.excludedSupportCharaNames)
                   .replace(/，|\r|\n/g, ",")
                   .split(',')
-                  .filter((val) => !val.match(/^ +$/));
+                  .filter((val) => !val.match(/^ *$/));
         let preferredSupportMemorias =
             limit.preferredSupportMemorias == null
                 ? []
                 : (""+limit.preferredSupportMemorias)
                   .replace(/，|\r|\n/g, ",")
                   .split(',')
-                  .filter((val) => !val.match(/^ +$/));
+                  .filter((val) => !val.match(/^ *$/));
 
         if (preferredSupportCharaNames.length > 0 || preferredSupportMemorias.length > 0) {
             log("已启用优选助战");
@@ -3072,7 +3072,7 @@ function algo_init() {
                 //排除规则和优选规则的匹配逻辑其实是类似的，所以这里单独抽出来一个回调函数
                 for (let i=0; i<HighPtPlayers.length; i++) {
                     //都是要顺着互关好友列表依次捋一遍
-                    let splittedTextPatterns = textPattern.split(" ");
+                    let splittedTextPatterns = textPattern.split(" ").filter((val) => !val.match(/^ *$/));
                     let playerLvPt = HighPtPlayers[i];
                     playerLvPt.indexInHighPtPlayers = i;
 
