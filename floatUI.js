@@ -1444,6 +1444,7 @@ var limit = {
     drug3: false,
     autoReconnect: true,
     justNPC: false,
+    dragSupportList: false,
     preferredSupportCharaNames: "",
     excludedSupportCharaNames: "",
     preferredSupportMemorias: "",//未实现
@@ -2732,9 +2733,25 @@ function algo_init() {
     }
     const ptDistanceY = 243.75;
 
-    function swipeToPointIfNeeded(point) {
-        let screenBottomY = getWindowSize().y - 50;
+    //屏幕范围内的最后一个助战Y坐标
+    //考虑到屏幕底部可能有手势导航条之类的,稍微往里收窄一些
+    const screenBottomYInnerMargin = 20;
+    function clampSupportY() {
+        let screenBottomY = getWindowSize().y - screenBottomYInnerMargin;
         let convertedPtDistanceY = convertCoordsNoCutout({x: 0, y: ptDistanceY, pos: "top"}).y;
+        let convertedFirst = convertCoords(knownFirstPtPoint);
+        let rangeY = screenBottomY - convertedFirst.y;
+        return parseInt(screenBottomY - (rangeY % convertedPtDistanceY));
+    }
+
+    function swipeToPointIfNeeded(point) {
+        let screenBottomY = getWindowSize().y - screenBottomYInnerMargin;
+        let convertedPtDistanceY = convertCoordsNoCutout({x: 0, y: ptDistanceY, pos: "top"}).y;
+        if (!limit.dragSupportList && point.y > screenBottomY) {
+            toastLog("助战位置超出游戏画面之外\n限制到屏幕范围内");
+            point.y = clampSupportY();
+            return point;
+        }
         while (point.y > screenBottomY) {
             toastLog("助战位置超出游戏画面之外\n自动拖动助战列表...");
             let remainingDistance = point.y - screenBottomY;
@@ -3132,9 +3149,20 @@ function algo_init() {
                     y: knownFirstPtPoint.y + ptDistanceY * supportPos,
                     pos: knownFirstPtPoint.pos
                 }
-                point = convertCoords(point);//可能是超出屏幕范围之外的，还需要拖动
-                log("返回优选助战结果");
-                return {point: point, foundPreferredChara: foundPreferredChara, testdata: testOutputString};
+                point = convertCoords(point);
+                if (point.y <= getWindowSize().y - screenBottomYInnerMargin) {
+                    //没超出屏幕范围
+                    log("返回优选助战结果(未超出屏幕范围)");
+                    return {point: point, foundPreferredChara: foundPreferredChara, testdata: testOutputString};
+                } else {
+                    //超出屏幕范围
+                    if (limit.dragSupportList) {
+                        log("返回优选助战结果(超出屏幕范围,需要拖动)");
+                        return {point: point, foundPreferredChara: foundPreferredChara, testdata: testOutputString};
+                    } else {
+                        log("优选助战结果在屏幕范围外,因为禁用了拖动所以放弃优选结果");
+                    }
+                }
             }
         }
 
@@ -3165,9 +3193,13 @@ function algo_init() {
                 pos: knownFirstPtPoint.pos
             }
             point = convertCoords(point);
-            if (point.y >= getWindowSize().y - 1) {
-                toastLog("推算出的第一个互关好友坐标已经超出屏幕范围");
-                //在click里会限制到屏幕范围之内
+            if (point.y > getWindowSize().y - screenBottomYInnerMargin) {
+                if (limit.dragSupportList) {
+                    log("推算出的第一个互关好友坐标已经超出屏幕范围,需要拖动");
+                } else {
+                    toastLog("推算出的第一个互关好友坐标已经超出屏幕范围\n限制到屏幕范围内");
+                    point.y = clampSupportY();
+                }
             }
             return {point: point, testdata: testOutputString};
         } else if (NPCPtIndices.length > 0) {
