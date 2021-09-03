@@ -154,6 +154,10 @@ floatUI.scripts = [
         fn: tasks.clearSteps,
     },
     {
+        name: "文字抓取",
+        fn: tasks.captureText,
+    },
+    {
         name: "测试助战自动选择",
         fn: tasks.testSupportSel,
     },
@@ -1411,6 +1415,10 @@ var limit = {
     drug3: false,
     autoReconnect: true,
     justNPC: false,
+    preferredSupportCharaNames: "",
+    excludedSupportCharaNames: "",
+    preferredSupportMemorias: "",//未实现
+    autoForPreferredOnly: false,
     drug4: false,
     drug1num: '0',
     drug2num: '0',
@@ -2685,6 +2693,48 @@ function algo_init() {
     }
     const ptDistanceY = 243.75;
 
+    function swipeToPointIfNeeded(point) {
+        let screenBottomY = getWindowSize().y - 50;
+        let convertedPtDistanceY = convertCoordsNoCutout({x: 0, y: ptDistanceY, pos: "top"}).y;
+        while (point.y > screenBottomY) {
+            toastLog("助战位置超出游戏画面之外\n自动拖动助战列表...");
+            let remainingDistance = point.y - screenBottomY;
+            //一开始步子迈的大一些，然后减小步伐
+            //步子迈太小了也不行，会误识别成长按，所以得留一步距离给下一次拖动
+            let swipeDistanceX = 0;
+            let swipeDistanceY = 0;
+            let swipeDuration = 4000;
+            if (remainingDistance > convertedPtDistanceY * 4) {
+                swipeDistanceY = convertedPtDistanceY * 3;
+                swipeDuration = 4000;
+            } else if (remainingDistance > convertedPtDistanceY * 3) {
+                swipeDistanceY = convertedPtDistanceY * 2;
+                swipeDuration = 3500;
+            } else if (remainingDistance > convertedPtDistanceY * 2) {
+                swipeDistanceY = convertedPtDistanceY;
+                swipeDuration = 3000;
+            } else if (remainingDistance > convertedPtDistanceY) {
+                //最后两步并一步
+                swipeDistanceY = remainingDistance;
+                swipeDuration = 3000;
+            } else if (remainingDistance > 0 && remainingDistance <= convertedPtDistanceY) {
+                //正常情况下走不到这里
+                swipeDistanceX = convertedPtDistanceY;
+                swipeDistanceY = remainingDistance;
+                swipeDuration = 3000;
+            } else {
+                toastLog("自动拖动助战列表时出错");
+                log("返回第一个助战");
+                return convertCoords(knownFirstPtPoint);
+            }
+            if (swipeDistanceX != 0) log("警告 swipeDistanceX不为零 swipeDistanceX="+swipeDistanceX);
+            swipe(point.x, screenBottomY, point.x - swipeDistanceX, screenBottomY - swipeDistanceY, swipeDuration);
+            sleep(500);
+            point.y -= swipeDistanceY;
+        }
+        return point;
+    }
+
     function pickSupportWithMostPt(isTestMode) {
         var hasError = false;
         //Lv/ATK/DEF/HP [Rank] 玩家名 [最终登录] Pt
@@ -2726,7 +2776,8 @@ function algo_init() {
             +"\n  类似Lv/ATK/DEF/HP的控件个数: "+LvLikeIndices.length
             +"\n  类似Rank的控件个数:          "+RankLikeIndices.length
             +"\n  类似上次登录的控件个数:      "+LastLoginLikeIndices.length
-            +"\n  类似Pt的控件个数:            "+PtLikeIndices.length);
+            +"\n  类似Pt的控件个数:            "+PtLikeIndices.length
+            +"\n");
 
         let AllLvIndices = [];
         let PlayerLvIndices = [];
@@ -2928,6 +2979,124 @@ function algo_init() {
         if (hasError) {
             toastLog("助战选择过程中出错,返回第一个助战");
             return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+        }
+
+        //优选助战：
+        //优先选指定角色（比如龙城明日香，但现在还不能和恶搞玩家名区分），
+        //或者加成记忆（未实现，貌似有点复杂，可能以后也不会在这里实现）。
+
+        let preferredSupportCharaNames =
+            limit.preferredSupportCharaNames == null
+                ? []
+                : (""+limit.preferredSupportCharaNames)
+                  .replace(/，|\r|\n/g, ",")
+                  .split(',')
+                  .filter((val) => !val.match(/^ +$/));
+        let excludedSupportCharaNames =
+            limit.excludedSupportCharaNames == null
+                ? []
+                : (""+limit.excludedSupportCharaNames)
+                  .replace(/，|\r|\n/g, ",")
+                  .split(',')
+                  .filter((val) => !val.match(/^ +$/));
+        let preferredSupportMemorias =
+            limit.preferredSupportMemorias == null
+                ? []
+                : (""+limit.preferredSupportMemorias)
+                  .replace(/，|\r|\n/g, ",")
+                  .split(',')
+                  .filter((val) => !val.match(/^ +$/));
+
+        if (preferredSupportCharaNames.length > 0 || preferredSupportMemorias.length > 0) {
+            log("已启用优选助战");
+            let HighPtPlayers = [];//在这个数组里保存每个互关好友的Lv/ATK/DEF/HP控件和Pt控件两个序号
+            for (let i=0; i<PlayerHighPtIndices.length; i++) {
+                let ptIndex = PlayerHighPtIndices[i];
+                let lvIndexMax = -1;
+                PlayerLvIndices.forEach((lvIndex) => {
+                    if (lvIndex < ptIndex && lvIndex > lvIndexMax)
+                        lvIndexMax = lvIndex;
+                });
+                if (lvIndexMax <= -1) {
+                    hasError = true;
+                    toastLog("优选助战时出错,找不到第"+i+"个互关好友的Lv控件,返回第一个助战");
+                    return {point: convertCoords(knownFirstPtPoint), testdata: testOutputString};
+                }
+                let playerLvPt = {lvIndex: lvIndexMax, ptIndex: ptIndex};
+                HighPtPlayers.push(playerLvPt);
+            };
+            //排序，以防万一
+            HighPtPlayers.sort((i, j) => i.lvIndex - j.lvIndex);
+            //在互关好友中寻找优先选择的角色名
+            let foundPreferredChara = null;//如果找到了就放在这个变量里
+            function matchingCallback(textPattern, innerCallbackIfMatched) {
+                //排除规则和优选规则的匹配逻辑其实是类似的，所以这里单独抽出来一个回调函数
+                for (let i=0; i<HighPtPlayers.length; i++) {
+                    //都是要顺着互关好友列表依次捋一遍
+                    let splittedTextPatterns = textPattern.split(" ");
+                    let playerLvPt = HighPtPlayers[i];
+                    playerLvPt.indexInHighPtPlayers = i;
+
+                    //跑在优选规则里，这里很显然是跳过被标记为排除的助战。
+                    //跑在排除规则里，其实也是已经被标记为排除的自然不需要再被标记一次。
+                    if (playerLvPt.isExcluded) continue;
+
+                    //把当前这个互关好友的玩家名、角色名、角色类型还有其他统统放到这个数组里
+                    let allCharaText = [];
+                    for (let j=playerLvPt.lvIndex+1; j<playerLvPt.ptIndex; j++)
+                        allCharaText.push(getContent(AllElements[j]));
+
+                    if (allCharaText.find((text) => text === textPattern) != null) {
+                        //直接匹配上了
+                        innerCallbackIfMatched(playerLvPt);
+                        return true;
+                    } else if (splittedTextPatterns.find((splitTxtPtn) =>//“拆开后的每一条规则”
+                        //直接匹配没匹配上，但是按照空格拆开后仍然是全部都匹配上了
+                        //这里逻辑有点绕：“拆开后的每一条规则”里都“找不到”“跟（上述数组里）所有文字都匹配不上”的，那就是全都规则都匹配上了
+                        allCharaText.find((text) => text === splitTxtPtn) == null//“跟所有文字都匹配不上”
+                    ) == null) {//“找不到”
+                        innerCallbackIfMatched(playerLvPt);
+                        return true;
+                    }
+                }
+                //所有互关好友全捋过一遍了，一个都都匹配不上
+                return false;
+            }
+            excludedSupportCharaNames.forEach((textPattern) => {//排除规则，看看哪些需要排除，所以用forEach挨个捋一遍，一个也不放过
+                matchingCallback(textPattern, (playerLvPt) => {
+                    //innerCallbackIfMatched
+                    //匹配上了排除规则，那就标记为排除
+                    playerLvPt.isExcluded = true;
+                });
+            });
+            preferredSupportCharaNames.find((textPattern) => {//优选规则，只要找到一个匹配上的，就可以停了，所以用find
+                return matchingCallback(textPattern, (playerLvPt) => {
+                    //innerCallbackIfMatched
+                    //匹配上了优选规则，找到了
+                    playerLvPt.charaName = textPattern;
+                    foundPreferredChara = playerLvPt;
+                });
+            });
+            if (foundPreferredChara != null) {
+                let logText = "找到了和指定角色名匹配的助战";
+                log(logText);
+                log(foundPreferredChara);
+                testOutputString += "\n"+logText+":";
+                testOutputString += "\n  "+"角色名:";
+                testOutputString += "\n    ["+foundPreferredChara.charaName+"]";
+                testOutputString += "\n  "+"是第"+(foundPreferredChara.indexInHighPtPlayers+1)+"个互关好友\n";
+                //找到了指定的角色名（虽然可能是恶搞玩家名）
+                //这个角色在列表里的位置，需要跳过NPC
+                let supportPos = NPCPtIndices.length + foundPreferredChara.indexInHighPtPlayers;
+                let point = {
+                    x: knownFirstPtPoint.x,
+                    y: knownFirstPtPoint.y + ptDistanceY * supportPos,
+                    pos: knownFirstPtPoint.pos
+                }
+                point = convertCoords(point);//可能是超出屏幕范围之外的，还需要拖动
+                log("返回优选助战结果");
+                return {point: point, foundPreferredChara: foundPreferredChara, testdata: testOutputString};
+            }
         }
 
         if (AllPtIndices.length == 0) {
@@ -5033,6 +5202,49 @@ function algo_init() {
         });
     }
 
+    function captureTextRunnable() {
+        initialize();
+
+        capture_text_point = capture("文字抓取\n请点击文字出现的位置").pos_up;
+        if (capture_text_point == null) {
+            toastLog("文字抓取出错");
+            stopThread();
+        }
+
+        let all_text = [];
+        let all_found_text = boundsContains(capture_text_point.x, capture_text_point.y, capture_text_point.x, capture_text_point.y)
+                             .find();
+        for (let i=0; i<all_found_text.length; i++) {
+            let found_text = all_found_text[i];
+            let content = getContent(found_text);
+            if (content != null && content != "") {
+                all_text.push(content);
+            }
+        }
+        let selected = -1;
+        switch (all_text.length) {
+            case 0:
+                toastLog("在点击位置没有检测到有文字的控件,请重新选择");
+                break;
+            case 1:
+                selected = 0;
+                break;
+            default:
+                selected = dialogs.select("在点击位置检测到多个含有文字的控件,请选择:", all_text);
+                selected = parseInt(selected);
+                if (isNaN(selected)) selected = -1;
+        }
+        let captured_text = all_text[selected];
+        if (selected > -1 && captured_text != null) {
+            ui.run(() => {
+                clip = android.content.ClipData.newPlainText("auto_export_op_list", captured_text);
+                activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
+                toast("内容已复制到剪贴板");
+            });
+            dialogs.rawInputWithContent("文字抓取", "您可以 全选=>复制 以下内容，然后在别处粘贴保存。", captured_text);
+        }
+    }
+
     //返回游戏并继续运行脚本
     floatUI.backToGame = function () {
         if (isCurrentTaskPaused.compareAndSet(TASK_PAUSED, TASK_RESUMING)) {
@@ -5086,12 +5298,12 @@ function algo_init() {
                     "测试助战自动选择",
                     "要继续让脚本点击自动选择的助战么？如果是，请在点击\"确定\"后，拖动助战列表，使其回到初始状态，让第一个助战显示在顶部。"
                 )) {
-                    toastLog("10秒后将会自动点击助战...");
-                    sleep(8000);
+                    toastLog("5秒后将会自动点击助战...");
+                    sleep(3000);
                     toastLog("2秒后将会自动点击助战...");
                     sleep(2000);
-                    toast("请勿拖动助战列表!\n自动点击助战...");
-                    click(result.point);
+                    toast("请勿手动拖动助战列表!\n自动点击助战...");
+                    click(swipeToPointIfNeeded(result.point));
                 } else {
                     toastLog("助战选择测试结束");
                     return;
@@ -5358,6 +5570,7 @@ function algo_init() {
         var BRANCHclickAttemptCount = 0;
         var bypassPopupCheckCounter = 0;
         var ensureGameDeadCounter = 0;
+        var lastFoundPreferredChara = null;
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -5579,7 +5792,7 @@ function algo_init() {
                     if (findID("nextPageBtn")) {
                         state = STATE_TEAM;
                         toastLog("警告: 脚本不知道现在选了哪一关!"+
-                                 "本轮"+(limit.useAuto?"官方周回":"战斗")+"结束后,\n"+
+                                 "本轮"+((limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara))?"官方周回":"战斗")+"结束后,\n"+
                                  "可能无法自动选关重新开始!");
                         log("进入队伍调整");
                         break;
@@ -5780,11 +5993,15 @@ function algo_init() {
                         log("已记下关卡名: \""+battlename+"\"");
                     }
                     // pick support
+                    lastFoundPreferredChara = null;//是否匹配到优选助战
                     let pt_point = pickSupportWithMostPt();
-                    if (pt_point != null) pt_point = pt_point.point;
                     if (pt_point != null) {
-                        toast("请勿拖动助战列表!\n自动点击助战...");
-                        click(pt_point);
+                        lastFoundPreferredChara = pt_point.foundPreferredChara;
+                        pt_point = pt_point.point;
+                    }
+                    if (pt_point != null) {
+                        toast("请勿手动拖动助战列表!\n自动点击助战...");
+                        click(swipeToPointIfNeeded(pt_point));
                         // wait for start button for 5 seconds
                         if (findID("nextPageBtn", parseInt(limit.timeout))) {
                             state = STATE_TEAM;
@@ -5813,10 +6030,10 @@ function algo_init() {
                     //因为后面检测误触弹窗和按钮比较慢,先闭着眼点一下开始或自动续战按钮
                     //一开始不知道能不能用自动续战,inautobattle还是null,这个时候就按照是否启用官方自动续战的设置来
                     //后面检测按钮后就给inautobattle赋值了,就按照inautobattle是true或false的情况来
-                    click(convertCoords(clickSets[(inautobattle===null?limit.useAuto:inautobattle)?"startAutoRestart":"start"]));
+                    click(convertCoords(clickSets[(inautobattle===null?(limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)):inautobattle)?"startAutoRestart":"start"]));
 
-                    var element = limit.useAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
-                    if (limit.useAuto) {
+                    var element = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)) ? findID("nextPageBtnLoop") : findID("nextPageBtn");
+                    if ((limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara))) {
                         if (element) {
                             inautobattle = true;
                         } else {
@@ -5830,7 +6047,7 @@ function algo_init() {
                     // exit condition
                     if (findID("android:id/content") && !element) {
                         state = STATE_BATTLE;
-                        if (inautobattle === null) inautobattle = limit.useAuto;
+                        if (inautobattle === null) inautobattle = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara));
                         log("进入战斗");
                         break;
                     }
@@ -9797,6 +10014,7 @@ function algo_init() {
         clearSteps: clearOpList,
         testSupportSel: testSupportPicking,
         testReLaunch: testReLaunchRunnable,
+        captureText: captureTextRunnable,
     };
 }
 

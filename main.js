@@ -130,13 +130,32 @@ ui.layout(
                             </vertical>
                             <vertical id="DefaultExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
+                                    <input id="preferredSupportCharaNames" hint="留空即不优先选择" text="" textSize="14" inputType="textMultiLine"/>
+                                </linear>
+                                <text text="在助战列表中优先选择上面指定的角色。可以设置多个角色名,使用逗号(英文半角(,)或中文全角(，)均可)或换行分隔,脚本会按顺序依次尝试匹配,只有上一个角色名在助战列表里一个都匹配不到的时候才会继续尝试匹配下一个。" textColor="#000000" />
+                                <text text="注意:" textColor="#ff0000" />
+                                <text text="(1)角色名哪怕只差一个字符也无法匹配。" textColor="#ff0000" />
+                                <text text="(2)角色名中允许出现空格,比如“鹿目圆 盛装”,空格不会把这个分隔成两个角色名,仍然视为一个角色名。" textColor="#ff0000" />
+                                <text text="(3)很遗憾,脚本不能区分玩家名和角色名,所以可能错把玩家名当作角色名识别。带空格的角色名虽然被视为一个角色名,但实际上会被分开处理。比如一个玩家名叫“盛装”,那么普通版本的“鹿目圆”也会被误匹配上。" textColor="#ff0000" />
+                                <text text="(4)如果要排除类似“盛装”“眼镜”这样不同版本的角色,上面的输入框无法完成这个设置,请在下面的输入框中设置需要排除的角色名,或者角色类型(然后会排除所有这个类型的角色):" textColor="#ff0000" />
+                                <linear>
+                                    <input id="excludedSupportCharaNames" hint="留空即不排除" text="" textSize="14" inputType="textMultiLine"/>
+                                </linear>
+                                <text text="提示:可在脚本选择列表中启动“文字抓取”来从游戏界面中抓取文字并复制到剪贴板。" textColor="#000000" />
+                            </vertical>
+                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <Switch id="autoForPreferredOnly" w="*" margin="0 3" checked="false" textColor="#000000" text="只对优选助战使用官方自动续战" />
+                                <text text="这个选项默认关闭,也就是默认情况下只要开启了“优先使用官方自动续战”就总是尽量使用官方自动续战。开启这个选项后,即便开启了“优先使用官方自动续战”,也只在找到了符合优选条件的助战(比如找到了龙城明日香)的时候使用自动续战,从而能够锁定优选到的助战反复使用,如果没找到符合优选条件的助战则不使用官方自动续战。" textColor="#000000" />
+                            </vertical>
+                            <vertical id="DefaultExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <linear>
                                     <text text="每隔" textColor="#000000" />
                                     <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打断" text="" textSize="14" inputType="number|none" />
                                     <text text="秒打断官方自动续战" textColor="#000000" />
                                 </linear>
                                 <text text="经过设定的秒数后,长按打断官方自动周回。这样可以一定程度上兼顾周回速度和照顾互关好友。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <linear padding="0 0 0 0" w="*" h="auto">
                                     <text text="等待控件超时" textColor="#000000" />
                                     <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
@@ -615,6 +634,10 @@ const persistParamList = [
     "default",/* 放在usePresetOpList后面,这样启动时弹的toast还是默认执行脚本 */
     "autoReconnect",
     "justNPC",
+    "preferredSupportCharaNames",
+    "excludedSupportCharaNames",
+    //"preferredSupportMemorias",//未实现
+    "autoForPreferredOnly",
     "helpx",
     "helpy",
     "battleNo",
