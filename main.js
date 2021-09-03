@@ -125,10 +125,14 @@ ui.layout(
                                 <Switch id="toggleDefaultExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
                             </vertical>
                             <vertical id="DefaultExtraSettings1" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <Switch id="dragSupportList" w="*" margin="0 3" checked="false" textColor="#000000" text="拖动助战列表" />
+                                <text text="警告:因为游戏本身存在列表拖动bug,所以很不推荐开启这个选项。开启后,如果触发了列表拖动bug,选择助战时可能错点到单向好友或路人助战身上,导致Pt收益大幅下降(互关好友或NPC助战的三分之一),或者也有可能死循环反复点击没有助战的空白处。" textColor="#ff0000" />
+                            </vertical>
+                            <vertical id="DefaultExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <Switch id="autoFollow" w="*" margin="0 3" checked="true" textColor="#000000" text="自动关注路人" />
                                 <text text="启用后如果助战选到了路人,会在结算时关注他。停用这个选项则不会关注路人,在结算时如果出现询问关注的弹窗,会直接关闭。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <input id="preferredSupportCharaNames" hint="留空即不优先选择" text="" textSize="14" inputType="textMultiLine"/>
                                 </linear>
@@ -143,13 +147,13 @@ ui.layout(
                                 </linear>
                                 <text text="提示:可在脚本选择列表中启动“文字抓取”来从游戏界面中抓取文字并复制到剪贴板。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <Switch id="autoForPreferredOnly" w="*" margin="0 3" checked="false" textColor="#000000" text="只对优选助战使用官方自动续战" />
                                 <text text="这个选项默认关闭,也就是默认情况下只要开启了“优先使用官方自动续战”就总是尽量使用官方自动续战。开启这个选项后,即便开启了“优先使用官方自动续战”,也只在找到了符合优选条件的助战(比如找到了龙城明日香)的时候使用自动续战,从而能够锁定优选到的助战反复使用,如果没找到符合优选条件的助战则不使用官方自动续战。" textColor="#000000" />
                                 <text text="警告:相比默认总是使用官方自动续战的情况,开启“只对优选助战使用官方自动续战”可能会大大加快互关好友助战的消耗速度!如果互关好友助战耗尽(助战冷却恢复速度追不上消耗速度),而且又没有NPC助战的话,脚本会继续使用单向好友和路人,导致Pt收益大幅下降(降为互关好友的三分之一)!" textColor="#ff0000"/>
                                 <text text="如果确实要开启“只对优选助战使用官方自动续战”,请确认互关好友中有很多人都设置了符合优选条件的助战!另外,推荐检查一下“无条件杀进程重开”设置!" textColor="#ff0000"/>
                             </vertical>
-                            <vertical id="DefaultExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings5" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="每隔" textColor="#000000" />
                                     <input maxLength="5" id="breakAutoCycleDuration" hint="留空即不打断" text="" textSize="14" inputType="number|none" />
@@ -157,7 +161,7 @@ ui.layout(
                                 </linear>
                                 <text text="经过设定的秒数后,长按打断官方自动周回。这样可以一定程度上兼顾周回速度和照顾互关好友。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="DefaultExtraSettings6" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <linear padding="0 0 0 0" w="*" h="auto">
                                     <text text="等待控件超时" textColor="#000000" />
                                     <input maxLength="6" margin="5 0 0 0" id="timeout" hint="5000" text="5000" textSize="14" inputType="number|none" />
@@ -638,6 +642,7 @@ const persistParamList = [
     "default",/* 放在usePresetOpList后面,这样启动时弹的toast还是默认执行脚本 */
     "autoReconnect",
     "justNPC",
+    "dragSupportList",
     "preferredSupportCharaNames",
     "excludedSupportCharaNames",
     //"preferredSupportMemorias",//未实现
