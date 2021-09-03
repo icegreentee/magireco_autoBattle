@@ -146,6 +146,8 @@ ui.layout(
                             <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <Switch id="autoForPreferredOnly" w="*" margin="0 3" checked="false" textColor="#000000" text="只对优选助战使用官方自动续战" />
                                 <text text="这个选项默认关闭,也就是默认情况下只要开启了“优先使用官方自动续战”就总是尽量使用官方自动续战。开启这个选项后,即便开启了“优先使用官方自动续战”,也只在找到了符合优选条件的助战(比如找到了龙城明日香)的时候使用自动续战,从而能够锁定优选到的助战反复使用,如果没找到符合优选条件的助战则不使用官方自动续战。" textColor="#000000" />
+                                <text text="警告:相比默认总是使用官方自动续战的情况,开启“只对优选助战使用官方自动续战”可能会大大加快互关好友助战的消耗速度!如果互关好友助战耗尽(助战冷却恢复速度追不上消耗速度),而且又没有NPC助战的话,脚本会继续使用单向好友和路人,导致Pt收益大幅下降(降为互关好友的三分之一)!" textColor="#ff0000"/>
+                                <text text="如果确实要开启“只对优选助战使用官方自动续战”,请确认互关好友中有很多人都设置了符合优选条件的助战!另外,推荐检查一下“无条件杀进程重开”设置!" textColor="#ff0000"/>
                             </vertical>
                             <vertical id="DefaultExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
@@ -190,6 +192,8 @@ ui.layout(
                                     <text text="秒一次" textColor="#000000" />
                                 </linear>
                                 <text text="（只有在启用自动重开功能时才会杀进程）有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测超时、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。一般设为1小时(3600秒)左右。" textColor="#000000" />
+                                <text text="警告:在使用官方自动续战的情况下,定时杀进程会显著加快互关好友助战的消耗速度,如果助战冷却速度赶不上消耗的速度,导致互关好友助战耗尽,而且又没有NPC助战的话,脚本会继续使用单向好友和路人,导致Pt收益大幅下降(降为互关好友的三分之一)!" textColor="#ff0000"/>
+                                <text text="所以请不要把无条件定时杀进程的时间间隔设置得太短!另外,推荐检查一下“只对优选助战使用官方自动续战”设置!" textColor="#ff0000"/>
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
