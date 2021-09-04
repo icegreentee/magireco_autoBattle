@@ -1444,6 +1444,7 @@ var limit = {
     drug3: false,
     autoReconnect: true,
     justNPC: false,
+    dragSupportList: false,
     preferredSupportCharaNames: "",
     excludedSupportCharaNames: "",
     preferredSupportMemorias: "",//未实现
@@ -2732,9 +2733,25 @@ function algo_init() {
     }
     const ptDistanceY = 243.75;
 
-    function swipeToPointIfNeeded(point) {
-        let screenBottomY = getWindowSize().y - 50;
+    //屏幕范围内的最后一个助战Y坐标
+    //考虑到屏幕底部可能有手势导航条之类的,稍微往里收窄一些
+    const screenBottomYInnerMargin = 20;
+    function clampSupportY() {
+        let screenBottomY = getWindowSize().y - screenBottomYInnerMargin;
         let convertedPtDistanceY = convertCoordsNoCutout({x: 0, y: ptDistanceY, pos: "top"}).y;
+        let convertedFirst = convertCoords(knownFirstPtPoint);
+        let rangeY = screenBottomY - convertedFirst.y;
+        return parseInt(screenBottomY - (rangeY % convertedPtDistanceY));
+    }
+
+    function swipeToPointIfNeeded(point) {
+        let screenBottomY = getWindowSize().y - screenBottomYInnerMargin;
+        let convertedPtDistanceY = convertCoordsNoCutout({x: 0, y: ptDistanceY, pos: "top"}).y;
+        if (!limit.dragSupportList && point.y > screenBottomY) {
+            toastLog("助战位置超出游戏画面之外\n限制到屏幕范围内");
+            point.y = clampSupportY();
+            return point;
+        }
         while (point.y > screenBottomY) {
             toastLog("助战位置超出游戏画面之外\n自动拖动助战列表...");
             let remainingDistance = point.y - screenBottomY;
@@ -3132,9 +3149,20 @@ function algo_init() {
                     y: knownFirstPtPoint.y + ptDistanceY * supportPos,
                     pos: knownFirstPtPoint.pos
                 }
-                point = convertCoords(point);//可能是超出屏幕范围之外的，还需要拖动
-                log("返回优选助战结果");
-                return {point: point, foundPreferredChara: foundPreferredChara, testdata: testOutputString};
+                point = convertCoords(point);
+                if (point.y <= getWindowSize().y - screenBottomYInnerMargin) {
+                    //没超出屏幕范围
+                    log("返回优选助战结果(未超出屏幕范围)");
+                    return {point: point, foundPreferredChara: foundPreferredChara, testdata: testOutputString};
+                } else {
+                    //超出屏幕范围
+                    if (limit.dragSupportList) {
+                        log("返回优选助战结果(超出屏幕范围,需要拖动)");
+                        return {point: point, foundPreferredChara: foundPreferredChara, testdata: testOutputString};
+                    } else {
+                        log("优选助战结果在屏幕范围外,因为禁用了拖动所以放弃优选结果");
+                    }
+                }
             }
         }
 
@@ -3165,9 +3193,13 @@ function algo_init() {
                 pos: knownFirstPtPoint.pos
             }
             point = convertCoords(point);
-            if (point.y >= getWindowSize().y - 1) {
-                toastLog("推算出的第一个互关好友坐标已经超出屏幕范围");
-                //在click里会限制到屏幕范围之内
+            if (point.y > getWindowSize().y - screenBottomYInnerMargin) {
+                if (limit.dragSupportList) {
+                    log("推算出的第一个互关好友坐标已经超出屏幕范围,需要拖动");
+                } else {
+                    toastLog("推算出的第一个互关好友坐标已经超出屏幕范围\n限制到屏幕范围内");
+                    point.y = clampSupportY();
+                }
             }
             return {point: point, testdata: testOutputString};
         } else if (NPCPtIndices.length > 0) {
@@ -5624,7 +5656,7 @@ function algo_init() {
         var battlename = "";
         var charabound = null;
         var battlepos = null;
-        var inautobattle = null; //null表示状态未知
+        var inautobattle = null; //null表示状态未知,另外注意undefined !== null
         var battleStartBtnClickTime = 0;
         var stuckStartTime = new Date().getTime();
         var lastStuckRemindTime = new Date().getTime();
@@ -5634,6 +5666,7 @@ function algo_init() {
         var bypassPopupCheckCounter = 0;
         var ensureGameDeadCounter = 0;
         var lastFoundPreferredChara = null;
+        var isStartAutoRestartBtnAvailable = true; //一开始不知道自动续战按钮是否存在(后面检测了才知道),默认当作存在,详情见后
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -6089,20 +6122,30 @@ function algo_init() {
                 }
 
                 case STATE_TEAM: {
+                    //如果在开启“优先使用官方自动续战”的同时,还开启了“只对优选助战使用官方自动续战”,
+                    //那么是否要优先点击自动续战按钮还得考虑这一次(每次情况都可能不一样)有没有找到符合优选条件的助战
+                    //这里赋值为true或false,避免把object或undefined赋值进去
+                    var shouldUseAuto = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)) ? true : false;
+
                     //走到这里时肯定至少已经检测到开始按钮,即nextPageBtn
                     //因为后面检测误触弹窗和按钮比较慢,先闭着眼点一下开始或自动续战按钮
-                    //一开始不知道能不能用自动续战,inautobattle还是null,这个时候就按照是否启用官方自动续战的设置来
-                    //后面检测按钮后就给inautobattle赋值了,就按照inautobattle是true或false的情况来
-                    click(convertCoords(clickSets[(inautobattle===null?(limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)):inautobattle)?"startAutoRestart":"start"]));
+                    //一开始不知道自动续战按钮是否存在(后面检测了才知道),默认当作存在,
+                    //然后(如果需要优先点击自动续战的话)即便按钮实际不存在也只是多点空一次,无害,
+                    //即使这次点空了,后面检测完按钮仍然会再点一次补上
+                    var BtnNameStartOrAuto = shouldUseAuto && isStartAutoRestartBtnAvailable ? "startAutoRestart" : "start";
+                    click(convertCoords(clickSets[BtnNameStartOrAuto]));
                     sleep(300);//避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
 
-                    var element = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)) ? findID("nextPageBtnLoop") : findID("nextPageBtn");
-                    if ((limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara))) {
+                    //检测自动续战或开始按钮是否存在(但并不是每次都会把两个按钮都检测一遍)
+                    var element = shouldUseAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
+                    if (shouldUseAuto) {
                         if (element) {
+                            isStartAutoRestartBtnAvailable = true;
                             inautobattle = true;
                         } else {
                             element = findID("nextPageBtn");
                             if (element) {
+                                isStartAutoRestartBtnAvailable = false;
                                 inautobattle = false;
                                 log("未发现自动续战，改用标准战斗");
                             }
@@ -6111,7 +6154,9 @@ function algo_init() {
                     // exit condition
                     if (findID("android:id/content") && !element) {
                         state = STATE_BATTLE;
-                        if (inautobattle === null) inautobattle = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara));
+                        if (inautobattle == null) {
+                            inautobattle = shouldUseAuto;
+                        }
                         log("进入战斗");
                         break;
                     }
@@ -6304,7 +6349,7 @@ function algo_init() {
                         state = STATE_MENU;
                         log("进入关卡选择");
                         break;
-                    } else if (inautobattle === null) {
+                    } else if (inautobattle == null) {
                         toastLog("无法识别状态,\n不知道是战斗/剧情播放还是其他状态");
                         if (lastOpList == null) {
                             toastLog("结束运行");
