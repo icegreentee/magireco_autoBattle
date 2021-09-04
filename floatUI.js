@@ -6133,6 +6133,7 @@ function algo_init() {
                     //然后(如果需要优先点击自动续战的话)即便按钮实际不存在也只是多点空一次,无害,
                     //即使这次点空了,后面检测完按钮仍然会再点一次补上
                     var BtnNameStartOrAuto = shouldUseAuto && isStartAutoRestartBtnAvailable ? "startAutoRestart" : "start";
+                    log("抢先点击"+(shouldUseAuto&&isStartAutoRestartBtnAvailable?"自动续战":"开始")+"按钮");
                     click(convertCoords(clickSets[BtnNameStartOrAuto]));
                     sleep(300);//避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
 
@@ -6140,23 +6141,47 @@ function algo_init() {
                     var element = shouldUseAuto ? findID("nextPageBtnLoop") : findID("nextPageBtn");
                     if (shouldUseAuto) {
                         if (element) {
+                            //这次需要点击自动续战按钮,确定这个按钮确实存在
                             isStartAutoRestartBtnAvailable = true;
                             inautobattle = true;
                         } else {
+                            //这次需要点自动续战按钮,但没找到这个按钮,
+                            //可能是这个副本确实没有自动续战按钮,只有开始按钮可以点,也可能是其实因为已经进入战斗了,所以两个按钮都找不到
                             element = findID("nextPageBtn");
                             if (element) {
+                                //没有自动续战按钮,只有开始按钮
                                 isStartAutoRestartBtnAvailable = false;
                                 inautobattle = false;
                                 log("未发现自动续战，改用标准战斗");
+                            } else {
+                                //应该只是进入战斗了,这个时候虽然确实检测不到自动续战按钮,
+                                //但这(可能)并不是因为只有开始按钮、没有自动续战按钮,
+                                //而仅仅是因为战斗开始后两个按钮(如果有自动续战的话)其实都消失了,
+                                //所以,这个时候其实压根就没检测出来自动续战按钮是什么情况,
+                                //就不对isStartAutoRestartBtnAvailable重新赋值了,
+                                //让isStartAutoRestartBtnAvailable继续沿用之前的值就好
+                                log("自动续战和开始按钮都没出现");
+                                //对inautobattle则是必须重新赋值
+                                inautobattle = shouldUseAuto && isStartAutoRestartBtnAvailable;
+                                log("inautobattle="+inautobattle);
                             }
                         }
+                    } else {
+                        //如果这次本来就不需要点击自动续战按钮,那么只需要检测开始按钮是否存在,然后以此作为战斗是否开始的判定一句即可
+                        //因为没去检测自动续战按钮是否存在,所以就不对isStartAutoRestartBtnAvailable重新赋值了(而且也用不到这个变量了)
+                        inautobattle = false;
                     }
                     // exit condition
                     if (findID("android:id/content") && !element) {
-                        state = STATE_BATTLE;
                         if (inautobattle == null) {
-                            inautobattle = shouldUseAuto;
+                            //正常情况下应该走不到这里
+                            let guessedinautobattle = shouldUseAuto && isStartAutoRestartBtnAvailable;
+                            toastLog("警告:不知道本轮战斗是否使用了自动续战\n当作"+(guessedinautobattle?"使用了":"没使用")+"自动续战继续运行");
+                            log("shouldUseAuto="+shouldUseAuto);
+                            log("isStartAutoRestartBtnAvailable="+isStartAutoRestartBtnAvailable);
+                            inautobattle = guessedinautobattle;
                         }
+                        state = STATE_BATTLE;
                         log("进入战斗");
                         break;
                     }
@@ -6164,6 +6189,7 @@ function algo_init() {
                     if (element) {
                         battleStartBtnClickTime = new Date().getTime();
                         let bound = element.bounds();
+                        log("再次点击"+getContent(element)+"按钮");
                         click(bound.centerX(), bound.centerY());
                         sleep(300);//避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
                         waitElement(element, 200);
