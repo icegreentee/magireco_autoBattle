@@ -579,6 +579,7 @@ ui.emitter.on("resume", () => {
         floatUI.refreshUI();
     } else {
         floatUI.main();
+        floatUI.storage = storage;
         floatIsActive = true;
     }
     if ($settings.isEnabled('foreground_service') != ui.foreground.isChecked())
@@ -595,6 +596,7 @@ ui.swipe.setOnRefreshListener({
 });
 //-----------------自定义逻辑-------------------------------------------
 
+var storage = storages.create("auto_mr");
 var floatIsActive = false;
 // 悬浮窗权限检查
 if (!$floaty.checkPermission()) {
@@ -631,10 +633,10 @@ if (!$floaty.checkPermission()) {
     exit();
 } else {
     floatUI.main();
+    floatUI.storage = storage;
     floatIsActive = true;
 }
 
-var storage = storages.create("auto_mr");
 const persistParamList = [
     "foreground",
     "stopOnVolUp",

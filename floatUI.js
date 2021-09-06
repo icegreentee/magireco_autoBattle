@@ -115,6 +115,8 @@ var isDrugEnough = () => { };
 // 周回数统计
 var updateCycleCount = () => { };
 
+floatUI.storage = null;
+
 // available script list
 floatUI.scripts = [
     {
@@ -4417,6 +4419,7 @@ function algo_init() {
             {
                 limit.firstRequestPrivilege = true;//如果这次没申请到权限，下次还会提醒
                 limit["rootForceStop"] = true;
+                floatUI.storage.put("rootForceStop", limit["rootForceStop"]);
                 updateUI("rootForceStop", "setChecked", limit["rootForceStop"]);
                 if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
                     toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
@@ -4427,6 +4430,7 @@ function algo_init() {
             } else {
                 limit.firstRequestPrivilege = false;//下次不会提醒了
                 limit["rootForceStop"] = false;
+                floatUI.storage.put("rootForceStop", limit["rootForceStop"]);
                 updateUI("rootForceStop", "setChecked", limit["rootForceStop"]);
             }
         }
@@ -5636,7 +5640,8 @@ function algo_init() {
                         +"点击\"取消\"后,如果又重新开始想要使用自动重开功能,可以在脚本设置中重新开启\"启动周回脚本时询问是否自动重开\"。\n"))
                     {
                         limit["promptAutoRelaunch"] = false;
-                        updateUI("promptAutoRelaunch", "setChecked", false);
+                        floatUI.storage.put("promptAutoRelaunch", limit["promptAutoRelaunch"]);
+                        updateUI("promptAutoRelaunch", "setChecked", limit["promptAutoRelaunch"]);
                     }
                 }
             }
