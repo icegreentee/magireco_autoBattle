@@ -575,8 +575,10 @@ for (let key of ["Default", "DefaultCrashRestart", "Mirrors", "CVAutoBattle"]) {
 ui.emitter.on("resume", () => {
     // 此时根据无障碍服务的开启情况，同步开关的状态
     ui.autoService.checked = auto.service != null;
-    if (!floatIsActive) {
-        floatUI.main()
+    if (floatIsActive) {
+        floatUI.refreshUI();
+    } else {
+        floatUI.main();
         floatIsActive = true;
     }
     if ($settings.isEnabled('foreground_service') != ui.foreground.isChecked())
