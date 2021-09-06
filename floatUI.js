@@ -1643,7 +1643,12 @@ var clickSets = {
         x: 960,
         y: 769,
         pos: "center"
-    }
+    },
+    battleFinishedOK: {
+        x: 960,
+        y: 660,
+        pos: "center"
+    },
 }
 
 var gamex = 0;
@@ -4123,6 +4128,9 @@ function algo_init() {
         log("点击OK按钮区域");
         click(convertCoords(clickSets.dataDownloadOK));
         sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
+        log("点击战斗已结束OK按钮区域");
+        click(convertCoords(clickSets.battleFinishedOK));
+        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
     }
 
     function selectBattle() { }
@@ -4400,6 +4408,10 @@ function algo_init() {
             log("点击OK按钮区域...");
             click(convertCoords(clickSets.dataDownloadOK));
             log("点击OK按钮区域完成,等待1秒...");
+            sleep(1000);
+            log("点击战斗已结束OK按钮区域...");
+            click(convertCoords(clickSets.battleFinishedOK));
+            log("点击战斗已结束OK按钮区域完成,等待1秒...");
             sleep(1000);
         }
         return false;
