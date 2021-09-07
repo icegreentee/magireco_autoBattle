@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "5.8.1";
+var version = "5.9.0";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -575,8 +575,11 @@ for (let key of ["Default", "DefaultCrashRestart", "Mirrors", "CVAutoBattle"]) {
 ui.emitter.on("resume", () => {
     // 此时根据无障碍服务的开启情况，同步开关的状态
     ui.autoService.checked = auto.service != null;
-    if (!floatIsActive) {
-        floatUI.main()
+    if (floatIsActive) {
+        floatUI.refreshUI();
+    } else {
+        floatUI.main();
+        floatUI.storage = storage;
         floatIsActive = true;
     }
     if ($settings.isEnabled('foreground_service') != ui.foreground.isChecked())
@@ -593,6 +596,7 @@ ui.swipe.setOnRefreshListener({
 });
 //-----------------自定义逻辑-------------------------------------------
 
+var storage = storages.create("auto_mr");
 var floatIsActive = false;
 // 悬浮窗权限检查
 if (!$floaty.checkPermission()) {
@@ -629,10 +633,10 @@ if (!$floaty.checkPermission()) {
     exit();
 } else {
     floatUI.main();
+    floatUI.storage = storage;
     floatIsActive = true;
 }
 
-var storage = storages.create("auto_mr");
 const persistParamList = [
     "foreground",
     "stopOnVolUp",

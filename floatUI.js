@@ -115,6 +115,8 @@ var isDrugEnough = () => { };
 // 周回数统计
 var updateCycleCount = () => { };
 
+floatUI.storage = null;
+
 // available script list
 floatUI.scripts = [
     {
@@ -272,33 +274,39 @@ var openedDialogs = {openedDialogCount: 0};
 var openedDialogsLock = threads.lock();
 
 //运行脚本时隐藏UI控件，防止误触
-var menuItems = [];
-function lockUI(isLocked) {
+floatUI.toolBarMenuItems = [];
+floatUI.lockToolbarMenu = function (isLocked) {
     ui.run(() => {
-        //隐藏或显示设置界面
-        ui["swipe"].setVisibility(isLocked?View.GONE:View.VISIBLE);
-        ui["running_stats"].setVisibility(isLocked?View.VISIBLE:View.GONE);
         activity.setSupportActionBar(isLocked?null:ui.toolbar);
         let menu = ui["toolbar"].getMenu();
         menu.close();
         if (isLocked) {
-            for (let i=0; i<menu.size(); i++) menuItems.push(menu.getItem(i));
+            for (let i=0; i<menu.size(); i++) floatUI.toolBarMenuItems.push(menu.getItem(i));
             menu.clear();
         } else {
             menu.clear();
-            while (menuItems.length > 0) {
-                menu.add(menuItems[0].getTitle())
-                    .setIcon(menuItems[0].getIcon())
+            while (floatUI.toolBarMenuItems.length > 0) {
+                menu.add(floatUI.toolBarMenuItems[0].getTitle())
+                    .setIcon(floatUI.toolBarMenuItems[0].getIcon())
                     .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_WITH_TEXT);
-                menuItems.splice(0, 1);
+                floatUI.toolBarMenuItems.splice(0, 1);
             }
         }
-
-        //更新状态监控文字
-        ui["running_stats_params_text"].setText(getParamsText());//实际上嗑药数量设置会不断扣减，这里没有更新显示
-        ui["running_stats_status_text"].setText(getStatusText());
     });
 }
+var lockUI = syncer.syn(function (isLocked) {
+    //隐藏或显示设置界面
+    updateUI("swipe", "setVisibility", isLocked?View.GONE:View.VISIBLE);
+    updateUI("running_stats", "setVisibility", isLocked?View.VISIBLE:View.GONE);
+
+    updateUI("lockToolbarMenu", "lockToolbarMenu", isLocked);
+
+    //更新状态监控文字
+    ui.run(function () {
+        updateUI("running_stats_params_text", "setText", getParamsText());//实际上嗑药数量设置会不断扣减，这里没有更新显示
+        updateUI("running_stats_status_text", "setText", getStatusText());
+    })
+});
 function getUIContent(key) {
     switch (ui[key].getClass().getSimpleName()) {
         case "JsEditText":
@@ -327,8 +335,8 @@ function getParamsText() {
     let drugnumarr = [];
     for (let i=1; i<=4; i++) {
         let drugName = ui["drug"+i].text;
-        let drugNum = ui["drug"+i+"num"].getText();
-        let ischecked = ui["drug"+i].isChecked();
+        let drugNum = limit["drug"+i+"num"];
+        let ischecked = limit["drug"+i];
         drugnumarr.push("<font color='#"+(ischecked?"000000'>":"808080'>")+" "+drugName+" "+(ischecked?"已启用":"已停用")+" 个数限制"+drugNum+"</font>");
     }
     result += drugnumarr.join("<br>")+"<br>";
@@ -363,7 +371,7 @@ function getParamsText() {
     for (let taskParams of [globalTaskParams, extraTaskParams]) {
         for (let key in taskParams) {
             let name = taskParams[key];
-            let content = getUIContent(key);
+            let content = limit[key];
             let isdisabled = (content=="" || content=="已停用");
             content = content==""?ui[key].hint:content;
             taskparamarr.push("<font color='#"+(!isdisabled?"000000'>":"808080'>")+" "+name+" "+content+"</font>");
@@ -696,13 +704,13 @@ floatUI.main = function () {
                     break;
                 case TASK_RUNNING:
                     toastLog("继续运行脚本");
-                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    updateUI("task_paused_vertical", "setVisibility", View.GONE);
                     lockUI(true);
                     return;
                     break;
                 case TASK_STOPPED:
                     log("脚本已停止运行");
-                    ui.run(function() {ui["task_paused_vertical"].setVisibility(View.GONE);});
+                    updateUI("task_paused_vertical", "setVisibility", View.GONE);
                     //monitoredTask会执行lockUI(false)
                     return;
                     break;
@@ -1341,13 +1349,8 @@ floatUI.main = function () {
                 if (drugnum < drugCosts[index]) {
                     limit["drug"+(index+1)] = false;
                 }
-                ui.run(() => {
-                    //注意,这里会受到main.js里注册的listener影响
-                    ui["drug"+(index+1)+"num"].setText(limit["drug"+(index+1)+"num"]);
-                    let drugcheckbox = ui["drug"+(index+1)];
-                    let newvalue = limit["drug"+(index+1)];
-                    if (drugcheckbox.isChecked() != newvalue) drugcheckbox.setChecked(newvalue);
-                });
+                updateUI("drug"+(index+1), "setChecked", limit["drug"+(index+1)]);
+                updateUI("drug"+(index+1)+"num", "setText", limit["drug"+(index+1)+"num"]);
             } else {
                 //正常情况下应该首先是药的数量还够，才会继续嗑药，然后才会更新嗑药个数限制，所以不应该走到这里
                 log("limit.drug"+(index+1)+"num", limit["drug"+(index+1)+"num"]);
@@ -1364,10 +1367,8 @@ floatUI.main = function () {
         }
         currentTaskDrugConsumed["drug"+(index+1)] += drugCosts[index];
         log("drug"+(index+1)+"已经磕了"+currentTaskDrugConsumed["drug"+(index+1)]+"个");
-        ui.run(function () {
-            //实际上嗑药数量设置会不断扣减，这里没有更新显示
-            ui["running_stats_status_text"].setText(getStatusText());
-        });
+        //实际上嗑药数量设置会不断扣减，这里没有更新显示
+        ui.run(function () {updateUI("running_stats_status_text", "setText", getStatusText());});
     }
 
     isDrugEnabled = function (index) {
@@ -1420,9 +1421,7 @@ floatUI.main = function () {
     updateCycleCount = function () {
         currentTaskCycles++;
         log("周回数增加到", currentTaskCycles);
-        ui.run(function () {
-            ui["running_stats_status_text"].setText(getStatusText());
-        });
+        ui.run(function () {updateUI("running_stats_status_text", "setText", getStatusText());});
     }
 
 };
@@ -1644,7 +1643,12 @@ var clickSets = {
         x: 960,
         y: 769,
         pos: "center"
-    }
+    },
+    battleFinishedOK: {
+        x: 960,
+        y: 660,
+        pos: "center"
+    },
 }
 
 var gamex = 0;
@@ -2165,6 +2169,40 @@ floatUI.adjust = function (key, value) {
             }
         }
     }
+}
+
+floatUI.settingsUIRefreshingList = {};
+floatUI.refreshUI = function() {
+    //会在main.js的on resume listener里被调用
+    ui.run(function () {
+        for (let name in floatUI.settingsUIRefreshingList) {
+            let item = floatUI.settingsUIRefreshingList[name];
+            if (name === "lockToolbarMenu") {
+                let isLocked = item.arg;
+                floatUI.lockToolbarMenu(isLocked);
+            } else if (ui[name][item.funcName] != null) {
+                ui[name][item.funcName](item.arg);
+            }
+            delete floatUI.settingsUIRefreshingList[name];
+        }
+    });
+}
+function updateUI() {
+    let args = arguments;
+    ui.run(function () {
+        if (args.length != 3) {
+            throw new Error("updateUI: incorrect argument count");
+        }
+        let name = args[0];
+        let funcName = args[1];
+        let arg = args[2];
+        let item = {name: name, funcName: funcName, arg: arg};
+        delete floatUI.settingsUIRefreshingList[name];//防止更新顺序出错
+        floatUI.settingsUIRefreshingList[name] = item;//同样的操作只进行最后一次,覆盖掉前一次
+        if (auto.service != null && auto.root.packageName() === context.getPackageName()) {
+            floatUI.refreshUI();
+        }
+    });
 }
 
 floatUI.logParams = function () {
@@ -4090,6 +4128,9 @@ function algo_init() {
         log("点击OK按钮区域");
         click(convertCoords(clickSets.dataDownloadOK));
         sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
+        log("点击战斗已结束OK按钮区域");
+        click(convertCoords(clickSets.battleFinishedOK));
+        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
     }
 
     function selectBattle() { }
@@ -4368,6 +4409,10 @@ function algo_init() {
             click(convertCoords(clickSets.dataDownloadOK));
             log("点击OK按钮区域完成,等待1秒...");
             sleep(1000);
+            log("点击战斗已结束OK按钮区域...");
+            click(convertCoords(clickSets.battleFinishedOK));
+            log("点击战斗已结束OK按钮区域完成,等待1秒...");
+            sleep(1000);
         }
         return false;
     }
@@ -4385,9 +4430,9 @@ function algo_init() {
             if (dialogs.confirm("提示", "如果没有root或adb权限,\n部分模拟器等环境下可能无法杀进程强关游戏！真机则大多没有这个问题（但游戏不能被锁后台）。\n要使用root或adb权限么?"))
             {
                 limit.firstRequestPrivilege = true;//如果这次没申请到权限，下次还会提醒
-                ui.run(() => {
-                    ui["rootForceStop"].setChecked(true);
-                });
+                limit["rootForceStop"] = true;
+                floatUI.storage.put("rootForceStop", limit["rootForceStop"]);
+                updateUI("rootForceStop", "setChecked", limit["rootForceStop"]);
                 if (requestShellPrivilegeThread != null && requestShellPrivilegeThread.isAlive()) {
                     toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
                 } else {
@@ -4396,9 +4441,9 @@ function algo_init() {
                 return false;//等到权限获取完再重试
             } else {
                 limit.firstRequestPrivilege = false;//下次不会提醒了
-                ui.run(() => {
-                    ui["rootForceStop"].setChecked(false);
-                });
+                limit["rootForceStop"] = false;
+                floatUI.storage.put("rootForceStop", limit["rootForceStop"]);
+                updateUI("rootForceStop", "setChecked", limit["rootForceStop"]);
             }
         }
         return true;//可能没有特权，但用户选择不获取特权
@@ -5606,9 +5651,9 @@ function algo_init() {
                         +"如果暂时不想用自动重开,又不想清除掉导入进来或录制下来的选关动作数据,请点\"确定\"。\n"
                         +"点击\"取消\"后,如果又重新开始想要使用自动重开功能,可以在脚本设置中重新开启\"启动周回脚本时询问是否自动重开\"。\n"))
                     {
-                        ui.run(function () {
-                            ui["promptAutoRelaunch"].setChecked(false);
-                        });
+                        limit["promptAutoRelaunch"] = false;
+                        floatUI.storage.put("promptAutoRelaunch", limit["promptAutoRelaunch"]);
+                        updateUI("promptAutoRelaunch", "setChecked", limit["promptAutoRelaunch"]);
                     }
                 }
             }
@@ -10217,6 +10262,7 @@ function backtoMain() {
     else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
     it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
     app.startActivity(it);
+    floatUI.refreshUI();
 }
 
 module.exports = floatUI;
