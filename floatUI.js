@@ -5944,7 +5944,7 @@ function algo_init() {
                     }
 
                     let found_popup_ap_or_ticket_exhausted = findPopupInfoDetailTitle();
-                    switch (found_popup_ap_or_ticket_exhausted.title) {
+                    if (found_popup_ap_or_ticket_exhausted != null) switch (found_popup_ap_or_ticket_exhausted.title) {
                         case string.ticket_exhausted_title:
                            toastLog("门票耗尽,停止运行");
                            stopThread();
