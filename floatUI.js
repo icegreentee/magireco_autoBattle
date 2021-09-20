@@ -3343,6 +3343,7 @@ function algo_init() {
             "ap_refill_popup",
             "ap_refill_confirm",
             "out_of_ap",
+            "ticket_exhausted_title",
             "team_name_change",
             "start",
             "follow",
@@ -3372,6 +3373,7 @@ function algo_init() {
             "回复确认",
             "回复",
             "AP不足",
+            "道具不足",
             "队伍名称变更",
             "开始",
             "关注",
@@ -3401,6 +3403,7 @@ function algo_init() {
             "回復確認",
             "進行回復",
             "AP不足",
+            "道具不足",//在线翻译的，不知道台服实际是啥，不过反正也要停服了
             "變更隊伍名稱",
             "開始",
             "關注",
@@ -3430,6 +3433,7 @@ function algo_init() {
             "回復確認",
             "回復する",
             "AP不足",
+            "アイテムが足りない",//在线翻译的，不知道日服实际是啥，但日服已经无法用无障碍服务抓取控件信息了，加入了这个其实也没有意义了
             "チーム名変更",
             "開始",
             "フォロー",
@@ -5995,18 +5999,27 @@ function algo_init() {
                         break;
                     }
 
-                    if (findPopupInfoDetailTitle()) {
-                        //如果已经打开AP药选择窗口，就先尝试嗑药
-                        //在 #31 之前,认为:
-                        /* “走到这里的一种情况是:如果之前是在AP不足的情况下点击进入关卡，就会弹出AP药选择窗口” */
-                        //但在合并 #31 之后，state在那种情况下会直接切换到STATE_SUPPORT，然后应该就不会走到这里了
-                        refillAP();
-                        //当初 #26 在这里加了break，认为：
-                        /* “如果这里不break，在捕获了关卡坐标的情况下，继续往下执行就会错把助战当作关卡来点击
-                           break后，下一轮循环state就会切换到STATE_SUPPORT，然后就避免了这个误点击问题” */
-                        //但实际上这样并没有完全修正这个问题，貌似如果助战页面出现太慢，还是会出现误点击问题
-                        //然后 #31 再次尝试修正这个问题
-                        break;
+                    let found_popup_ap_or_ticket_exhausted = findPopupInfoDetailTitle();
+                    if (found_popup_ap_or_ticket_exhausted != null) switch (found_popup_ap_or_ticket_exhausted.title) {
+                        case string.ticket_exhausted_title:
+                           toastLog("门票耗尽,停止运行");
+                           stopThread();
+                           break;
+                        case string.ap_refill_title:
+                            //如果已经打开AP药选择窗口，就先尝试嗑药
+                            //在 #31 之前,认为:
+                            /* “走到这里的一种情况是:如果之前是在AP不足的情况下点击进入关卡，就会弹出AP药选择窗口” */
+                            //但在合并 #31 之后，state在那种情况下会直接切换到STATE_SUPPORT，然后应该就不会走到这里了
+                            refillAP();
+                            //当初 #26 在这里加了break，认为：
+                            /* “如果这里不break，在捕获了关卡坐标的情况下，继续往下执行就会错把助战当作关卡来点击
+                               break后，下一轮循环state就会切换到STATE_SUPPORT，然后就避免了这个误点击问题” */
+                            //但实际上这样并没有完全修正这个问题，貌似如果助战页面出现太慢，还是会出现误点击问题
+                            //然后 #31 再次尝试修正这个问题
+                           break;
+                       default:
+                           toastLog("出现意料之外的弹窗,标题:\n"+found_popup_ap_or_ticket_exhausted.title+"\n尝试关闭...");
+                           click(found_popup_ap_or_ticket_exhausted.close);
                     }
 
                     //杜鹃花型活动需要在活动地图上点击开始按钮才能进入助战选择
