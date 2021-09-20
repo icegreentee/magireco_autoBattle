@@ -256,6 +256,62 @@ floatUI.presetOpLists = [
             +"ript\":false,\"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"sto"
             +"pScript\":false,\"nextAction\":\"fail\"}}}]}",
     },
+    {
+        name: "国服门票活动剧情1(先等1min+30s)",
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-20"
+            +"_16-50-10\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
+            +"BRANCH\":false,\"steps\":[{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":60"
+            +"000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1630,\"y\":640,\"pos\""
+            +":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":30000}},{\"ac"
+            +"tion\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182,\"pos\":\"top\"}}},"
+            +"{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1062,\"pos\":\"t"
+            +"op\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":2000}},{\"action\""
+            +":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"pos\":\"top\"},{\"x\":"
+            +"1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\""
+            +"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\"},{\"x\":1092,\"y\":"
+            +"397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\""
+            +"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":1140,\"y\":406,\"pos\""
+            +":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\"points\":["
+            +"{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379,\"pos\":\"top\"}],\""
+            +"duration\":2000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1092,\"y"
+            +"\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3"
+            +"000}},{\"action\":\"checkText\",\"checkText\":{\"text\":\"剧情副本\",\"boundsCe"
+            +"nter\":{\"centerX\":305,\"centerY\":467,\"pos\":\"top\"},\"found\":{\"kill\":"
+            +"false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\":{\"kil"
+            +"l\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action\":\"che"
+            +"ckText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCenter\":{\"x\":298,\""
+            +"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false,\"ne"
+            +"xtAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":false,"
+            +"\"nextAction\":\"fail\"}}}]}",
+    },
+    {
+        name : "国服门票活动剧情1(先等5min+2min)",
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-20"
+            +"_17-10-10\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
+            +"BRANCH\":false,\"steps\":[{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":30"
+            +"0000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1630,\"y\":640,\"pos"
+            +"\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":120000}},{\""
+            +"action\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182,\"pos\":\"top\"}}"
+            +"},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1062,\"pos\":"
+            +"\"top\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":2000}},{\"actio"
+            +"n\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"pos\":\"top\"},{\"x"
+            +"\":1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\""
+            +",\"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\"},{\"x\":1092,\"y"
+            +"\":397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":"
+            +"{\"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":1140,\"y\":406,\"po"
+            +"s\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\"points\""
+            +":[{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379,\"pos\":\"top\"}]"
+            +",\"duration\":2000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1092,"
+            +"\"y\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\""
+            +":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\":\"剧情副本\",\"bounds"
+            +"Center\":{\"centerX\":305,\"centerY\":467,\"pos\":\"top\"},\"found\":{\"kill"
+            +"\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\":{\"k"
+            +"ill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action\":\"c"
+            +"heckText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCenter\":{\"x\":298"
+            +",\"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false,\""
+            +"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":fals"
+            +"e,\"nextAction\":\"fail\"}}}]}",
+    },
 ];
 
 //当前正在运行的线程
@@ -3287,6 +3343,7 @@ function algo_init() {
             "ap_refill_popup",
             "ap_refill_confirm",
             "out_of_ap",
+            "ticket_exhausted_title",
             "team_name_change",
             "start",
             "follow",
@@ -3316,6 +3373,7 @@ function algo_init() {
             "回复确认",
             "回复",
             "AP不足",
+            "道具不足",
             "队伍名称变更",
             "开始",
             "关注",
@@ -3345,6 +3403,7 @@ function algo_init() {
             "回復確認",
             "進行回復",
             "AP不足",
+            "道具不足",//在线翻译的，不知道台服实际是啥，不过反正也要停服了
             "變更隊伍名稱",
             "開始",
             "關注",
@@ -3374,6 +3433,7 @@ function algo_init() {
             "回復確認",
             "回復する",
             "AP不足",
+            "アイテムが足りない",//在线翻译的，不知道日服实际是啥，但日服已经无法用无障碍服务抓取控件信息了，加入了这个其实也没有意义了
             "チーム名変更",
             "開始",
             "フォロー",
@@ -5939,18 +5999,27 @@ function algo_init() {
                         break;
                     }
 
-                    if (findPopupInfoDetailTitle()) {
-                        //如果已经打开AP药选择窗口，就先尝试嗑药
-                        //在 #31 之前,认为:
-                        /* “走到这里的一种情况是:如果之前是在AP不足的情况下点击进入关卡，就会弹出AP药选择窗口” */
-                        //但在合并 #31 之后，state在那种情况下会直接切换到STATE_SUPPORT，然后应该就不会走到这里了
-                        refillAP();
-                        //当初 #26 在这里加了break，认为：
-                        /* “如果这里不break，在捕获了关卡坐标的情况下，继续往下执行就会错把助战当作关卡来点击
-                           break后，下一轮循环state就会切换到STATE_SUPPORT，然后就避免了这个误点击问题” */
-                        //但实际上这样并没有完全修正这个问题，貌似如果助战页面出现太慢，还是会出现误点击问题
-                        //然后 #31 再次尝试修正这个问题
-                        break;
+                    let found_popup_ap_or_ticket_exhausted = findPopupInfoDetailTitle();
+                    if (found_popup_ap_or_ticket_exhausted != null) switch (found_popup_ap_or_ticket_exhausted.title) {
+                        case string.ticket_exhausted_title:
+                           toastLog("门票耗尽,停止运行");
+                           stopThread();
+                           break;
+                        case string.ap_refill_title:
+                            //如果已经打开AP药选择窗口，就先尝试嗑药
+                            //在 #31 之前,认为:
+                            /* “走到这里的一种情况是:如果之前是在AP不足的情况下点击进入关卡，就会弹出AP药选择窗口” */
+                            //但在合并 #31 之后，state在那种情况下会直接切换到STATE_SUPPORT，然后应该就不会走到这里了
+                            refillAP();
+                            //当初 #26 在这里加了break，认为：
+                            /* “如果这里不break，在捕获了关卡坐标的情况下，继续往下执行就会错把助战当作关卡来点击
+                               break后，下一轮循环state就会切换到STATE_SUPPORT，然后就避免了这个误点击问题” */
+                            //但实际上这样并没有完全修正这个问题，貌似如果助战页面出现太慢，还是会出现误点击问题
+                            //然后 #31 再次尝试修正这个问题
+                           break;
+                       default:
+                           toastLog("出现意料之外的弹窗,标题:\n"+found_popup_ap_or_ticket_exhausted.title+"\n尝试关闭...");
+                           click(found_popup_ap_or_ticket_exhausted.close);
                     }
 
                     //杜鹃花型活动需要在活动地图上点击开始按钮才能进入助战选择
