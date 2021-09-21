@@ -6402,8 +6402,9 @@ function algo_init() {
                     let element = findID("charaWrap");
                     if (element) {
                         if (element.bounds().height() > 0) charabound = element.bounds();
-                        let targetX = element.bounds().right;
-                        let targetY = element.bounds().bottom;
+                        let targetConverted = convertCoords(clickSets.reconection);
+                        let targetX = targetConverted.x;
+                        let targetY = targetConverted.y;
                         // click if upgrade
                         element = find("OK");
                         if (element) {
