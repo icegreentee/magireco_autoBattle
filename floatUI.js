@@ -5772,6 +5772,7 @@ function algo_init() {
         var ensureGameDeadCounter = 0;
         var lastFoundPreferredChara = null;
         var isStartAutoRestartBtnAvailable = true; //一开始不知道自动续战按钮是否存在(后面检测了才知道),默认当作存在,详情见后
+        var lastStateRewardCharacterStuckTime = null;
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -6414,6 +6415,19 @@ function algo_init() {
                             targetY = bound.centerY();
                         }
                         click(targetX, targetY);
+                    } else {
+                        let currentTime = new Date().getTime();
+                        let stuckTimeOutSeconds = 10;
+                        if (lastStateRewardCharacterStuckTime == null) {
+                            lastStateRewardCharacterStuckTime = currentTime;
+                        } else if (currentTime > lastStateRewardCharacterStuckTime + stuckTimeOutSeconds * 1000) {
+                            lastStateRewardCharacterStuckTime = null;
+                            state = STATE_BATTLE; //如果开启了防断线模式，那就可以点击掉线重连
+                            log("进入角色结算状态后charaWrap控件消失了超过"+stuckTimeOutSeconds+"秒");
+                            log("可能是自动续战中错过了掉落结算、然后在开始战斗时又掉线卡住");
+                            log("进入战斗状态");
+                            break;
+                        }
                     }
                     sleep(500);
                     break;
