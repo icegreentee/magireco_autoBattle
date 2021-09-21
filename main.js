@@ -704,8 +704,11 @@ function syncValue(key, value) {
                 ui[key].setChecked(value)
             return ui[key].isChecked()
         case "JsSpinner":
-            if (value !== undefined && ui[key].getCount() > value)
+            if (value !== undefined && ui[key].getCount() > value) {
                 ui[key].setSelection(value, true)
+            } else {
+                ui[key].setSelection(0, true) //FIXME when list is empty
+            }
             return ui[key].getSelectedItemPosition()
         case "RadioGroup": {
             if (value !== undefined && ui[value])
