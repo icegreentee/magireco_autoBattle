@@ -256,62 +256,6 @@ floatUI.presetOpLists = [
             +"ript\":false,\"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"sto"
             +"pScript\":false,\"nextAction\":\"fail\"}}}]}",
     },
-    {
-        name: "国服门票活动剧情1(先等1min+30s)",
-        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-20"
-            +"_16-50-10\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
-            +"BRANCH\":false,\"steps\":[{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":60"
-            +"000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1630,\"y\":640,\"pos\""
-            +":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":30000}},{\"ac"
-            +"tion\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182,\"pos\":\"top\"}}},"
-            +"{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1062,\"pos\":\"t"
-            +"op\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":2000}},{\"action\""
-            +":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"pos\":\"top\"},{\"x\":"
-            +"1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\""
-            +"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\"},{\"x\":1092,\"y\":"
-            +"397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\""
-            +"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":1140,\"y\":406,\"pos\""
-            +":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\"points\":["
-            +"{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379,\"pos\":\"top\"}],\""
-            +"duration\":2000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1092,\"y"
-            +"\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3"
-            +"000}},{\"action\":\"checkText\",\"checkText\":{\"text\":\"剧情副本\",\"boundsCe"
-            +"nter\":{\"centerX\":305,\"centerY\":467,\"pos\":\"top\"},\"found\":{\"kill\":"
-            +"false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\":{\"kil"
-            +"l\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action\":\"che"
-            +"ckText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCenter\":{\"x\":298,\""
-            +"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false,\"ne"
-            +"xtAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":false,"
-            +"\"nextAction\":\"fail\"}}}]}",
-    },
-    {
-        name : "国服门票活动剧情1(先等5min+2min)",
-        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-20"
-            +"_17-10-10\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
-            +"BRANCH\":false,\"steps\":[{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":30"
-            +"0000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1630,\"y\":640,\"pos"
-            +"\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":120000}},{\""
-            +"action\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182,\"pos\":\"top\"}}"
-            +"},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1062,\"pos\":"
-            +"\"top\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":2000}},{\"actio"
-            +"n\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"pos\":\"top\"},{\"x"
-            +"\":1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\""
-            +",\"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\"},{\"x\":1092,\"y"
-            +"\":397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":"
-            +"{\"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":1140,\"y\":406,\"po"
-            +"s\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\"points\""
-            +":[{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379,\"pos\":\"top\"}]"
-            +",\"duration\":2000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1092,"
-            +"\"y\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\""
-            +":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\":\"剧情副本\",\"bounds"
-            +"Center\":{\"centerX\":305,\"centerY\":467,\"pos\":\"top\"},\"found\":{\"kill"
-            +"\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\":{\"k"
-            +"ill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action\":\"c"
-            +"heckText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCenter\":{\"x\":298"
-            +",\"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false,\""
-            +"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":fals"
-            +"e,\"nextAction\":\"fail\"}}}]}",
-    },
 ];
 
 //当前正在运行的线程
