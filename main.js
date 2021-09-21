@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "5.9.1";
+var version = "5.9.2";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -704,8 +704,11 @@ function syncValue(key, value) {
                 ui[key].setChecked(value)
             return ui[key].isChecked()
         case "JsSpinner":
-            if (value !== undefined && ui[key].getCount() > value)
+            if (value !== undefined && ui[key].getCount() > value) {
                 ui[key].setSelection(value, true)
+            } else {
+                ui[key].setSelection(0, true) //FIXME when list is empty
+            }
             return ui[key].getSelectedItemPosition()
         case "RadioGroup": {
             if (value !== undefined && ui[value])

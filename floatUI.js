@@ -256,62 +256,6 @@ floatUI.presetOpLists = [
             +"ript\":false,\"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"sto"
             +"pScript\":false,\"nextAction\":\"fail\"}}}]}",
     },
-    {
-        name: "国服门票活动剧情1(先等1min+30s)",
-        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-20"
-            +"_16-50-10\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
-            +"BRANCH\":false,\"steps\":[{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":60"
-            +"000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1630,\"y\":640,\"pos\""
-            +":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":30000}},{\"ac"
-            +"tion\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182,\"pos\":\"top\"}}},"
-            +"{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1062,\"pos\":\"t"
-            +"op\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":2000}},{\"action\""
-            +":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"pos\":\"top\"},{\"x\":"
-            +"1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\""
-            +"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\"},{\"x\":1092,\"y\":"
-            +"397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\""
-            +"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":1140,\"y\":406,\"pos\""
-            +":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\"points\":["
-            +"{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379,\"pos\":\"top\"}],\""
-            +"duration\":2000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1092,\"y"
-            +"\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3"
-            +"000}},{\"action\":\"checkText\",\"checkText\":{\"text\":\"剧情副本\",\"boundsCe"
-            +"nter\":{\"centerX\":305,\"centerY\":467,\"pos\":\"top\"},\"found\":{\"kill\":"
-            +"false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\":{\"kil"
-            +"l\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action\":\"che"
-            +"ckText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCenter\":{\"x\":298,\""
-            +"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false,\"ne"
-            +"xtAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":false,"
-            +"\"nextAction\":\"fail\"}}}]}",
-    },
-    {
-        name : "国服门票活动剧情1(先等5min+2min)",
-        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-20"
-            +"_17-10-10\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
-            +"BRANCH\":false,\"steps\":[{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":30"
-            +"0000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1630,\"y\":640,\"pos"
-            +"\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":120000}},{\""
-            +"action\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182,\"pos\":\"top\"}}"
-            +"},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1062,\"pos\":"
-            +"\"top\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":2000}},{\"actio"
-            +"n\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"pos\":\"top\"},{\"x"
-            +"\":1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\""
-            +",\"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\"},{\"x\":1092,\"y"
-            +"\":397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":"
-            +"{\"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":1140,\"y\":406,\"po"
-            +"s\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\"points\""
-            +":[{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379,\"pos\":\"top\"}]"
-            +",\"duration\":2000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1092,"
-            +"\"y\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\""
-            +":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\":\"剧情副本\",\"bounds"
-            +"Center\":{\"centerX\":305,\"centerY\":467,\"pos\":\"top\"},\"found\":{\"kill"
-            +"\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\":{\"k"
-            +"ill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action\":\"c"
-            +"heckText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCenter\":{\"x\":298"
-            +",\"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false,\""
-            +"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":fals"
-            +"e,\"nextAction\":\"fail\"}}}]}",
-    },
 ];
 
 //当前正在运行的线程
@@ -4362,10 +4306,13 @@ function algo_init() {
         var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
         toastLog("强关游戏...");
         if (limit.privilege && limit.rootForceStop) {
-            log("使用am force-stop命令...");
+            log("使用am force-stop、killall和pkill命令...");
             while (true) {
                 privShell("am force-stop "+name);
-                sleep(1000);
+                sleep(500);
+                privShell("killall "+name);
+                privShell("pkill "+name);
+                sleep(500);
                 if (isGameDead(2000)) break;
                 log("游戏仍在运行,再次尝试强行停止...");
             }
@@ -5772,6 +5719,7 @@ function algo_init() {
         var ensureGameDeadCounter = 0;
         var lastFoundPreferredChara = null;
         var isStartAutoRestartBtnAvailable = true; //一开始不知道自动续战按钮是否存在(后面检测了才知道),默认当作存在,详情见后
+        var lastStateRewardCharacterStuckTime = null;
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -6402,8 +6350,9 @@ function algo_init() {
                     let element = findID("charaWrap");
                     if (element) {
                         if (element.bounds().height() > 0) charabound = element.bounds();
-                        let targetX = element.bounds().right;
-                        let targetY = element.bounds().bottom;
+                        let targetConverted = convertCoords(clickSets.reconection);
+                        let targetX = targetConverted.x;
+                        let targetY = targetConverted.y;
                         // click if upgrade
                         element = find("OK");
                         if (element) {
@@ -6413,6 +6362,19 @@ function algo_init() {
                             targetY = bound.centerY();
                         }
                         click(targetX, targetY);
+                    } else {
+                        let currentTime = new Date().getTime();
+                        let stuckTimeOutSeconds = 10;
+                        if (lastStateRewardCharacterStuckTime == null) {
+                            lastStateRewardCharacterStuckTime = currentTime;
+                        } else if (currentTime > lastStateRewardCharacterStuckTime + stuckTimeOutSeconds * 1000) {
+                            lastStateRewardCharacterStuckTime = null;
+                            state = STATE_BATTLE; //如果开启了防断线模式，那就可以点击掉线重连
+                            log("进入角色结算状态后charaWrap控件消失了超过"+stuckTimeOutSeconds+"秒");
+                            log("可能是自动续战中错过了掉落结算、然后在开始战斗时又掉线卡住");
+                            log("进入战斗状态");
+                            break;
+                        }
                     }
                     sleep(500);
                     break;
