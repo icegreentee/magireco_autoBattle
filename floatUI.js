@@ -4362,10 +4362,13 @@ function algo_init() {
         var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
         toastLog("强关游戏...");
         if (limit.privilege && limit.rootForceStop) {
-            log("使用am force-stop命令...");
+            log("使用am force-stop、killall和pkill命令...");
             while (true) {
                 privShell("am force-stop "+name);
-                sleep(1000);
+                sleep(500);
+                privShell("killall "+name);
+                privShell("pkill "+name);
+                sleep(500);
                 if (isGameDead(2000)) break;
                 log("游戏仍在运行,再次尝试强行停止...");
             }
