@@ -5604,6 +5604,7 @@ function algo_init() {
                     }
                 }
                 floatUI.storage.put("autoReconnect", limit["autoReconnect"]);
+                log("autoReconnect", limit["autoReconnect"]);
                 updateUI("autoReconnect", "setChecked", limit["autoReconnect"]);
             }
             if (dialogs.confirm("闪退自动重开",
