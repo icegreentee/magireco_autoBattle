@@ -850,7 +850,16 @@ ui["task_paused_button"].setOnClickListener(new android.view.View.OnClickListene
 var refreshUpdateStatus = sync(function () {
     http.__okhttp__.setTimeout(5000);
     try {
-        let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
+        let res = null;
+        try {
+            res = http.get("https://api.github.com/repos/icegreentee/magireco_autoBattle/releases/latest");
+        } catch (e) {
+            res = null;
+        }
+        if (res == null || res.statusCode != 200) {
+            log("直接从GitHub检测更新失败");
+            res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
+        }
         if (res.statusCode != 200) {
             log("请求失败: " + res.statusCode + " " + res.statusMessage);
             ui.run(function () {
@@ -860,7 +869,15 @@ var refreshUpdateStatus = sync(function () {
             })
         } else {
             let resJson = res.body.json();
-            if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
+            let latestVersionName = null;
+            if (resJson.tag_name != null) {
+                latestVersionName = resJson.tag_name;
+                log("从GitHub获取最新版本号"+latestVersionName);
+            } else if (resJson.versionName != null) {
+                latestVersionName = resJson.versionName;
+                log("从JSDelivr获取最新版本号"+latestVersionName);
+            }
+            if (parseInt(latestVersionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
                 ui.run(function () {
                     ui.versionMsg.setText("当前无需更新")
                     ui.versionMsg.setTextColor(colors.parseColor("#666666"))
@@ -868,7 +885,7 @@ var refreshUpdateStatus = sync(function () {
                 });
             } else {
                 ui.run(function () {
-                    ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
+                    ui.versionMsg.setText("最新版本为" + latestVersionName + ",下拉进行更新")
                     ui.versionMsg.setTextColor(colors.RED)
                     ui.versionMsg_vertical.setVisibility(View.VISIBLE);
                 });
@@ -893,16 +910,33 @@ var toUpdate = sync(function () {
         return;
     }
     try {
-        let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
+        let res = null;
+        try {
+            res = http.get("https://api.github.com/repos/icegreentee/magireco_autoBattle/releases/latest");
+        } catch (e) {
+            res = null;
+        }
+        if (res == null || res.statusCode != 200) {
+            log("直接从GitHub检测更新失败");
+            res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
+        }
         if (res.statusCode != 200) {
             toastLog("请求超时")
         } else {
             let resJson = res.body.json();
-            if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
+            let latestVersionName = null;
+            if (resJson.tag_name != null) {
+                latestVersionName = resJson.tag_name;
+                log("从GitHub获取最新版本号"+latestVersionName);
+            } else if (resJson.versionName != null) {
+                latestVersionName = resJson.versionName;
+                log("从JSDelivr获取最新版本号"+latestVersionName);
+            }
+            if (parseInt(latestVersionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
                 toastLog("无需更新")
             } else {
-                let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/main.js");
-                let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/floatUI.js");
+                let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+latestVersionName+"/main.js");
+                let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+latestVersionName+"/floatUI.js");
                 if (main_script.statusCode == 200 && float_script.statusCode == 200) {
                     toastLog("更新加载中");
                     let mainjs = main_script.body.string();
