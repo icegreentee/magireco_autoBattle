@@ -300,12 +300,6 @@ var lockUI = syncer.syn(function (isLocked) {
     updateUI("running_stats", "setVisibility", isLocked?View.VISIBLE:View.GONE);
 
     updateUI("lockToolbarMenu", "lockToolbarMenu", isLocked);
-
-    //更新状态监控文字
-    ui.run(function () {
-        updateUI("running_stats_params_text", "setText", getParamsText());//实际上嗑药数量设置会不断扣减，这里没有更新显示
-        updateUI("running_stats_status_text", "setText", getStatusText());
-    })
 });
 function getUIContent(key) {
     switch (ui[key].getClass().getSimpleName()) {
@@ -327,95 +321,6 @@ function getUIContent(key) {
             return text;
         }
     }
-}
-function getParamsText() {
-    if (!ui.isUiThread()) throw new Error("getParamsText not in UI thread");
-    let result = "";
-
-    let drugnumarr = [];
-    for (let i=1; i<=4; i++) {
-        let drugName = ui["drug"+i].text;
-        let drugNum = limit["drug"+i+"num"];
-        let ischecked = limit["drug"+i];
-        drugnumarr.push("<font color='#"+(ischecked?"000000'>":"808080'>")+" "+drugName+" "+(ischecked?"已启用":"已停用")+" 个数限制"+drugNum+"</font>");
-    }
-    result += drugnumarr.join("<br>")+"<br>";
-
-    const globalTaskParams = {
-        justNPC: "只使用NPC",
-        autoReconnect: "防断线模式",
-    };
-    const defTaskParams = {
-        useAuto: "优先使用官方自动续战",
-        apmul: "嗑药至AP上限倍数",
-        breakAutoCycleDuration: "每隔多少秒打断官方自动续战",
-        forceStopTimeout: "假死检测超时秒数",
-        periodicallyKillTimeout: "定时杀进程重开秒数",
-        rootForceStop: "优先使用root或adb权限杀进程",
-        rootScreencap: "使用root或adb权限截屏",
-    };
-    let bakTaskParams = {
-        battleNo: "活动周回关卡选择",
-    };
-    let extraTaskParams = {};
-    switch (currentTaskName) {
-        case "副本周回（剧情，活动通用）":
-            extraTaskParams = defTaskParams;
-            break;
-        case "副本周回2（备用可选）":
-        case "活动周回2（备用可选）":
-            extraTaskParams = bakTaskParams;
-            break;
-    }
-    let taskparamarr = [];
-    for (let taskParams of [globalTaskParams, extraTaskParams]) {
-        for (let key in taskParams) {
-            let name = taskParams[key];
-            let content = limit[key];
-            let isdisabled = (content=="" || content=="已停用");
-            content = content==""?ui[key].hint:content;
-            taskparamarr.push("<font color='#"+(!isdisabled?"000000'>":"808080'>")+" "+name+" "+content+"</font>");
-        }
-    }
-    result += taskparamarr.join("<br>")+"<br>";
-
-    return android.text.Html.fromHtml(result);
-}
-function getStatusText() {
-    if (!ui.isUiThread()) throw new Error("getStatusText not in UI thread");
-    let result = "";
-
-    switch (currentTaskName) {
-        case "副本周回（剧情，活动通用）":
-        case "镜层周回":
-            break;
-        default:
-            //其他脚本暂不支持统计数字
-            return android.text.Html.fromHtml(result);;
-    }
-
-    result += "<font color='#000000'>";
-
-    result += "已运行周回数(可能不准确): "+currentTaskCycles;
-    result += "<br>"
-    result += "已磕药数: ";
-    const drugnames = {
-        drug1: "绿药",
-        drug2: "红药",
-        drug3: "魔法石",
-        drug4: "蓝药",
-    };
-    let consumedarr = [];
-    for (let key in drugnames) {
-        let consumed = currentTaskDrugConsumed[key];
-        consumed = consumed==null ? 0 : consumed;
-        consumedarr.push(drugnames[key]+":"+consumed+"个");
-    }
-    result += consumedarr.join("  ");
-
-    result += "</font>";
-
-    return android.text.Html.fromHtml(result);
 }
 
 //监视当前任务的线程
@@ -651,11 +556,10 @@ floatUI.main = function () {
             //可能是这个事件被触发过很多次，然后就不知道应该在第几次触发时注销Listener
             ui["content"].postDelayed(function () {
                 ui["content"].smoothScrollTo(0, 0);
+                if (isPaused) {
+                    ui["task_paused_vertical"].setVisibility(View.VISIBLE);
+                }
             }, 600);
-            if (isPaused) {
-                ui["task_paused_vertical"].setVisibility(View.VISIBLE);
-            }
-            ui["content"].smoothScrollTo(0, 0);//单靠这一句会出现滚动没到最顶端的问题
         });
     }
     function openSettingsRunnable() {
@@ -1367,8 +1271,6 @@ floatUI.main = function () {
         }
         currentTaskDrugConsumed["drug"+(index+1)] += drugCosts[index];
         log("drug"+(index+1)+"已经磕了"+currentTaskDrugConsumed["drug"+(index+1)]+"个");
-        //实际上嗑药数量设置会不断扣减，这里没有更新显示
-        ui.run(function () {updateUI("running_stats_status_text", "setText", getStatusText());});
     }
 
     isDrugEnabled = function (index) {
@@ -1421,7 +1323,6 @@ floatUI.main = function () {
     updateCycleCount = function () {
         currentTaskCycles++;
         log("周回数增加到", currentTaskCycles);
-        ui.run(function () {updateUI("running_stats_status_text", "setText", getStatusText());});
     }
 
 };
