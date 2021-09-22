@@ -5612,6 +5612,26 @@ function algo_init() {
                 presetNameString = "\n使用预设选关动作录制数据: ["+floatUI.presetOpLists[limit.usePresetOpList].name+"]";
             }
             let loadedInfoString = "已加载动作录制数据,闪退自动重开已启用"+presetNameString+lastOpListDateString;
+            if (!floatUI.storage.get("doNotAskAboutAutoReconnect", false) && !limit.autoReconnect) {
+                if (dialogs.confirm("闪退自动重开",
+                    "你好像忘了同时开启\"防断线模式\"！\n要开启吗？"))
+                {
+                    limit["autoReconnect"] = true;
+                } else {
+                    if (dialogs.confirm("闪退自动重开",
+                        "再考虑一下吧？还是强烈推荐同时开启\"防断线模式\"！如果不开启,战斗中途如果掉线就需要等待更长时间！\n"
+                        +"要开启吗？\n"
+                        +"点击\"取消\"则不再询问。"))
+                    {
+                        limit["autoReconnect"] = true;
+                    } else {
+                        limit["autoReconnect"] = false;
+                        floatUI.storage.put("doNotAskAboutAutoReconnect", true);
+                    }
+                }
+                floatUI.storage.put("autoReconnect", limit["autoReconnect"]);
+                updateUI("autoReconnect", "setChecked", limit["autoReconnect"]);
+            }
             if (dialogs.confirm("闪退自动重开",
                 "即将开始周回。\n"
                 +loadedInfoString+"\n"
