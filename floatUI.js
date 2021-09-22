@@ -1362,6 +1362,7 @@ var limit = {
     breakAutoCycleDuration: "",
     forceStopTimeout: "600",
     periodicallyKillTimeout: "3600",
+    periodicallyKillGracePeriod: "540",
     apmul: "",
     timeout: "5000",
     rootForceStop: false,
@@ -5743,13 +5744,24 @@ function algo_init() {
                 if (state == STATE_CRASHED || state == STATE_LOGIN) {
                     lastReLaunchTime = new Date().getTime();
                 } else {
-                    if (new Date().getTime() > lastReLaunchTime + (parseInt(limit.periodicallyKillTimeout) * 1000)) {
+                    let deadlineTime = lastReLaunchTime + (parseInt(limit.periodicallyKillTimeout) * 1000);
+                    if (state == STATE_BATTLE) {
+                        //如果当前还是战斗状态就多等一段时间
+                        let gracePeriod = parseInt(limit.periodicallyKillGracePeriod);
+                        if (!isNaN(gracePeriod) && gracePeriod > 0) deadlineTime += gracePeriod;
+                    }
+                    if (new Date().getTime() > deadlineTime) {
+                        let logString = "";
+                        if (state == STATE_BATTLE) {
+                            logString += "尽管战斗貌似还没结束(最多等待"+limit.periodicallyKillGracePeriod+"秒),\n";
+                        }
+                        logString += "无条件定时杀进程重开时间已到(每隔"+limit.periodicallyKillTimeout+"秒)。\n";
                         if (lastOpList != null) {
-                            toastLog("无条件定时杀进程重开时间已到(每隔"+limit.periodicallyKillTimeout+"秒)\n杀进程重开...");
+                            toastLog(logString+"杀进程重开...");
                             killGame(string.package_name);
                             state = STATE_CRASHED;
                         } else {
-                            toastLog("无条件定时杀进程重开时间已到(每隔"+limit.periodicallyKillTimeout+"秒)\n但是没加载选关动作录制数据,不会杀进程重开");
+                            toastLog(logString+"但是没加载选关动作录制数据,不会杀进程重开");
                             lastReLaunchTime = new Date().getTime();
                         }
                     }
