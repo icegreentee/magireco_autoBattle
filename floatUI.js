@@ -4256,6 +4256,18 @@ function algo_init() {
 
         var startTime = new Date().getTime();
 
+        const recoverOrAbandonBtn = {
+            recover: {
+                description: "恢复战斗",
+                convertedPoint: convertCoords(clickSets.recover_battle),
+            },
+            abandon: {
+                description: "放弃战斗",
+                convertedPoint: convertCoords(clickSets.reconection),
+            },
+        }
+        var isRecoverBtnClicked = false;
+
         toastLog("重新登录...");
         while (true) {
             if (isGameDead(1000) == "crashed") {
@@ -4302,17 +4314,30 @@ function algo_init() {
                 return true;
             }
 
-            if (new Date().getTime() - startTime > 10 * 60 * 1000) {
+            let elapsedTime = new Date().getTime() - startTime;
+            if (elapsedTime > 10 * 60 * 1000) {
                 toastLog("超过10分钟没有登录成功");
                 return false;//调用者会杀进程
             }
 
-            //“恢复战斗”按钮和断线重连的“否”重合，很蛋疼，但是没有控件可以检测，没办法
-            //不过恢复战斗又掉线的几率并不高，而且即便又断线了，点“否”后游戏会重新登录，然后还是可以再点一次“恢复战斗”
-            log("点击恢复战斗按钮区域...");
-            click(convertCoords(clickSets.recover_battle));
-            log("点击恢复战斗按钮区域完成,等待1秒...");
-            sleep(1000);
+            if (elapsedTime > 2 * 60 * 1000) {
+                let btnName = null;
+                if (!isRecoverBtnClicked) {
+                    //“恢复战斗”按钮和断线重连的“否”重合，很蛋疼，但是没有控件可以检测，没办法
+                    //不过恢复战斗又掉线的几率并不高，而且即便又断线了，点“否”后游戏会重新登录，然后还是可以再点一次“恢复战斗”
+                    //只有第一次点击恢复战斗按钮,然后就改为总是点击放弃战斗按钮,这样才能避免误触碎钻复活确认
+                    isRecoverBtnClicked = true;
+                    log("超过2分钟还没登录成功,准备点击一次恢复战斗按钮");
+                    btnName = "recover"
+                } else {
+                    btnName = "abandon";
+                }
+                let btn = recoverOrAbandonBtn[btnName];
+                log("点击"+btn.description+"按钮区域...");
+                click(btn.convertedPoint);
+                log("点击"+btn.description+"按钮区域完成,等待1秒...");
+                sleep(1000);
+            }
             log("点击OK按钮区域...");
             click(convertCoords(clickSets.dataDownloadOK));
             log("点击OK按钮区域完成,等待1秒...");
