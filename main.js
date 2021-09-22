@@ -849,6 +849,7 @@ ui["task_paused_button"].setOnClickListener(new android.view.View.OnClickListene
 }));
 
 //版本获取
+var latestVersionName = null;
 var refreshUpdateStatus = sync(function () {
     http.__okhttp__.setTimeout(5000);
     try {
@@ -871,7 +872,7 @@ var refreshUpdateStatus = sync(function () {
             })
         } else {
             let resJson = res.body.json();
-            let latestVersionName = null;
+            latestVersionName = null;
             if (resJson.tag_name != null) {
                 latestVersionName = resJson.tag_name;
                 log("从GitHub获取最新版本号"+latestVersionName);
@@ -912,28 +913,10 @@ var toUpdate = sync(function () {
         return;
     }
     try {
-        let res = null;
-        try {
-            res = http.get("https://api.github.com/repos/icegreentee/magireco_autoBattle/releases/latest");
-        } catch (e) {
-            res = null;
-        }
-        if (res == null || res.statusCode != 200) {
-            log("直接从GitHub检测更新失败");
-            res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
-        }
-        if (res.statusCode != 200) {
-            toastLog("请求超时")
+        if (latestVersionName == null) {
+            toastLog("无法获取最新版本号");
         } else {
-            let resJson = res.body.json();
-            let latestVersionName = null;
-            if (resJson.tag_name != null) {
-                latestVersionName = resJson.tag_name;
-                log("从GitHub获取最新版本号"+latestVersionName);
-            } else if (resJson.versionName != null) {
-                latestVersionName = resJson.versionName;
-                log("从JSDelivr获取最新版本号"+latestVersionName);
-            }
+            log("之前已经获取到最新版本号"+latestVersionName);
             if (parseInt(latestVersionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
                 toastLog("无需更新")
             } else {
@@ -958,7 +941,6 @@ var toUpdate = sync(function () {
                 }
             }
         }
-
     } catch (error) {
         toastLog("请求超时，可再一次尝试")
     } finally {
