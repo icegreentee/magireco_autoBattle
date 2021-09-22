@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "5.9.2";
+var version = "5.9.3";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -37,8 +37,6 @@ ui.layout(
         </appbar>
         <vertical id="running_stats" visibility="gone" w="fill_parent" h="fill_parent" layout_below="appbar" gravity="center_horizontal">
             <text id="running_stats_title" text="脚本运行中" textColor="#00D000" textSize="20" w="wrap_content" h="wrap_content"/>
-            <text id="running_stats_status_text" marginLeft="5" layout_gravity="center_vertical" text="" w="wrap_content" h="wrap_content"/>
-            <text id="running_stats_params_text" marginLeft="5" layout_gravity="center_vertical" text="" w="wrap_content" h="wrap_content"/>
         </vertical>
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout id="swipe" layout_below="appbar">
             <ScrollView id="content">
@@ -849,10 +847,20 @@ ui["task_paused_button"].setOnClickListener(new android.view.View.OnClickListene
 }));
 
 //版本获取
+var latestVersionName = null;
 var refreshUpdateStatus = sync(function () {
     http.__okhttp__.setTimeout(5000);
     try {
-        let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
+        let res = null;
+        try {
+            res = http.get("https://api.github.com/repos/icegreentee/magireco_autoBattle/releases/latest");
+        } catch (e) {
+            res = null;
+        }
+        if (res == null || res.statusCode != 200) {
+            log("直接从GitHub检测更新失败");
+            res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
+        }
         if (res.statusCode != 200) {
             log("请求失败: " + res.statusCode + " " + res.statusMessage);
             ui.run(function () {
@@ -862,7 +870,15 @@ var refreshUpdateStatus = sync(function () {
             })
         } else {
             let resJson = res.body.json();
-            if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
+            latestVersionName = null;
+            if (resJson.tag_name != null) {
+                latestVersionName = resJson.tag_name;
+                log("从GitHub获取最新版本号"+latestVersionName);
+            } else if (resJson.versionName != null) {
+                latestVersionName = resJson.versionName;
+                log("从JSDelivr获取最新版本号"+latestVersionName);
+            }
+            if (parseInt(latestVersionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
                 ui.run(function () {
                     ui.versionMsg.setText("当前无需更新")
                     ui.versionMsg.setTextColor(colors.parseColor("#666666"))
@@ -870,7 +886,7 @@ var refreshUpdateStatus = sync(function () {
                 });
             } else {
                 ui.run(function () {
-                    ui.versionMsg.setText("最新版本为" + resJson.versionName + ",下拉进行更新")
+                    ui.versionMsg.setText("最新版本为" + latestVersionName + ",下拉进行更新")
                     ui.versionMsg.setTextColor(colors.RED)
                     ui.versionMsg_vertical.setVisibility(View.VISIBLE);
                 });
@@ -895,16 +911,15 @@ var toUpdate = sync(function () {
         return;
     }
     try {
-        let res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
-        if (res.statusCode != 200) {
-            toastLog("请求超时")
+        if (latestVersionName == null) {
+            toastLog("无法获取最新版本号");
         } else {
-            let resJson = res.body.json();
-            if (parseInt(resJson.versionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
+            log("之前已经获取到最新版本号"+latestVersionName);
+            if (parseInt(latestVersionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
                 toastLog("无需更新")
             } else {
-                let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/main.js");
-                let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+resJson.versionName+"/floatUI.js");
+                let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+latestVersionName+"/main.js");
+                let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+latestVersionName+"/floatUI.js");
                 if (main_script.statusCode == 200 && float_script.statusCode == 200) {
                     toastLog("更新加载中");
                     let mainjs = main_script.body.string();
@@ -924,7 +939,6 @@ var toUpdate = sync(function () {
                 }
             }
         }
-
     } catch (error) {
         toastLog("请求超时，可再一次尝试")
     } finally {
