@@ -56,7 +56,7 @@ ui.layout(
 
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
-                        <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务（常被鲨进程可以开启，按需）" />
+                        <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务(常驻通知,防止脚本进程被杀)" />
                         <Switch id="stopOnVolUp" margin="0 3" w="*" textColor="#000000" text="按音量上键停止全部脚本" />
                         <Switch id="showExperimentalFixes" margin="0 3" w="*" checked="false" textColor="#666666" text="显示实验性问题修正选项" />
                         <vertical id="experimentalFixes" visibility="gone" margin="5 3" w="*">

@@ -342,6 +342,9 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
         monitoredTask.join();
     }
     monitoredTask = threads.start(function () {
+        $settings.setEnabled("foreground_service", true);
+        log("已开启前台服务");
+        updateUI("foreground", "setChecked", $settings.isEnabled("foreground_service", false));
         try {
             currentTaskName = taskItem.name;
             currentTask = threads.start(taskItem.fn);
@@ -397,6 +400,14 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
             sleep(100);
         }
         log("无主对话框已全部清空");
+        try {
+            $images.stopScreenCapture();
+        } catch (e) {
+            logException(e);
+        }
+        $settings.setEnabled("foreground_service", false);
+        log("已停止前台服务");
+        updateUI("foreground", "setChecked", $settings.isEnabled("foreground_service", false));
     });
     monitoredTask.waitFor();
 });
