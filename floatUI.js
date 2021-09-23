@@ -5748,7 +5748,7 @@ function algo_init() {
                     if (state == STATE_BATTLE) {
                         //如果当前还是战斗状态就多等一段时间
                         let gracePeriod = parseInt(limit.periodicallyKillGracePeriod);
-                        if (!isNaN(gracePeriod) && gracePeriod > 0) deadlineTime += gracePeriod;
+                        if (!isNaN(gracePeriod) && gracePeriod > 0) deadlineTime += gracePeriod * 1000;
                     }
                     if (new Date().getTime() > deadlineTime) {
                         let logString = "";
