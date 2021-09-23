@@ -328,6 +328,10 @@ var monitoredTask = null;
 
 var bypassPopupCheck = threads.atomic(0);
 
+//下面三个变量本来在algo_init闭包内、在startScreenCapture函数之前声明,现在移动到这里
+var canCaptureScreen = false;
+var requestScreenCaptureSuccess = false;
+var hasScreenCaptureError = false;
 var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
@@ -407,6 +411,14 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
                 $images.stopScreenCapture();
             } catch (e) {
                 logException(e);
+            }
+            try {
+                captureScreen();
+            } catch (e) {
+                //截屏权限确实被停用了
+                canCaptureScreen = false;
+                requestScreenCaptureSuccess = false;
+                hasScreenCaptureError = false;
             }
             $settings.setEnabled("foreground_service", false);
             log("已停止前台服务");
@@ -6471,9 +6483,6 @@ function algo_init() {
     //VirtualDisplayAdapter: Virtual display device released because application token died: top.momoe.auto
     //应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
     //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
-    var canCaptureScreen = false;
-    var requestScreenCaptureSuccess = false;
-    var hasScreenCaptureError = false;
     function startScreenCapture() {
         if (canCaptureScreen) {
             log("已经获取到截图权限了");
