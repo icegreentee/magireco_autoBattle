@@ -231,30 +231,30 @@ floatUI.presetOpLists = [
     },
     {
         name: "国服门票活动剧情1",
-        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-2_"
-            +"21-35-50\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventTypeB"
-            +"RANCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":16"
-            +"20,\"y\":549,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTi"
-            +"me\":3000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182,"
-            +"\"pos\":\"top\"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y"
-            +"\":1062,\"pos\":\"top\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":2"
-            +"000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"po"
-            +"s\":\"top\"},{\"x\":1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"ac"
-            +"tion\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\"}"
-            +",{\"x\":1092,\"y\":397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"sw"
-            +"ipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":114"
-            +"0,\"y\":406,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swi"
-            +"pe\":{\"points\":[{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379,"
-            +"\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"click\",\"click\":{\"poin"
-            +"t\":{\"x\":1092,\"y\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\""
-            +":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\":\""
-            +"剧情副本\",\"boundsCenter\":{\"centerX\":305,\"centerY\":467,\"pos\":\"top\"},\""
-            +"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\""
-            +"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}}"
-            +",{\"action\":\"checkText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCen"
-            +"ter\":{\"x\":298,\"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopSc"
-            +"ript\":false,\"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"sto"
-            +"pScript\":false,\"nextAction\":\"fail\"}}}]}",
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-23"
+            +"_15-33-10\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
+            +"BRANCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":1"
+            +"620,\"y\":549,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepT"
+            +"ime\":3000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182"
+            +",\"pos\":\"top\"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\""
+            +"y\":1062,\"pos\":\"top\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":"
+            +"2000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"p"
+            +"os\":\"top\"},{\"x\":1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"a"
+            +"ction\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\""
+            +"},{\"x\":1092,\"y\":397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"s"
+            +"wipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":11"
+            +"40,\"y\":406,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"sw"
+            +"ipe\":{\"points\":[{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379"
+            +",\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"click\",\"click\":{\"poi"
+            +"nt\":{\"x\":1092,\"y\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep"
+            +"\":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\":"
+            +"\"剧情副本\",\"boundsCenter\":{\"x\":305,\"y\":467,\"pos\":\"top\"},\"found\":{\"ki"
+            +"ll\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\":{"
+            +"\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action\":"
+            +"\"checkText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCenter\":{\"x\":2"
+            +"98,\"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false"
+            +",\"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":fa"
+            +"lse,\"nextAction\":\"fail\"}}}]}",
     },
 ];
 
@@ -328,6 +328,10 @@ var monitoredTask = null;
 
 var bypassPopupCheck = threads.atomic(0);
 
+//下面三个变量本来在algo_init闭包内、在startScreenCapture函数之前声明,现在移动到这里
+var canCaptureScreen = false;
+var requestScreenCaptureSuccess = false;
+var hasScreenCaptureError = false;
 var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
     if (currentTask != null && currentTask.isAlive()) {
         stopThread(currentTask);
@@ -342,6 +346,11 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
         monitoredTask.join();
     }
     monitoredTask = threads.start(function () {
+        if (!limit.doNotToggleForegroundService) {
+            $settings.setEnabled("foreground_service", true);
+            log("已开启前台服务");
+            updateUI("foreground", "setChecked", $settings.isEnabled("foreground_service", false));
+        }
         try {
             currentTaskName = taskItem.name;
             currentTask = threads.start(taskItem.fn);
@@ -397,6 +406,24 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
             sleep(100);
         }
         log("无主对话框已全部清空");
+        if (!limit.doNotToggleForegroundService) {
+            try {
+                $images.stopScreenCapture();
+            } catch (e) {
+                logException(e);
+            }
+            try {
+                captureScreen();
+            } catch (e) {
+                //截屏权限确实被停用了
+                canCaptureScreen = false;
+                requestScreenCaptureSuccess = false;
+                hasScreenCaptureError = false;
+            }
+            $settings.setEnabled("foreground_service", false);
+            log("已停止前台服务");
+            updateUI("foreground", "setChecked", $settings.isEnabled("foreground_service", false));
+        }
     });
     monitoredTask.waitFor();
 });
@@ -1336,6 +1363,7 @@ var language = {
 var currentLang = language.zh
 var limit = {
     version: '',
+    doNotToggleForegroundService: false,
     helpx: '',
     helpy: '',
     battleNo: 'cb3',
@@ -1362,6 +1390,7 @@ var limit = {
     breakAutoCycleDuration: "",
     forceStopTimeout: "600",
     periodicallyKillTimeout: "3600",
+    periodicallyKillGracePeriod: "540",
     apmul: "",
     timeout: "5000",
     rootForceStop: false,
@@ -4256,6 +4285,18 @@ function algo_init() {
 
         var startTime = new Date().getTime();
 
+        const recoverOrAbandonBtn = {
+            recover: {
+                description: "恢复战斗",
+                convertedPoint: convertCoords(clickSets.recover_battle),
+            },
+            abandon: {
+                description: "放弃战斗",
+                convertedPoint: convertCoords(clickSets.reconection),
+            },
+        }
+        var isRecoverBtnClicked = false;
+
         toastLog("重新登录...");
         while (true) {
             if (isGameDead(1000) == "crashed") {
@@ -4302,17 +4343,30 @@ function algo_init() {
                 return true;
             }
 
-            if (new Date().getTime() - startTime > 10 * 60 * 1000) {
+            let elapsedTime = new Date().getTime() - startTime;
+            if (elapsedTime > 10 * 60 * 1000) {
                 toastLog("超过10分钟没有登录成功");
                 return false;//调用者会杀进程
             }
 
-            //“恢复战斗”按钮和断线重连的“否”重合，很蛋疼，但是没有控件可以检测，没办法
-            //不过恢复战斗又掉线的几率并不高，而且即便又断线了，点“否”后游戏会重新登录，然后还是可以再点一次“恢复战斗”
-            log("点击恢复战斗按钮区域...");
-            click(convertCoords(clickSets.recover_battle));
-            log("点击恢复战斗按钮区域完成,等待1秒...");
-            sleep(1000);
+            if (elapsedTime > 60 * 1000) {
+                let btnName = null;
+                if (!isRecoverBtnClicked) {
+                    //“恢复战斗”按钮和断线重连的“否”重合，很蛋疼，但是没有控件可以检测，没办法
+                    //不过恢复战斗又掉线的几率并不高，而且即便又断线了，点“否”后游戏会重新登录，然后还是可以再点一次“恢复战斗”
+                    //只有第一次点击恢复战斗按钮,然后就改为总是点击放弃战斗按钮,这样才能避免误触碎钻复活确认
+                    isRecoverBtnClicked = true;
+                    log("超过1分钟还没登录成功,准备点击一次恢复战斗按钮");
+                    btnName = "recover"
+                } else {
+                    btnName = "abandon";
+                }
+                let btn = recoverOrAbandonBtn[btnName];
+                log("点击"+btn.description+"按钮区域...");
+                click(btn.convertedPoint);
+                log("点击"+btn.description+"按钮区域完成,等待1秒...");
+                sleep(1000);
+            }
             log("点击OK按钮区域...");
             click(convertCoords(clickSets.dataDownloadOK));
             log("点击OK按钮区域完成,等待1秒...");
@@ -5586,6 +5640,27 @@ function algo_init() {
                 presetNameString = "\n使用预设选关动作录制数据: ["+floatUI.presetOpLists[limit.usePresetOpList].name+"]";
             }
             let loadedInfoString = "已加载动作录制数据,闪退自动重开已启用"+presetNameString+lastOpListDateString;
+            if (!floatUI.storage.get("doNotAskAboutAutoReconnect", false) && !limit.autoReconnect) {
+                if (dialogs.confirm("闪退自动重开",
+                    "你好像忘了同时开启\"防断线模式\"！\n要开启吗？"))
+                {
+                    limit["autoReconnect"] = true;
+                } else {
+                    if (dialogs.confirm("闪退自动重开",
+                        "再考虑一下吧？还是强烈推荐同时开启\"防断线模式\"！如果不开启,战斗中途如果掉线就需要等待更长时间！\n"
+                        +"要开启吗？\n"
+                        +"点击\"取消\"则不再询问。"))
+                    {
+                        limit["autoReconnect"] = true;
+                    } else {
+                        limit["autoReconnect"] = false;
+                        floatUI.storage.put("doNotAskAboutAutoReconnect", true);
+                    }
+                }
+                floatUI.storage.put("autoReconnect", limit["autoReconnect"]);
+                log("autoReconnect", limit["autoReconnect"]);
+                updateUI("autoReconnect", "setChecked", limit["autoReconnect"]);
+            }
             if (dialogs.confirm("闪退自动重开",
                 "即将开始周回。\n"
                 +loadedInfoString+"\n"
@@ -5718,13 +5793,24 @@ function algo_init() {
                 if (state == STATE_CRASHED || state == STATE_LOGIN) {
                     lastReLaunchTime = new Date().getTime();
                 } else {
-                    if (new Date().getTime() > lastReLaunchTime + (parseInt(limit.periodicallyKillTimeout) * 1000)) {
+                    let deadlineTime = lastReLaunchTime + (parseInt(limit.periodicallyKillTimeout) * 1000);
+                    if (state == STATE_BATTLE) {
+                        //如果当前还是战斗状态就多等一段时间
+                        let gracePeriod = parseInt(limit.periodicallyKillGracePeriod);
+                        if (!isNaN(gracePeriod) && gracePeriod > 0) deadlineTime += gracePeriod * 1000;
+                    }
+                    if (new Date().getTime() > deadlineTime) {
+                        let logString = "";
+                        if (state == STATE_BATTLE) {
+                            logString += "尽管战斗貌似还没结束(最多等待"+limit.periodicallyKillGracePeriod+"秒),\n";
+                        }
+                        logString += "无条件定时杀进程重开时间已到(每隔"+limit.periodicallyKillTimeout+"秒)。\n";
                         if (lastOpList != null) {
-                            toastLog("无条件定时杀进程重开时间已到(每隔"+limit.periodicallyKillTimeout+"秒)\n杀进程重开...");
+                            toastLog(logString+"杀进程重开...");
                             killGame(string.package_name);
                             state = STATE_CRASHED;
                         } else {
-                            toastLog("无条件定时杀进程重开时间已到(每隔"+limit.periodicallyKillTimeout+"秒)\n但是没加载选关动作录制数据,不会杀进程重开");
+                            toastLog(logString+"但是没加载选关动作录制数据,不会杀进程重开");
                             lastReLaunchTime = new Date().getTime();
                         }
                     }
@@ -5842,7 +5928,7 @@ function algo_init() {
                     if (findID("nextPageBtn")) {
                         state = STATE_TEAM;
                         toastLog("警告: 脚本不知道现在选了哪一关!"+
-                                 "本轮"+((limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara))?"官方周回":"战斗")+"结束后,\n"+
+                                 "本轮"+((limit.useAuto&&(!limit.autoForPreferredOnly||(limit.preferredSupportCharaNames===""||limit.preferredSupportCharaNames==null||lastFoundPreferredChara)))?"官方周回":"战斗")+"结束后,\n"+
                                  "可能无法自动选关重新开始!");
                         log("进入队伍调整");
                         break;
@@ -6088,7 +6174,7 @@ function algo_init() {
                     //如果在开启“优先使用官方自动续战”的同时,还开启了“只对优选助战使用官方自动续战”,
                     //那么是否要优先点击自动续战按钮还得考虑这一次(每次情况都可能不一样)有没有找到符合优选条件的助战
                     //这里赋值为true或false,避免把object或undefined赋值进去
-                    var shouldUseAuto = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)) ? true : false;
+                    var shouldUseAuto = (limit.useAuto&&(!limit.autoForPreferredOnly||(limit.preferredSupportCharaNames===""||limit.preferredSupportCharaNames==null||lastFoundPreferredChara))) ? true : false;
 
                     //走到这里时肯定至少已经检测到开始按钮,即nextPageBtn
                     //因为后面检测误触弹窗和按钮比较慢,先闭着眼点一下开始或自动续战按钮
@@ -6455,9 +6541,6 @@ function algo_init() {
     //VirtualDisplayAdapter: Virtual display device released because application token died: top.momoe.auto
     //应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
     //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
-    var canCaptureScreen = false;
-    var requestScreenCaptureSuccess = false;
-    var hasScreenCaptureError = false;
     function startScreenCapture() {
         if (canCaptureScreen) {
             log("已经获取到截图权限了");

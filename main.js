@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "5.9.3";
+var version = "5.9.4";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -56,7 +56,7 @@ ui.layout(
 
                     <vertical margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <Switch id="autoService" margin="0 3" w="*" checked="{{auto.service != null}}" textColor="#666666" text="无障碍服务" />
-                        <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务（常被鲨进程可以开启，按需）" />
+                        <Switch id="foreground" margin="0 3" w="*" textColor="#000000" text="前台服务(常驻通知,防止脚本进程被杀)" />
                         <Switch id="stopOnVolUp" margin="0 3" w="*" textColor="#000000" text="按音量上键停止全部脚本" />
                         <Switch id="showExperimentalFixes" margin="0 3" w="*" checked="false" textColor="#666666" text="显示实验性问题修正选项" />
                         <vertical id="experimentalFixes" visibility="gone" margin="5 3" w="*">
@@ -65,6 +65,10 @@ ui.layout(
                             <text id="exitOnServiceSettingsText2" visibility="gone" textSize="12" text="OPPO等部分品牌的手机在有悬浮窗(比如“加速球”)存在时会拒绝开启无障碍服务" textColor="#000000" />
                             <text id="exitOnServiceSettingsText3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#000000" />
                             <text id="exitOnServiceSettingsText4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
+                            <Switch id="doNotToggleForegroundService" margin="0 3" w="*" checked="false" textColor="#000000" text="脚本开始/结束时,不自动开启/停用前台服务" />
+                            <text id="doNotToggleForegroundServiceText1" visibility="gone" textSize="12" text="在脚本运行时开启无障碍服务,目的是为了尽量防止脚本进程被杀。" textColor="#000000" />
+                            <text id="doNotToggleForegroundServiceText2" visibility="gone" textSize="12" text="但是,在前台服务开启时,会在通知栏显示一条常驻通知,比较扰民。所以,默认是只在脚本运行时开启前台服务,脚本结束运行后即自动停用前台服务,而且,不仅会自动停用前台服务,如果之前申请了截屏权限,还会把截屏权限也一并停用。" textColor="#000000" />
+                            <text id="doNotToggleForegroundServiceText3" visibility="gone" textSize="12" text="如果不想让脚本自己控制前台服务、不想让脚本自己停用截屏权限,那就把这个选项开启。" textColor="#000000" />
                         </vertical>
                     </vertical>
 
@@ -189,11 +193,17 @@ ui.layout(
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
-                                    <text text="无条件杀进程重开,每隔" textColor="#000000" />
+                                    <text text="定时杀进程重开,每隔" textColor="#000000" />
                                     <input maxLength="5" id="periodicallyKillTimeout" hint="留空即不强关重开" text="3600" textSize="14" inputType="number|none" />
-                                    <text text="秒一次" textColor="#000000" />
+                                    <text text="秒一次," textColor="#000000" />
                                 </linear>
-                                <text text="（只有在启用自动重开功能时才会杀进程）有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测超时、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。一般设为1小时(3600秒)左右。" textColor="#000000" />
+                                <text text="但如果战斗还没结束," textColor="#000000" />
+                                <linear>
+                                    <text text="就再多等" textColor="#000000" />
+                                    <input maxLength="5" id="periodicallyKillGracePeriod" hint="留空即不等待战斗结束" text="540" textSize="14" inputType="number|none" />
+                                    <text text="秒后再杀进程" textColor="#000000" />
+                                </linear>
+                                <text text="（只有在启用自动重开功能时才会杀进程）有的时候游戏会发生内存泄露,内存占用持续上升直至爆炸,可能导致脚本进程也被杀死。这种情况下,设置假死检测超时、打断官方自动续战可能都没用,于是就不得不设置这个万不得已的选项。一般设为1小时(3600秒)杀一次进程,如果战斗还没结束就再多等9分钟(540秒)。" textColor="#000000" />
                                 <text text="警告:在使用官方自动续战的情况下,定时杀进程会显著加快互关好友助战的消耗速度,如果助战冷却速度赶不上消耗的速度,导致互关好友助战耗尽,而且又没有NPC助战的话,脚本会继续使用单向好友和路人,导致Pt收益大幅下降(降为互关好友的三分之一)!" textColor="#ff0000"/>
                                 <text text="所以请不要把无条件定时杀进程的时间间隔设置得太短!另外,推荐检查一下“只对优选助战使用官方自动续战”设置!" textColor="#ff0000"/>
                             </vertical>
@@ -639,6 +649,7 @@ const persistParamList = [
     "foreground",
     "stopOnVolUp",
     "exitOnServiceSettings",
+    "doNotToggleForegroundService",
     "promptAutoRelaunch",
     "usePresetOpList",
     "default",/* 放在usePresetOpList后面,这样启动时弹的toast还是默认执行脚本 */
@@ -657,6 +668,7 @@ const persistParamList = [
     "breakAutoCycleDuration",
     "forceStopTimeout",
     "periodicallyKillTimeout",
+    "periodicallyKillGracePeriod",
     "timeout",
     "rootForceStop",
     "rootScreencap",
