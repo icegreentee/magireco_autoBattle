@@ -65,6 +65,10 @@ ui.layout(
                             <text id="exitOnServiceSettingsText2" visibility="gone" textSize="12" text="OPPO等部分品牌的手机在有悬浮窗(比如“加速球”)存在时会拒绝开启无障碍服务" textColor="#000000" />
                             <text id="exitOnServiceSettingsText3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#000000" />
                             <text id="exitOnServiceSettingsText4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
+                            <Switch id="doNotToggleForegroundService" margin="0 3" w="*" checked="false" textColor="#000000" text="脚本开始/结束时,不自动开启/停用前台服务" />
+                            <text id="doNotToggleForegroundServiceText1" visibility="gone" textSize="12" text="在脚本运行时开启无障碍服务,目的是为了尽量防止脚本进程被杀。" textColor="#000000" />
+                            <text id="doNotToggleForegroundServiceText2" visibility="gone" textSize="12" text="但是,在前台服务开启时,会在通知栏显示一条常驻通知,比较扰民。所以,默认是只在脚本运行时开启前台服务,脚本结束运行后即自动停用前台服务,而且,不仅会自动停用前台服务,如果之前申请了截屏权限,还会把截屏权限也一并停用。" textColor="#000000" />
+                            <text id="doNotToggleForegroundServiceText3" visibility="gone" textSize="12" text="如果不想让脚本自己控制前台服务、不想让脚本自己停用截屏权限,那就把这个选项开启。" textColor="#000000" />
                         </vertical>
                     </vertical>
 
@@ -645,6 +649,7 @@ const persistParamList = [
     "foreground",
     "stopOnVolUp",
     "exitOnServiceSettings",
+    "doNotToggleForegroundService",
     "promptAutoRelaunch",
     "usePresetOpList",
     "default",/* 放在usePresetOpList后面,这样启动时弹的toast还是默认执行脚本 */
