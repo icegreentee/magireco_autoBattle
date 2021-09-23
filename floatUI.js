@@ -5928,7 +5928,7 @@ function algo_init() {
                     if (findID("nextPageBtn")) {
                         state = STATE_TEAM;
                         toastLog("警告: 脚本不知道现在选了哪一关!"+
-                                 "本轮"+((limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara))?"官方周回":"战斗")+"结束后,\n"+
+                                 "本轮"+((limit.useAuto&&(!limit.autoForPreferredOnly||(limit.preferredSupportCharaNames===""||limit.preferredSupportCharaNames==null||lastFoundPreferredChara)))?"官方周回":"战斗")+"结束后,\n"+
                                  "可能无法自动选关重新开始!");
                         log("进入队伍调整");
                         break;
@@ -6174,7 +6174,7 @@ function algo_init() {
                     //如果在开启“优先使用官方自动续战”的同时,还开启了“只对优选助战使用官方自动续战”,
                     //那么是否要优先点击自动续战按钮还得考虑这一次(每次情况都可能不一样)有没有找到符合优选条件的助战
                     //这里赋值为true或false,避免把object或undefined赋值进去
-                    var shouldUseAuto = (limit.useAuto&&(!limit.autoForPreferredOnly||lastFoundPreferredChara)) ? true : false;
+                    var shouldUseAuto = (limit.useAuto&&(!limit.autoForPreferredOnly||(limit.preferredSupportCharaNames===""||limit.preferredSupportCharaNames==null||lastFoundPreferredChara))) ? true : false;
 
                     //走到这里时肯定至少已经检测到开始按钮,即nextPageBtn
                     //因为后面检测误触弹窗和按钮比较慢,先闭着眼点一下开始或自动续战按钮
