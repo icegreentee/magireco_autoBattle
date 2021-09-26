@@ -184,6 +184,12 @@ ui.layout(
                                 <text text="想要使用自动重开功能的话,务必开启这个选项。如果暂时不想使用自动重开功能,感觉每次启动都弹出对话框很烦人,又不想清除掉导入进来或录制下来的选关动作数据,可以在这里关闭弹窗提示。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <Switch id="reLoginNeverAbandon" text="重新登录时只点击恢复战斗" checked="false" textColor="#000000" />
+                                <text text="在重新登录时,默认是在前1分钟只点击屏幕中央两个OK按钮可能出现的位置,如果到1分钟还没成功登录,就点击(且只点击一次)恢复战斗按钮所在位置(但脚本不知道恢复战斗按钮是否出现了),然后就反复点击放弃战斗按钮所在位置,以及屏幕中央两个OK按钮(于是一共是3个按钮)所在位置。" textColor="#000000" />
+                                <text text="开启这个选项后,就不再是上述的默认行为,而是从一开始就反复点击恢复战斗按钮,以及屏幕中央两个OK按钮(于是一共是3个按钮)所在位置。" textColor="#000000" />
+                                <text text="注意:碎钻复活按钮和恢复战斗按钮所在位置正好是重合的。所以如果碰到打输了的情况,就可能误触到碎钻复活按钮。"  textColor="#ff0000" />
+                            </vertical>
+                            <vertical id="DefaultCrashRestartExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="假死检测超时" textColor="#000000" />
                                     <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="600" textSize="14" inputType="number|none" />
@@ -191,7 +197,7 @@ ui.layout(
                                 </linear>
                                 <text text="（只有在启用自动重开功能时才会杀进程）如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开。一般用来对付黑屏上只显示一个环彩羽(或者其他角色)Live2D、而未能正常显示选关列表的问题。一般设为5到10分钟(300到600秒)。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultCrashRestartExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultCrashRestartExtraSettings5" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="定时杀进程重开,每隔" textColor="#000000" />
                                     <input maxLength="5" id="periodicallyKillTimeout" hint="留空即不强关重开" text="3600" textSize="14" inputType="number|none" />
@@ -207,7 +213,7 @@ ui.layout(
                                 <text text="警告:在使用官方自动续战的情况下,定时杀进程会显著加快互关好友助战的消耗速度,如果助战冷却速度赶不上消耗的速度,导致互关好友助战耗尽,而且又没有NPC助战的话,脚本会继续使用单向好友和路人,导致Pt收益大幅下降(降为互关好友的三分之一)!" textColor="#ff0000"/>
                                 <text text="所以请不要把无条件定时杀进程的时间间隔设置得太短!另外,推荐检查一下“只对优选助战使用官方自动续战”设置!" textColor="#ff0000"/>
                             </vertical>
-                            <vertical id="DefaultCrashRestartExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="DefaultCrashRestartExtraSettings6" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
                                 <text text="（只有在启用自动重开功能时才会杀进程）部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般没有这个问题（但游戏不能被锁后台）,脚本可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
                             </vertical>
@@ -651,6 +657,7 @@ const persistParamList = [
     "exitOnServiceSettings",
     "doNotToggleForegroundService",
     "promptAutoRelaunch",
+    "reLoginNeverAbandon",
     "usePresetOpList",
     "default",/* 放在usePresetOpList后面,这样启动时弹的toast还是默认执行脚本 */
     "autoReconnect",
