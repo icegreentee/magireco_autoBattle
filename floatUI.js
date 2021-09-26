@@ -90,6 +90,8 @@ var syncer = {
 //记录当前版本是否测试过助战的文件(已经去掉，留下注释)
 //var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
 
+//停止shell脚本监工(在algo_init中初始化)
+var stopFatalKillerShellScript = () => {};
 var tasks = algo_init();
 // touch capture, will be initialized in main
 var capture = () => { };
@@ -322,6 +324,26 @@ function getUIContent(key) {
         }
     }
 }
+function setUIContent(key, value) {
+    switch (ui[key].getClass().getSimpleName()) {
+        case "JsEditText":
+            ui[key].setText(value);
+            break;
+        case "Switch":
+        case "CheckBox":
+            ui[key].setChecked(value);
+            break;
+        case "JsSpinner":
+            ui[key].setSelection(value);
+            break;
+        case "RadioGroup":
+            if (value !== undefined && ui[value])
+                ui[value].setChecked(true);
+            break;
+        default:
+           throw new Error("setUIContent: unknown ui[key].getClass().getSimpleName() return value");
+    }
+}
 
 //监视当前任务的线程
 var monitoredTask = null;
@@ -424,6 +446,8 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
             log("已停止前台服务");
             updateUI("foreground", "setChecked", $settings.isEnabled("foreground_service", false));
         }
+        floatUI.storage.remove("last_limit_json");
+        stopFatalKillerShellScript();
     });
     monitoredTask.waitFor();
 });
@@ -1012,6 +1036,8 @@ floatUI.main = function () {
         } catch (e) {
             logException(e);
         }
+        floatUI.storage.remove("last_limit_json");
+        stopFatalKillerShellScript();
     });
 
     var touch_down_pos = null;
@@ -1364,6 +1390,7 @@ var currentLang = language.zh
 var limit = {
     version: '',
     doNotToggleForegroundService: false,
+    doNotAutoRecover: false,
     helpx: '',
     helpy: '',
     battleNo: 'cb3',
@@ -2141,7 +2168,6 @@ floatUI.logParams = function () {
 
 // compatible action closure
 function algo_init() {
-
     //虽然函数名里有Root，实际上用的可能还是adb shell权限
     function clickOrSwipeRoot(x1, y1, x2, y2, duration) {
         var shellcmd = null;
@@ -4379,6 +4405,87 @@ function algo_init() {
         return false;
     }
 
+    //在logcat里监控游戏是否崩溃，在游戏崩溃后补刀杀掉游戏进程（因为貌似am force-stop也可能杀不掉），
+    //并（重新）启动脚本（以防游戏崩溃时顺便带崩脚本），然后交给recoverLastWork函数
+    //这里存在一个已知问题：脚本进程并没有重启，于是貌似脚本UI在这种重启后存在内存泄漏问题
+    function startFatalKillerShellScript(specified_package_name) {
+        if (specified_package_name == null && last_alive_lang == null) {
+            toastLog("不知道在Shell脚本中要监控哪个区服,退出");
+            stopThread();
+        }
+        var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
+        var filePath = "/data/local/tmp/auto_magireco_fatal_killer.sh";
+        var content = "#!/system/bin/sh"
+            +"\ndonothing() { echo -ne \"SIGHUP received.\\n\"; }"
+            +"\ntrap 'donothing' SIGHUP"
+            +"\nmkdir /data/local/tmp/auto_magireco_fatal_killer.lock || sleep 1 && if [ -f /data/local/tmp/auto_magireco_fatal_killer.pid ]; then"
+            +"\n    LAST_PID=$(cat /data/local/tmp/auto_magireco_fatal_killer.pid);"
+            +"\n    if [ -f /proc/${LAST_PID}/cmdline ]; then"
+            +"\n        LAST_CMDLINE=$(cat \"/proc/${LAST_PID}/cmdline\");"
+            +"\n        if [[ \"$LAST_CMDLINE\" == *\"auto_magireco_fatal_killer\"* ]]; then"
+            +"\n            if [[ $1 == \"stop\" ]]; then"
+            +"\n                echo -ne \"Killing PID=${LAST_PID} ... \";"
+            +"\n                kill \"${LAST_PID}\";"
+            +"\n                rmdir /data/local/tmp/auto_magireco_fatal_killer.lock;"
+            +"\n                echo -ne \"Done. Exit.\\n\";"
+            +"\n                exit 0;"
+            +"\n            fi"
+            +"\n            echo -ne \"Already running, PID=${LAST_PID}. Exit now.\";"
+            +"\n            exit 0;"
+            +"\n        fi"
+            +"\n    fi"
+            +"\nfi"
+            +"\nif [[ $1 == \"stop\" ]]; then"
+            +"\n    echo -ne \"Stopped.\\n\";"
+            +"\n    exit;"
+            +"\nfi"
+            +"\n"
+            +"\nlogcat -T 1 *:F | while read line; do"
+            +"\n    if [[ \"$line\" == *\""+name+"\"* ]]; then"
+            +"\n        DATESTR=$(date);"
+            +"\n        echo -ne \"${DATESTR} \";"
+            +"\n        echo -ne \"Killing "+name+" ... \";"
+            +"\n        killall "+name+" || echo -ne \"[killall failed]\";"
+            +"\n        pkill "+name+" || echo -ne \"[pkill failed]\";"
+            +"\n        echo -ne \"Done, restarting AutoJS ... \";"
+            +"\n        am start -n \""+context.getPackageName()+"/com.stardust.autojs.inrt.SplashActivity\" || echo -ne \"[am start failed]\";"
+            +"\n        echo -ne \"Done.\\n\";"
+            +"\n    fi;"
+            +"\ndone &"
+            +"\nPID=$!;"
+            +"\necho \"${PID}\" > /data/local/tmp/auto_magireco_fatal_killer.pid;"
+            +"\n"
+        let binaryCopyFromPath = files.cwd()+"/bin/auto_magireco_fatal_killer.sh";
+        files.ensureDir(binaryCopyFromPath);
+        files.create(binaryCopyFromPath);
+        files.write(binaryCopyFromPath, content);
+        normalShell("chmod 644 "+binaryCopyFromPath);
+        if (limit.privilege != null) {
+            privShell("cat \""+binaryCopyFromPath+"\" > \""+filePath+"\"");
+            privShell("chmod 755 "+filePath);
+            var shellcmd = "runbg() { \""+filePath+"\" > /dev/null & }; runbgbg() { runbg & }; runbgbg & exit;\n";
+            let t = threads.start(function () {privShell(shellcmd);});
+            t.waitFor();
+            log("已用root或adb权限启动shell脚本监工");
+        } else {
+            log("没有root或adb权限,无法启动shell脚本监工");
+        }
+    }
+    stopFatalKillerShellScript = function () {
+        let shellcmds = [
+            "/data/local/tmp/auto_magireco_fatal_killer.sh stop",
+            "killall auto_magireco_fatal_killer.sh",
+        ];
+        if (limit.privilege != null) {
+            shellcmds.forEach((shellcmd) => {
+                log("停止shell脚本监工...");
+                privShell(shellcmd);
+            });
+        } else {
+            log("没有root或adb权限,无法停止shell脚本监工");
+        }
+    }
+
     function getScreenParams() {
         if (screen != null && gameoffset != null)
             return JSON.stringify({screen: screen, gameoffset: gameoffset});
@@ -5563,6 +5670,20 @@ function algo_init() {
     function taskDefault() {
         isCurrentTaskPaused.set(TASK_RUNNING);//其他暂不（需要）支持暂停的脚本不需要加这一句
 
+        var isCurrentTaskRecovered = false;
+        if (!limit.doNotAutoRecover && limit.last_saved_vars != null) {
+            isCurrentTaskRecovered = true;
+            log("根据上次保存的参数,恢复游戏崩溃带崩的脚本\n先重启游戏,再重新登录...");
+            last_alive_lang = limit.last_saved_vars.last_alive_lang;
+            reLaunchGame();
+            reLogin();
+            isLastOpListNonPreset = limit.last_saved_vars.isLastOpListNonPreset;
+            lastNonPresetOpList = limit.last_saved_vars.lastNonPresetOpList;
+            lastOpList = limit.last_saved_vars.lastOpList;
+            log("已恢复上次的选关动作录制数据");
+            delete limit.last_saved_vars;
+        }
+
         initialize();
 
         if (limit.usePresetOpList > 0) {
@@ -5661,7 +5782,8 @@ function algo_init() {
                 log("autoReconnect", limit["autoReconnect"]);
                 updateUI("autoReconnect", "setChecked", limit["autoReconnect"]);
             }
-            if (dialogs.confirm("闪退自动重开",
+            //如果现在是游戏崩溃带崩脚本后恢复,那就不需要弹窗询问
+            if (isCurrentTaskRecovered || dialogs.confirm("闪退自动重开",
                 "即将开始周回。\n"
                 +loadedInfoString+"\n"
                 +"请务必确保游戏没有被锁后台,否则可能无法正常杀掉进程!\n"
@@ -5675,6 +5797,27 @@ function algo_init() {
                 isLastOpListNonPreset = false;
                 toastLog("周回已开始。\n已停用闪退自动重开。");
             }
+        }
+
+        if (!limit.doNotAutoRecover && lastOpList != null) {
+            //为游戏崩溃带崩脚本后恢复做准备
+            let last_limit = {};
+            for (let key in limit) {
+                if (key === "privilege") continue;
+                if (key === "cutoutParams") continue;
+                last_limit[key] = limit[key];
+            }
+            last_limit.last_saved_vars = {
+                last_alive_lang: last_alive_lang,
+                isLastOpListNonPreset: isLastOpListNonPreset,
+                lastNonPresetOpList: lastNonPresetOpList,
+                lastOpList: lastOpList,
+            };
+            let last_limit_json = JSON.stringify(last_limit);
+            floatUI.storage.put("last_limit_json", last_limit_json);
+            log("已保存参数以供游戏崩溃带崩脚本后恢复");
+            startFatalKillerShellScript();
+            log("已启动shell脚本监工以供游戏崩溃带崩脚本后恢复");
         }
 
         //检测初始状态，可以支持在更多状态下点启动，然后就是有些比较费时的检测还是不要放在周回里。
@@ -10206,6 +10349,67 @@ function algo_init() {
     }
 
     /* ~~~~~~~~ 来自3.6.0版(以及点SKIP跳过剧情bug修正)的备用周回脚本 结束 ~~~~~~~~ */
+
+    function recoverLastWork() {
+        //如果上次脚本在运行中崩溃了,
+        //就在这里恢复limit里的设置参数（里面的last_saved_vars包含一些不在limit里但仍然需要保存的变量）,
+        //然后恢复上次执行的工作
+
+        if (limit.doNotAutoRecover) {
+            floatUI.storage.remove("last_limit_json");
+            log("已禁用停用游戏崩溃带崩脚本的临时解决方案，故不进行恢复，并在存储中删除恢复参数");
+            return;
+        }
+
+        let lastScriptTaskItem = {name: "未成功恢复上次执行的脚本", fn: function () {}};
+
+        let last_limit_json = floatUI.storage.get("last_limit_json", "null");
+        let last_limit = null;
+        try {
+            last_limit = JSON.parse(last_limit_json);
+        } catch (e) {
+            logException(e);
+            last_limit = null;
+        }
+        if (last_limit == null) {
+            log("没有上次执行的脚本需要恢复");
+            return;
+        }
+        if (typeof last_limit.lastScriptTaskItemName !== "string") {
+            log("记录中的脚本名字不是字符串，故未能恢复上次执行的脚本");
+            return;
+        }
+        let recoveredItem = floatUI.scripts.find((item) => item.name === last_limit.lastScriptTaskItemName);
+        if (recoveredItem == null) {
+            log("未找到名字符合的脚本，故未能恢复上次执行的脚本");
+            return;
+        }
+        lastScriptTaskItem = recoveredItem;
+        log("准备恢复执行脚本: ["+lastScriptTaskItem.name+"]");
+
+        //准备开始恢复上次执行的脚本
+        //特权和刘海屏参数要重新检测，故删去
+        delete last_limit.privilege;
+        delete last_limit.cutoutParams;
+        //下次要恢复的脚本名字交由被恢复的脚本任务函数来决定，故删去
+        delete last_limit.lastScriptTaskItemName;
+        //只覆盖last_limit里（上面删去一部分后还剩下的）有的键值，并更新UI
+        for (let key in last_limit) limit[key] = last_limit[key];
+        ui.run(function () {
+            //这里也会触发UI的onChangeListener，但limit中也可能有UI里没有的键值
+            for (let key in limit) {
+                if (ui[key]) setUIContent(key, limit[key]);
+            }
+        });
+        //已经恢复limit中的参数，先删除存储中的last_limit_json，
+        //然后交给被恢复的脚本任务函数自己重新保存
+        floatUI.storage.remove("last_limit_json");
+
+        //执行要恢复的脚本任务函数
+        replaceCurrentTask(lastScriptTaskItem);
+    }
+    //导出这个函数
+    floatUI.recoverLastWork = recoverLastWork;
 
     return {
         default: taskDefault,
