@@ -5678,7 +5678,7 @@ function algo_init() {
             for (let attempt=1; attempt<=10; attempt++) {
                 log("恢复游戏崩溃带崩的脚本:第"+attempt+"次尝试重启游戏...");
                 reLaunchGame();
-                sleep(2000);
+                sleep(5000);
                 if (!isGameDead()) {
                     log("恢复游戏崩溃带崩的脚本:已成功重启游戏");
                     break;
