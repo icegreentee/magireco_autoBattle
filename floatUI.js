@@ -5678,8 +5678,8 @@ function algo_init() {
             for (let attempt=1; attempt<=10; attempt++) {
                 log("恢复游戏崩溃带崩的脚本:第"+attempt+"次尝试重启游戏...");
                 reLaunchGame();
-                sleep(5000);
-                if (!isGameDead()) {
+                sleep(2000);
+                if (!isGameDead(2000)) {
                     log("恢复游戏崩溃带崩的脚本:已成功重启游戏");
                     break;
                 }
@@ -5764,7 +5764,7 @@ function algo_init() {
                 stopThread();//等到权限获取完再重试
                 return;
             }
-            requestTestReLaunchIfNeeded();//测试是否可以正常重开
+            if (!isCurrentTaskRecovered) requestTestReLaunchIfNeeded();//测试是否可以正常重开(但不能阻碍游戏崩溃带崩脚本后恢复)
             let presetNameString = "";
             if (limit.usePresetOpList > 0) {
                 presetNameString = "\n使用预设选关动作录制数据: ["+floatUI.presetOpLists[limit.usePresetOpList].name+"]";
