@@ -5802,6 +5802,7 @@ function algo_init() {
         if (!limit.doNotAutoRecover && lastOpList != null) {
             //为游戏崩溃带崩脚本后恢复做准备
             let last_limit = {};
+            last_limit.lastScriptTaskItemName = "副本周回(剧情/活动通用)";
             for (let key in limit) {
                 if (key === "privilege") continue;
                 if (key === "cutoutParams") continue;
