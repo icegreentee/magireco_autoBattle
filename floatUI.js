@@ -5675,7 +5675,15 @@ function algo_init() {
             isCurrentTaskRecovered = true;
             log("根据上次保存的参数,恢复游戏崩溃带崩的脚本\n先重启游戏,再重新登录...");
             last_alive_lang = limit.last_saved_vars.last_alive_lang;
-            reLaunchGame();
+            for (let attempt=1; attempt<=10; attempt++) {
+                log("恢复游戏崩溃带崩的脚本:第"+attempt+"次尝试重启游戏...");
+                reLaunchGame();
+                sleep(2000);
+                if (!isGameDead()) {
+                    log("恢复游戏崩溃带崩的脚本:已成功重启游戏");
+                    break;
+                }
+            }
             initialize();//否则reLogin不知道屏幕参数
             reLogin();
             isLastOpListNonPreset = limit.last_saved_vars.isLastOpListNonPreset;
