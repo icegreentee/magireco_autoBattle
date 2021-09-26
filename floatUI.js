@@ -1036,7 +1036,7 @@ floatUI.main = function () {
         } catch (e) {
             logException(e);
         }
-        floatUI.storage.remove("last_limit_json");
+        //floatUI.storage.remove("last_limit_json");//触发带崩脚本问题时貌似on exit事件也会触发,所以这里就不删除last_limit_json了
         stopFatalKillerShellScript();
     });
 
@@ -4477,8 +4477,8 @@ function algo_init() {
             "killall auto_magireco_fatal_killer.sh",
         ];
         if (limit.privilege != null) {
+            log("停止shell脚本监工...");
             shellcmds.forEach((shellcmd) => {
-                log("停止shell脚本监工...");
                 privShell(shellcmd);
             });
         } else {
