@@ -5679,6 +5679,7 @@ function algo_init() {
                 log("恢复游戏崩溃带崩的脚本:第"+attempt+"次尝试重启游戏...");
                 reLaunchGame();
                 sleep(2000);
+                detectGameLang();//给string赋值,避免isGameDead总是误以为游戏没启动
                 if (!isGameDead(2000)) {
                     log("恢复游戏崩溃带崩的脚本:已成功重启游戏");
                     break;
