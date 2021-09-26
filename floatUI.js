@@ -5676,6 +5676,7 @@ function algo_init() {
             log("根据上次保存的参数,恢复游戏崩溃带崩的脚本\n先重启游戏,再重新登录...");
             last_alive_lang = limit.last_saved_vars.last_alive_lang;
             reLaunchGame();
+            initialize();//否则reLogin不知道屏幕参数
             reLogin();
             isLastOpListNonPreset = limit.last_saved_vars.isLastOpListNonPreset;
             lastNonPresetOpList = limit.last_saved_vars.lastNonPresetOpList;
