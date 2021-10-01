@@ -447,7 +447,8 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
             updateUI("foreground", "setChecked", $settings.isEnabled("foreground_service", false));
         }
         floatUI.storage.remove("last_limit_json");
-        stopFatalKillerShellScript();
+        //停止shell脚本监工(在参数修改触发adjust函数后就应该已经停止了)
+        if (limit.autoRecover) stopFatalKillerShellScript();
     });
     monitoredTask.waitFor();
 });
@@ -1037,7 +1038,8 @@ floatUI.main = function () {
             logException(e);
         }
         //floatUI.storage.remove("last_limit_json");//触发带崩脚本问题时貌似on exit事件也会触发,所以这里就不删除last_limit_json了
-        stopFatalKillerShellScript();
+        //停止shell脚本监工(在参数修改触发adjust函数后就应该已经停止了)
+        if (limit.autoRecover) stopFatalKillerShellScript();
     });
 
     var touch_down_pos = null;
@@ -2125,6 +2127,9 @@ floatUI.adjust = function (key, value) {
                 requestShellPrivilegeThread = threads.start(requestShellPrivilege);
             }
         }
+
+        //停止shell脚本监工
+        if (key == "autoRecover" && !value) stopFatalKillerShellScript();
     }
 }
 
