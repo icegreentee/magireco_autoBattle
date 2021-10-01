@@ -92,6 +92,7 @@ var syncer = {
 
 //停止shell脚本监工(在algo_init中初始化)
 var stopFatalKillerShellScript = () => {};
+var stopFatalKillerShellScriptThread = null;
 var tasks = algo_init();
 // touch capture, will be initialized in main
 var capture = () => { };
@@ -2136,7 +2137,14 @@ floatUI.adjust = function (key, value) {
         }
 
         //停止shell脚本监工
-        if (key == "autoRecover" && !value) stopFatalKillerShellScript();
+        if (key == "autoRecover" && !value) {
+            if (stopFatalKillerShellScriptThread == null || !stopFatalKillerShellScriptThread.isAlive()) {
+                stopFatalKillerShellScriptThread = threads.start(stopFatalKillerShellScript);
+                stopFatalKillerShellScriptThread.waitFor();
+            } else {
+                log("已经在尝试停止shell脚本监工了");
+            }
+        }
     }
 }
 
