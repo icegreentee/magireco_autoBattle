@@ -255,7 +255,13 @@ ui.layout(
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
-                                <text text="开启后,从第3回合开始,会放出所有可用的主动技能。如果遇到问题可以关闭" textColor="#000000" />
+                                <text text="开启后,从(默认)第3回合开始,会放出所有可用的主动技能。如果遇到问题可以关闭。" textColor="#000000" />
+                                <linear>
+                                    <text text="从第" textColor="#000000" />
+                                    <input maxLength="2" id="CVAutoBattleClickSkillsSinceTurn" hint="3" text="3" textSize="14" inputType="number|none" />
+                                    <text text="回合起使用主动技能" textColor="#000000" />
+                                </linear>
+                                <text text="脚本暂不能识别技能面板切换按钮(行动盘右边的大“SKILL”按钮)是否处于闪烁状态,考虑到在镜层(如果不是镜层而是副本,那情况又不一样,一般是第1回合即可发动主动技能)大多数主动技能都只在第3回合才冷却完毕,为了避免点开技能面板后又关闭导致浪费时间,默认只从第3回合开始使用主动技能。" textColor="#000000" />
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllMagiaDisks" w="*" margin="0 3" checked="true" textColor="#000000" text="使用Magia/Doppel大招" />
@@ -264,6 +270,8 @@ ui.layout(
                             <vertical id="CVAutoBattleExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattlePreferAccel" w="*" margin="0 3" checked="false" textColor="#000000" text="优先用Accel盘" />
                                 <text text="默认选盘倾向于用Blast盘。开启后,改为倾向于Accel。" textColor="#000000" />
+                                <text text="比如: 由比鹤乃单人队,因为队伍里只有一个成员也就是鹤乃,每回合的发牌就固定是鹤乃的盘型AABBC(只是顺序会随机打乱),然后,开启这个选项后,虽然从AABBC里可以挑选出ACB,但脚本仍然选择ACA。" textColor="#000000" />
+                                <text text="只有开启了这个选项,才能让单鹤乃(或者类似的情况)连续每回合都点击MAA这个3个盘。" textColor="#ff0000" />
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings6" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattlePreferABCCombo" w="*" margin="0 3" checked="false" textColor="#000000" text="优先凑A/B/C Combo" />
@@ -687,6 +695,7 @@ const persistParamList = [
     "useCVAutoBattle",
     "CVAutoBattleDebug",
     "CVAutoBattleClickAllSkills",
+    "CVAutoBattleClickSkillsSinceTurn",
     "CVAutoBattleClickAllMagiaDisks",
     "CVAutoBattlePreferAccel",
     "CVAutoBattlePreferABCCombo",
@@ -812,6 +821,19 @@ afterTextChanged: function (s) {
     let value = parseInt(str);
     if (isNaN(value) || value < 100) {
         s.replace(0, str.length, "5000");
+    }
+}
+})
+);
+
+//限制CVAutoBattleClickSkillsSinceTurn的取值
+ui["CVAutoBattleClickSkillsSinceTurn"].addTextChangedListener(
+new android.text.TextWatcher({
+afterTextChanged: function (s) {
+    let str = ""+s;
+    let value = parseInt(str);
+    if (isNaN(value) || value < 1 || value > 99) {
+        s.replace(0, str.length, "3");
     }
 }
 })
