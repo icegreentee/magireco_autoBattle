@@ -1390,7 +1390,7 @@ var currentLang = language.zh
 var limit = {
     version: '',
     doNotToggleForegroundService: false,
-    doNotAutoRecover: false,
+    autoRecover: false,
     helpx: '',
     helpy: '',
     battleNo: 'cb3',
@@ -5671,7 +5671,7 @@ function algo_init() {
         isCurrentTaskPaused.set(TASK_RUNNING);//其他暂不（需要）支持暂停的脚本不需要加这一句
 
         var isCurrentTaskRecovered = false;
-        if (!limit.doNotAutoRecover && limit.last_saved_vars != null) {
+        if (limit.autoRecover && limit.last_saved_vars != null) {
             isCurrentTaskRecovered = true;
             log("根据上次保存的参数,恢复游戏崩溃带崩的脚本\n先重启游戏,再重新登录...");
             last_alive_lang = limit.last_saved_vars.last_alive_lang;
@@ -5809,7 +5809,7 @@ function algo_init() {
             }
         }
 
-        if (!limit.doNotAutoRecover && lastOpList != null) {
+        if (limit.autoRecover && lastOpList != null) {
             //为游戏崩溃带崩脚本后恢复做准备
             let last_limit = {};
             last_limit.lastScriptTaskItemName = "副本周回(剧情/活动通用)";
@@ -10366,7 +10366,7 @@ function algo_init() {
         //就在这里恢复limit里的设置参数（里面的last_saved_vars包含一些不在limit里但仍然需要保存的变量）,
         //然后恢复上次执行的工作
 
-        if (limit.doNotAutoRecover) {
+        if (!limit.autoRecover) {
             floatUI.storage.remove("last_limit_json");
             log("已禁用停用游戏崩溃带崩脚本的临时解决方案，故不进行恢复，并在存储中删除恢复参数");
             return;

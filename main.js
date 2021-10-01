@@ -69,10 +69,9 @@ ui.layout(
                             <text id="doNotToggleForegroundServiceText1" visibility="gone" textSize="12" text="在脚本运行时开启无障碍服务,目的是为了尽量防止脚本进程被杀。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText2" visibility="gone" textSize="12" text="但是,在前台服务开启时,会在通知栏显示一条常驻通知,比较扰民。所以,默认是只在脚本运行时开启前台服务,脚本结束运行后即自动停用前台服务,而且,不仅会自动停用前台服务,如果之前申请了截屏权限,还会把截屏权限也一并停用。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText3" visibility="gone" textSize="12" text="如果不想让脚本自己控制前台服务、不想让脚本自己停用截屏权限,那就把这个选项开启。" textColor="#000000" />
-                            <Switch id="doNotAutoRecover" margin="0 3" w="*" checked="false" textColor="#000000" text="停用游戏崩溃带崩脚本的临时解决方案" />
-                            <text id="doNotAutoRecoverText1" visibility="gone" textSize="12" text="脚本可以监工游戏,防止游戏因为掉线/闪退/内存泄漏溢出而中断自动周回。但是游戏掉线时貌似有几率会带着脚本一起崩溃,原因不明。" textColor="#000000" />
-                            <text id="doNotAutoRecoverText2" visibility="gone" textSize="12" text="为了对付这个问题,目前有个临时的办法(需要root或adb权限),就是在logcat里监控游戏是否崩溃,崩溃后再杀一次游戏进程,然后重启脚本。目前只有“副本周回(剧情/活动通用)”脚本支持这个功能。" textColor="#000000" />
-                            <text id="doNotAutoRecoverText3" visibility="gone" textSize="12" text="开启这个选项后,就会停用上述这个临时解决方案。" textColor="#000000" />
+                            <Switch id="autoRecover" margin="0 3" w="*" checked="false" textColor="#000000" text="游戏崩溃带崩脚本的临时解决方案" />
+                            <text id="autoRecoverText1" visibility="gone" textSize="12" text="脚本可以监工游戏,防止游戏因为掉线/闪退/内存泄漏溢出而中断自动周回。但是游戏掉线时貌似有几率会带着脚本一起崩溃,原因不明。" textColor="#000000" />
+                            <text id="autoRecoverText2" visibility="gone" textSize="12" text="为了对付这个问题,目前有个临时的办法(需要root或adb权限),就是在logcat里监控游戏是否崩溃,崩溃后再杀一次游戏进程,然后重启脚本。目前只有“副本周回(剧情/活动通用)”脚本支持这个功能。" textColor="#000000" />
                         </vertical>
                     </vertical>
 
@@ -654,7 +653,7 @@ const persistParamList = [
     "stopOnVolUp",
     "exitOnServiceSettings",
     "doNotToggleForegroundService",
-    "doNotAutoRecover",
+    "autoRecover",
     "promptAutoRelaunch",
     "usePresetOpList",
     "default",/* 放在usePresetOpList后面,这样启动时弹的toast还是默认执行脚本 */
