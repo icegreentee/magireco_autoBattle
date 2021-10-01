@@ -1564,6 +1564,11 @@ var clickSets = {
         y: 950,
         pos: "bottom"
     },
+    mirrors1stOpponent: {
+        x: 1793,
+        y: 269,
+        pos: "center"
+    },
     battle1: {
         x: 1200,
         y: 580,
@@ -9803,15 +9808,15 @@ function algo_init() {
         return true;
     }
 
-    function mirrorsPick3rdOpponent() {
-        toastLog("挑选第3个镜层对手...");
-        let matchWrap = id("matchingWrap").findOne().bounds()
+    function mirrorsPick1stOpponent() {
+        toastLog("挑选第1个镜层对手...");
+        id("matchingWrap").findOne();
         for (let attempt=0; attempt<3; attempt++) {
             if (id("battleStartBtn").findOnce()) break; //MuMu等控件树残缺环境下永远也找不到battleStartBtn（虽然实际上有战斗开始按钮）
-            click(matchWrap.centerX(), matchWrap.bottom - 50);
+            click(convertCoords(clickSets.mirrors1stOpponent));
             sleep(1500);
         }
-        log("挑选第3个镜层对手完成");
+        log("挑选第1个镜层对手完成");
     }
 
     function taskMirrors() {
@@ -9853,11 +9858,11 @@ function algo_init() {
                     sleep(3000);
                 }
                 if (!pickedWeakest) {
-                    toastLog("多次尝试挑选镜层最弱对手时出错,回退到挑选第3个镜层对手...");
+                    toastLog("多次尝试挑选镜层最弱对手时出错,回退到挑选第1个镜层对手...");
                 }
             }
             if (!limit.smartMirrorsPick || !pickedWeakest) {
-                mirrorsPick3rdOpponent();
+                mirrorsPick1stOpponent();
             }
 
             while (id("matchingWrap").findOnce() || id("matchingList").findOnce()) {
