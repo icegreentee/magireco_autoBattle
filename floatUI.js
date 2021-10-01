@@ -1400,6 +1400,7 @@ var limit = {
     drug2: false,
     drug3: false,
     autoReconnect: true,
+    reLoginNeverAbandon: false,
     justNPC: false,
     dragSupportList: false,
     preferredSupportCharaNames: "",
@@ -4380,7 +4381,13 @@ function algo_init() {
                 return false;//调用者会杀进程
             }
 
-            if (elapsedTime > 60 * 1000) {
+            if (limit.reLoginNeverAbandon) {
+                let btn = recoverOrAbandonBtn.recover;
+                log("点击"+btn.description+"按钮区域...");
+                click(btn.convertedPoint);
+                log("点击"+btn.description+"按钮区域完成,等待1秒...");
+                sleep(1000);
+            } else if (elapsedTime > 60 * 1000) {
                 let btnName = null;
                 if (!isRecoverBtnClicked) {
                     //“恢复战斗”按钮和断线重连的“否”重合，很蛋疼，但是没有控件可以检测，没办法
