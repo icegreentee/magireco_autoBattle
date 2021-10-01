@@ -1399,6 +1399,7 @@ var limit = {
     useCVAutoBattle: true,
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
+    CVAutoBattleClickSkillsSinceTurn: "3",
     CVAutoBattleClickAllMagiaDisks: true,
     CVAutoBattlePreferAccel: false,
     CVAutoBattlePreferABCCombo: false,
@@ -9159,7 +9160,7 @@ function algo_init() {
             }
 
             if (limit.CVAutoBattleClickAllSkills) {
-                if (turn >= 3) {
+                if (turn >= parseInt(limit.CVAutoBattleClickSkillsSinceTurn)) {
                     //一般在第3回合后主动技能才冷却完毕
                     //闭着眼放出所有主动技能
                     clickAllSkills();
@@ -9250,7 +9251,7 @@ function algo_init() {
                 let lastPreferredDisks = [];
                 let lastPreferredDisksCandidates = {};
                 if (comboDisks.length < 3) {
-                    //再找ACA、ACB
+                    //再找ACB、ACA(如果开启优先用Accel盘,则优先找ACA、ACB)
                     //先找Puella Combo内的ACA、ACB，再找混合ACA、ACB
                     candidateDisks = sameCharaDisks.length >= 3 ? sameCharaDisks : allActionDisks;
                     for (let attempt=0,attemptMax=sameCharaDisks.length>=3?2:1; attempt<attemptMax; attempt++) {
@@ -9258,7 +9259,8 @@ function algo_init() {
                             ACA: ["accel", "charge", "accel"],
                             ACB: ["accel", "charge", "blast"],
                         };
-                        for (let name in nonsameactionsequences) {
+                        //如果开启优先用Accel盘,则优先找ACA、ACB
+                        for (let name of (limit.CVAutoBattlePreferAccel ? ["ACA", "ACB"] : ["ACB", "ACA"])) {
                             if (lastPreferredDisksCandidates[name] == null)
                                 lastPreferredDisksCandidates[name] = [];
                             let nonsameactionseq = nonsameactionsequences[name];
@@ -9286,6 +9288,32 @@ function algo_init() {
                             break;
                         }
                         candidateDisks = allActionDisks;
+                    }
+                }
+                if (clickedDisksCount > 0 && clickedDisksCount < 3) {
+                    //(应该是点击了magia/doppel盘)没有连携,但已点击盘数大于0(且小于3,否则3个盘已经全点完了,不过点完3个M/D盘后也不应该走到这里),
+                    //为了方便单鹤乃这种只有2个A的盘型(比如鹤乃是AABBC),放出magia后,就继续点击剩下2个A盘(总体上是点击了MAA这3个盘)
+                    //简而言之,(只在开启“优先用Accel盘”的情况下)方便连续点击MAA这3个盘
+                    let accelOrBlastDisks = findSameActionDisks(allActionDisks, limit.CVAutoBattlePreferAccel ? "accel" : "blast");
+                    if (accelOrBlastDisks.length >= 2) {
+                        //A/B盘有2个或以上,继续点击剩下的A/B盘
+                        prioritiseDisks(accelOrBlastDisks);
+                    } else if (accelOrBlastDisks.length >= 1) {
+                        //只有1个A/B盘了
+                        if (clickedDisksCount > 1) {
+                            //前面应该是点了2个M/D盘,那么最后第3个盘留给A/B
+                            prioritiseDisks(accelOrBlastDisks);
+                        } else {
+                            //前面应该是只点击了1个M/D盘,还剩2个盘没点,但现在只有1个A/B盘
+                            let chargeDisks = findSameActionDisks(allActionDisks, "charge");
+                            if (chargeDisks.length > 0) {
+                                //如果有C盘,就把C盘放在A/B盘前面(于是是点击了MCA/MCB)
+                                prioritiseDisks([chargeDisks[0], accelOrBlastDisks[0]]);
+                            } else {
+                                //没有C盘,那就(第2个盘)就单纯继续点击A/B盘,然后随缘
+                                prioritiseDisks(accelOrBlastDisks[0]);
+                            }
+                        }
                     }
                 }
             }
