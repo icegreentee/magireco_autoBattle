@@ -9639,6 +9639,7 @@ function algo_init() {
 
     function mirrorsPick1stOpponent() {
         toastLog("挑选第1个镜层对手...");
+        id("matchingWrap").findOne();
         for (let attempt=0; attempt<3; attempt++) {
             if (id("battleStartBtn").findOnce()) break; //MuMu等控件树残缺环境下永远也找不到battleStartBtn（虽然实际上有战斗开始按钮）
             click(convertCoords(clickSets.mirrors1stOpponent));
