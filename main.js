@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "5.9.4";
+var version = "5.9.5";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -69,6 +69,9 @@ ui.layout(
                             <text id="doNotToggleForegroundServiceText1" visibility="gone" textSize="12" text="在脚本运行时开启无障碍服务,目的是为了尽量防止脚本进程被杀。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText2" visibility="gone" textSize="12" text="但是,在前台服务开启时,会在通知栏显示一条常驻通知,比较扰民。所以,默认是只在脚本运行时开启前台服务,脚本结束运行后即自动停用前台服务,而且,不仅会自动停用前台服务,如果之前申请了截屏权限,还会把截屏权限也一并停用。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText3" visibility="gone" textSize="12" text="如果不想让脚本自己控制前台服务、不想让脚本自己停用截屏权限,那就把这个选项开启。" textColor="#000000" />
+                            <Switch id="autoRecover" margin="0 3" w="*" checked="false" textColor="#000000" text="游戏崩溃带崩脚本的临时解决方案" />
+                            <text id="autoRecoverText1" visibility="gone" textSize="12" text="脚本可以监工游戏,防止游戏因为掉线/闪退/内存泄漏溢出而中断自动周回。但是游戏掉线时貌似有几率会带着脚本一起崩溃,原因不明。" textColor="#000000" />
+                            <text id="autoRecoverText2" visibility="gone" textSize="12" text="为了对付这个问题,目前有个临时的办法(需要root或adb权限),就是在logcat里监控游戏是否崩溃,崩溃后再杀一次游戏进程,然后重启脚本。目前只有“副本周回(剧情/活动通用)”脚本支持这个功能。" textColor="#000000" />
                         </vertical>
                     </vertical>
 
@@ -184,6 +187,12 @@ ui.layout(
                                 <text text="想要使用自动重开功能的话,务必开启这个选项。如果暂时不想使用自动重开功能,感觉每次启动都弹出对话框很烦人,又不想清除掉导入进来或录制下来的选关动作数据,可以在这里关闭弹窗提示。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                                <Switch id="reLoginNeverAbandon" text="重新登录时只点击恢复战斗" checked="false" textColor="#000000" />
+                                <text text="在重新登录时,默认是在前1分钟只点击屏幕中央两个OK按钮可能出现的位置,如果到1分钟还没成功登录,就点击(且只点击一次)恢复战斗按钮所在位置(但脚本不知道恢复战斗按钮是否出现了),然后就反复点击放弃战斗按钮所在位置,以及屏幕中央两个OK按钮(于是一共是3个按钮)所在位置。" textColor="#000000" />
+                                <text text="开启这个选项后,就不再是上述的默认行为,而是从一开始就反复点击恢复战斗按钮,以及屏幕中央两个OK按钮(于是一共是3个按钮)所在位置。" textColor="#000000" />
+                                <text text="注意:碎钻复活按钮和恢复战斗按钮所在位置正好是重合的。所以如果碰到打输了的情况,就可能误触到碎钻复活按钮。"  textColor="#ff0000" />
+                            </vertical>
+                            <vertical id="DefaultCrashRestartExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="假死检测超时" textColor="#000000" />
                                     <input maxLength="5" id="forceStopTimeout" hint="留空即不强关重开" text="600" textSize="14" inputType="number|none" />
@@ -191,7 +200,7 @@ ui.layout(
                                 </linear>
                                 <text text="（只有在启用自动重开功能时才会杀进程）如果停留在一个状态超过设定的秒数,就认为游戏已经假死,然后杀进程重开。一般用来对付黑屏上只显示一个环彩羽(或者其他角色)Live2D、而未能正常显示选关列表的问题。一般设为5到10分钟(300到600秒)。" textColor="#000000" />
                             </vertical>
-                            <vertical id="DefaultCrashRestartExtraSettings4" visibility="gone" padding="10 8 0 0" w="*" h="auto">
+                            <vertical id="DefaultCrashRestartExtraSettings5" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <linear>
                                     <text text="定时杀进程重开,每隔" textColor="#000000" />
                                     <input maxLength="5" id="periodicallyKillTimeout" hint="留空即不强关重开" text="3600" textSize="14" inputType="number|none" />
@@ -207,7 +216,7 @@ ui.layout(
                                 <text text="警告:在使用官方自动续战的情况下,定时杀进程会显著加快互关好友助战的消耗速度,如果助战冷却速度赶不上消耗的速度,导致互关好友助战耗尽,而且又没有NPC助战的话,脚本会继续使用单向好友和路人,导致Pt收益大幅下降(降为互关好友的三分之一)!" textColor="#ff0000"/>
                                 <text text="所以请不要把无条件定时杀进程的时间间隔设置得太短!另外,推荐检查一下“只对优选助战使用官方自动续战”设置!" textColor="#ff0000"/>
                             </vertical>
-                            <vertical id="DefaultCrashRestartExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="DefaultCrashRestartExtraSettings6" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
                                 <text text="（只有在启用自动重开功能时才会杀进程）部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般没有这个问题（但游戏不能被锁后台）,脚本可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
                             </vertical>
@@ -246,7 +255,13 @@ ui.layout(
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
-                                <text text="开启后,从第3回合开始,会放出所有可用的主动技能。如果遇到问题可以关闭" textColor="#000000" />
+                                <text text="开启后,从(默认)第3回合开始,会放出所有可用的主动技能。如果遇到问题可以关闭。" textColor="#000000" />
+                                <linear>
+                                    <text text="从第" textColor="#000000" />
+                                    <input maxLength="2" id="CVAutoBattleClickSkillsSinceTurn" hint="3" text="3" textSize="14" inputType="number|none" />
+                                    <text text="回合起使用主动技能" textColor="#000000" />
+                                </linear>
+                                <text text="脚本暂不能识别技能面板切换按钮(行动盘右边的大“SKILL”按钮)是否处于闪烁状态,考虑到在镜层(如果不是镜层而是副本,那情况又不一样,一般是第1回合即可发动主动技能)大多数主动技能都只在第3回合才冷却完毕,为了避免点开技能面板后又关闭导致浪费时间,默认只从第3回合开始使用主动技能。" textColor="#000000" />
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllMagiaDisks" w="*" margin="0 3" checked="true" textColor="#000000" text="使用Magia/Doppel大招" />
@@ -255,6 +270,8 @@ ui.layout(
                             <vertical id="CVAutoBattleExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattlePreferAccel" w="*" margin="0 3" checked="false" textColor="#000000" text="优先用Accel盘" />
                                 <text text="默认选盘倾向于用Blast盘。开启后,改为倾向于Accel。" textColor="#000000" />
+                                <text text="比如: 由比鹤乃单人队,因为队伍里只有一个成员也就是鹤乃,每回合的发牌就固定是鹤乃的盘型AABBC(只是顺序会随机打乱),然后,开启这个选项后,虽然从AABBC里可以挑选出ACB,但脚本仍然选择ACA。" textColor="#000000" />
+                                <text text="只有开启了这个选项,才能让单鹤乃(或者类似的情况)连续每回合都点击MAA这个3个盘。" textColor="#ff0000" />
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings6" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattlePreferABCCombo" w="*" margin="0 3" checked="false" textColor="#000000" text="优先凑A/B/C Combo" />
@@ -586,8 +603,8 @@ ui.emitter.on("resume", () => {
     if (floatIsActive) {
         floatUI.refreshUI();
     } else {
+        floatUI.storage = storage; //必须放在floatUI.main()前面
         floatUI.main();
-        floatUI.storage = storage;
         floatIsActive = true;
     }
     if ($settings.isEnabled('foreground_service') != ui.foreground.isChecked())
@@ -640,8 +657,8 @@ if (!$floaty.checkPermission()) {
     }
     exit();
 } else {
+    floatUI.storage = storage; //必须放在floatUI.main()前面
     floatUI.main();
-    floatUI.storage = storage;
     floatIsActive = true;
 }
 
@@ -650,7 +667,9 @@ const persistParamList = [
     "stopOnVolUp",
     "exitOnServiceSettings",
     "doNotToggleForegroundService",
+    "autoRecover",
     "promptAutoRelaunch",
+    "reLoginNeverAbandon",
     "usePresetOpList",
     "default",/* 放在usePresetOpList后面,这样启动时弹的toast还是默认执行脚本 */
     "autoReconnect",
@@ -676,6 +695,7 @@ const persistParamList = [
     "useCVAutoBattle",
     "CVAutoBattleDebug",
     "CVAutoBattleClickAllSkills",
+    "CVAutoBattleClickSkillsSinceTurn",
     "CVAutoBattleClickAllMagiaDisks",
     "CVAutoBattlePreferAccel",
     "CVAutoBattlePreferABCCombo",
@@ -801,6 +821,19 @@ afterTextChanged: function (s) {
     let value = parseInt(str);
     if (isNaN(value) || value < 100) {
         s.replace(0, str.length, "5000");
+    }
+}
+})
+);
+
+//限制CVAutoBattleClickSkillsSinceTurn的取值
+ui["CVAutoBattleClickSkillsSinceTurn"].addTextChangedListener(
+new android.text.TextWatcher({
+afterTextChanged: function (s) {
+    let str = ""+s;
+    let value = parseInt(str);
+    if (isNaN(value) || value < 1 || value > 99) {
+        s.replace(0, str.length, "3");
     }
 }
 })
@@ -959,3 +992,4 @@ var toUpdate = sync(function () {
 });
 
 floatUI.enableToastParamChanges();
+floatUI.recoverLastWork();
