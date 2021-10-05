@@ -11115,7 +11115,7 @@ function algo_init() {
 
         if (!limit.autoRecover) {
             floatUI.storage.remove("last_limit_json");
-            log("已禁用停用游戏崩溃带崩脚本的临时解决方案，故不进行恢复，并在存储中删除恢复参数");
+            log("已停用游戏崩溃带崩脚本的临时解决方案，故不进行恢复，并在存储中删除恢复参数");
             return;
         }
 
