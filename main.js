@@ -259,7 +259,7 @@ ui.layout(
                             <vertical id="DungeonExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <text text="战斗假死检测超时:" textColor="#000000" />
                                 <linear>
-                                    <input maxLength="3" id="dungeonBattleTimeoutSec" hint="留空即不强关重开" text="1200" textSize="14" inputType="number|none" />
+                                    <input maxLength="5" id="dungeonBattleTimeoutSec" hint="留空即不强关重开" text="1200" textSize="14" inputType="number|none" />
                                     <text text="秒" textColor="#000000" />
                                 </linear>
                                 <text text="有时候会在进入战斗时等待太久。默认超过20分钟就会杀进程重开。" textColor="#000000" />
