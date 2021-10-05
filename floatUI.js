@@ -4662,7 +4662,11 @@ function algo_init() {
             }
         }
 
-        dialogs.alert("理子(DUNGEON类型)活动脚本", "路线名称: ["+routeData.description+"]\n区域: ["+routeData.regionNum+"]");
+        dialogs.alert("理子(DUNGEON类型)活动脚本",
+            "路线名称: ["+routeData.description+"]\n"
+            +"区域: ["+routeData.regionNum+"]\n"
+            +"CP回复药: ["+(limit.drug5?"已启用,数量"+(limit.drug5num===""?"无限制":"限制为"+limit.drug5num+"个"):"已停用")+"]\n"
+            +"等待CP自回: ["+(limit.waitCP?"已启用":"已停用")+"]");
 
         //在活动地图上已经走了多少步
         var moveCount = null;
