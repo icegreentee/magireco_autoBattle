@@ -256,6 +256,14 @@ ui.layout(
                                 </linear>
                                 <text text="警告:把战斗结束后的等待时间改得太小可能导致脚本误识别游戏状态！" textColor="#ff0000" />
                             </vertical>
+                            <vertical id="DungeonExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <text text="战斗假死检测超时:" textColor="#000000" />
+                                <linear>
+                                    <input maxLength="3" id="dungeonBattleTimeoutSec" hint="留空即不强关重开" text="1200" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="有时候会在进入战斗时等待太久。默认超过20分钟就会杀进程重开。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -738,6 +746,7 @@ const persistParamList = [
     "dungeonEventRouteData",
     "dungeonClickNonBattleNodeWaitSec",
     "dungeonPostRewardWaitSec",
+    "dungeonBattleTimeoutSec",
 ];
 const tempParamList = [
     "drug1",

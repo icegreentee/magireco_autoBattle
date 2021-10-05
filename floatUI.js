@@ -1442,8 +1442,9 @@ var limit = {
     CVAutoBattlePreferAccel: false,
     CVAutoBattlePreferABCCombo: false,
     dungeonEventRouteData: "",
-    dungeonClickNonBattleNodeWaitSec: 8,
-    dungeonPostRewardWaitSec: 8,
+    dungeonClickNonBattleNodeWaitSec: "8",
+    dungeonPostRewardWaitSec: "8",
+    dungeonBattleTimeoutSec: "1200",
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -4739,12 +4740,34 @@ function algo_init() {
                 );
                 stopThread();
         }
+        var last_state = state;
+
+        var battleStartTime = null;
 
         while (true) {
             //检测游戏是否闪退
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
                 state = STATE_CRASHED;
             }
+
+            //离开战斗状态时重置battleStartTime
+            if (last_state == STATE_BATTLE && state == STATE_BATTLE) {
+                battleStartTime = null;
+            }
+            //检测开始战斗时是否假死
+            if (limit.dungeonBattleTimeoutSec !== "" && state == STATE_BATTLE) {
+                let currentTime = new Date().getTime();
+                let dungeonBattleTimeoutSec = parseInt(limit.dungeonBattleTimeoutSec);
+                if (isNaN(dungeonBattleTimeoutSec) || dungeonBattleTimeoutSec <= 0) dungeonBattleTimeoutSec = 1200;
+                if (battleStartTime != null && currentTime - battleStartTime > dungeonBattleTimeoutSec * 1000) {
+                    log("战斗假死检测超时时间已到");
+                    killGame();
+                    state = STATE_CRASHED;
+                }
+            }
+
+            last_state = state;
+
             //然后根据目前状态分情况处理
             switch (state) {
                 case STATE_CRASHED: {
@@ -4842,6 +4865,7 @@ function algo_init() {
                                     if (mapStateIDs.find((id) => findIDFast(id)) == null) {
                                         log("剧情地图特征控件已消失,进入战斗状态");
                                         state = STATE_BATTLE;
+                                        battleStartTime = new Date().getTime();
                                     } else {
                                         log("剧情地图特征控件尚未消失");
                                         sleep(1000);
