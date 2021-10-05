@@ -232,6 +232,22 @@ ui.layout(
                                 <text text="路线数据:" textColor="#000000" />
                                 <input id="dungeonEventRouteData" hint="留空即使用预设数据" text="" textSize="14" inputType="textMultiLine|none" />
                             </vertical>
+                            <vertical id="DungeonExtraSettings2" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <text text="点击非战斗节点后的等待时间:" textColor="#000000" />
+                                <linear>
+                                    <input maxLength="3" id="dungeonClickNonBattleNodeWaitSec" hint="8" text="8" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="警告:把点击非战斗节点后的等待时间改得太小可能导致走错路线等意想不到的错误！" textColor="#ff0000" />
+                            </vertical>
+                            <vertical id="DungeonExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <text text="战斗结束后的等待时间:" textColor="#000000" />
+                                <linear>
+                                    <input maxLength="3" id="dungeonPostRewardWaitSec" hint="8" text="8" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="警告:把战斗结束后的等待时间改得太小可能导致脚本误识别游戏状态！" textColor="#ff0000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -712,6 +728,8 @@ const persistParamList = [
     "CVAutoBattlePreferAccel",
     "CVAutoBattlePreferABCCombo",
     "dungeonEventRouteData",
+    "dungeonClickNonBattleNodeWaitSec",
+    "dungeonPostRewardWaitSec",
 ];
 const tempParamList = [
     "drug1",

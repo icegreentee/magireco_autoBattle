@@ -1439,6 +1439,8 @@ var limit = {
     CVAutoBattlePreferAccel: false,
     CVAutoBattlePreferABCCombo: false,
     dungeonEventRouteData: "",
+    dungeonClickNonBattleNodeWaitSec: 8,
+    dungeonPostRewardWaitSec: 8,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -4766,8 +4768,10 @@ function algo_init() {
                                 case "treasure":
                                 case "heal":
                                 case "trap":
-                                    log("这一步不是战斗而是"+currentMove.type+" 等待8秒...");
-                                    sleep(8000);
+                                    let dungeonClickNonBattleNodeWaitSec = parseInt(limit.dungeonClickNonBattleNodeWaitSec);
+                                    if (isNaN(dungeonClickNonBattleNodeWaitSec) || dungeonClickNonBattleNodeWaitSec <= 0) dungeonClickNonBattleNodeWaitSec = 8;
+                                    log("这一步不是战斗而是"+currentMove.type+" 等待"+dungeonClickNonBattleNodeWaitSec+"秒...");
+                                    sleep(dungeonClickNonBattleNodeWaitSec * 1000);
                                     moveCount++;
                                     break;
                                 default:
@@ -4830,8 +4834,10 @@ function algo_init() {
                 }
                 case STATE_REWARD: {
                     if (battleRewardIDs.find((id) => findIDFast(id)) == null) {
-                        log("已退出战斗结算界面,再等待10秒...");
-                        sleep(10000);//防止误判成STATE_HOME
+                        let dungeonPostRewardWaitSec = parseInt(limit.dungeonPostRewardWaitSec);
+                        if (isNaN(dungeonPostRewardWaitSec) || dungeonPostRewardWaitSec <= 0) dungeonPostRewardWaitSec = 8;
+                        log("已退出战斗结算界面,再等待"+dungeonPostRewardWaitSec+"秒...");
+                        sleep(dungeonPostRewardWaitSec * 1000);//防止误判成STATE_HOME
                         state = detectState();
                         break;
                     }
