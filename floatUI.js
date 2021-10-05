@@ -4830,18 +4830,18 @@ function algo_init() {
                         log("点击确定");
                         click(OKButton.bounds().centerX(), OKButton.bounds().centerY());
                         sleep(1000);
-                    }
-                    let startButton = findFast(string.start);
-                    if (startButton != null) {
-                        log("点击开始");
-                        click(startButton.bounds().centerX(), startButton.bounds().centerY());
-                        sleep(1000);
                         if (findFast(string.cp_exhausted)) {
                             if (!refillCP()) {
                                 toastLog("回复CP失败,结束运行");
                                 stopThread();
                             }
                         }
+                    }
+                    let startButton = findFast(string.start);
+                    if (startButton != null) {
+                        log("点击开始");
+                        click(startButton.bounds().centerX(), startButton.bounds().centerY());
+                        sleep(1000);
                     }
                     if (regionEntry != null && OKButton == null && startButton == null) {
                         log("区域"+routeData.regionNum+"出现了,而且确定/开始按钮没有出现,重新检测状态");
