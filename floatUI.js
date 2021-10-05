@@ -4819,7 +4819,7 @@ function algo_init() {
                     let battleLosePopup = findPopupInfoDetailTitle(string.region_lose);
                     if (battleLosePopup != null) {
                         log("出现\"攻略区域失败\"弹窗,尝试关闭...");
-                        click(battleLosePopup.close);
+                        click(convertCoords(clickSets.backToHomepage));
                         sleep(1000);
                         break;
                     }
