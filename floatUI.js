@@ -4350,7 +4350,7 @@ function algo_init() {
                     sleep(1500)
                 }
                 while ((cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title)) != null) {
-                    click(convertCoords(clickSetsMod.bpDrugRefilledOK))
+                    click(isCPDrugExhausted ? cpRefillPopup.close : convertCoords(clickSetsMod.bpDrugRefilledOK))
                     sleep(1500)
                 }
                 log("磕CP药结束");
