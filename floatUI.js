@@ -4313,7 +4313,7 @@ function algo_init() {
     //理子活动脚本,闪退会自动重开,如果打输了基本上就是会浪费1点CP(拿不到后续节点,尤其是是boss战的奖励)
     function waitForCPRecovery() {
         if (limit.waitCP) {
-            for (let i=60; i>0; i++) {
+            for (let i=60; i>0; i--) {
                 toastLog("等待每小时自回1CP 还有"+i+"分钟...");
                 sleep(60 * 1000);
             }
@@ -4334,10 +4334,6 @@ function algo_init() {
         let cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title);
         if (cpRefillPopup != null) {
             if (isDrugEnabled(4)) {
-                while (!id("cpTextWrap").findOnce()) {
-                    click(convertCoords(clickSetsMod.bpExhaustToBpDrug))
-                    sleep(1500)
-                }
                 let isCPDrugExhausted = false;
                 let attemptMax = 3;
                 for (let attempt=0; attempt<attemptMax; attempt++) {
@@ -4364,7 +4360,7 @@ function algo_init() {
                     return true;
                 }
             } else {
-                click(convertCoords(clickSetsMod.bpClose));
+                click(cpRefillPopup.close);
                 log("设置的CP药已用完");
                 return waitForCPRecovery();
             }
@@ -4830,11 +4826,15 @@ function algo_init() {
                         log("点击确定");
                         click(OKButton.bounds().centerX(), OKButton.bounds().centerY());
                         sleep(1000);
-                        if (findFast(string.cp_exhausted)) {
+                        while (findFast(string.cp_exhausted)) {
+                            log("CP已耗尽");
                             if (!refillCP()) {
                                 toastLog("回复CP失败,结束运行");
                                 stopThread();
                             }
+                            log("回复CP后再次点击确定");
+                            click(OKButton.bounds().centerX(), OKButton.bounds().centerY());
+                            sleep(1000);
                         }
                     }
                     let startButton = findFast(string.start);
