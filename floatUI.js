@@ -110,7 +110,7 @@ var requestShellPrivilegeThread = null;
 // 嗑药数量限制和统计
 //绿药或红药，每次消耗1个
 //魔法石，每次碎5钻
-const drugCosts = [1, 1, 5, 1];
+const drugCosts = [1, 1, 5, 1, 1];
 var updateDrugLimit = () => { };
 var updateDrugConsumingStats = () => { };
 var isDrugEnabled = () => { };
@@ -1303,7 +1303,7 @@ floatUI.main = function () {
 
     //嗑药后，更新设置中的嗑药个数限制
     updateDrugLimit = function (index) {
-        if (index < 0 || index > 3) throw new Error("index out of range");
+        if (index < 0 || index > 4) throw new Error("index out of range");
         let drugnum = parseInt(limit["drug"+(index+1)+"num"]);
         //parseInt("") == NaN，NaN视为无限大处理（所以不需要更新数值）
         if (!isNaN(drugnum)) {
@@ -1325,7 +1325,7 @@ floatUI.main = function () {
     }
     //嗑药后，更新嗑药个数统计
     updateDrugConsumingStats = function (index) {
-        if (index < 0 || index > 3) throw new Error("index out of range");
+        if (index < 0 || index > 4) throw new Error("index out of range");
         if (currentTaskDrugConsumed["drug"+(index+1)] == null) {
             currentTaskDrugConsumed["drug"+(index+1)] = 0;
         }
@@ -1334,7 +1334,7 @@ floatUI.main = function () {
     }
 
     isDrugEnabled = function (index) {
-        if (index < 0 || index > 3) throw new Error("index out of range");
+        if (index < 0 || index > 4) throw new Error("index out of range");
 
         let limitnum = parseInt(limit["drug"+(index+1)+"num"]);
         log(
@@ -1353,7 +1353,7 @@ floatUI.main = function () {
     }
 
     isDrugEnough = function (index, count) {
-        if (index < 0 || index > 3) throw new Error("index out of range");
+        if (index < 0 || index > 4) throw new Error("index out of range");
 
         //从游戏界面上读取剩余回复药个数后，作为count传入进来
         let remainingnum = parseInt(count);
@@ -1372,8 +1372,8 @@ floatUI.main = function () {
         if (limitnum < drugCosts[index]) return false;
 
         //如果传入了undefined、""等等，parseInt将会返回NaN，然后NaN与数字比大小的结果将会是是false
-        //BP蓝药数量暂时还不能检测，当作数量足够
-        if (index == 3) {
+        //BP蓝药/理子活动CP药数量暂时还不能检测，当作数量足够
+        if (index == 3 || index == 4) {
             return true;
         } else if (remainingnum < drugCosts[index]) return false;
 
@@ -1413,10 +1413,13 @@ var limit = {
     preferredSupportMemorias: "",//未实现
     autoForPreferredOnly: false,
     drug4: false,
+    drug5: false,
+    waitCP: false,
     drug1num: '0',
     drug2num: '0',
     drug3num: '0',
     drug4num: '0',
+    drug5num: '0',
     promptAutoRelaunch: true,
     usePresetOpList: 0,
     default: 0,
@@ -1621,6 +1624,11 @@ var clickSets = {
     battleFinishedOK: {
         x: 960,
         y: 660,
+        pos: "center"
+    },
+    cpExhaustRefill: {
+        x: 1175,
+        y: 832,
         pos: "center"
     },
 }
@@ -3280,6 +3288,8 @@ function algo_init() {
             "region",
             "move_to_node",
             "region_lose",
+            "cp_exhausted",
+            "cp_refill_title",
             "regex_cost_ap",
             "regex_drug",
             "regex_lastlogin",
@@ -3313,6 +3323,8 @@ function algo_init() {
             "区域",
             "节点移动",
             "攻略区域失败",
+            "CP不足。",
+            "CP回复药",
             /^消耗AP *\d+/,
             /^\d+个$/,
             /^最终登录.+/,
@@ -3346,6 +3358,8 @@ function algo_init() {
             "區域",//同上,在线翻译的
             "節點移動",//同上,在线翻译的
             "攻略區域失敗",//同上,在线翻译的
+            "CP不足。",//同上,在线翻译的
+            "CP回復藥",//同上,在线翻译的
             /^消費AP *\d+/,
             /^\d+個$/,
             /^最終登入.+/,
@@ -3379,6 +3393,8 @@ function algo_init() {
             "エリア",//在appmedia看到的，不确定
             "ポイントに移動",//结合在appmedia看到的使用在线翻译得到，不知道实际是啥
             "エリアのバトルに失敗しました",//使用在线翻译得到，不知道实际是啥
+            "CP不足。",//使用在线翻译得到，不知道实际是啥
+            "CP回復藥",//使用在线翻译得到，不知道实际是啥
             /^消費AP *\d+/,
             /^\d+個$/,
             /^最終ログイン.+/,
@@ -4294,6 +4310,66 @@ function algo_init() {
     }
 
     //理子活动脚本,闪退会自动重开,如果打输了基本上就是会浪费1点CP(拿不到后续节点,尤其是是boss战的奖励)
+    function waitForCPRecovery() {
+        if (limit.waitCP) {
+            for (let i=60; i>0; i++) {
+                toastLog("等待每小时自回1CP 还有"+i+"分钟...");
+                sleep(60 * 1000);
+            }
+            log("已自回1CP");
+            return true;
+        } else {
+            log("CP不足");
+            return false;
+        }
+    }
+    function refillCP() {
+        //回复CP
+        while (findFast(string.cp_exhausted) != null) {
+            log("出现CP不足报错窗口,点击回复按钮...");
+            click(convertCoords(clickSets.cpExhaustRefill));
+            sleep(1000);
+        }
+        let cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title);
+        if (cpRefillPopup != null) {
+            if (isDrugEnabled(4)) {
+                while (!id("cpTextWrap").findOnce()) {
+                    click(convertCoords(clickSetsMod.bpExhaustToBpDrug))
+                    sleep(1500)
+                }
+                let isCPDrugExhausted = false;
+                let attemptMax = 3;
+                for (let attempt=0; attempt<attemptMax; attempt++) {
+                    if (!id("cpTextWrap").findOnce()) {
+                        updateDrugLimit(4);
+                        break;
+                    }
+                    if (attempt == attemptMax - 1) {
+                        isCPDrugExhausted = true;
+                        toastLog("多次嗑CP药仍然没有反应,应该是CP药耗尽了");
+                        break;
+                    }
+                    click(convertCoords(clickSetsMod.bpDrugConfirm))
+                    sleep(1500)
+                }
+                while ((cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title)) != null) {
+                    click(convertCoords(clickSetsMod.bpDrugRefilledOK))
+                    sleep(1500)
+                }
+                log("磕CP药结束");
+                if (isCPDrugExhausted) {
+                    return waitForCPRecovery();
+                } else {
+                    return true;
+                }
+            } else {
+                click(convertCoords(clickSetsMod.bpClose));
+                log("设置的CP药已用完");
+                return waitForCPRecovery();
+            }
+        }
+        return false;
+    }
     function dungeonEventRunnable() {
         initialize();
 
@@ -4737,6 +4813,12 @@ function algo_init() {
                         log("点击开始");
                         click(startButton.bounds().centerX(), startButton.bounds().centerY());
                         sleep(1000);
+                        if (findFast(string.cp_exhausted)) {
+                            if (!refillCP()) {
+                                toastLog("回复CP失败,结束运行");
+                                stopThread();
+                            }
+                        }
                     }
                     if (regionEntry != null && OKButton == null && startButton == null) {
                         log("区域"+routeData.regionNum+"出现了,而且确定/开始按钮没有出现,重新检测状态");

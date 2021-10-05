@@ -105,6 +105,14 @@ ui.layout(
                                     <text text="个数限制" textColor="#666666" />
                                     <input maxLength="3" id="drug4num" hint="留空即无限制" text="0" textSize="14" inputType="number|none" />
                                 </linear>
+                                <linear>
+                                    <checkbox id="drug5" text="CP回复药(理子类活动)" layout_weight="1" textColor="#666666" />
+                                    <text text="个数限制" textColor="#666666" />
+                                    <input maxLength="3" id="drug5num" hint="留空即无限制" text="0" textSize="14" inputType="number|none" />
+                                </linear>
+                                <linear>
+                                    <checkbox id="waitCP" text="等待CP自回" layout_weight="1" textColor="#666666" />
+                                </linear>
                                 <text text="注意:回复药开关状态和个数限制不会永久保存,在脚本完全退出后,这些设置会被重置!" textColor="#666666" />
                             </vertical>
                             <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#000000" text="只使用NPC(不选则先互关好友,后NPC)" />
@@ -736,10 +744,13 @@ const tempParamList = [
     "drug2",
     "drug3",
     "drug4",
+    "drug5",
+    "waitCP",
     "drug1num",
     "drug2num",
     "drug3num",
     "drug4num",
+    "drug5num",
     "apmul",
 ];
 
