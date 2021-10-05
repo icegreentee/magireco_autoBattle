@@ -4747,7 +4747,7 @@ function algo_init() {
             }
 
             //离开战斗状态时重置battleStartTime
-            if (last_state == STATE_BATTLE && state == STATE_BATTLE) {
+            if (last_state == STATE_BATTLE && state != STATE_BATTLE) {
                 battleStartTime = null;
             }
             //检测开始战斗时是否假死
