@@ -223,6 +223,18 @@ ui.layout(
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
+                        <text text="理子活动脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
+                        <vertical padding="10 6 0 6" w="*" h="auto">
+                            <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="toggleDungeonExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
+                            </vertical>
+                            <vertical id="DungeonExtraSettings1" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <text text="路线数据:" textColor="#000000" />
+                                <input id="dungeonEventRouteData" hint="留空即使用预设数据" text="" textSize="14" inputType="textMultiLine|none" />
+                            </vertical>
+                        </vertical>
+                    </vertical>
+                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="镜层周回脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <vertical padding="0 8 0 6" w="*" h="auto">
@@ -592,7 +604,7 @@ function setToggleListener(key) {
         }
     });
 }
-for (let key of ["Default", "DefaultCrashRestart", "Mirrors", "CVAutoBattle"]) {
+for (let key of ["Default", "DefaultCrashRestart", "Dungeon", "Mirrors", "CVAutoBattle"]) {
     setToggleListener(key);
 }
 
@@ -699,6 +711,7 @@ const persistParamList = [
     "CVAutoBattleClickAllMagiaDisks",
     "CVAutoBattlePreferAccel",
     "CVAutoBattlePreferABCCombo",
+    "dungeonEventRouteData",
 ];
 const tempParamList = [
     "drug1",

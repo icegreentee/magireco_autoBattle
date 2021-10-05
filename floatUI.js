@@ -139,6 +139,10 @@ floatUI.scripts = [
         fn: tasks.simpleAutoBattle,
     },
     {
+        name: "理子活动脚本",
+        fn: tasks.dungeonEvent,
+    },
+    {
         name: "录制闪退重开选关动作",
         fn: tasks.recordSteps,
     },
@@ -1434,6 +1438,7 @@ var limit = {
     CVAutoBattleClickAllMagiaDisks: true,
     CVAutoBattlePreferAccel: false,
     CVAutoBattlePreferABCCombo: false,
+    dungeonEventRouteData: "",
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -3270,6 +3275,9 @@ function algo_init() {
             "follow_append",
             "battle_confirm",
             "cost_ap",
+            "region",
+            "move_to_node",
+            "region_lose",
             "regex_cost_ap",
             "regex_drug",
             "regex_lastlogin",
@@ -3300,6 +3308,9 @@ function algo_init() {
             "关注追加",
             "确定",
             "消耗AP",
+            "区域",
+            "节点移动",
+            "攻略区域失败",
             /^消耗AP *\d+/,
             /^\d+个$/,
             /^最终登录.+/,
@@ -3330,6 +3341,9 @@ function algo_init() {
             "追加關注",
             "決定",
             "消費AP",
+            "區域",//同上,在线翻译的
+            "節點移動",//同上,在线翻译的
+            "攻略區域失敗",//同上,在线翻译的
             /^消費AP *\d+/,
             /^\d+個$/,
             /^最終登入.+/,
@@ -3360,6 +3374,9 @@ function algo_init() {
             "フォロー追加",
             "決定",
             "消費AP",
+            "エリア",//在appmedia看到的，不确定
+            "ポイントに移動",//结合在appmedia看到的使用在线翻译得到，不知道实际是啥
+            "エリアのバトルに失敗しました",//使用在线翻译得到，不知道实际是啥
             /^消費AP *\d+/,
             /^\d+個$/,
             /^最終ログイン.+/,
@@ -4271,6 +4288,563 @@ function algo_init() {
                 }
             }
             sleep(1000);
+        }
+    }
+
+    //理子活动脚本,闪退会自动重开,如果打输了基本上就是会浪费1点CP(拿不到后续节点,尤其是是boss战的奖励)
+    function dungeonEventRunnable() {
+        initialize();
+
+        //刚点进活动,选择剧情/挑战区域的界面具有的特征控件文本
+        const menuStateRegExps = [/^event_dungeon.*/];
+        //进入活动地图后的特征控件ResID
+        const mapStateIDs = ["resetPosition", "openBtn"];
+        //进入结算界面后的特征控件ResID
+        const battleRewardIDs = ["ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
+        //主菜单上的活动按钮
+        const eventButtonPoint = convertCoords({x: 1620, y: 549, pos: "bottom"});
+        const lengthOfSide = 620;//三角形边长
+        const AltitudeOfTriangle = parseInt(lengthOfSide * Math.sqrt(3) / 2);//三角形高
+        const initialPoint = {x: 960, y: 900, pos:"center"};//点击定位按钮,重置位置后,理子所在棋子的位置坐标
+        //在跳棋棋盘(活动地图)上点击不同下一步的坐标
+        const pointsOnChessboard = {
+            initial: initialPoint,
+            left: {x: initialPoint.x - AltitudeOfTriangle, y: initialPoint.y - lengthOfSide / 2, pos: "center"},
+            right: {x: initialPoint.x + AltitudeOfTriangle, y: initialPoint.y - lengthOfSide / 2, pos: "center"},
+            up: {x: initialPoint.x, y: initialPoint.y - AltitudeOfTriangle, pos: "center"},
+            halfLeft: {x: initialPoint.x - AltitudeOfTriangle / 2, y: initialPoint.y - lengthOfSide / 4, pos: "center"},
+            halfRight: {x: initialPoint.x + AltitudeOfTriangle / 2, y: initialPoint.y - lengthOfSide / 4, pos: "center"},
+            halfUp: {x: initialPoint.x, y: initialPoint.y - AltitudeOfTriangle / 2, pos: "center"},
+        };
+        const presetRouteData = {
+            regionNum: "12",
+            description: "理子活动挑战12右路3宝箱",
+            route: [
+                {/*屋顶魔女的手下*/
+                    move: "right",
+                    edge: false,
+                    type: "battle",
+                },
+                {/*Flower Speaker之谣*/
+                    move: "right",
+                    edge: false,
+                    type: "battle",
+                },
+                {/*拿到第1个宝箱 +8叉签*/
+                    move: "halfLeft",
+                    edge: "right",
+                    type: "treasure",
+                },
+                {/*遇到第1个陷阱 -7000HP*/
+                    move: "halfLeft",
+                    edge: false,
+                    type: "trap",
+                },
+                {/*屋顶魔女的手下*/
+                    move: "right",
+                    edge: false,
+                    type: "battle",
+                },
+                {/*沙地魔女*/
+                    move: "left",
+                    edge: "right",
+                    type: "battle",
+                },
+                {/*拿到第2个宝箱 +8叉签*/
+                    move: "halfRight",
+                    edge: false,
+                    type: "treasure",
+                },
+                {/*遇到第2个陷阱 -7000HP*/
+                    move: "halfRight",
+                    edge: false,
+                    type: "trap",
+                },
+                {/*沙地魔女*/
+                    move: "up",
+                    edge: "right",
+                    type: "battle",
+                },
+                {/*拿到第3个宝箱 +10叉签*/
+                    move: "up",
+                    edge: "right",
+                    type: "treasure",
+                },
+                {/*屋顶魔女的手下*/
+                    move: "left",
+                    edge: "right",
+                    type: "battle",
+                },
+                {/*屋顶魔女*/
+                    move: "left",
+                    edge: false,
+                    type: "battle",
+                },
+            ],
+        };
+
+        //读取配置里的路线数据,如果没有,就询问是否用预置的
+        var routeData = null;
+        try {
+            routeData = limit.dungeonEventRouteData === "" ? null : JSON.parse(limit.dungeonEventRouteData);
+        } catch (e) {
+            logException(e);
+            toastLog("解析路线数据失败,停止运行");
+            stopThread();
+        }
+        if (routeData == null) {
+            if (dialogs.confirm("是否使用预置路线数据？", "是否使用预置的["+presetRouteData.description+"]？")) {
+                routeData = presetRouteData;
+            } else {
+                let description = null;
+                while (description == null || description === "") {
+                    toast("请不要填入空值");
+                    description = dialogs.rawInput("路线数据名称", "");
+                }
+                let regionNum = null;
+                while (regionNum == null || isNaN(regionNum) || regionNum <= 0) {
+                    toast("请填入一个正整数");
+                    regionNum = parseInt(dialogs.rawInput("请输入区域编号(注意:如果当前游戏打开的是本次活动的挑战/剧情区域列表,那么请不要拖动列表!脚本无法点击屏幕范围外的项目!)", ""));
+                }
+                dialogs.alert("记录路线数据",
+                    "脚本将从起始位置开始,询问在棋盘上每一步该怎么走,然后按照你的回答进行点击并记录步骤。\n"
+                    +"注意!如果当前在剧情地图上并不是起始位置,请暂时先放弃这次记录的路线数据,然后请先手动完成这一次的所有战斗,之后再从头重新开始记录路线数据。\n"
+                    +"对话框将会在5秒后重新出现。");
+                let route = [];
+                for (let isFinished=false; !isFinished; ) {
+                    toast("对话框将在5秒后重新出现...");
+                    sleep(5000);
+                    if (route.length == 0 && mapStateIDs.find((id) => findIDFast(id)) == null) {
+                        //游戏打开其他界面时很显然无法检测到活动地图的特征控件,所以要route.length == 0,避免在这里“死循环”
+                        dialogs.alert("请先进入活动地图", "请先进入本次活动的剧情地图(也就是“跳棋棋盘”),务必要和之前输入的区域编号一致。");
+                        continue;
+                    }
+                    if (!dialogs.confirm("第"+(route.length+1)+"步: 要继续记录路线数据吗？",
+                        "如果战斗还没结算完成,或者看不清下一步会走到哪里,请点击\"取消\"(然后赶紧点掉结算界面、重新回到活动地图,并点击左下角的定位按钮),然后对话框将会在5秒后再次出现。\n"
+                        +"如果出现意外情况,比如进入了错误的路线,请放弃这次记录的路线数据,下次再从头重新开始。"
+                    )) {
+                        continue;
+                    }
+                    while (findPopupInfoDetailTitle() != null) {
+                        dialogs.alert("请先关闭弹窗");
+                        sleep(2000);
+                    }
+                    let isGoingBack = false;
+                    let currentMove = {};
+                    while (currentMove.move == null) {
+                        let dialogOptions = ["向左一整步", "向左半步", "向右一整步", "向右半步", "向上一整步", "向上半步", "没看清,等5秒后再问", "完成", "放弃"];
+                        let dialogSelected = null;
+                        dialogSelected = dialogOptions[dialogs.select("第"+(route.length+1)+"步: 移动方向", dialogOptions)];
+                        if (dialogSelected != null) switch (dialogSelected) {
+                            case "向左一整步":
+                                currentMove.move = "left";
+                                break;
+                            case "向左半步":
+                                currentMove.move = "halfLeft";
+                                break;
+                            case "向右一整步":
+                                currentMove.move = "right";
+                                break;
+                            case "向右半步":
+                                currentMove.move = "halfRight";
+                                break;
+                            case "向上一整步":
+                                currentMove.move = "up";
+                                break;
+                            case "向上半步":
+                                currentMove.move = "halfUp";
+                                break;
+                            case "没看清,等5秒后再问":
+                                sleep(5000);
+                                continue;
+                            case "完成":
+                                isFinished = true;
+                                break;
+                            case "放弃":
+                                toastLog("放弃");
+                                stopThread();
+                                break;
+                            default:
+                                throw new Error("unknown dialogSelected");
+                        }
+                        if (dialogSelected != null) toastLog(dialogSelected);
+                        if (isFinished) break;
+                    }
+                    if (!isFinished) while (currentMove.edge == null) {
+                        let dialogOptions = ["左边缘", "右边缘", "不是边缘", "没看清,等5秒后再问"];
+                        let dialogSelected = null;
+                        dialogSelected = dialogOptions[dialogs.select("第"+(route.length+1)+"步: 当前处于地图边缘么？(比如往左拖动发现已经到顶,那就是右边缘)", dialogOptions)];
+                        if (dialogSelected != null) switch (dialogSelected) {
+                            case "左边缘":
+                                currentMove.edge = "left";
+                                break;
+                            case "右边缘":
+                                currentMove.edge = "right";
+                                break;
+                            case "不是边缘":
+                                currentMove.edge = false;
+                                break;
+                            case "没看清,等5秒后再问":
+                                sleep(5000);
+                                continue;
+                            default:
+                                throw new Error("unknown dialogSelected");
+                        }
+                        if (dialogSelected != null) toastLog(dialogSelected);
+                    }
+                    if (!isFinished) while (currentMove.type == null) {
+                        let dialogOptions = ["战斗", "宝箱", "回血", "地雷", "没看清,等5秒后再问"];
+                        let dialogSelected = null;
+                        dialogSelected = dialogOptions[dialogs.select("第"+(route.length+1)+"步: 移动后会进入什么", dialogOptions)];
+                        if (dialogSelected != null) switch (dialogSelected) {
+                            case "战斗":
+                                currentMove.type = "battle";
+                                break;
+                            case "宝箱":
+                                currentMove.type = "treasure";
+                                break;
+                            case "回血":
+                                currentMove.type = "heal";
+                                break;
+                            case "地雷":
+                                currentMove.type = "trap";
+                                break;
+                            case "没看清,等5秒后再问":
+                                sleep(5000);
+                                break;
+                            default:
+                                throw new Error("unknown dialogSelected");
+                        }
+                        if (dialogSelected != null) toastLog(dialogSelected);
+                    }
+                    if (!isFinished) {
+                        while (findPopupInfoDetailTitle() != null) {
+                            dialogs.alert("请先关闭弹窗");
+                            sleep(2000);
+                        }
+                        let resetPositionButton = null;
+                        while ((resetPositionButton = findIDFast("resetPosition")) == null) {
+                            dialogs.alert("未找到重置位置的定位按钮");
+                            toast("5秒后重试...");
+                            sleep(5000);
+                        }
+                        toast("点击定位按钮,重置位置");
+                        sleep(2000);
+                        click(resetPositionButton.bounds().centerX(), resetPositionButton.bounds().centerY());
+                        toast("在棋盘上点击第"+(route.length+1)+"步");
+                        sleep(2000);
+                        let unconvertedPoint = {};//需要先复制一遍,否则之前的步骤对坐标值的加减会累积
+                        for (let key in pointsOnChessboard[currentMove.move]) unconvertedPoint[key] = pointsOnChessboard[currentMove.move][key];
+                        switch (currentMove.edge) {
+                            case "left":
+                                unconvertedPoint.x -= 100;
+                                break;
+                            case "right":
+                                unconvertedPoint.x += 100;
+                                break;
+                            case false:
+                                break;
+                            default:
+                                throw new Error("unknown currentMove.edge value");
+                        }
+                        click(convertCoords(unconvertedPoint));
+                        sleep(2000);
+                        //可能点击了战斗,也可能点击了回血/宝箱/地雷
+                        if (dialogs.confirm("点击位置正确么？",
+                                "如果不正确,请点击\"取消\"。\n"
+                                +"如果只是没点到,接下来重新记录这一步即可。\n"
+                                +"如果出现意外情况,比如进入了错误的路线,请放弃这次记录的路线数据,下次再从头重新开始。"
+                        )) {
+                            while (findPopupInfoDetailTitle() != null) {
+                                dialogs.alert("请关闭弹窗", "如果刚刚点击了战斗节点,请在这个对话框关闭后,在游戏中再点击一次\"确定\"进入战斗。");
+                                sleep(2000);
+                            }
+                        } else {
+                            toast("重新记录第"+(route.length+1)+"步");
+                            continue;
+                        }
+                    }
+                    //在路线中追加新节点
+                    if (!isFinished) route.push(currentMove);
+                    if (isFinished) {
+                        if (route.length <= 1) {
+                            toastLog("未记录任何数据,退出");
+                            stopThread();
+                        }
+                        routeData = {
+                            regionNum: regionNum,
+                            description: description,
+                            route: route,
+                        };
+                        limit.dungeonEventRouteData = JSON.stringify(routeData);
+                        floatUI.storage.put("dungeonEventRouteData", limit.dungeonEventRouteData);
+                        updateUI("dungeonEventRouteData", "setText", limit.dungeonEventRouteData);
+                        backtoMain();
+                        dialogs.alert("已保存路线数据", "请在战斗结束后重新启动脚本");
+                        stopThread();
+                    }
+                }
+            }
+        }
+
+        dialogs.alert("理子(DUNGEON类型)活动脚本", "路线名称: ["+routeData.description+"]\n区域: ["+routeData.regionNum+"]");
+
+        //在活动地图上已经走了多少步
+        var moveCount = null;
+        while (moveCount == null || isNaN(moveCount) || moveCount < 0 || moveCount > routeData.route.length - 1) {
+            toast("请输入一个非负整数,并且不能超出范围");
+            moveCount = parseInt(dialogs.rawInput("请输入起始步数,也就是目前在活动地图上已经走了多少步？", "0"));
+        }
+
+
+        const STATE_CRASHED = 0;
+        const STATE_LOGIN = 1
+        const STATE_HOME = 2;
+        const STATE_MENU = 3;
+        const STATE_MAP = 4;
+        const STATE_BATTLE = 5;
+        const STATE_REWARD = 6;
+
+        function detectState() {
+            if (isGameDead()) return STATE_CRASHED;
+            if (menuStateRegExps.find((regex) => matchFast(regex) == null) == null) return STATE_MENU;
+            if (mapStateIDs.find((id) => findIDFast(id) == null) == null) return STATE_MAP;
+            if (battleRewardIDs.find((id) => findIDFast(id)) != null) return STATE_REWARD;
+            if (getAP() != null) return STATE_HOME;
+            return STATE_BATTLE;//注意这里无法区分战斗状态和登录状态
+        }
+
+        var state = detectState();
+        log("初始状态:"+state);
+        switch (state) {
+            case STATE_MENU:
+                if (!dialogs.confirm("警告",
+                    "检测到脚本启动时,游戏里打开的界面是本次活动的挑战/剧情区域列表。存在两个(潜在)问题:\n"
+                    +"(1)脚本目前暂不支持拖动挑战/剧情区域列表,故无法点击列表中处于屏幕显示范围之外的区域。\n"
+                    +"(2)因为游戏本身存在列表拖动bug,脚本通过无障碍服务获知的控件坐标数据也可能严重跑偏,为了避免点错,请最好回主页后重新在主菜单点击进入活动,然后避免拖动挑战/剧情区域列表。\n"
+                    +"另外,如果之前已经选择进入了一个区域,请务必确保目前处于起始位置(或者输入了正确的起始步数),而且要保证这个区域和脚本使用的路线数据匹配！\n"
+                    +"如果当前在剧情地图上并不是起始位置(或者输入了错误的起始步数),或者和脚本使用的路线数据并不匹配,请点击\"取消\"从而结束运行脚本,然后请先手动完成这一次的所有战斗,之后再启动脚本。\n"
+                    +"点击\"确定\"继续运行脚本,\n"
+                    +"点击\"取消\"结束运行脚本。"
+                )) stopThread();
+                break;
+            case STATE_MAP:
+                if (!dialogs.confirm("警告",
+                    "检测到脚本启动时,游戏里打开的界面是本次活动的剧情地图(也就是“跳棋棋盘”)。\n"
+                    +"请务必确保目前处于起始位置(或者输入了正确的起始步数)！\n"
+                    +"如果当前在剧情地图上并不是起始位置(或者输入了错误的起始步数),或者和脚本使用的路线数据并不匹配,请点击\"取消\"从而结束运行脚本,然后请先手动完成这一次的所有战斗,之后再启动脚本。\n"
+                    +"点击\"确定\"继续运行脚本,\n"
+                    +"点击\"取消\"结束运行脚本。"
+                )) stopThread();
+                break;
+            case STATE_HOME:
+                if(!dialogs.confirm("警告",
+                    "检测到脚本启动时,游戏里打开的界面【可能】是首页。\n"
+                    +"如果当前确实在首页,请点击\"确定\",然后脚本会继续点击主菜单中的活动按钮。\n"
+                    +"如果当前并不是首页,请点击\"取消\"从而结束运行脚本。\n"
+                    +"另外,如果之前已经选择进入了一个区域,请务必确保目前处于起始位置(或者输入了正确的起始步数),而且要保证这个区域和脚本使用的路线数据匹配！\n"
+                    +"如果当前在剧情地图上并不是起始位置(或者输入了错误的起始步数),或者和脚本使用的路线数据并不匹配,请点击\"取消\"从而结束运行脚本,然后请先手动完成这一次的所有战斗,之后再启动脚本。\n"
+                )) stopThread();
+                break;
+            case STATE_BATTLE:
+            case STATE_REWARD:
+            default:
+                //
+                //即便是脚本看着战斗结束了,也不知道现在在棋盘上走到哪里了
+                dialogs.alert("警告",
+                    "脚本不太清楚当前游戏处于什么状态。\n"
+                    +"请点击\"确定\"从而结束运行脚本。\n"
+                    +"然后,请(先手动把当前的所有战斗完成,然后再)在本次活动的【挑战/剧情区域列表】或者是【剧情地图(也就是“跳棋棋盘”)】这两种界面启动脚本。\n"
+                    +"而且,\n"
+                    +"(1)对于【挑战/剧情区域列表】,为了避免触发列表拖动bug,请不要拖动列表。而且很遗憾,对于那些屏幕范围之外的、不拖动列表就显示不出来的挑战/剧情区域,目前脚本并不支持点击进入。\n"
+                    +"(2)对于【剧情地图(也就是“跳棋棋盘”)】,请务必确保处于起始位置。如果不是,请先手动完成这一次的所有战斗,完成之后再启动脚本。"
+                );
+                stopThread();
+        }
+
+        while (true) {
+            //检测游戏是否闪退
+            if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
+                state = STATE_CRASHED;
+            }
+            //然后根据目前状态分情况处理
+            switch (state) {
+                case STATE_CRASHED: {
+                    switch (isGameDead(2000)) {
+                        case "crashed":
+                            log("等待5秒后重启游戏...");
+                            sleep(5000);
+                            reLaunchGame();
+                            log("重启完成,再等待2秒...");
+                            sleep(2000);
+                            break;
+                        case false: //isGameDead不知道游戏登录了没
+                        case "logged_out":
+                            log("闪退检测完成,进入登录页面");
+                            state = STATE_LOGIN;
+                            break;
+                        default:
+                            log("游戏闪退状态未知");
+                            stopThread();
+                    }
+                    break;
+                }
+                case STATE_LOGIN: {
+                    if (isGameDead(2000) == "crashed") {
+                        state = STATE_CRASHED;
+                        break;
+                    }
+                    if (!reLogin()) {
+                        killGame(string.package_name);
+                        state = STATE_CRASHED;
+                        break;
+                    }
+                    state = detectState();
+                    break;
+                }
+                case STATE_HOME: {
+                    log("点击主菜单上的活动按钮");
+                    click(eventButtonPoint);
+                    log("等待10秒...");
+                    sleep(10000);
+                    state = detectState();
+                    break;
+                }
+                case STATE_MENU: {
+                    let battleLosePopup = findPopupInfoDetailTitle(string.region_lose);
+                    if (battleLosePopup != null) {
+                        log("出现\"攻略区域失败\"弹窗,尝试关闭...");
+                        click(battleLosePopup.close);
+                        sleep(1000);
+                        break;
+                    }
+                    let regionEntry = findFast(string.region+routeData.regionNum);
+                    if (regionEntry != null) {
+                        log("点击区域"+routeData.regionNum);
+                        click(regionEntry.bounds().centerX(), regionEntry.bounds().centerY());
+                        sleep(1000);
+                    }
+                    let OKButton = findFast(string.battle_confirm);
+                    if (OKButton != null) {
+                        log("点击确定");
+                        click(OKButton.bounds().centerX(), OKButton.bounds().centerY());
+                        sleep(1000);
+                    }
+                    let startButton = findFast(string.start);
+                    if (startButton != null) {
+                        log("点击开始");
+                        click(startButton.bounds().centerX(), startButton.bounds().centerY());
+                        sleep(1000);
+                    }
+                    if (regionEntry != null && OKButton == null && startButton == null) {
+                        log("区域"+routeData.regionNum+"出现了,而且确定/开始按钮没有出现,重新检测状态");
+                        state = detectState();
+                        break;
+                    }
+                    break;
+                }
+                case STATE_MAP: {
+                    let currentMove = routeData.route[moveCount];
+                    log("第"+(moveCount+1)+"步骤 "+currentMove.type+"类型 "+currentMove.move+"方向 "+currentMove.edge+"边缘");
+
+                    if (findPopupInfoDetailTitle(string.move_to_node) != null) {
+                        log("发现\"节点移动\"弹窗,点击确定");
+                        click(convertCoords(clickSets.recover_battle));
+                        sleep(1000);
+                        if (findPopupInfoDetailTitle(string.move_to_node) == null) {
+                            log("\"节点移动\"弹窗已经在出现后消失");
+                            switch (currentMove.type) {
+                                case "battle":
+                                    if (mapStateIDs.find((id) => findIDFast(id)) == null) {
+                                        log("剧情地图特征控件已消失,进入战斗状态");
+                                        state = STATE_BATTLE;
+                                    } else {
+                                        log("剧情地图特征控件尚未消失");
+                                        sleep(1000);
+                                    }
+                                    break;
+                                case "treasure":
+                                case "heal":
+                                case "trap":
+                                    log("这一步不是战斗而是"+currentMove.type+" 等待8秒...");
+                                    sleep(8000);
+                                    moveCount++;
+                                    break;
+                                default:
+                                    throw new Error("unknown currentMove.type value");
+                            }
+                        }
+                        break;
+                    }
+
+                    let resetPositionButton = findIDFast("resetPosition");
+                    if (resetPositionButton != null) {
+                        log("点击定位按钮,重置位置");
+                        click(resetPositionButton.bounds().centerX(), resetPositionButton.bounds().centerY());
+                        sleep(1000);
+                        log("在棋盘上点击第"+(moveCount+1)+"步");
+                        let unconvertedPoint = {};//需要先复制一遍,否则之前的步骤对坐标值的加减会累积
+                        for (let key in pointsOnChessboard[currentMove.move]) unconvertedPoint[key] = pointsOnChessboard[currentMove.move][key];
+                        switch (currentMove.edge) {
+                            case "left":
+                                unconvertedPoint.x -= 100;
+                                break;
+                            case "right":
+                                unconvertedPoint.x += 100;
+                                break;
+                            case false:
+                                break;
+                            default:
+                                throw new Error("unknown currentMove.edge value");
+                        }
+                        click(convertCoords(unconvertedPoint));
+                        sleep(1000);
+                    } else {
+                        log("未找到重置位置的定位按钮");
+                        sleep(1000);
+                    }
+                    break;
+                }
+                case STATE_BATTLE: {
+                    if (battleRewardIDs.find((id) => findIDFast(id)) != null) {
+                        log("战斗已结束,进入结算");
+                        state = STATE_REWARD;
+                        if (moveCount == routeData.route.length - 1) {
+                            toastLog("已完成这一轮的所有战斗");
+                            moveCount = 0;
+                        } else {
+                            moveCount++;
+                        }
+                        break;
+                    }
+                    if (findPopupInfoDetailTitle(string.region_lose) != null) {
+                        log("出现\"攻略区域失败\"弹窗");
+                        state = STATE_MENU;
+                        break;
+                    }
+                    if (limit.autoReconnect) {
+                        clickReconnect();
+                    }
+                    sleep(1000);
+                    break;
+                }
+                case STATE_REWARD: {
+                    if (battleRewardIDs.find((id) => findIDFast(id)) == null) {
+                        log("已退出战斗结算界面,再等待10秒...");
+                        sleep(10000);//防止误判成STATE_HOME
+                        state = detectState();
+                        break;
+                    }
+                    log("点击断线重连按钮所在区域");
+                    click(convertCoords(clickSets.reconection));
+                    sleep(1000);
+                    break;
+                }
+                default: {
+                    toastLog("错误:未知状态");
+                    stopThread();
+                }
+            }
         }
     }
 
@@ -10486,6 +11060,7 @@ function algo_init() {
         CVAutoBattle: mirrorsAutoBattleMain,
         simpleAutoBattle: mirrorsSimpleAutoBattleMain,
         reopen: enterLoop,
+        dungeonEvent: dungeonEventRunnable,
         recordSteps: recordOperations,
         replaySteps: replayOperations,
         exportSteps: exportOpList,
