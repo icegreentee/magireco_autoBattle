@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "5.9.6";
+var version = "5.9.7";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -110,11 +110,21 @@ ui.layout(
                                     <text text="个数限制" textColor="#666666" />
                                     <input maxLength="3" id="drug5num" hint="留空即无限制" text="0" textSize="14" inputType="number|none" />
                                 </linear>
-                                <linear>
-                                    <checkbox id="waitCP" text="等待CP自回" layout_weight="1" textColor="#666666" />
-                                </linear>
-                                <text text="注意:回复药开关状态和个数限制不会永久保存,在脚本完全退出后,这些设置会被重置!" textColor="#666666" />
                             </vertical>
+                            <text text="如果AP/BP/CP能在设定分钟数内自回,则等待自回,而不嗑药:" margin="0 5" />
+                            <vertical padding="10 3 0 3" w="*" h="auto">
+                                <linear>
+                                    <text text="等待CP自回分钟数:" layout_weight="1" textColor="#666666" />
+                                    <input maxLength="2" id="drug5waitMinutes" hint="留空直接嗑CP药" text="" textSize="14" inputType="number|none" />
+                                </linear>
+                            </vertical>
+                            <text text="没药时,等待AP/BP/CP自回:" layout_weight="1" margin="0 5" />
+                            <vertical padding="10 3 0 3" w="*" h="auto">
+                                <linear>
+                                    <checkbox id="waitCP" text="没药时等CP自回" layout_weight="1" textColor="#666666" />
+                                </linear>
+                            </vertical>
+                            <text text="注意:回复药和自回设置不会永久保存,在脚本完全退出后,这些设置会被重置!" textColor="#666666" />
                             <Switch id="justNPC" w="*" margin="0 5" checked="false" textColor="#000000" text="只使用NPC(不选则先互关好友,后NPC)" />
                             <Switch id="autoReconnect" w="*" margin="0 3" checked="true" textColor="#000000" text="防断线模式(尽可能自动点击断线重连按钮)" />
                             <vertical padding="0 3 0 0" w="*" h="auto">
@@ -263,6 +273,15 @@ ui.layout(
                                     <text text="秒" textColor="#000000" />
                                 </linear>
                                 <text text="有时候会在进入战斗时等待太久。默认超过20分钟就会杀进程重开。" textColor="#000000" />
+                            </vertical>
+                            <vertical id="DungeonExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <text text="定时杀进程重开,每隔多少场战斗1次:" textColor="#000000" />
+                                <linear>
+                                    <text text="每隔" textColor="#000000" />
+                                    <input maxLength="3" id="dungeonBattleCountBeforeKill" hint="留空即不强关重开" text="20" textSize="14" inputType="number|none" />
+                                    <text text="场战斗" textColor="#000000" />
+                                </linear>
+                                <text text="游戏本身存在内存泄漏bug,为避免内存占用越攒越多后把脚本挤出去以及导致游戏自行崩溃,而且理子活动不需要助战(于是就不需要考虑等待助战刷新),默认每过20场战斗杀进程重开一次。" textColor="#000000" />
                             </vertical>
                         </vertical>
                     </vertical>
@@ -747,6 +766,7 @@ const persistParamList = [
     "dungeonClickNonBattleNodeWaitSec",
     "dungeonPostRewardWaitSec",
     "dungeonBattleTimeoutSec",
+    "dungeonBattleCountBeforeKill",
 ];
 const tempParamList = [
     "drug1",
@@ -760,6 +780,7 @@ const tempParamList = [
     "drug3num",
     "drug4num",
     "drug5num",
+    "drug5waitMinutes",
     "apmul",
 ];
 

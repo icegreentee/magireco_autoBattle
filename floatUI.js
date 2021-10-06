@@ -1420,6 +1420,7 @@ var limit = {
     drug3num: '0',
     drug4num: '0',
     drug5num: '0',
+    drug5waitMinutes: "",
     promptAutoRelaunch: true,
     usePresetOpList: 0,
     default: 0,
@@ -1445,6 +1446,7 @@ var limit = {
     dungeonClickNonBattleNodeWaitSec: "8",
     dungeonPostRewardWaitSec: "8",
     dungeonBattleTimeoutSec: "1200",
+    dungeonBattleCountBeforeKill: "20",
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -4311,14 +4313,40 @@ function algo_init() {
     }
 
     //理子活动脚本,闪退会自动重开,如果打输了基本上就是会浪费1点CP(拿不到后续节点,尤其是是boss战的奖励)
+    function getCPCureRemainSeconds() {
+        //注意:如果没有找到自回等待时间,也会返回3601秒
+        let result = 3601;
+        let cureRemainElement = findIDFast("cureRemain");
+        if (cureRemainElement != null) {
+            let text = getContent(cureRemainElement);
+            let matched = text.match(/^\d{2}:\d{2}$/)[0];
+            if (matched == null) return result;
+            let minutes = matched.match(/^\d{2}/)[0];
+            let seconds = matched.match(/\d{2}$/)[0];
+            if (minutes == null || seconds == null) return result;
+            let totalSeconds = parseInt(minutes) * 60 + parseInt(seconds);
+            if (isNaN(totalSeconds) || totalSeconds < 0 || totalSeconds > 3600) return result;
+            result = totalSeconds + 1;
+        }
+        return result;
+    }
+    function waitForCPRecoveryForSeconds(waitTotalSeconds) {
+        //等待CP自回,但无视waitCP设置参数
+        if (typeof waitTotalSeconds !== "number") waitTotalSeconds = 3601;
+        for (let i=waitTotalSeconds,sleepSec=60; i>0; i-=sleepSec) {
+            let waitSec = i % 60;
+            let waitMin = (i - waitSec) / 60;
+            toastLog("等待自回1CP...\n还有"+waitMin+"分钟"+waitSec+"秒");
+            sleepSec = i > 60 ? 60 : i;
+            sleep(sleepSec * 1000);
+        }
+        log("已自回1CP");
+        return true;
+    }
     function waitForCPRecovery() {
+        //等待CP自回
         if (limit.waitCP) {
-            for (let i=60; i>0; i--) {
-                toastLog("等待每小时自回1CP 还有"+i+"分钟...");
-                sleep(60 * 1000);
-            }
-            log("已自回1CP");
-            return true;
+            return waitForCPRecoveryForSeconds(getCPCureRemainSeconds());
         } else {
             log("CP不足");
             return false;
@@ -4333,6 +4361,17 @@ function algo_init() {
         }
         let cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title);
         if (cpRefillPopup != null) {
+            if (limit.drug5waitMinutes !== "") {
+                //若CP能在设置的分钟内能自回则等自回而不嗑药
+                while ((cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title)) != null) {
+                    click(cpRefillPopup.close);
+                    sleep(1500);
+                }
+                let drug5waitMinutes = parseInt(drug5waitMinutes);
+                if (!isNaN(drug5waitMinutes) && drug5waitMinutes > 0 && drug5waitMinutes * 60 + 1 >= getCPCureRemainSeconds()) {
+                    return waitForCPRecoveryForSeconds();
+                }
+            }
             if (isDrugEnabled(4)) {
                 let isCPDrugExhausted = false;
                 let attemptMax = 3;
@@ -4670,7 +4709,8 @@ function algo_init() {
             "路线名称: ["+routeData.description+"]\n"
             +"区域: ["+routeData.regionNum+"]\n"
             +"CP回复药: ["+(limit.drug5?"已启用,数量"+(limit.drug5num===""?"无限制":"限制为"+limit.drug5num+"个"):"已停用")+"]\n"
-            +"等待CP自回: ["+(limit.waitCP?"已启用":"已停用")+"]");
+            +"等待CP自回分钟数: ["+(limit.drug5waitMinutes===""?"不等待,直接嗑药":limit.drug5waitMinutes)+"]\n"
+            +"没药时等CP自回: ["+(limit.waitCP?"已启用":"已停用")+"]");
 
         //在活动地图上已经走了多少步
         var moveCount = null;
@@ -4748,6 +4788,9 @@ function algo_init() {
 
         var battleStartTime = null;
 
+        var battleCount = 0;
+        var lastBattleCountOnKillGame = 0;
+
         while (true) {
             //检测游戏是否闪退
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
@@ -4767,6 +4810,20 @@ function algo_init() {
                     log("战斗假死检测超时时间已到");
                     killGame();
                     state = STATE_CRASHED;
+                    battleStartTime = null;
+                }
+            }
+
+            //每隔几场战斗就杀进程重开一次
+            if (limit.dungeonBattleCountBeforeKill !== "") {
+                let currentTime = new Date().getTime();
+                let dungeonBattleCountBeforeKill = parseInt(limit.dungeonBattleCountBeforeKill);
+                if (isNaN(dungeonBattleCountBeforeKill) || dungeonBattleCountBeforeKill <= 0) dungeonBattleCountBeforeKill = 20;
+                if (battleCount - lastBattleCountOnKillGame >= dungeonBattleCountBeforeKill) {
+                    log("现在总共进行了"+battleCount+"场战斗,上次杀进程时总共进行了"+lastBattleCountOnKillGame+"场战斗,再次杀进程...");
+                    killGame();
+                    state = STATE_CRASHED;
+                    lastBattleCountOnKillGame = battleCount;
                 }
             }
 
@@ -4927,6 +4984,7 @@ function algo_init() {
                     if (battleRewardIDs.find((id) => findIDFast(id)) != null) {
                         log("战斗已结束,进入结算");
                         state = STATE_REWARD;
+                        battleCount++;//这只是赢了的情况,还有输了的情况
                         if (moveCount == routeData.route.length - 1) {
                             toastLog("已完成这一轮的所有战斗");
                             moveCount = 0;
@@ -4938,6 +4996,7 @@ function algo_init() {
                     if (findPopupInfoDetailTitle(string.region_lose) != null) {
                         log("出现\"攻略区域失败\"弹窗");
                         state = STATE_MENU;
+                        battleCount++;//这只是输了的情况,还有赢了的情况
                         break;
                     }
                     if (limit.autoReconnect) {
@@ -4955,9 +5014,15 @@ function algo_init() {
                         state = detectState();
                         break;
                     }
-                    log("点击断线重连按钮所在区域");
-                    click(convertCoords(clickSets.reconection));
-                    sleep(1000);
+                    if (findFast("OK")) {
+                        log("点击玩家升级确认");
+                        click(convertCoords(clickSets.levelup));
+                        sleep(1000);
+                    } else {
+                        log("点击断线重连按钮所在区域");
+                        click(convertCoords(clickSets.reconection));
+                        sleep(1000);
+                    }
                     break;
                 }
                 default: {
