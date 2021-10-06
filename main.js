@@ -264,6 +264,15 @@ ui.layout(
                                 </linear>
                                 <text text="有时候会在进入战斗时等待太久。默认超过20分钟就会杀进程重开。" textColor="#000000" />
                             </vertical>
+                            <vertical id="DungeonExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <text text="定时杀进程重开,每隔多少场战斗1次:" textColor="#000000" />
+                                <linear>
+                                    <text text="每隔" textColor="#000000" />
+                                    <input maxLength="3" id="dungeonBattleCountBeforeKill" hint="留空即不强关重开" text="20" textSize="14" inputType="number|none" />
+                                    <text text="场战斗" textColor="#000000" />
+                                </linear>
+                                <text text="游戏本身存在内存泄漏bug,为避免内存占用越攒越多后把脚本挤出去以及导致游戏自行崩溃,而且理子活动不需要助战(于是就不需要考虑等待助战刷新),默认每过20场战斗杀进程重开一次。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -747,6 +756,7 @@ const persistParamList = [
     "dungeonClickNonBattleNodeWaitSec",
     "dungeonPostRewardWaitSec",
     "dungeonBattleTimeoutSec",
+    "dungeonBattleCountBeforeKill",
 ];
 const tempParamList = [
     "drug1",

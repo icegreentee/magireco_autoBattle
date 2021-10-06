@@ -1445,6 +1445,7 @@ var limit = {
     dungeonClickNonBattleNodeWaitSec: "8",
     dungeonPostRewardWaitSec: "8",
     dungeonBattleTimeoutSec: "1200",
+    dungeonBattleCountBeforeKill: "20",
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -4748,6 +4749,9 @@ function algo_init() {
 
         var battleStartTime = null;
 
+        var battleCount = 0;
+        var lastBattleCountOnKillGame = 0;
+
         while (true) {
             //检测游戏是否闪退
             if (state != STATE_CRASHED && state != STATE_LOGIN && isGameDead(false)) {
@@ -4767,6 +4771,19 @@ function algo_init() {
                     log("战斗假死检测超时时间已到");
                     killGame();
                     state = STATE_CRASHED;
+                }
+            }
+
+            //每隔几场战斗就杀进程重开一次
+            if (limit.dungeonBattleCountBeforeKill !== "") {
+                let currentTime = new Date().getTime();
+                let dungeonBattleCountBeforeKill = parseInt(limit.dungeonBattleCountBeforeKill);
+                if (isNaN(dungeonBattleCountBeforeKill) || dungeonBattleCountBeforeKill <= 0) dungeonBattleCountBeforeKill = 20;
+                if (battleCount - lastBattleCountOnKillGame >= dungeonBattleCountBeforeKill) {
+                    log("现在总共进行了"+battleCount+"场战斗,上次杀进程时总共进行了"+lastBattleCountOnKillGame+"场战斗,再次杀进程...");
+                    killGame();
+                    state = STATE_CRASHED;
+                    lastBattleCountOnKillGame = battleCount;
                 }
             }
 
@@ -4927,6 +4944,7 @@ function algo_init() {
                     if (battleRewardIDs.find((id) => findIDFast(id)) != null) {
                         log("战斗已结束,进入结算");
                         state = STATE_REWARD;
+                        battleCount++;//这只是赢了的情况,还有输了的情况
                         if (moveCount == routeData.route.length - 1) {
                             toastLog("已完成这一轮的所有战斗");
                             moveCount = 0;
@@ -4938,6 +4956,7 @@ function algo_init() {
                     if (findPopupInfoDetailTitle(string.region_lose) != null) {
                         log("出现\"攻略区域失败\"弹窗");
                         state = STATE_MENU;
+                        battleCount++;//这只是输了的情况,还有赢了的情况
                         break;
                     }
                     if (limit.autoReconnect) {
