@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "5.9.5";
+var version = "5.9.6";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -104,6 +104,14 @@ ui.layout(
                                     <checkbox id="drug4" text="BP回复药(镜层)" layout_weight="1" textColor="#666666" />
                                     <text text="个数限制" textColor="#666666" />
                                     <input maxLength="3" id="drug4num" hint="留空即无限制" text="0" textSize="14" inputType="number|none" />
+                                </linear>
+                                <linear>
+                                    <checkbox id="drug5" text="CP回复药(理子类活动)" layout_weight="1" textColor="#666666" />
+                                    <text text="个数限制" textColor="#666666" />
+                                    <input maxLength="3" id="drug5num" hint="留空即无限制" text="0" textSize="14" inputType="number|none" />
+                                </linear>
+                                <linear>
+                                    <checkbox id="waitCP" text="等待CP自回" layout_weight="1" textColor="#666666" />
                                 </linear>
                                 <text text="注意:回复药开关状态和个数限制不会永久保存,在脚本完全退出后,这些设置会被重置!" textColor="#666666" />
                             </vertical>
@@ -219,6 +227,42 @@ ui.layout(
                             <vertical id="DefaultCrashRestartExtraSettings6" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="rootForceStop" w="*" margin="0 3" checked="false" textColor="#000000" text="优先使用root或adb权限杀进程" />
                                 <text text="（只有在启用自动重开功能时才会杀进程）部分模拟器等环境下,没有root或adb(Shizuku)权限可能无法杀死进程。真机则一般没有这个问题（但游戏不能被锁后台）,脚本可以把游戏先切到后台(然后一般就暂停运行了)再杀死。如果你无法获取root或adb权限,而且先切到后台再杀进程这个办法奏效,就可以关掉这个选项。" textColor="#000000" />
+                            </vertical>
+                        </vertical>
+                    </vertical>
+                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
+                        <text text="理子活动脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
+                        <vertical padding="10 6 0 6" w="*" h="auto">
+                            <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="toggleDungeonExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
+                            </vertical>
+                            <vertical id="DungeonExtraSettings1" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <text text="路线数据:" textColor="#000000" />
+                                <input id="dungeonEventRouteData" hint="留空即使用预设数据" text="" textSize="14" inputType="textMultiLine|none" />
+                            </vertical>
+                            <vertical id="DungeonExtraSettings2" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <text text="点击非战斗节点后的等待时间:" textColor="#000000" />
+                                <linear>
+                                    <input maxLength="3" id="dungeonClickNonBattleNodeWaitSec" hint="8" text="8" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="警告:把点击非战斗节点后的等待时间改得太小可能导致走错路线等意想不到的错误！" textColor="#ff0000" />
+                            </vertical>
+                            <vertical id="DungeonExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <text text="战斗结束后的等待时间:" textColor="#000000" />
+                                <linear>
+                                    <input maxLength="3" id="dungeonPostRewardWaitSec" hint="8" text="8" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="警告:把战斗结束后的等待时间改得太小可能导致脚本误识别游戏状态！" textColor="#ff0000" />
+                            </vertical>
+                            <vertical id="DungeonExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <text text="战斗假死检测超时:" textColor="#000000" />
+                                <linear>
+                                    <input maxLength="5" id="dungeonBattleTimeoutSec" hint="留空即不强关重开" text="1200" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="有时候会在进入战斗时等待太久。默认超过20分钟就会杀进程重开。" textColor="#000000" />
                             </vertical>
                         </vertical>
                     </vertical>
@@ -592,7 +636,7 @@ function setToggleListener(key) {
         }
     });
 }
-for (let key of ["Default", "DefaultCrashRestart", "Mirrors", "CVAutoBattle"]) {
+for (let key of ["Default", "DefaultCrashRestart", "Dungeon", "Mirrors", "CVAutoBattle"]) {
     setToggleListener(key);
 }
 
@@ -699,16 +743,23 @@ const persistParamList = [
     "CVAutoBattleClickAllMagiaDisks",
     "CVAutoBattlePreferAccel",
     "CVAutoBattlePreferABCCombo",
+    "dungeonEventRouteData",
+    "dungeonClickNonBattleNodeWaitSec",
+    "dungeonPostRewardWaitSec",
+    "dungeonBattleTimeoutSec",
 ];
 const tempParamList = [
     "drug1",
     "drug2",
     "drug3",
     "drug4",
+    "drug5",
+    "waitCP",
     "drug1num",
     "drug2num",
     "drug3num",
     "drug4num",
+    "drug5num",
     "apmul",
 ];
 
