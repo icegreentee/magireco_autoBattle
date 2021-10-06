@@ -5014,9 +5014,15 @@ function algo_init() {
                         state = detectState();
                         break;
                     }
-                    log("点击断线重连按钮所在区域");
-                    click(convertCoords(clickSets.reconection));
-                    sleep(1000);
+                    if (findFast("OK")) {
+                        log("点击玩家升级确认");
+                        click(convertCoords(clickSets.levelup));
+                        sleep(1000);
+                    } else {
+                        log("点击断线重连按钮所在区域");
+                        click(convertCoords(clickSets.reconection));
+                        sleep(1000);
+                    }
                     break;
                 }
                 default: {
