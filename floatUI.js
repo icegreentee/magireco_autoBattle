@@ -4363,6 +4363,10 @@ function algo_init() {
         if (cpRefillPopup != null) {
             if (limit.drug5waitMinutes !== "") {
                 //若CP能在设置的分钟内能自回则等自回而不嗑药
+                while ((cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title)) != null) {
+                    click(cpRefillPopup.close);
+                    sleep(1500);
+                }
                 let drug5waitMinutes = parseInt(drug5waitMinutes);
                 if (!isNaN(drug5waitMinutes) && drug5waitMinutes > 0 && drug5waitMinutes * 60 + 1 >= getCPCureRemainSeconds()) {
                     return waitForCPRecoveryForSeconds();
@@ -4705,7 +4709,7 @@ function algo_init() {
             "路线名称: ["+routeData.description+"]\n"
             +"区域: ["+routeData.regionNum+"]\n"
             +"CP回复药: ["+(limit.drug5?"已启用,数量"+(limit.drug5num===""?"无限制":"限制为"+limit.drug5num+"个"):"已停用")+"]\n"
-            +"等待CP自回分钟数: ["+limit.drug5waitMinutes+"]\n"
+            +"等待CP自回分钟数: ["+(limit.drug5waitMinutes===""?"不等待,直接嗑药":limit.drug5waitMinutes)+"]\n"
             +"没药时等CP自回: ["+(limit.waitCP?"已启用":"已停用")+"]");
 
         //在活动地图上已经走了多少步
