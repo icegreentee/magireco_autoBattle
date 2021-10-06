@@ -1420,6 +1420,7 @@ var limit = {
     drug3num: '0',
     drug4num: '0',
     drug5num: '0',
+    drug5waitMinutes: "",
     promptAutoRelaunch: true,
     usePresetOpList: 0,
     default: 0,
@@ -4311,14 +4312,40 @@ function algo_init() {
     }
 
     //理子活动脚本,闪退会自动重开,如果打输了基本上就是会浪费1点CP(拿不到后续节点,尤其是是boss战的奖励)
+    function getCPCureRemainSeconds() {
+        //注意:如果没有找到自回等待时间,也会返回3601秒
+        let result = 3601;
+        let cureRemainElement = findIDFast("cureRemain");
+        if (cureRemainElement != null) {
+            let text = getContent(cureRemainElement);
+            let matched = text.match(/^\d{2}:\d{2}$/)[0];
+            if (matched == null) return result;
+            let minutes = matched.match(/^\d{2}/)[0];
+            let seconds = matched.match(/\d{2}$/)[0];
+            if (minutes == null || seconds == null) return result;
+            let totalSeconds = parseInt(minutes) * 60 + parseInt(seconds);
+            if (isNaN(totalSeconds) || totalSeconds < 0 || totalSeconds > 3600) return result;
+            result = totalSeconds + 1;
+        }
+        return result;
+    }
+    function waitForCPRecoveryForSeconds(waitTotalSeconds) {
+        //等待CP自回,但无视waitCP设置参数
+        if (typeof waitTotalSeconds !== "number") waitTotalSeconds = 3601;
+        for (let i=waitTotalSeconds,sleepSec=60; i>0; i-=sleepSec) {
+            let waitSec = i % 60;
+            let waitMin = (i - waitSec) / 60;
+            toastLog("等待自回1CP...\n还有"+waitMin+"分钟"+waitSec+"秒");
+            sleepSec = i > 60 ? 60 : i;
+            sleep(sleepSec * 1000);
+        }
+        log("已自回1CP");
+        return true;
+    }
     function waitForCPRecovery() {
+        //等待CP自回
         if (limit.waitCP) {
-            for (let i=60; i>0; i--) {
-                toastLog("等待每小时自回1CP 还有"+i+"分钟...");
-                sleep(60 * 1000);
-            }
-            log("已自回1CP");
-            return true;
+            return waitForCPRecoveryForSeconds(getCPCureRemainSeconds());
         } else {
             log("CP不足");
             return false;
@@ -4333,6 +4360,13 @@ function algo_init() {
         }
         let cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title);
         if (cpRefillPopup != null) {
+            if (limit.drug5waitMinutes !== "") {
+                //若CP能在设置的分钟内能自回则等自回而不嗑药
+                let drug5waitMinutes = parseInt(drug5waitMinutes);
+                if (!isNaN(drug5waitMinutes) && drug5waitMinutes > 0 && drug5waitMinutes * 60 + 1 >= getCPCureRemainSeconds()) {
+                    return waitForCPRecoveryForSeconds();
+                }
+            }
             if (isDrugEnabled(4)) {
                 let isCPDrugExhausted = false;
                 let attemptMax = 3;
@@ -4670,7 +4704,8 @@ function algo_init() {
             "路线名称: ["+routeData.description+"]\n"
             +"区域: ["+routeData.regionNum+"]\n"
             +"CP回复药: ["+(limit.drug5?"已启用,数量"+(limit.drug5num===""?"无限制":"限制为"+limit.drug5num+"个"):"已停用")+"]\n"
-            +"等待CP自回: ["+(limit.waitCP?"已启用":"已停用")+"]");
+            +"等待CP自回分钟数: ["+limit.drug5waitMinutes+"]\n"
+            +"没药时等CP自回: ["+(limit.waitCP?"已启用":"已停用")+"]");
 
         //在活动地图上已经走了多少步
         var moveCount = null;
