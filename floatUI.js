@@ -4363,7 +4363,7 @@ function algo_init() {
         if (cpRefillPopup != null) {
             if (limit.drug5waitMinutes !== "") {
                 //若CP能在设置的分钟内能自回则等自回而不嗑药
-                let drug5waitMinutes = parseInt(drug5waitMinutes);
+                let drug5waitMinutes = parseInt(limit.drug5waitMinutes);
                 let cpCureRemainSeconds = getCPCureRemainSeconds();
                 if (!isNaN(drug5waitMinutes) && drug5waitMinutes > 0 && drug5waitMinutes * 60 + 1 >= cpCureRemainSeconds) {
                     while ((cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title)) != null) {
