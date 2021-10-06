@@ -4771,6 +4771,7 @@ function algo_init() {
                     log("战斗假死检测超时时间已到");
                     killGame();
                     state = STATE_CRASHED;
+                    battleStartTime = null;
                 }
             }
 
