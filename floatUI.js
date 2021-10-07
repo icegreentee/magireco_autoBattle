@@ -4999,6 +4999,7 @@ function algo_init() {
                         log("出现\"攻略区域失败\"弹窗");
                         state = STATE_MENU;
                         battleCount++;//这只是输了的情况,还有赢了的情况
+                        moveCount = 0;
                         break;
                     }
                     if (limit.autoReconnect) {
