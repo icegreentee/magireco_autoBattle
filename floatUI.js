@@ -4362,14 +4362,16 @@ function algo_init() {
         let cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title);
         if (cpRefillPopup != null) {
             if (limit.drug5waitMinutes !== "") {
-                //若CP能在设置的分钟内能自回则等自回而不嗑药
-                while ((cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title)) != null) {
-                    click(cpRefillPopup.close);
-                    sleep(1500);
-                }
-                let drug5waitMinutes = parseInt(drug5waitMinutes);
-                if (!isNaN(drug5waitMinutes) && drug5waitMinutes > 0 && drug5waitMinutes * 60 + 1 >= getCPCureRemainSeconds()) {
-                    return waitForCPRecoveryForSeconds();
+                let drug5waitMinutes = parseInt(limit.drug5waitMinutes);
+                let cpCureRemainSeconds = getCPCureRemainSeconds();
+                if (!isNaN(drug5waitMinutes) && drug5waitMinutes > 0 && drug5waitMinutes * 60 + 1 >= cpCureRemainSeconds) {
+                    //若CP能在设置的分钟内能自回则等自回而不嗑药
+                    while ((cpRefillPopup = findPopupInfoDetailTitle(string.cp_refill_title)) != null) {
+                        //先关闭嗑药窗口
+                        click(cpRefillPopup.close);
+                        sleep(1500);
+                    }
+                    return waitForCPRecoveryForSeconds(cpCureRemainSeconds);
                 }
             }
             if (isDrugEnabled(4)) {
