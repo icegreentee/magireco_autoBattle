@@ -7302,10 +7302,10 @@ function algo_init() {
                             lastStateRewardCharacterStuckTime = currentTime;
                         } else if (currentTime > lastStateRewardCharacterStuckTime + stuckTimeOutSeconds * 1000) {
                             lastStateRewardCharacterStuckTime = null;
-                            state = STATE_BATTLE; //如果开启了防断线模式，那就可以点击掉线重连
+                            state = STATE_REWARD_MATERIAL; //如果开启了防断线模式，那就可以点击掉线重连
                             log("进入角色结算状态后charaWrap控件消失了超过"+stuckTimeOutSeconds+"秒");
                             log("可能是自动续战中错过了掉落结算、然后在开始战斗时又掉线卡住");
-                            log("进入战斗状态");
+                            log("进入掉落结算(虽然可能已经错过)");
                             break;
                         }
                     }
