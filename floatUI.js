@@ -1034,22 +1034,12 @@ floatUI.main = function () {
                 }
 
                 //更新QB头像和5个按钮的位置
-                var x = menu.getX();
-                if (x <= 0) {
-                    //停靠屏幕左边缘
-                    menu.setPosition(0, calcMenuY());
-                    submenu.setPosition(
-                        0,
-                        parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
-                    );
-                } else {
-                    //停靠屏幕右边缘
-                    menu.setPosition(sz.x - menu.getWidth(), calcMenuY());
-                    submenu.setPosition(
-                        sz.x - submenu.getWidth(),
-                        parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
-                    );
-                }
+                //因为toggleFloatyGravityLeftRight函数的作用,无论是停靠屏幕左边缘还是右边缘,X坐标值设为0都代表停靠屏幕边缘
+                menu.setPosition(0, calcMenuY());
+                submenu.setPosition(
+                    0,
+                    parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+                );
             } else {
                 try {
                     context.unregisterReceiver(receiver);
