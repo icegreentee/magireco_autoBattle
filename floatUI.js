@@ -4912,7 +4912,21 @@ function algo_init() {
                     }
                     if (regionEntry != null && OKButton == null && startButton == null) {
                         log("区域"+routeData.regionNum+"出现了,而且确定/开始按钮没有出现,重新检测状态");
-                        state = detectState();
+                        //正常情况下应该进入地图才对,貌似有时候无障碍服务抽风了,就会因为什么控件都检测不到而误检测为战斗状态
+                        let detectedState = detectState();
+                        if (detectedState != STATE_MAP && detectedState != STATE_MENU) {
+                            log("detectState()返回了既不是STATE_MAP也不是STATE_MENU的结果:["+detectedState+"]");
+                            if (menuStateAbnormalityCount++ < 5) {
+                                toastLog("等待2秒后重试...");
+                                sleep(2000);
+                            } else {
+                                toastLog("多次重试后仍然不正常,杀进程重开游戏...");
+                                killGame();
+                                state = STATE_CRASHED;
+                            }
+                        } else {
+                            state = detectedState;
+                        }
                         break;
                     }
                     break;
