@@ -4792,6 +4792,7 @@ function algo_init() {
 
         var battleCount = 0;
         var lastBattleCountOnKillGame = 0;
+        var menuStateAbnormalityCount = 0;
 
         while (true) {
             //检测游戏是否闪退
@@ -4923,9 +4924,11 @@ function algo_init() {
                                 toastLog("多次重试后仍然不正常,杀进程重开游戏...");
                                 killGame();
                                 state = STATE_CRASHED;
+                                menuStateAbnormalityCount = 0;
                             }
                         } else {
                             state = detectedState;
+                            menuStateAbnormalityCount = 0;
                         }
                         break;
                     }
