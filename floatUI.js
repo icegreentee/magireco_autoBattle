@@ -698,12 +698,6 @@ floatUI.main = function () {
     })();};
 
     //切换悬浮窗靠左/靠右,切换后X轴方向会反转。
-    //之所以需要这个函数,是因为一开始发现getDefaultDisplay().getSize()可能(概率性)返回横竖屏方向错误的数据,
-    //于是当时就导致了悬浮窗(概率性)显示异常,尤其是capture捕获点击坐标受影响最大,只能覆盖左半个屏幕。
-    //搜索研究后,找到了模仿wm size命令的方法(getInitialDisplaySize)来获取“自然转屏方向”下屏幕分辨率数据的方法,
-    //然后,据此修改了getWindowSize函数,配合getDefaultDisplay().getRotation()貌似就解决了转盘方向不对的问题。
-    //但这样又导致刘海屏下,悬浮窗靠右时,会(因为没考虑刘海扣除的X轴距离)而超出屏幕范围,
-    //于是现在就只能用这个很hack、而且会导致悬浮窗调用getX/setPosition时X轴方向反转的办法了。
     function toggleFloatyGravityLeftRight(floatyRawWindow, isRight) {
         let field = floatyRawWindow.getClass().getDeclaredField("mWindow");
         field.setAccessible(true);
