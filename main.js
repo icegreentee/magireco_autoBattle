@@ -60,16 +60,12 @@ ui.layout(
                         <Switch id="stopOnVolUp" margin="0 3" w="*" textColor="#000000" text="按音量上键停止全部脚本" />
                         <Switch id="showExperimentalFixes" margin="0 3" w="*" checked="false" textColor="#666666" text="显示实验性问题修正选项" />
                         <vertical id="experimentalFixes" visibility="gone" margin="5 3" w="*">
-                            <Switch id="exitOnServiceSettings" margin="0 3" w="*" checked="false" textColor="#000000" text="OPPO手机拒绝开启无障碍服务 修正1" />
+                            <Switch id="exitOnServiceSettings" margin="0 3" w="*" checked="false" textColor="#000000" text="OPPO手机拒绝开启无障碍服务 备用对策" />
                             <text id="exitOnServiceSettingsText1" visibility="gone" textSize="12" text="如果不是OPPO则不建议打开这个选项" textColor="#000000" />
                             <text id="exitOnServiceSettingsText2" visibility="gone" textSize="12" text="OPPO等部分品牌的手机在有悬浮窗(比如“加速球”)存在时会拒绝开启无障碍服务" textColor="#000000" />
-                            <text id="exitOnServiceSettingsText3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#000000" />
-                            <text id="exitOnServiceSettingsText4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
-                            <Switch id="hideFloaty" margin="0 3" w="*" checked="false" textColor="#000000" text="OPPO手机拒绝开启无障碍服务 修正2" />
-                            <text id="hideFloatyText1" visibility="gone" textSize="12" text="如果不是OPPO则不建议打开这个选项" textColor="#000000" />
-                            <text id="hideFloatyText2" visibility="gone" textSize="12" text="OPPO等部分品牌的手机在有悬浮窗(比如“加速球”)存在时会拒绝开启无障碍服务" textColor="#000000" />
-                            <text id="hideFloatyText3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会隐藏所有悬浮窗，从而尽量避免触发这个问题" textColor="#000000" />
-                            <text id="hideFloatyText4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText3" visibility="gone" textSize="12" text="本程序已经加入了这个问题的对策，如果无障碍还没开启，在切换出这个设置界面时会隐藏悬浮窗，但还不知道这个对策是不是总是能够奏效" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText4" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText5" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
                             <Switch id="doNotToggleForegroundService" margin="0 3" w="*" checked="false" textColor="#000000" text="脚本开始/结束时,不自动开启/停用前台服务" />
                             <text id="doNotToggleForegroundServiceText1" visibility="gone" textSize="12" text="在脚本运行时开启无障碍服务,目的是为了尽量防止脚本进程被杀。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText2" visibility="gone" textSize="12" text="但是,在前台服务开启时,会在通知栏显示一条常驻通知,比较扰民。所以,默认是只在脚本运行时开启前台服务,脚本结束运行后即自动停用前台服务,而且,不仅会自动停用前台服务,如果之前申请了截屏权限,还会把截屏权限也一并停用。" textColor="#000000" />
@@ -615,20 +611,9 @@ detectAutoJSVersion();
 //无障碍开关监控
 ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
     if (checked && !auto.service) {
-        if (ui["hideFloaty"].isChecked()) {
-            if (floatIsActive) {
-                floatUI.hideAllFloaty();
-                ui.post(function () {
-                    app.startActivity({
-                        action: "android.settings.ACCESSIBILITY_SETTINGS"
-                    });
-                }, 1000);
-            }
-        } else {
-            app.startActivity({
-                action: "android.settings.ACCESSIBILITY_SETTINGS"
-            });
-        }
+        app.startActivity({
+            action: "android.settings.ACCESSIBILITY_SETTINGS"
+        });
         //部分品牌的手机在有悬浮窗的情况下拒绝开启无障碍服务（目前只发现OPPO是这样）
         //为了关闭悬浮窗，最简单的办法就是退出脚本
         ui.run(function () {
@@ -692,6 +677,15 @@ ui.emitter.on("resume", () => {
     if ($settings.isEnabled('stop_all_on_volume_up') != ui.stopOnVolUp.isChecked())
         ui.stopOnVolUp.setChecked($settings.isEnabled('stop_all_on_volume_up'));
 });
+ui.emitter.on("pause", () => {
+    //未开启无障碍时,在切出脚本界面时隐藏悬浮窗,避免OPPO等品牌手机拒绝开启无障碍服务
+    //TODO 以后应该还可以把root权限也考虑一下（现在只是在无障碍服务未开启时,才会顺带着在弹出root权限申请时隐藏悬浮窗）
+    if (floatIsActive) {
+        if (auto.service == null || auto.root == null) {
+            floatUI.hideAllFloaty();
+        }
+    }
+});
 
 //监听刷新事件
 ui.swipe.setOnRefreshListener({
@@ -746,7 +740,6 @@ const persistParamList = [
     "foreground",
     "stopOnVolUp",
     "exitOnServiceSettings",
-    "hideFloaty",
     "doNotToggleForegroundService",
     "autoRecover",
     "promptAutoRelaunch",

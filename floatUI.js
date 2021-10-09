@@ -1133,8 +1133,8 @@ floatUI.main = function () {
     var floatySizePositions = {};
     var isAllFloatyHidden = false;
     floatUI.hideAllFloaty = function () {
-        if (isAllFloatyHidden) return;
         ui.run(function () {
+            if (isAllFloatyHidden) return;
             try {
                 floatyVisibilities.menu = menu.logo.getVisibility();
                 floatyVisibilities.submenu = submenu.entry0.getVisibility();
@@ -1161,7 +1161,7 @@ floatUI.main = function () {
                 }
 
                 isAllFloatyHidden = true;
-                toastLog("已隐藏所有悬浮窗");
+                toastLog("未开启无障碍服务\n为避免干扰申请权限,\n已隐藏所有悬浮窗");//TODO 以后也考虑一下申请root权限
             } catch (e) {
                 logException(e);
                 toastLog("悬浮窗已丢失\n请重新启动本程序");
@@ -1170,8 +1170,9 @@ floatUI.main = function () {
         });
     };
     floatUI.recoverAllFloaty = function () {
-        if (!isAllFloatyHidden) return;
         ui.run(function () {
+            if (!isAllFloatyHidden) return;
+
             toastLog("恢复显示悬浮窗");
             try {
                 for (let key in floatyObjs) {
