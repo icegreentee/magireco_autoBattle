@@ -43,6 +43,8 @@ function logException(e) {
     }
 }
 
+var enableAutoService = () => {};
+
 var origFunc = {
     click: function () {return click.apply(this, arguments)},
     swipe: function () {return swipe.apply(this, arguments)},
@@ -1196,6 +1198,11 @@ floatUI.main = function () {
                 toastLog("已经在尝试申请root或adb权限了\n请稍后重试,或彻底退出脚本后重试");
             } else {
                 requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                requestShellPrivilegeThread.waitFor();
+                threads.start(function () {
+                    requestShellPrivilegeThread.join();
+                    enableAutoService();floatUI.recoverAllFloaty();
+                });
             }
             throw new Error("没有root或adb权限");
         }
@@ -1228,6 +1235,8 @@ floatUI.main = function () {
             log("已经获取到root或adb权限了");
             return limit.privilege;
         }
+
+        floatUI.hideAllFloaty();
 
         let rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
 
@@ -1298,8 +1307,34 @@ floatUI.main = function () {
     if (device.sdkInt < 24) {
         if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
             requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+            requestShellPrivilegeThread.waitFor();
+            threads.start(function () {
+                requestShellPrivilegeThread.join();
+                enableAutoService();floatUI.recoverAllFloaty();
+            });
         }
     }
+
+    enableAutoService = function () {
+        if (limit.privilege == null) return;
+        if (ui.isUiThread()) throw new Error("enableAutoService should not run on UI thread");
+        $settings.setEnabled("enable_accessibility_service_by_root", false);
+        let result = privShell("settings get secure enabled_accessibility_services");
+        if (result.code != 0) return;
+        let myServiceName = context.getPackageName()+"/com.stardust.autojs.core.accessibility.AccessibilityService";
+        let services = result.result.split(":");
+        let filteredServices = services.filter((item) => item !== myServiceName && item !== "null" && item !== "undefined");
+        let servicesStrWithoutMe = filteredServices.join(":");
+        filteredServices.push(myServiceName);
+        let servicesStr = filteredServices.join(":");
+        while (auto.service == null || auto.root == null) {
+            result = privShell("settings put secure enabled_accessibility_services \""+servicesStrWithoutMe+"\"");
+            sleep(500);
+            result = privShell("settings put secure enabled_accessibility_services \""+servicesStr+"\"");
+            sleep(500);
+        }
+        updateUI("autoService", "setChecked", true);
+    };
 
     //嗑药后，更新设置中的嗑药个数限制
     updateDrugLimit = function (index) {
@@ -2151,6 +2186,11 @@ floatUI.adjust = function (key, value) {
         if (!limit.privilege && isPrivNeeded) {
             if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
                 requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                requestShellPrivilegeThread.waitFor();
+                threads.start(function () {
+                    requestShellPrivilegeThread.join();
+                    enableAutoService();floatUI.recoverAllFloaty();
+                });
             }
         }
 
@@ -5294,6 +5334,11 @@ function algo_init() {
                     toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
                 } else {
                     requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                    requestShellPrivilegeThread.waitFor();
+                    threads.start(function () {
+                        requestShellPrivilegeThread.join();
+                        enableAutoService();floatUI.recoverAllFloaty();
+                    });
                 }
                 return false;//等到权限获取完再重试
             } else {
@@ -9952,6 +9997,11 @@ function algo_init() {
             toastLog("需要root或shizuku adb权限");
             if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
                 requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                requestShellPrivilegeThread.waitFor();
+                threads.start(function () {
+                    requestShellPrivilegeThread.join();
+                    enableAutoService();floatUI.recoverAllFloaty();
+                });
             }
             return;
         }
@@ -10623,6 +10673,11 @@ function algo_init() {
             toastLog("需要root或shizuku adb权限");
             if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
                 requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                requestShellPrivilegeThread.waitFor();
+                threads.start(function () {
+                    requestShellPrivilegeThread.join();
+                    enableAutoService();floatUI.recoverAllFloaty();
+                });
             }
             return;
         }
