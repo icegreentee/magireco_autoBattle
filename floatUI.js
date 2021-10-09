@@ -5019,6 +5019,21 @@ function algo_init() {
                         moveCount = 0;
                         break;
                     }
+                    if (mapStateIDs.find((id) => findIDFast(id) == null) == null) {
+                        //可能是(这一次战斗打赢了,但)点击掉线重连时意外点掉了结算,于是就错过了结算界面没检测到,
+                        //也有可能是在设置了替补(而且替补没死)的情况下打输了。
+                        //(以上两种情况无法分辨,所以脚本目前只能是不支持设置替补)
+                        log("出现了活动地图的所有特征控件");
+                        state = STATE_MAP;
+                        battleCount++;
+                        if (moveCount == routeData.route.length - 1) {
+                            toastLog("已完成这一轮的所有战斗");
+                            moveCount = 0;
+                        } else {
+                            moveCount++;
+                        }
+                        break;
+                    }
                     if (limit.autoReconnect) {
                         clickReconnect();
                     }
