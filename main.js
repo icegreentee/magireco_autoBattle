@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "5.9.9";
+var version = "6.0.0";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -60,17 +60,18 @@ ui.layout(
                         <Switch id="stopOnVolUp" margin="0 3" w="*" textColor="#000000" text="按音量上键停止全部脚本" />
                         <Switch id="showExperimentalFixes" margin="0 3" w="*" checked="false" textColor="#666666" text="显示实验性问题修正选项" />
                         <vertical id="experimentalFixes" visibility="gone" margin="5 3" w="*">
-                            <Switch id="exitOnServiceSettings" margin="0 3" w="*" checked="false" textColor="#000000" text="OPPO手机拒绝开启无障碍服务" />
+                            <Switch id="exitOnServiceSettings" margin="0 3" w="*" checked="false" textColor="#000000" text="OPPO手机拒绝开启无障碍服务 备用对策" />
                             <text id="exitOnServiceSettingsText1" visibility="gone" textSize="12" text="如果不是OPPO则不建议打开这个选项" textColor="#000000" />
                             <text id="exitOnServiceSettingsText2" visibility="gone" textSize="12" text="OPPO等部分品牌的手机在有悬浮窗(比如“加速球”)存在时会拒绝开启无障碍服务" textColor="#000000" />
-                            <text id="exitOnServiceSettingsText3" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#000000" />
-                            <text id="exitOnServiceSettingsText4" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText3" visibility="gone" textSize="12" text="本程序已经加入了这个问题的对策，如果无障碍还没开启，在切换出这个设置界面时会隐藏悬浮窗，但还不知道这个对策是不是总是能够奏效" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText4" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#000000" />
+                            <text id="exitOnServiceSettingsText5" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
                             <Switch id="doNotToggleForegroundService" margin="0 3" w="*" checked="false" textColor="#000000" text="脚本开始/结束时,不自动开启/停用前台服务" />
                             <text id="doNotToggleForegroundServiceText1" visibility="gone" textSize="12" text="在脚本运行时开启无障碍服务,目的是为了尽量防止脚本进程被杀。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText2" visibility="gone" textSize="12" text="但是,在前台服务开启时,会在通知栏显示一条常驻通知,比较扰民。所以,默认是只在脚本运行时开启前台服务,脚本结束运行后即自动停用前台服务,而且,不仅会自动停用前台服务,如果之前申请了截屏权限,还会把截屏权限也一并停用。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText3" visibility="gone" textSize="12" text="如果不想让脚本自己控制前台服务、不想让脚本自己停用截屏权限,那就把这个选项开启。" textColor="#000000" />
                             <Switch id="autoRecover" margin="0 3" w="*" checked="false" textColor="#000000" text="游戏崩溃带崩脚本的临时解决方案" />
-                            <text id="autoRecoverText1" visibility="gone" textSize="12" text="脚本可以监工游戏,防止游戏因为掉线/闪退/内存泄漏溢出而中断自动周回。但是游戏掉线时貌似有几率会带着脚本一起崩溃,原因不明。" textColor="#000000" />
+                            <text id="autoRecoverText1" visibility="gone" textSize="12" text="脚本可以监工游戏,防止游戏因为掉线/闪退/内存泄漏溢出而中断自动周回。但是游戏闪退时貌似有几率会带着脚本一起崩溃,原因不明。" textColor="#000000" />
                             <text id="autoRecoverText2" visibility="gone" textSize="12" text="为了对付这个问题,目前有个临时的办法(需要root或adb权限),就是在logcat里监控游戏是否崩溃,崩溃后再杀一次游戏进程,然后重启脚本。目前只有“副本周回(剧情/活动通用)”脚本支持这个功能。" textColor="#000000" />
                         </vertical>
                     </vertical>
@@ -665,6 +666,7 @@ ui.emitter.on("resume", () => {
     ui.autoService.checked = auto.service != null;
     if (floatIsActive) {
         floatUI.refreshUI();
+        floatUI.recoverAllFloaty();
     } else {
         floatUI.storage = storage; //必须放在floatUI.main()前面
         floatUI.main();
@@ -674,6 +676,15 @@ ui.emitter.on("resume", () => {
         ui.foreground.setChecked($settings.isEnabled('foreground_service'));
     if ($settings.isEnabled('stop_all_on_volume_up') != ui.stopOnVolUp.isChecked())
         ui.stopOnVolUp.setChecked($settings.isEnabled('stop_all_on_volume_up'));
+});
+ui.emitter.on("pause", () => {
+    //未开启无障碍时,在切出脚本界面时隐藏悬浮窗,避免OPPO等品牌手机拒绝开启无障碍服务
+    //TODO 以后应该还可以把root权限也考虑一下（现在只是在无障碍服务未开启时,才会顺带着在弹出root权限申请时隐藏悬浮窗）
+    if (floatIsActive) {
+        if (auto.service == null || auto.root == null) {
+            floatUI.hideAllFloaty();
+        }
+    }
 });
 
 //监听刷新事件

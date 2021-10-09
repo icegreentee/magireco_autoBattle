@@ -697,24 +697,47 @@ floatUI.main = function () {
         }
     })();};
 
+    //切换悬浮窗靠左/靠右,切换后X轴方向会反转。
+    function toggleFloatyGravityLeftRight(floatyRawWindow, isRight) {
+        let field = floatyRawWindow.getClass().getDeclaredField("mWindow");
+        field.setAccessible(true);
+        mWindow = field.get(floatyRawWindow);
+        let layoutParams = mWindow.getWindowLayoutParams();
+        let gravity = layoutParams.gravity;
+        if (isRight == null) {
+            gravity ^= android.view.Gravity.LEFT | android.view.Gravity.RIGHT;
+        } else {
+            gravity &= ~(isRight ? android.view.Gravity.LEFT : android.view.Gravity.RIGHT);
+            gravity |= isRight ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT;
+        }
+        gravity &= ~(android.view.Gravity.RELATIVE_LAYOUT_DIRECTION);
+        layoutParams.gravity = gravity;
+        mWindow.updateWindowLayoutParams(layoutParams);
+    }
+    var isGravityRight = false;
+
     var task_popup = floaty.rawWindow(
         <frame id="container" w="*" h="*">
-            <vertical w="*" h="*" bg="#f8f8f8" margin="0 15 15 0">
-                <vertical bg="#4fb3ff">
-                    <text text="选择需要执行的脚本" padding="4 2" textColor="#ffffff" />
+            <relative w="*" h="*" bg="#f8f8f8" margin="0 15 15 0" padding="2" >
+                <vertical id="list_title" bg="#4fb3ff" w="match_parent" h="wrap_content" layout_alignParentTop="true" >
+                    <text text="选择需要执行的脚本" textSize="16" padding="4 2" textColor="#ffffff" />
                 </vertical>
-                <list id="list">
+                <list id="list" w="match_parent" layout_below="list_title" layout_above="list_reminder" >
                     <text
                         id="name"
                         text="{{name}}"
+                        textSize="16"
                         h="45"
                         gravity="center"
-                        margin="4 1"
+                        margin="0 1"
                         w="*"
                         bg="#ffffff"
                     />
                 </list>
-            </vertical>
+                <vertical id="list_reminder" bg="#4fb3ff" w="match_parent" h="wrap_content" layout_alignParentBottom="true" >
+                    <text text="如果没看到想要的，可以继续往下拖动找找看" textSize="16" padding="4 2" textColor="#ffffff" />
+                </vertical>
+            </relative>
             <frame id="close_button" w="30" h="30" layout_gravity="top|right">
                 <img w="30" h="30" src="#881798" circle="true" />
                 <img
@@ -730,8 +753,8 @@ floatUI.main = function () {
 
     function layoutTaskPopup() {
         var sz = getWindowSize();
-        task_popup.setSize(sz.x / 2, sz.y / 2);
-        task_popup.setPosition(sz.x / 4, sz.y / 4);
+        task_popup.setSize(parseInt(sz.x * 3 / 4), parseInt(sz.y * 3 / 4));
+        task_popup.setPosition(parseInt(sz.x / 8), parseInt(sz.y / 8));
     }
 
     task_popup.container.setVisibility(View.INVISIBLE);
@@ -801,6 +824,7 @@ floatUI.main = function () {
     submenu.container.setVisibility(View.INVISIBLE);
     ui.post(() => {
         submenu.setTouchable(false);
+        toggleFloatyGravityLeftRight(submenu, false);//AutoJS设置的Gravity貌似是START而不是LEFT,这里改成LEFT
     });
 
     // mount onclick handler
@@ -823,20 +847,11 @@ floatUI.main = function () {
 
         var angle_base = Math.PI / menu_list.length / 2;
         var size_base = menu.getWidth();
-        var isleft = menu.getX() <= 0;
 
-        if (menu.getX() <= 0)
-            submenu.setPosition(
-                0,
-                parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
-            );
-        else {
-            let sz = getWindowSize();
-            submenu.setPosition(
-                sz.x - submenu.getWidth(),
-                parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
-            );
-        }
+        submenu.setPosition(
+            0,
+            parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+        );
 
         for (var i = 0; i < menu_list.length; i++) {
             var params = submenu["entry" + i].getLayoutParams();
@@ -846,7 +861,7 @@ floatUI.main = function () {
             var vertical_margin = parseInt(
                 size_base * (space_factor + 0.5) * (1 - Math.cos(angle_base * (2 * i + 1)))
             );
-            if (isleft) {
+            if (!isGravityRight) {
                 params.gravity = Gravity.TOP | Gravity.LEFT;
                 params.leftMargin = horizontal_margin;
                 params.rightMargin = 0;
@@ -868,7 +883,7 @@ floatUI.main = function () {
                     submenu["entry" + i],
                     "translationX",
                     0,
-                    (isleft ? -1 : 1) *
+                    (!isGravityRight ? -1 : 1) *
                     size_base *
                     (space_factor + 0.5) *
                     Math.sin(angle_base * (2 * i + 1))
@@ -920,6 +935,7 @@ floatUI.main = function () {
 
     ui.post(() => {
         menu.setPosition(0, parseInt(getWindowSize().y / 4));
+        toggleFloatyGravityLeftRight(menu, false);//AutoJS设置的Gravity貌似是START而不是LEFT,这里改成LEFT
     });
 
     function calcMenuY() {
@@ -949,6 +965,7 @@ floatUI.main = function () {
             case event.ACTION_MOVE:
                 {
                     let dx = event.getRawX() - touch_x;
+                    if (isGravityRight) dx = -dx;//靠右的时候,悬浮窗位置和触摸事件的x轴方向相反
                     let dy = event.getRawY() - touch_y;
                     if (!touch_move && submenu.container.getVisibility() == View.INVISIBLE) {
                         if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
@@ -964,10 +981,16 @@ floatUI.main = function () {
                     menu.setTouchable(false);
                     let sz = getWindowSize();
                     let current = menu.getX();
-                    let animator = ValueAnimator.ofInt(
-                        current,
-                        current < sz.x / 2 ? 0 : sz.x - menu.getWidth()
-                    );
+                    let bounceHeight = current;
+                    if (current >= sz.x / 2) {
+                        //无论靠左还是靠右,getX返回的都是正数:靠左时是从左边缘往右的距离,靠右时则是从右边缘往左的距离
+                        //所以在这里统一判定:距离大于屏幕宽度的一半时,就进行切换,从靠左(右)切换道靠右(左)
+                        isGravityRight = !isGravityRight;
+                        toggleFloatyGravityLeftRight(menu);
+                        toggleFloatyGravityLeftRight(submenu);
+                        bounceHeight = sz.x - current - menu.getHeight();//刘海屏下不准确,但也无所谓,反正就是个一转眼就消失的动画效果
+                    }
+                    let animator = ValueAnimator.ofInt(bounceHeight, 0);
                     let menu_y = calcMenuY();
                     animator.addUpdateListener({
                         onAnimationUpdate: (animation) => {
@@ -999,8 +1022,8 @@ floatUI.main = function () {
                 //更新脚本选择悬浮窗的大小和位置
                 try {
                     //因为已经有sz了，就不调用layoutTaskPopup()了
-                    task_popup.setSize(sz.x / 2, sz.y / 2);
-                    task_popup.setPosition(sz.x / 4, sz.y / 4);
+                    task_popup.setSize(parseInt(sz.x * 3 / 4), parseInt(sz.y * 3 / 4));
+                    task_popup.setPosition(parseInt(sz.x / 8), parseInt(sz.y / 8));
                 } catch (e) {
                     logException(e);
                     toastLog("无法重设悬浮窗的大小和位置,\n可能是悬浮窗意外消失\n退出脚本...");
@@ -1009,22 +1032,12 @@ floatUI.main = function () {
                 }
 
                 //更新QB头像和5个按钮的位置
-                var x = menu.getX();
-                if (x <= 0) {
-                    //停靠屏幕左边缘
-                    menu.setPosition(0, calcMenuY());
-                    submenu.setPosition(
-                        0,
-                        parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
-                    );
-                } else {
-                    //停靠屏幕右边缘
-                    menu.setPosition(sz.x - menu.getWidth(), calcMenuY());
-                    submenu.setPosition(
-                        sz.x - submenu.getWidth(),
-                        parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
-                    );
-                }
+                //因为toggleFloatyGravityLeftRight函数的作用,无论是停靠屏幕左边缘还是右边缘,X坐标值设为0都代表停靠屏幕边缘
+                menu.setPosition(0, calcMenuY());
+                submenu.setPosition(
+                    0,
+                    parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+                );
             } else {
                 try {
                     context.unregisterReceiver(receiver);
@@ -1122,6 +1135,80 @@ floatUI.main = function () {
         let swipe_duration = touch_up_time - touch_down_time;
         return {pos_down: touch_down_pos, pos_up: touch_up_pos, duration: swipe_duration};
     };
+
+    var floatyObjs = {
+        menu: menu,
+        submenu: submenu,
+        task_popup: task_popup,
+        overlay: overlay
+    };
+    var floatyVisibilities = {};
+    var floatySizePositions = {};
+    var isAllFloatyHidden = false;
+    floatUI.hideAllFloaty = function () {
+        ui.run(function () {
+            if (isAllFloatyHidden) return;
+            try {
+                floatyVisibilities.menu = menu.logo.getVisibility();
+                floatyVisibilities.submenu = submenu.entry0.getVisibility();
+                floatyVisibilities.task_popup = task_popup.container.getVisibility();
+                floatyVisibilities.overlay = overlay.container.getVisibility();
+
+                for (let key in floatyObjs) {
+                    let f = floatyObjs[key];
+                    floatySizePositions[key] = {
+                        size: {w: f.getWidth(), h: f.getHeight()},
+                        pos: {x: f.getX(), y: f.getY()},
+                    };
+                };
+
+                menu.logo.setVisibility(View.GONE);
+                for (let i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(View.GONE);
+                task_popup.container.setVisibility(View.GONE);
+                overlay.container.setVisibility(View.GONE);
+
+                for (let key in floatyObjs) {
+                    let f = floatyObjs[key];
+                    f.setSize(1, 1);
+                    f.setPosition(0, 0);
+                }
+
+                isAllFloatyHidden = true;
+                toastLog("未开启无障碍服务\n为避免干扰申请权限,\n已隐藏所有悬浮窗");//TODO 以后也考虑一下申请root权限
+            } catch (e) {
+                logException(e);
+                toastLog("悬浮窗已丢失\n请重新启动本程序");
+                exit();
+            }
+        });
+    };
+    floatUI.recoverAllFloaty = function () {
+        ui.run(function () {
+            if (!isAllFloatyHidden) return;
+
+            toastLog("恢复显示悬浮窗");
+            try {
+                for (let key in floatyObjs) {
+                    let f = floatyObjs[key];
+                    let sp = floatySizePositions[key];
+                    let s = sp.size, p = sp.pos;
+                    f.setPosition(p.x, p.y);
+                    f.setSize(s.w, s.h);
+                }
+
+                menu.logo.setVisibility(floatyVisibilities.menu);
+                for (var i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(floatyVisibilities.submenu);
+                task_popup.container.setVisibility(floatyVisibilities.task_popup);
+                overlay.container.setVisibility(floatyVisibilities.overlay);
+
+                isAllFloatyHidden = false;
+            } catch (e) {
+                logException(e);
+                toastLog("悬浮窗已丢失\n请重新启动本程序");
+                exit();
+            }
+        });
+    }
 
     //检测刘海屏参数
     function adjustCutoutParams() {
@@ -3393,11 +3480,11 @@ function algo_init() {
             "フォロー追加",
             "決定",
             "消費AP",
-            "エリア",//在appmedia看到的，不确定
-            "ポイントに移動",//结合在appmedia看到的使用在线翻译得到，不知道实际是啥
-            "エリアのバトルに失敗しました",//使用在线翻译得到，不知道实际是啥
-            "CP不足。",//使用在线翻译得到，不知道实际是啥
-            "CP回復藥",//使用在线翻译得到，不知道实际是啥
+            "エリア",//从复刻血夜活动看到了，但是没X用，因为无障碍服务并没有恢复
+            "ポイントの移動",//同上
+            "エリア攻略失敗",//同上
+            "CPが不足しています。",//同上
+            "CP回復藥",//同上
             /^消費AP *\d+/,
             /^\d+個$/,
             /^最終ログイン.+/,
@@ -4411,6 +4498,8 @@ function algo_init() {
     function dungeonEventRunnable() {
         initialize();
 
+        requestTestReLaunchIfNeeded();//测试是否可以正常重开
+
         dialogs.alert("警告",
             "理子(DUNGEON类型)活动脚本【不支持】设置了替补队员的情况!否则在打输的情况下脚本将无法继续正常运行!\n"
             +"要运行这个脚本,请务必要撤下替补,这样虽然会在打输时浪费1CP,但不会阻碍脚本继续运行。");
@@ -4727,8 +4816,9 @@ function algo_init() {
         const STATE_HOME = 2;
         const STATE_MENU = 3;
         const STATE_MAP = 4;
-        const STATE_BATTLE = 5;
-        const STATE_REWARD = 6;
+        const STATE_MOVE_POINT_CONFIRM = 5;
+        const STATE_BATTLE = 6;
+        const STATE_REWARD = 7;
 
         function detectState() {
             if (isGameDead()) return STATE_CRASHED;
@@ -4788,10 +4878,13 @@ function algo_init() {
         }
         var last_state = state;
 
+        var currentMove = null;
+
         var battleStartTime = null;
 
         var battleCount = 0;
         var lastBattleCountOnKillGame = 0;
+        var menuStateAbnormalityCount = 0;
 
         while (true) {
             //检测游戏是否闪退
@@ -4912,45 +5005,33 @@ function algo_init() {
                     }
                     if (regionEntry != null && OKButton == null && startButton == null) {
                         log("区域"+routeData.regionNum+"出现了,而且确定/开始按钮没有出现,重新检测状态");
-                        state = detectState();
+                        //正常情况下应该进入地图才对,貌似有时候无障碍服务抽风了,就会因为什么控件都检测不到而误检测为战斗状态
+                        let detectedState = detectState();
+                        if (detectedState != STATE_MAP && detectedState != STATE_MENU) {
+                            log("detectState()返回了既不是STATE_MAP也不是STATE_MENU的结果:["+detectedState+"]");
+                            if (menuStateAbnormalityCount++ < 5) {
+                                toastLog("等待2秒后重试...");
+                                sleep(2000);
+                            } else {
+                                toastLog("多次重试后仍然不正常,杀进程重开游戏...");
+                                killGame();
+                                state = STATE_CRASHED;
+                                menuStateAbnormalityCount = 0;
+                            }
+                        } else {
+                            state = detectedState;
+                            menuStateAbnormalityCount = 0;
+                        }
                         break;
                     }
                     break;
                 }
                 case STATE_MAP: {
-                    let currentMove = routeData.route[moveCount];
+                    currentMove = routeData.route[moveCount];
                     log("第"+(moveCount+1)+"步骤 "+currentMove.type+"类型 "+currentMove.move+"方向 "+currentMove.edge+"边缘");
 
                     if (findPopupInfoDetailTitle(string.move_to_node) != null) {
-                        log("发现\"节点移动\"弹窗,点击确定");
-                        click(convertCoords(clickSets.recover_battle));
-                        sleep(1000);
-                        if (findPopupInfoDetailTitle(string.move_to_node) == null) {
-                            log("\"节点移动\"弹窗已经在出现后消失");
-                            switch (currentMove.type) {
-                                case "battle":
-                                    if (mapStateIDs.find((id) => findIDFast(id)) == null) {
-                                        log("剧情地图特征控件已消失,进入战斗状态");
-                                        state = STATE_BATTLE;
-                                        battleStartTime = new Date().getTime();
-                                    } else {
-                                        log("剧情地图特征控件尚未消失");
-                                        sleep(1000);
-                                    }
-                                    break;
-                                case "treasure":
-                                case "heal":
-                                case "trap":
-                                    let dungeonClickNonBattleNodeWaitSec = parseInt(limit.dungeonClickNonBattleNodeWaitSec);
-                                    if (isNaN(dungeonClickNonBattleNodeWaitSec) || dungeonClickNonBattleNodeWaitSec <= 0) dungeonClickNonBattleNodeWaitSec = 8;
-                                    log("这一步不是战斗而是"+currentMove.type+" 等待"+dungeonClickNonBattleNodeWaitSec+"秒...");
-                                    sleep(dungeonClickNonBattleNodeWaitSec * 1000);
-                                    moveCount++;
-                                    break;
-                                default:
-                                    throw new Error("unknown currentMove.type value");
-                            }
-                        }
+                        state = STATE_MOVE_POINT_CONFIRM;
                         break;
                     }
 
@@ -4982,6 +5063,37 @@ function algo_init() {
                     }
                     break;
                 }
+                case STATE_MOVE_POINT_CONFIRM: {
+                    //必须先发现“节点移动”弹窗出现过一次才应该转到这里
+                    //这里本身无法保证上述条件,需要外边跳转进来时注意
+                    if (findPopupInfoDetailTitle(string.move_to_node) != null) {
+                        log("发现\"节点移动\"弹窗,点击\"确定\"");
+                        click(convertCoords(clickSets.recover_battle));
+                        sleep(1000);
+                    } else {
+                        log("\"节点移动\"弹窗已消失");
+                        switch (currentMove.type) {
+                            case "battle":
+                                log("进入战斗状态");
+                                state = STATE_BATTLE;
+                                battleStartTime = new Date().getTime();
+                                break;
+                            case "treasure":
+                            case "heal":
+                            case "trap":
+                                let dungeonClickNonBattleNodeWaitSec = parseInt(limit.dungeonClickNonBattleNodeWaitSec);
+                                if (isNaN(dungeonClickNonBattleNodeWaitSec) || dungeonClickNonBattleNodeWaitSec <= 0) dungeonClickNonBattleNodeWaitSec = 8;
+                                log("这一步不是战斗而是"+currentMove.type+" 等待"+dungeonClickNonBattleNodeWaitSec+"秒...");
+                                sleep(dungeonClickNonBattleNodeWaitSec * 1000);
+                                moveCount++;
+                                state = STATE_MAP;
+                                break;
+                            default:
+                                throw new Error("unknown currentMove.type value");
+                        }
+                    }
+                    break;
+                }
                 case STATE_BATTLE: {
                     if (battleRewardIDs.find((id) => findIDFast(id)) != null) {
                         log("战斗已结束,进入结算");
@@ -5000,6 +5112,21 @@ function algo_init() {
                         state = STATE_MENU;
                         battleCount++;//这只是输了的情况,还有赢了的情况
                         moveCount = 0;
+                        break;
+                    }
+                    if (mapStateIDs.find((id) => findIDFast(id) == null) == null) {
+                        //可能是(这一次战斗打赢了,但)点击掉线重连时意外点掉了结算,于是就错过了结算界面没检测到,
+                        //也有可能是在设置了替补(而且替补没死)的情况下打输了。
+                        //(以上两种情况无法分辨,所以脚本目前只能是不支持设置替补)
+                        log("出现了活动地图的所有特征控件");
+                        state = STATE_MAP;
+                        battleCount++;
+                        if (moveCount == routeData.route.length - 1) {
+                            toastLog("已完成这一轮的所有战斗");
+                            moveCount = 0;
+                        } else {
+                            moveCount++;
+                        }
                         break;
                     }
                     if (limit.autoReconnect) {
@@ -7302,10 +7429,10 @@ function algo_init() {
                             lastStateRewardCharacterStuckTime = currentTime;
                         } else if (currentTime > lastStateRewardCharacterStuckTime + stuckTimeOutSeconds * 1000) {
                             lastStateRewardCharacterStuckTime = null;
-                            state = STATE_BATTLE; //如果开启了防断线模式，那就可以点击掉线重连
+                            state = STATE_REWARD_MATERIAL; //如果开启了防断线模式，那就可以点击掉线重连
                             log("进入角色结算状态后charaWrap控件消失了超过"+stuckTimeOutSeconds+"秒");
                             log("可能是自动续战中错过了掉落结算、然后在开始战斗时又掉线卡住");
-                            log("进入战斗状态");
+                            log("进入掉落结算(虽然可能已经错过)");
                             break;
                         }
                     }
