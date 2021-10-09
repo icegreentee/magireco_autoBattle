@@ -4226,15 +4226,30 @@ function algo_init() {
         return convertedArea;
     }
 
+    var lastClickedReconnectPointIndex = 0;
     function clickReconnect() {
-        log("点击断线重连按钮所在区域");
-        click(convertCoords(clickSets.reconection));
-        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
-        log("点击OK按钮区域");
-        click(convertCoords(clickSets.dataDownloadOK));
-        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
-        log("点击战斗已结束OK按钮区域");
-        click(convertCoords(clickSets.battleFinishedOK));
+        //因为clickSets在后面才初始化,所以只能在函数内初始化reconnectPoints
+        const reconnectPoints = [
+            {
+                name: "断线重连按钮",
+                point: clickSets.reconection,
+            },
+            {
+                name: "OK按钮",
+                point: clickSets.dataDownloadOK,
+            },
+            {
+                name: "战斗已结束OK按钮",
+                point: clickSets.battleFinishedOK,
+            },
+        ];
+        lastClickedReconnectPointIndex++;
+        if (lastClickedReconnectPointIndex >= reconnectPoints.length) {
+            lastClickedReconnectPointIndex = 0;
+        }
+        let item = reconnectPoints[lastClickedReconnectPointIndex];
+        log("点击"+item.name+"区域");
+        click(convertCoords(item.point));
         sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
     }
 
@@ -4381,16 +4396,16 @@ function algo_init() {
                         last=Date.now();
                         state=STATE_LOGIN;
                         log("重启游戏进程，进入登录页面");
-                    } else if(((Date.now()>last+1000*60*60) && findID("charaWrap"))||(Date.now()>last+1000*60*65)){
+                    } else if(((Date.now()>last+1000*60*60) && findID("ResultWrap"))||(Date.now()>last+1000*60*65)){
                         log("尝试关闭游戏进程");
                         backtoMain();
                         sleep(5000)
                         killBackground(pkgName);
                         sleep(10000)
-                    } else if (limit.autoReconnect && !findID("charaWrap")) {
+                    } else if (limit.autoReconnect && !findID("ResultWrap")) {
                         clickReconnect();
                         //slow down
-                        findID("charaWrap",2000);
+                        findID("ResultWrap",2000);
                     }
                     break;
                 }
@@ -4509,7 +4524,7 @@ function algo_init() {
         //进入活动地图后的特征控件ResID
         const mapStateIDs = ["resetPosition", "openBtn"];
         //进入结算界面后的特征控件ResID
-        const battleRewardIDs = ["ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
+        const battleRewardIDs = ["ResultWrap", "retryWrap", "hasTotalRiche"];
         //主菜单上的活动按钮
         const eventButtonPoint = convertCoords({x: 1620, y: 549, pos: "bottom"});
         const lengthOfSide = 620;//三角形边长
@@ -4815,10 +4830,12 @@ function algo_init() {
         const STATE_LOGIN = 1
         const STATE_HOME = 2;
         const STATE_MENU = 3;
-        const STATE_MAP = 4;
-        const STATE_MOVE_POINT_CONFIRM = 5;
-        const STATE_BATTLE = 6;
-        const STATE_REWARD = 7;
+        const STATE_REGION_CONFIRM_START = 4;
+        const STATE_TEAM = 5;
+        const STATE_MAP = 6;
+        const STATE_MOVE_POINT_CONFIRM = 7;
+        const STATE_BATTLE = 8;
+        const STATE_REWARD = 9;
 
         function detectState() {
             if (isGameDead()) return STATE_CRASHED;
@@ -4968,24 +4985,54 @@ function algo_init() {
                     break;
                 }
                 case STATE_MENU: {
-                    let battleLosePopup = findPopupInfoDetailTitle(string.region_lose);
-                    if (battleLosePopup != null) {
+                    if (findPopupInfoDetailTitle(string.region_lose) != null) {
                         log("出现\"攻略区域失败\"弹窗,尝试关闭...");
                         click(convertCoords(clickSets.backToHomepage));
                         sleep(1000);
                         break;
                     }
+                    if (findFast(string.battle_confirm) != null) {
+                        log("进入区域选择确认");
+                        state = STATE_REGION_CONFIRM_START;
+                        break;
+                    }
+                    if (findFast(string.start) != null) {
+                        log("进入队伍调整");
+                        state = STATE_TEAM;
+                        break;
+                    }
+
                     let regionEntry = findFast(string.region+routeData.regionNum);
                     if (regionEntry != null) {
                         log("点击区域"+routeData.regionNum);
                         click(regionEntry.bounds().centerX(), regionEntry.bounds().centerY());
                         sleep(1000);
+                        break;
                     }
+                    break;
+                }
+                case STATE_REGION_CONFIRM_START: {
+                    if (findFast(string.start) != null) {
+                        //点击确定按钮时,可能误触到队伍调整中的某个队员的位置,导致魔法少女选择器打开
+                        toastLog("等待5秒...");
+                        sleep(5000);//比较卡的机器也许等魔法少女选择器弹出也需要一段时间
+                        let charaListElms = findIDFast("charaListElms");
+                        if (charaListElms != null && charaListElms.bounds().height() > 8) {
+                            toastLog("应该是点击确定时,误触打开了魔法少女选择器,\n杀进程重开...");
+                            killGame();
+                            state = STATE_CRASHED;
+                            break;
+                        }
+                        log("进入队伍调整");
+                        state = STATE_TEAM;
+                        break;
+                    }
+
                     let OKButton = findFast(string.battle_confirm);
                     if (OKButton != null) {
                         log("点击确定");
                         click(OKButton.bounds().centerX(), OKButton.bounds().centerY());
-                        sleep(1000);
+                        sleep(2000);
                         while (findFast(string.cp_exhausted)) {
                             log("CP已耗尽");
                             if (!refillCP()) {
@@ -4996,33 +5043,35 @@ function algo_init() {
                             click(OKButton.bounds().centerX(), OKButton.bounds().centerY());
                             sleep(1000);
                         }
+                        break;
                     }
+                    break;
+                }
+                case STATE_TEAM: {
                     let startButton = findFast(string.start);
                     if (startButton != null) {
                         log("点击开始");
                         click(startButton.bounds().centerX(), startButton.bounds().centerY());
                         sleep(1000);
+                        break;
                     }
-                    if (regionEntry != null && OKButton == null && startButton == null) {
-                        log("区域"+routeData.regionNum+"出现了,而且确定/开始按钮没有出现,重新检测状态");
-                        //正常情况下应该进入地图才对,貌似有时候无障碍服务抽风了,就会因为什么控件都检测不到而误检测为战斗状态
-                        let detectedState = detectState();
-                        if (detectedState != STATE_MAP && detectedState != STATE_MENU) {
-                            log("detectState()返回了既不是STATE_MAP也不是STATE_MENU的结果:["+detectedState+"]");
-                            if (menuStateAbnormalityCount++ < 5) {
-                                toastLog("等待2秒后重试...");
-                                sleep(2000);
-                            } else {
-                                toastLog("多次重试后仍然不正常,杀进程重开游戏...");
-                                killGame();
-                                state = STATE_CRASHED;
-                                menuStateAbnormalityCount = 0;
-                            }
+                    log("队伍调整的开始按钮消失了,重新检测状态");
+                    //正常情况下应该进入地图才对,貌似有时候无障碍服务抽风了,就会因为什么控件都检测不到而误检测为战斗状态
+                    let detectedState = detectState();
+                    if (detectedState != STATE_MAP && detectedState != STATE_MENU) {
+                        log("detectState()返回了既不是STATE_MAP也不是STATE_MENU的结果:["+detectedState+"]");
+                        if (menuStateAbnormalityCount++ < 5) {
+                            toastLog("等待2秒后重试...");
+                            sleep(2000);
                         } else {
-                            state = detectedState;
+                            toastLog("多次重试后仍然不正常,杀进程重开游戏...");
+                            killGame();
+                            state = STATE_CRASHED;
                             menuStateAbnormalityCount = 0;
                         }
-                        break;
+                    } else {
+                        state = detectedState;
+                        menuStateAbnormalityCount = 0;
                     }
                     break;
                 }
@@ -5258,7 +5307,7 @@ function algo_init() {
                 continue;
             }
 
-            for (let resID of ["charaWrap", "hasTotalRiche"]) {
+            for (let resID of ["ResultWrap", "hasTotalRiche"]) {
                 if (findID(resID, 200)) {
                     battle_end_found = true;
                     log("已进入战斗结算");
@@ -6492,7 +6541,7 @@ function algo_init() {
             state = STATE_SUPPORT;
         } else if (findID("nextPageBtn")) {
             state = STATE_TEAM;
-        } else if (findID("charaWrap")) {
+        } else if (findID("ResultWrap")) {
             state = STATE_REWARD_CHARACTER;
         } else if (findID("hasTotalRiche")) {
             state = STATE_REWARD_MATERIAL;
@@ -6961,7 +7010,7 @@ function algo_init() {
                             state = STATE_TEAM;
                             break;
                         }
-                        if (findID("charaWrap") || findID("hasTotalRiche")) {
+                        if (findID("ResultWrap") || findID("hasTotalRiche")) {
                             state = STATE_REWARD_CHARACTER;
                             break;
                         }
@@ -7345,12 +7394,12 @@ function algo_init() {
                     //另一方面，也可以极大程度上确保防断线模式不会在结算界面误点
                     waitAnyFast(
                         [
-                            () => findIDFast("charaWrap"),
+                            () => findIDFast("ResultWrap"),
                             () => findIDFast("hasTotalRiche")
                         ],
                         2000
                     );
-                    if (findID("charaWrap")) {
+                    if (findID("ResultWrap")) {
                         state = STATE_REWARD_CHARACTER;
                         log("进入角色结算");
                         break;
@@ -7407,7 +7456,7 @@ function algo_init() {
                         click(convertCoords(clickSets.focusclose));
                         break;
                     }
-                    let element = findID("charaWrap");
+                    let element = findID("ResultWrap");
                     if (element) {
                         if (element.bounds().height() > 0) charabound = element.bounds();
                         let targetConverted = convertCoords(clickSets.reconection);
@@ -7430,7 +7479,7 @@ function algo_init() {
                         } else if (currentTime > lastStateRewardCharacterStuckTime + stuckTimeOutSeconds * 1000) {
                             lastStateRewardCharacterStuckTime = null;
                             state = STATE_REWARD_MATERIAL; //如果开启了防断线模式，那就可以点击掉线重连
-                            log("进入角色结算状态后charaWrap控件消失了超过"+stuckTimeOutSeconds+"秒");
+                            log("进入角色结算状态后ResultWrap控件消失了超过"+stuckTimeOutSeconds+"秒");
                             log("可能是自动续战中错过了掉落结算、然后在开始战斗时又掉线卡住");
                             log("进入掉落结算(虽然可能已经错过)");
                             break;
@@ -9788,7 +9837,7 @@ function algo_init() {
             if (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
             */
             if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce() || /*镜层结算*/
-                id("ResultWrap").findOnce() || id("charaWrap").findOnce() || /*副本结算*/
+                id("ResultWrap").findOnce() || /*副本结算*/
                 id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
             //不再通过识图判断战斗是否结束
             //if (didWeWin(screenshot) || didWeLose(screenshot)) {
@@ -9951,7 +10000,7 @@ function algo_init() {
         }
 
         //用到副本而不是镜层的时候
-        if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
+        if (id("ResultWrap").findOnce() ||
             id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
             log("匹配到副本结算控件");
             //clickResult();
@@ -10008,7 +10057,7 @@ function algo_init() {
     function mirrorsSimpleAutoBattleMain() {
         initialize();
 
-        var battleResultIDs = ["ArenaResult", "enemyBtn", "ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
+        var battleResultIDs = ["ArenaResult", "enemyBtn", "ResultWrap", "retryWrap", "hasTotalRiche"];
         var isBattleResult = false;
 
         var battleEndIDs = ["matchingWrap", "matchingList"];
@@ -10065,7 +10114,7 @@ function algo_init() {
             sleep(3000);
 
             //点掉副本结算页面（如果用在副本而不是镜层中）
-            if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
+            if (id("ResultWrap").findOnce() ||
                 id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
                 //clickResult();
                 toastLog("战斗已结束进入结算");
@@ -11220,7 +11269,7 @@ function algo_init() {
 
                 case STATE_BATTLE: {
                     // exit condition
-                    if (findID("charaWrap")) {
+                    if (findID("ResultWrap")) {
                         state = STATE_REWARD_CHARACTER;
                         log("进入角色结算");
                         break;
@@ -11235,7 +11284,7 @@ function algo_init() {
                         log("进入掉落结算");
                         break;
                     }
-                    let element = findID("charaWrap");
+                    let element = findID("ResultWrap");
                     if (element) {
                         if (element.bounds().height() > 0) charabound = element.bounds();
                         let targetX = element.bounds().right;
