@@ -718,22 +718,26 @@ floatUI.main = function () {
 
     var task_popup = floaty.rawWindow(
         <frame id="container" w="*" h="*">
-            <vertical w="*" h="*" bg="#f8f8f8" margin="0 15 15 0">
-                <vertical bg="#4fb3ff">
-                    <text text="选择需要执行的脚本" padding="4 2" textColor="#ffffff" />
+            <relative w="*" h="*" bg="#f8f8f8" margin="0 15 15 0" padding="2" >
+                <vertical id="list_title" bg="#4fb3ff" w="match_parent" h="wrap_content" layout_alignParentTop="true" >
+                    <text text="选择需要执行的脚本" textSize="16" padding="4 2" textColor="#ffffff" />
                 </vertical>
-                <list id="list">
+                <list id="list" w="match_parent" layout_below="list_title" layout_above="list_reminder" >
                     <text
                         id="name"
                         text="{{name}}"
+                        textSize="16"
                         h="45"
                         gravity="center"
-                        margin="4 1"
+                        margin="0 1"
                         w="*"
                         bg="#ffffff"
                     />
                 </list>
-            </vertical>
+                <vertical id="list_reminder" bg="#4fb3ff" w="match_parent" h="wrap_content" layout_alignParentBottom="true" >
+                    <text text="如果没看到想要的，可以继续往下拖动找找看" textSize="16" padding="4 2" textColor="#ffffff" />
+                </vertical>
+            </relative>
             <frame id="close_button" w="30" h="30" layout_gravity="top|right">
                 <img w="30" h="30" src="#881798" circle="true" />
                 <img
@@ -749,8 +753,8 @@ floatUI.main = function () {
 
     function layoutTaskPopup() {
         var sz = getWindowSize();
-        task_popup.setSize(sz.x / 2, sz.y / 2);
-        task_popup.setPosition(sz.x / 4, sz.y / 4);
+        task_popup.setSize(parseInt(sz.x * 3 / 4), parseInt(sz.y * 3 / 4));
+        task_popup.setPosition(parseInt(sz.x / 8), parseInt(sz.y / 8));
     }
 
     task_popup.container.setVisibility(View.INVISIBLE);
@@ -1018,8 +1022,8 @@ floatUI.main = function () {
                 //更新脚本选择悬浮窗的大小和位置
                 try {
                     //因为已经有sz了，就不调用layoutTaskPopup()了
-                    task_popup.setSize(sz.x / 2, sz.y / 2);
-                    task_popup.setPosition(sz.x / 4, sz.y / 4);
+                    task_popup.setSize(parseInt(sz.x * 3 / 4), parseInt(sz.y * 3 / 4));
+                    task_popup.setPosition(parseInt(sz.x / 8), parseInt(sz.y / 8));
                 } catch (e) {
                     logException(e);
                     toastLog("无法重设悬浮窗的大小和位置,\n可能是悬浮窗意外消失\n退出脚本...");
