@@ -4509,7 +4509,7 @@ function algo_init() {
         //进入活动地图后的特征控件ResID
         const mapStateIDs = ["resetPosition", "openBtn"];
         //进入结算界面后的特征控件ResID
-        const battleRewardIDs = ["ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
+        const battleRewardIDs = ["ResultWrap", "retryWrap", "hasTotalRiche"];
         //主菜单上的活动按钮
         const eventButtonPoint = convertCoords({x: 1620, y: 549, pos: "bottom"});
         const lengthOfSide = 620;//三角形边长
@@ -9788,7 +9788,7 @@ function algo_init() {
             if (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
             */
             if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce() || /*镜层结算*/
-                id("ResultWrap").findOnce() || id("charaWrap").findOnce() || /*副本结算*/
+                id("ResultWrap").findOnce() || /*副本结算*/
                 id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
             //不再通过识图判断战斗是否结束
             //if (didWeWin(screenshot) || didWeLose(screenshot)) {
@@ -9951,7 +9951,7 @@ function algo_init() {
         }
 
         //用到副本而不是镜层的时候
-        if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
+        if (id("ResultWrap").findOnce() ||
             id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
             log("匹配到副本结算控件");
             //clickResult();
@@ -10008,7 +10008,7 @@ function algo_init() {
     function mirrorsSimpleAutoBattleMain() {
         initialize();
 
-        var battleResultIDs = ["ArenaResult", "enemyBtn", "ResultWrap", "charaWrap", "retryWrap", "hasTotalRiche"];
+        var battleResultIDs = ["ArenaResult", "enemyBtn", "ResultWrap", "retryWrap", "hasTotalRiche"];
         var isBattleResult = false;
 
         var battleEndIDs = ["matchingWrap", "matchingList"];
@@ -10065,7 +10065,7 @@ function algo_init() {
             sleep(3000);
 
             //点掉副本结算页面（如果用在副本而不是镜层中）
-            if (id("ResultWrap").findOnce() || id("charaWrap").findOnce() ||
+            if (id("ResultWrap").findOnce() ||
                 id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
                 //clickResult();
                 toastLog("战斗已结束进入结算");
