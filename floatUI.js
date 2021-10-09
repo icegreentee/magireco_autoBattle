@@ -4815,10 +4815,12 @@ function algo_init() {
         const STATE_LOGIN = 1
         const STATE_HOME = 2;
         const STATE_MENU = 3;
-        const STATE_MAP = 4;
-        const STATE_MOVE_POINT_CONFIRM = 5;
-        const STATE_BATTLE = 6;
-        const STATE_REWARD = 7;
+        const STATE_REGION_CONFIRM_START = 4;
+        const STATE_TEAM = 5;
+        const STATE_MAP = 6;
+        const STATE_MOVE_POINT_CONFIRM = 7;
+        const STATE_BATTLE = 8;
+        const STATE_REWARD = 9;
 
         function detectState() {
             if (isGameDead()) return STATE_CRASHED;
@@ -4968,24 +4970,54 @@ function algo_init() {
                     break;
                 }
                 case STATE_MENU: {
-                    let battleLosePopup = findPopupInfoDetailTitle(string.region_lose);
-                    if (battleLosePopup != null) {
+                    if (findPopupInfoDetailTitle(string.region_lose) != null) {
                         log("出现\"攻略区域失败\"弹窗,尝试关闭...");
                         click(convertCoords(clickSets.backToHomepage));
                         sleep(1000);
                         break;
                     }
+                    if (findFast(string.battle_confirm) != null) {
+                        log("进入区域选择确认");
+                        state = STATE_REGION_CONFIRM_START;
+                        break;
+                    }
+                    if (findFast(string.start) != null) {
+                        log("进入队伍调整");
+                        state = STATE_TEAM;
+                        break;
+                    }
+
                     let regionEntry = findFast(string.region+routeData.regionNum);
                     if (regionEntry != null) {
                         log("点击区域"+routeData.regionNum);
                         click(regionEntry.bounds().centerX(), regionEntry.bounds().centerY());
                         sleep(1000);
+                        break;
                     }
+                    break;
+                }
+                case STATE_REGION_CONFIRM_START: {
+                    if (findFast(string.start) != null) {
+                        //点击确定按钮时,可能误触到队伍调整中的某个队员的位置,导致魔法少女选择器打开
+                        toastLog("等待5秒...");
+                        sleep(5000);//比较卡的机器也许等魔法少女选择器弹出也需要一段时间
+                        let charaListElms = findIDFast("charaListElms");
+                        if (charaListElms != null && charaListElms.bounds().height() > 8) {
+                            toastLog("应该是点击确定时,误触打开了魔法少女选择器,\n杀进程重开...");
+                            killGame();
+                            state = STATE_CRASHED;
+                            break;
+                        }
+                        log("进入队伍调整");
+                        state = STATE_TEAM;
+                        break;
+                    }
+
                     let OKButton = findFast(string.battle_confirm);
                     if (OKButton != null) {
                         log("点击确定");
                         click(OKButton.bounds().centerX(), OKButton.bounds().centerY());
-                        sleep(1000);
+                        sleep(2000);
                         while (findFast(string.cp_exhausted)) {
                             log("CP已耗尽");
                             if (!refillCP()) {
@@ -4996,33 +5028,35 @@ function algo_init() {
                             click(OKButton.bounds().centerX(), OKButton.bounds().centerY());
                             sleep(1000);
                         }
+                        break;
                     }
+                    break;
+                }
+                case STATE_TEAM: {
                     let startButton = findFast(string.start);
                     if (startButton != null) {
                         log("点击开始");
                         click(startButton.bounds().centerX(), startButton.bounds().centerY());
                         sleep(1000);
+                        break;
                     }
-                    if (regionEntry != null && OKButton == null && startButton == null) {
-                        log("区域"+routeData.regionNum+"出现了,而且确定/开始按钮没有出现,重新检测状态");
-                        //正常情况下应该进入地图才对,貌似有时候无障碍服务抽风了,就会因为什么控件都检测不到而误检测为战斗状态
-                        let detectedState = detectState();
-                        if (detectedState != STATE_MAP && detectedState != STATE_MENU) {
-                            log("detectState()返回了既不是STATE_MAP也不是STATE_MENU的结果:["+detectedState+"]");
-                            if (menuStateAbnormalityCount++ < 5) {
-                                toastLog("等待2秒后重试...");
-                                sleep(2000);
-                            } else {
-                                toastLog("多次重试后仍然不正常,杀进程重开游戏...");
-                                killGame();
-                                state = STATE_CRASHED;
-                                menuStateAbnormalityCount = 0;
-                            }
+                    log("队伍调整的开始按钮消失了,重新检测状态");
+                    //正常情况下应该进入地图才对,貌似有时候无障碍服务抽风了,就会因为什么控件都检测不到而误检测为战斗状态
+                    let detectedState = detectState();
+                    if (detectedState != STATE_MAP && detectedState != STATE_MENU) {
+                        log("detectState()返回了既不是STATE_MAP也不是STATE_MENU的结果:["+detectedState+"]");
+                        if (menuStateAbnormalityCount++ < 5) {
+                            toastLog("等待2秒后重试...");
+                            sleep(2000);
                         } else {
-                            state = detectedState;
+                            toastLog("多次重试后仍然不正常,杀进程重开游戏...");
+                            killGame();
+                            state = STATE_CRASHED;
                             menuStateAbnormalityCount = 0;
                         }
-                        break;
+                    } else {
+                        state = detectedState;
+                        menuStateAbnormalityCount = 0;
                     }
                     break;
                 }
