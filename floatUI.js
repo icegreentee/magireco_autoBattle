@@ -697,6 +697,25 @@ floatUI.main = function () {
         }
     })();};
 
+    //切换悬浮窗靠左/靠右,切换后X轴方向会反转。
+    function toggleFloatyGravityLeftRight(floatyRawWindow, isRight) {
+        let field = floatyRawWindow.getClass().getDeclaredField("mWindow");
+        field.setAccessible(true);
+        mWindow = field.get(floatyRawWindow);
+        let layoutParams = mWindow.getWindowLayoutParams();
+        let gravity = layoutParams.gravity;
+        if (isRight == null) {
+            gravity ^= android.view.Gravity.LEFT | android.view.Gravity.RIGHT;
+        } else {
+            gravity &= ~(isRight ? android.view.Gravity.LEFT : android.view.Gravity.RIGHT);
+            gravity |= isRight ? android.view.Gravity.RIGHT : android.view.Gravity.LEFT;
+        }
+        gravity &= ~(android.view.Gravity.RELATIVE_LAYOUT_DIRECTION);
+        layoutParams.gravity = gravity;
+        mWindow.updateWindowLayoutParams(layoutParams);
+    }
+    var isGravityRight = false;
+
     var task_popup = floaty.rawWindow(
         <frame id="container" w="*" h="*">
             <vertical w="*" h="*" bg="#f8f8f8" margin="0 15 15 0">
@@ -801,6 +820,7 @@ floatUI.main = function () {
     submenu.container.setVisibility(View.INVISIBLE);
     ui.post(() => {
         submenu.setTouchable(false);
+        toggleFloatyGravityLeftRight(submenu, false);//AutoJS设置的Gravity貌似是START而不是LEFT,这里改成LEFT
     });
 
     // mount onclick handler
@@ -823,20 +843,11 @@ floatUI.main = function () {
 
         var angle_base = Math.PI / menu_list.length / 2;
         var size_base = menu.getWidth();
-        var isleft = menu.getX() <= 0;
 
-        if (menu.getX() <= 0)
-            submenu.setPosition(
-                0,
-                parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
-            );
-        else {
-            let sz = getWindowSize();
-            submenu.setPosition(
-                sz.x - submenu.getWidth(),
-                parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
-            );
-        }
+        submenu.setPosition(
+            0,
+            parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+        );
 
         for (var i = 0; i < menu_list.length; i++) {
             var params = submenu["entry" + i].getLayoutParams();
@@ -846,7 +857,7 @@ floatUI.main = function () {
             var vertical_margin = parseInt(
                 size_base * (space_factor + 0.5) * (1 - Math.cos(angle_base * (2 * i + 1)))
             );
-            if (isleft) {
+            if (!isGravityRight) {
                 params.gravity = Gravity.TOP | Gravity.LEFT;
                 params.leftMargin = horizontal_margin;
                 params.rightMargin = 0;
@@ -868,7 +879,7 @@ floatUI.main = function () {
                     submenu["entry" + i],
                     "translationX",
                     0,
-                    (isleft ? -1 : 1) *
+                    (!isGravityRight ? -1 : 1) *
                     size_base *
                     (space_factor + 0.5) *
                     Math.sin(angle_base * (2 * i + 1))
@@ -920,6 +931,7 @@ floatUI.main = function () {
 
     ui.post(() => {
         menu.setPosition(0, parseInt(getWindowSize().y / 4));
+        toggleFloatyGravityLeftRight(menu, false);//AutoJS设置的Gravity貌似是START而不是LEFT,这里改成LEFT
     });
 
     function calcMenuY() {
@@ -949,6 +961,7 @@ floatUI.main = function () {
             case event.ACTION_MOVE:
                 {
                     let dx = event.getRawX() - touch_x;
+                    if (isGravityRight) dx = -dx;//靠右的时候,悬浮窗位置和触摸事件的x轴方向相反
                     let dy = event.getRawY() - touch_y;
                     if (!touch_move && submenu.container.getVisibility() == View.INVISIBLE) {
                         if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
@@ -964,10 +977,16 @@ floatUI.main = function () {
                     menu.setTouchable(false);
                     let sz = getWindowSize();
                     let current = menu.getX();
-                    let animator = ValueAnimator.ofInt(
-                        current,
-                        current < sz.x / 2 ? 0 : sz.x - menu.getWidth()
-                    );
+                    let bounceHeight = current;
+                    if (current >= sz.x / 2) {
+                        //无论靠左还是靠右,getX返回的都是正数:靠左时是从左边缘往右的距离,靠右时则是从右边缘往左的距离
+                        //所以在这里统一判定:距离大于屏幕宽度的一半时,就进行切换,从靠左(右)切换道靠右(左)
+                        isGravityRight = !isGravityRight;
+                        toggleFloatyGravityLeftRight(menu);
+                        toggleFloatyGravityLeftRight(submenu);
+                        bounceHeight = sz.x - current - menu.getHeight();//刘海屏下不准确,但也无所谓,反正就是个一转眼就消失的动画效果
+                    }
+                    let animator = ValueAnimator.ofInt(bounceHeight, 0);
                     let menu_y = calcMenuY();
                     animator.addUpdateListener({
                         onAnimationUpdate: (animation) => {
@@ -1009,22 +1028,12 @@ floatUI.main = function () {
                 }
 
                 //更新QB头像和5个按钮的位置
-                var x = menu.getX();
-                if (x <= 0) {
-                    //停靠屏幕左边缘
-                    menu.setPosition(0, calcMenuY());
-                    submenu.setPosition(
-                        0,
-                        parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
-                    );
-                } else {
-                    //停靠屏幕右边缘
-                    menu.setPosition(sz.x - menu.getWidth(), calcMenuY());
-                    submenu.setPosition(
-                        sz.x - submenu.getWidth(),
-                        parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
-                    );
-                }
+                //因为toggleFloatyGravityLeftRight函数的作用,无论是停靠屏幕左边缘还是右边缘,X坐标值设为0都代表停靠屏幕边缘
+                menu.setPosition(0, calcMenuY());
+                submenu.setPosition(
+                    0,
+                    parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+                );
             } else {
                 try {
                     context.unregisterReceiver(receiver);
