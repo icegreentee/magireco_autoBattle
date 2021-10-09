@@ -4226,15 +4226,30 @@ function algo_init() {
         return convertedArea;
     }
 
+    var lastClickedReconnectPointIndex = 0;
     function clickReconnect() {
-        log("点击断线重连按钮所在区域");
-        click(convertCoords(clickSets.reconection));
-        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
-        log("点击OK按钮区域");
-        click(convertCoords(clickSets.dataDownloadOK));
-        sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
-        log("点击战斗已结束OK按钮区域");
-        click(convertCoords(clickSets.battleFinishedOK));
+        //因为clickSets在后面才初始化,所以只能在函数内初始化reconnectPoints
+        const reconnectPoints = [
+            {
+                name: "断线重连按钮",
+                point: clickSets.reconection,
+            },
+            {
+                name: "OK按钮",
+                point: clickSets.dataDownloadOK,
+            },
+            {
+                name: "战斗已结束OK按钮",
+                point: clickSets.battleFinishedOK,
+            },
+        ];
+        lastClickedReconnectPointIndex++;
+        if (lastClickedReconnectPointIndex >= reconnectPoints.length) {
+            lastClickedReconnectPointIndex = 0;
+        }
+        let item = reconnectPoints[lastClickedReconnectPointIndex];
+        log("点击"+item.name+"区域");
+        click(convertCoords(item.point));
         sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
     }
 
