@@ -1135,53 +1135,64 @@ floatUI.main = function () {
     floatUI.hideAllFloaty = function () {
         if (isAllFloatyHidden) return;
         ui.run(function () {
-            floatyVisibilities.menu = menu.logo.getVisibility();
-            floatyVisibilities.submenu = submenu.entry0.getVisibility();
-            floatyVisibilities.task_popup = task_popup.container.getVisibility();
-            floatyVisibilities.overlay = overlay.container.getVisibility();
+            try {
+                floatyVisibilities.menu = menu.logo.getVisibility();
+                floatyVisibilities.submenu = submenu.entry0.getVisibility();
+                floatyVisibilities.task_popup = task_popup.container.getVisibility();
+                floatyVisibilities.overlay = overlay.container.getVisibility();
 
-            for (let key in floatyObjs) {
-                let f = floatyObjs[key];
-                floatySizePositions[key] = {
-                    size: {w: f.getWidth(), h: f.getHeight()},
-                    pos: {x: f.getX(), y: f.getY()},
+                for (let key in floatyObjs) {
+                    let f = floatyObjs[key];
+                    floatySizePositions[key] = {
+                        size: {w: f.getWidth(), h: f.getHeight()},
+                        pos: {x: f.getX(), y: f.getY()},
+                    };
                 };
-            };
 
-            menu.logo.setVisibility(View.GONE);
-            for (let i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(View.GONE);
-            task_popup.container.setVisibility(View.GONE);
-            overlay.container.setVisibility(View.GONE);
+                menu.logo.setVisibility(View.GONE);
+                for (let i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(View.GONE);
+                task_popup.container.setVisibility(View.GONE);
+                overlay.container.setVisibility(View.GONE);
 
-            for (let key in floatyObjs) {
-                let f = floatyObjs[key];
-                f.setSize(1, 1);
-                f.setPosition(0, 0);
+                for (let key in floatyObjs) {
+                    let f = floatyObjs[key];
+                    f.setSize(1, 1);
+                    f.setPosition(0, 0);
+                }
+
+                isAllFloatyHidden = true;
+                toastLog("已隐藏所有悬浮窗");
+            } catch (e) {
+                logException(e);
+                toastLog("悬浮窗已丢失\n请重新启动本程序");
+                exit();
             }
-
-            isAllFloatyHidden = true;
-            toastLog("已隐藏所有悬浮窗");
         });
     };
     floatUI.recoverAllFloaty = function () {
         if (!isAllFloatyHidden) return;
         ui.run(function () {
             toastLog("恢复显示悬浮窗");
+            try {
+                for (let key in floatyObjs) {
+                    let f = floatyObjs[key];
+                    let sp = floatySizePositions[key];
+                    let s = sp.size, p = sp.pos;
+                    f.setPosition(p.x, p.y);
+                    f.setSize(s.w, s.h);
+                }
 
-            for (let key in floatyObjs) {
-                let f = floatyObjs[key];
-                let sp = floatySizePositions[key];
-                let s = sp.size, p = sp.pos;
-                f.setPosition(p.x, p.y);
-                f.setSize(s.w, s.h);
+                menu.logo.setVisibility(floatyVisibilities.menu);
+                for (var i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(floatyVisibilities.submenu);
+                task_popup.container.setVisibility(floatyVisibilities.task_popup);
+                overlay.container.setVisibility(floatyVisibilities.overlay);
+
+                isAllFloatyHidden = false;
+            } catch (e) {
+                logException(e);
+                toastLog("悬浮窗已丢失\n请重新启动本程序");
+                exit();
             }
-
-            menu.logo.setVisibility(floatyVisibilities.menu);
-            for (var i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(floatyVisibilities.submenu);
-            task_popup.container.setVisibility(floatyVisibilities.task_popup);
-            overlay.container.setVisibility(floatyVisibilities.overlay);
-
-            isAllFloatyHidden = false;
         });
     }
 
