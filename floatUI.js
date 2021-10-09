@@ -4727,8 +4727,9 @@ function algo_init() {
         const STATE_HOME = 2;
         const STATE_MENU = 3;
         const STATE_MAP = 4;
-        const STATE_BATTLE = 5;
-        const STATE_REWARD = 6;
+        const STATE_MOVE_POINT_CONFIRM = 5;
+        const STATE_BATTLE = 6;
+        const STATE_REWARD = 7;
 
         function detectState() {
             if (isGameDead()) return STATE_CRASHED;
@@ -4787,6 +4788,8 @@ function algo_init() {
                 stopThread();
         }
         var last_state = state;
+
+        var currentMove = null;
 
         var battleStartTime = null;
 
@@ -4918,39 +4921,11 @@ function algo_init() {
                     break;
                 }
                 case STATE_MAP: {
-                    let currentMove = routeData.route[moveCount];
+                    currentMove = routeData.route[moveCount];
                     log("第"+(moveCount+1)+"步骤 "+currentMove.type+"类型 "+currentMove.move+"方向 "+currentMove.edge+"边缘");
 
                     if (findPopupInfoDetailTitle(string.move_to_node) != null) {
-                        log("发现\"节点移动\"弹窗,点击确定");
-                        click(convertCoords(clickSets.recover_battle));
-                        sleep(1000);
-                        if (findPopupInfoDetailTitle(string.move_to_node) == null) {
-                            log("\"节点移动\"弹窗已经在出现后消失");
-                            switch (currentMove.type) {
-                                case "battle":
-                                    if (mapStateIDs.find((id) => findIDFast(id)) == null) {
-                                        log("剧情地图特征控件已消失,进入战斗状态");
-                                        state = STATE_BATTLE;
-                                        battleStartTime = new Date().getTime();
-                                    } else {
-                                        log("剧情地图特征控件尚未消失");
-                                        sleep(1000);
-                                    }
-                                    break;
-                                case "treasure":
-                                case "heal":
-                                case "trap":
-                                    let dungeonClickNonBattleNodeWaitSec = parseInt(limit.dungeonClickNonBattleNodeWaitSec);
-                                    if (isNaN(dungeonClickNonBattleNodeWaitSec) || dungeonClickNonBattleNodeWaitSec <= 0) dungeonClickNonBattleNodeWaitSec = 8;
-                                    log("这一步不是战斗而是"+currentMove.type+" 等待"+dungeonClickNonBattleNodeWaitSec+"秒...");
-                                    sleep(dungeonClickNonBattleNodeWaitSec * 1000);
-                                    moveCount++;
-                                    break;
-                                default:
-                                    throw new Error("unknown currentMove.type value");
-                            }
-                        }
+                        state = STATE_MOVE_POINT_CONFIRM;
                         break;
                     }
 
@@ -4979,6 +4954,37 @@ function algo_init() {
                     } else {
                         log("未找到重置位置的定位按钮");
                         sleep(1000);
+                    }
+                    break;
+                }
+                case STATE_MOVE_POINT_CONFIRM: {
+                    //必须先发现“节点移动”弹窗出现过一次才应该转到这里
+                    //这里本身无法保证上述条件,需要外边跳转进来时注意
+                    if (findPopupInfoDetailTitle(string.move_to_node) != null) {
+                        log("发现\"节点移动\"弹窗,点击\"确定\"");
+                        click(convertCoords(clickSets.recover_battle));
+                        sleep(1000);
+                    } else {
+                        log("\"节点移动\"弹窗已消失");
+                        switch (currentMove.type) {
+                            case "battle":
+                                log("进入战斗状态");
+                                state = STATE_BATTLE;
+                                battleStartTime = new Date().getTime();
+                                break;
+                            case "treasure":
+                            case "heal":
+                            case "trap":
+                                let dungeonClickNonBattleNodeWaitSec = parseInt(limit.dungeonClickNonBattleNodeWaitSec);
+                                if (isNaN(dungeonClickNonBattleNodeWaitSec) || dungeonClickNonBattleNodeWaitSec <= 0) dungeonClickNonBattleNodeWaitSec = 8;
+                                log("这一步不是战斗而是"+currentMove.type+" 等待"+dungeonClickNonBattleNodeWaitSec+"秒...");
+                                sleep(dungeonClickNonBattleNodeWaitSec * 1000);
+                                moveCount++;
+                                state = STATE_MAP;
+                                break;
+                            default:
+                                throw new Error("unknown currentMove.type value");
+                        }
                     }
                     break;
                 }
