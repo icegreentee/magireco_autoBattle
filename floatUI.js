@@ -4411,6 +4411,8 @@ function algo_init() {
     function dungeonEventRunnable() {
         initialize();
 
+        requestTestReLaunchIfNeeded();//测试是否可以正常重开
+
         dialogs.alert("警告",
             "理子(DUNGEON类型)活动脚本【不支持】设置了替补队员的情况!否则在打输的情况下脚本将无法继续正常运行!\n"
             +"要运行这个脚本,请务必要撤下替补,这样虽然会在打输时浪费1CP,但不会阻碍脚本继续运行。");
