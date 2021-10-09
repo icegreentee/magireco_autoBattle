@@ -4381,16 +4381,16 @@ function algo_init() {
                         last=Date.now();
                         state=STATE_LOGIN;
                         log("重启游戏进程，进入登录页面");
-                    } else if(((Date.now()>last+1000*60*60) && findID("charaWrap"))||(Date.now()>last+1000*60*65)){
+                    } else if(((Date.now()>last+1000*60*60) && findID("ResultWrap"))||(Date.now()>last+1000*60*65)){
                         log("尝试关闭游戏进程");
                         backtoMain();
                         sleep(5000)
                         killBackground(pkgName);
                         sleep(10000)
-                    } else if (limit.autoReconnect && !findID("charaWrap")) {
+                    } else if (limit.autoReconnect && !findID("ResultWrap")) {
                         clickReconnect();
                         //slow down
-                        findID("charaWrap",2000);
+                        findID("ResultWrap",2000);
                     }
                     break;
                 }
@@ -5258,7 +5258,7 @@ function algo_init() {
                 continue;
             }
 
-            for (let resID of ["charaWrap", "hasTotalRiche"]) {
+            for (let resID of ["ResultWrap", "hasTotalRiche"]) {
                 if (findID(resID, 200)) {
                     battle_end_found = true;
                     log("已进入战斗结算");
@@ -6492,7 +6492,7 @@ function algo_init() {
             state = STATE_SUPPORT;
         } else if (findID("nextPageBtn")) {
             state = STATE_TEAM;
-        } else if (findID("charaWrap")) {
+        } else if (findID("ResultWrap")) {
             state = STATE_REWARD_CHARACTER;
         } else if (findID("hasTotalRiche")) {
             state = STATE_REWARD_MATERIAL;
@@ -6961,7 +6961,7 @@ function algo_init() {
                             state = STATE_TEAM;
                             break;
                         }
-                        if (findID("charaWrap") || findID("hasTotalRiche")) {
+                        if (findID("ResultWrap") || findID("hasTotalRiche")) {
                             state = STATE_REWARD_CHARACTER;
                             break;
                         }
@@ -7345,12 +7345,12 @@ function algo_init() {
                     //另一方面，也可以极大程度上确保防断线模式不会在结算界面误点
                     waitAnyFast(
                         [
-                            () => findIDFast("charaWrap"),
+                            () => findIDFast("ResultWrap"),
                             () => findIDFast("hasTotalRiche")
                         ],
                         2000
                     );
-                    if (findID("charaWrap")) {
+                    if (findID("ResultWrap")) {
                         state = STATE_REWARD_CHARACTER;
                         log("进入角色结算");
                         break;
@@ -7407,7 +7407,7 @@ function algo_init() {
                         click(convertCoords(clickSets.focusclose));
                         break;
                     }
-                    let element = findID("charaWrap");
+                    let element = findID("ResultWrap");
                     if (element) {
                         if (element.bounds().height() > 0) charabound = element.bounds();
                         let targetConverted = convertCoords(clickSets.reconection);
@@ -7430,7 +7430,7 @@ function algo_init() {
                         } else if (currentTime > lastStateRewardCharacterStuckTime + stuckTimeOutSeconds * 1000) {
                             lastStateRewardCharacterStuckTime = null;
                             state = STATE_REWARD_MATERIAL; //如果开启了防断线模式，那就可以点击掉线重连
-                            log("进入角色结算状态后charaWrap控件消失了超过"+stuckTimeOutSeconds+"秒");
+                            log("进入角色结算状态后ResultWrap控件消失了超过"+stuckTimeOutSeconds+"秒");
                             log("可能是自动续战中错过了掉落结算、然后在开始战斗时又掉线卡住");
                             log("进入掉落结算(虽然可能已经错过)");
                             break;
@@ -11220,7 +11220,7 @@ function algo_init() {
 
                 case STATE_BATTLE: {
                     // exit condition
-                    if (findID("charaWrap")) {
+                    if (findID("ResultWrap")) {
                         state = STATE_REWARD_CHARACTER;
                         log("进入角色结算");
                         break;
@@ -11235,7 +11235,7 @@ function algo_init() {
                         log("进入掉落结算");
                         break;
                     }
-                    let element = findID("charaWrap");
+                    let element = findID("ResultWrap");
                     if (element) {
                         if (element.bounds().height() > 0) charabound = element.bounds();
                         let targetX = element.bounds().right;
