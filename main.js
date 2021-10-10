@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "6.0.1";
+var version = "6.0.2";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -66,6 +66,9 @@ ui.layout(
                             <text id="exitOnServiceSettingsText3" visibility="gone" textSize="12" text="本程序已经加入了这个问题的对策，如果无障碍还没开启，在切换出这个设置界面时会隐藏悬浮窗，但还不知道这个对策是不是总是能够奏效" textColor="#000000" />
                             <text id="exitOnServiceSettingsText4" visibility="gone" textSize="12" text="启用这个选项后，在弹出无障碍设置时，脚本会完全退出、从而关闭悬浮窗来避免触发这个问题" textColor="#000000" />
                             <text id="exitOnServiceSettingsText5" visibility="gone" textSize="12" text="与此同时请关闭其他有悬浮窗的应用(简单粗暴的方法就是清空后台)以确保无障碍服务可以顺利开启" textColor="#000000" />
+                            <Switch id="doNotHideFloaty" margin="0 3" w="*" checked="false" textColor="#000000" text="切出设置界面时不隐藏悬浮窗" />
+                            <text id="doNotHideFloatyText1" visibility="gone" textSize="12" text="默认情况下，为了避免OPPO等品牌手机在有悬浮窗时拒绝开启无障碍服务的问题，如果没开启无障碍服务，在切出这个设置界面时就会自动隐藏悬浮窗，在切回来时再重新显示。" textColor="#000000" />
+                            <text id="doNotHideFloatyText2" visibility="gone" textSize="12" text="开启这个选项后，切出这个设置界面时就不会再自动隐藏悬浮窗。" textColor="#000000" />
                             <Switch id="doNotToggleForegroundService" margin="0 3" w="*" checked="false" textColor="#000000" text="脚本开始/结束时,不自动开启/停用前台服务" />
                             <text id="doNotToggleForegroundServiceText1" visibility="gone" textSize="12" text="在脚本运行时开启无障碍服务,目的是为了尽量防止脚本进程被杀。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText2" visibility="gone" textSize="12" text="但是,在前台服务开启时,会在通知栏显示一条常驻通知,比较扰民。所以,默认是只在脚本运行时开启前台服务,脚本结束运行后即自动停用前台服务,而且,不仅会自动停用前台服务,如果之前申请了截屏权限,还会把截屏权限也一并停用。" textColor="#000000" />
@@ -681,7 +684,7 @@ ui.emitter.on("pause", () => {
     //未开启无障碍时,在切出脚本界面时隐藏悬浮窗,避免OPPO等品牌手机拒绝开启无障碍服务
     //TODO 以后应该还可以把root权限也考虑一下（现在只是在无障碍服务未开启时,才会顺带着在弹出root权限申请时隐藏悬浮窗）
     if (floatIsActive) {
-        if (auto.service == null || auto.root == null) {
+        if (auto.service == null && !ui.doNotHideFloaty.isChecked()) {
             floatUI.hideAllFloaty();
         }
     }
@@ -740,6 +743,7 @@ const persistParamList = [
     "foreground",
     "stopOnVolUp",
     "exitOnServiceSettings",
+    "doNotHideFloaty",
     "doNotToggleForegroundService",
     "autoRecover",
     "promptAutoRelaunch",
