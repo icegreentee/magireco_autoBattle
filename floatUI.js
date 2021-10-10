@@ -5126,6 +5126,7 @@ function algo_init() {
                                 log("进入战斗状态");
                                 state = STATE_BATTLE;
                                 battleStartTime = new Date().getTime();
+                                sleep(8000);//等待活动地图上出现BATTLE大字的动画效果过去、真正进入战斗
                                 break;
                             case "treasure":
                             case "heal":
