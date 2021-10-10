@@ -681,7 +681,7 @@ ui.emitter.on("pause", () => {
     //未开启无障碍时,在切出脚本界面时隐藏悬浮窗,避免OPPO等品牌手机拒绝开启无障碍服务
     //TODO 以后应该还可以把root权限也考虑一下（现在只是在无障碍服务未开启时,才会顺带着在弹出root权限申请时隐藏悬浮窗）
     if (floatIsActive) {
-        if (auto.service == null || auto.root == null) {
+        if (auto.service == null) {
             floatUI.hideAllFloaty();
         }
     }
