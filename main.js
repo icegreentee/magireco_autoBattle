@@ -27,15 +27,6 @@ function logException(e) {
     }
 }
 
-function restartApp() {
-    //重启本app，但因为进程没退出，所以无障碍服务应该还能保持启用；缺点是每重启一次貌似都会泄漏一点内存
-    engines.on("exit", function () {
-        app.launch(context.getPackageName());
-        toast("app已重启");
-    });
-    engines.stopAll();
-}
-
 var floatUI = require('floatUI.js');
 
 ui.statusBarColor("#FF4FB3FF")
@@ -681,13 +672,7 @@ ui.emitter.on("resume", () => {
         floatUI.recoverAllFloaty();
     } else {
         floatUI.storage = storage; //必须放在floatUI.main()前面
-        try {
-            floatUI.main();
-        } catch (e) {
-            logException(e);
-            toastLog("设置悬浮窗时出错,重启app...");
-            restartApp();
-        }
+        floatUI.main();
         floatIsActive = true;
     }
     if ($settings.isEnabled('foreground_service') != ui.foreground.isChecked())
@@ -750,13 +735,7 @@ if (!$floaty.checkPermission()) {
     exit();
 } else {
     floatUI.storage = storage; //必须放在floatUI.main()前面
-    try {
-        floatUI.main();
-    } catch (e) {
-        logException(e);
-        toastLog("设置悬浮窗时出错,重启app...");
-        restartApp();
-    }
+    floatUI.main();
     floatIsActive = true;
 }
 
