@@ -5023,6 +5023,7 @@ function algo_init() {
                     break;
                 }
                 case STATE_LOGIN: {
+                    clickAerrPopup();//先点掉系统的崩溃提示弹窗
                     if (isGameDead(2000) == "crashed") {
                         state = STATE_CRASHED;
                         break;
@@ -7049,6 +7050,7 @@ function algo_init() {
                     break;
                 }
                 case STATE_LOGIN: {
+                    clickAerrPopup();//先点掉系统的崩溃提示弹窗
                     if (lastOpList == null) {
                         toastLog("没有动作录制数据,退出");
                         stopThread();
