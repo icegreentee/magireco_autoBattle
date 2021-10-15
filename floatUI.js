@@ -4264,7 +4264,14 @@ function algo_init() {
             if (aerrElement == null) aerrElement = findFast(idText.text);
             if (aerrElement != null) {
                 log("点击系统弹窗的\""+idText.text+"\"按钮");
-                click(aerrElement.bounds().centerX(), aerrElement.bounds().centerY());
+                let x = aerrElement.bounds().centerX(), y = aerrElement.bounds().centerY();
+                if (device.sdkInt >= 24) {
+                    log("使用无障碍服务模拟点击坐标 "+x+","+y);
+                    origFunc.click(x, y);
+                    log("点击完成");
+                } else {
+                    clickOrSwipeRoot(x, y);
+                }
                 log("等待3秒...");
                 sleep(3000);
             }
