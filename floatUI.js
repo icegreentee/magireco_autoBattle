@@ -89,7 +89,7 @@ var syncer = {
 
 function restartApp() {
     //重启本app，但因为进程没退出，所以无障碍服务应该还能保持启用；缺点是每重启一次貌似都会泄漏一点内存
-    engines.on("exit", function () {
+    events.on("exit", function () {
         app.launch(context.getPackageName());
         toast("app已重启");
     });
