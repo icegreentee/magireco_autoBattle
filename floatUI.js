@@ -4944,6 +4944,16 @@ function algo_init() {
             //然后根据目前状态分情况处理
             switch (state) {
                 case STATE_CRASHED: {
+                    //处理雷电等模拟器下游戏闪退时系统也会弹窗提示重启而且弹窗不消失的问题
+                    let aerr_restart = findIDFast("android:id/aerr_restart");
+                    if (aerr_restart == null) aerr_restart = findFast("重新打开应用");
+                    if (aerr_restart != null) {
+                        log("点击系统弹窗的\"重新打开应用\"按钮");
+                        click(aerr_restart.bounds().centerX(), aerr_restart.bounds().centerY());
+                        log("等待3秒...");
+                        sleep(3000);
+                    }
+
                     switch (isGameDead(2000)) {
                         case "crashed":
                             log("等待5秒后重启游戏...");
