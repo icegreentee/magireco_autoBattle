@@ -1079,4 +1079,6 @@ var toUpdate = sync(function () {
 });
 
 floatUI.enableToastParamChanges();
-floatUI.recoverLastWork();
+ui.post(function () {
+    floatUI.recoverLastWork();
+}, 2000);
