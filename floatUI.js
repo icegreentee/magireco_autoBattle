@@ -87,6 +87,15 @@ var syncer = {
     }
 }
 
+function restartApp() {
+    //重启本app，但因为进程没退出，所以无障碍服务应该还能保持启用；缺点是每重启一次貌似都会泄漏一点内存
+    engines.on("exit", function () {
+        app.launch(context.getPackageName());
+        toast("app已重启");
+    });
+    engines.stopAll();
+}
+
 //记录当前版本是否测试过助战的文件(已经去掉，留下注释)
 //var supportPickingTestRecordPath = files.join(engines.myEngine().cwd(), "support_picking_tested");
 
@@ -759,7 +768,13 @@ floatUI.main = function () {
 
     task_popup.container.setVisibility(View.INVISIBLE);
     ui.post(() => {
-        task_popup.setTouchable(false);
+        try {
+            task_popup.setTouchable(false);
+        } catch (e) {
+            logException(e);
+            toastLog("设置悬浮窗时出错,重启app...");
+            restartApp();
+        }
     });
     task_popup.list.setDataSource(floatUI.scripts);
     task_popup.list.on("item_click", function (item, i, itemView, listView) {
@@ -823,8 +838,14 @@ floatUI.main = function () {
 
     submenu.container.setVisibility(View.INVISIBLE);
     ui.post(() => {
-        submenu.setTouchable(false);
-        toggleFloatyGravityLeftRight(submenu, false);//AutoJS设置的Gravity貌似是START而不是LEFT,这里改成LEFT
+        try {
+          submenu.setTouchable(false);
+          toggleFloatyGravityLeftRight(submenu, false);//AutoJS设置的Gravity貌似是START而不是LEFT,这里改成LEFT
+        } catch (e) {
+            logException(e);
+            toastLog("设置悬浮窗时出错,重启app...");
+            restartApp();
+        }
     });
 
     // mount onclick handler
@@ -934,8 +955,14 @@ floatUI.main = function () {
     );
 
     ui.post(() => {
-        menu.setPosition(0, parseInt(getWindowSize().y / 4));
-        toggleFloatyGravityLeftRight(menu, false);//AutoJS设置的Gravity貌似是START而不是LEFT,这里改成LEFT
+        try {
+          menu.setPosition(0, parseInt(getWindowSize().y / 4));
+          toggleFloatyGravityLeftRight(menu, false);//AutoJS设置的Gravity貌似是START而不是LEFT,这里改成LEFT
+        } catch (e) {
+            logException(e);
+            toastLog("设置悬浮窗时出错,重启app...");
+            restartApp();
+        }
     });
 
     function calcMenuY() {
@@ -1082,7 +1109,13 @@ floatUI.main = function () {
     );
     overlay.container.setVisibility(View.INVISIBLE);
     ui.post(() => {
-        overlay.setTouchable(false);
+        try {
+          overlay.setTouchable(false);
+        } catch (e) {
+            logException(e);
+            toastLog("设置悬浮窗时出错,重启app...");
+            restartApp();
+        }
     });
     overlay.container.setOnTouchListener(function (self, event) {
         switch (event.getAction()) {
