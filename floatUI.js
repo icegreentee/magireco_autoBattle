@@ -4253,6 +4253,24 @@ function algo_init() {
         sleep(300); //避免过于频繁的反复点击、尽量避免游戏误以为长按没抬起（Issue #205）
     }
 
+    function clickAerrPopup() {
+        //处理雷电等模拟器下游戏闪退时系统也会弹窗提示重启/关闭而且弹窗不消失的问题
+        const aerrIDTexts = [
+            {id: "android:id/aerr_restart", text: "重新打开应用"},
+            {id: "android:id/aerr_close", text: "关闭应用"},
+        ]
+        for (let idText of aerrIDTexts) {
+            let aerrElement = findIDFast(idText.id);
+            if (aerrElement == null) aerrElement = findFast(idText.text);
+            if (aerrElement != null) {
+                log("点击系统弹窗的\""+idText.text+"\"按钮");
+                click(aerrElement.bounds().centerX(), aerrElement.bounds().centerY());
+                log("等待3秒...");
+                sleep(3000);
+            }
+        }
+    }
+
     function selectBattle() { }
 
     function enterLoop(){
@@ -4944,16 +4962,7 @@ function algo_init() {
             //然后根据目前状态分情况处理
             switch (state) {
                 case STATE_CRASHED: {
-                    //处理雷电等模拟器下游戏闪退时系统也会弹窗提示重启而且弹窗不消失的问题
-                    let aerr_restart = findIDFast("android:id/aerr_restart");
-                    if (aerr_restart == null) aerr_restart = findFast("重新打开应用");
-                    if (aerr_restart != null) {
-                        log("点击系统弹窗的\"重新打开应用\"按钮");
-                        click(aerr_restart.bounds().centerX(), aerr_restart.bounds().centerY());
-                        log("等待3秒...");
-                        sleep(3000);
-                    }
-
+                    clickAerrPopup();//先点掉系统的崩溃提示弹窗
                     switch (isGameDead(2000)) {
                         case "crashed":
                             log("等待5秒后重启游戏...");
@@ -6979,6 +6988,7 @@ function algo_init() {
                         stopThread();
                         break;
                     }
+                    clickAerrPopup();//先点掉系统的崩溃提示弹窗
                     switch (isGameDead(2000)) {
                         case "crashed":
                             log("等待5秒后重启游戏...");
