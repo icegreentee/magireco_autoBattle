@@ -2314,7 +2314,7 @@ function updateUI() {
         let item = {name: name, funcName: funcName, arg: arg};
         delete floatUI.settingsUIRefreshingList[name];//防止更新顺序出错
         floatUI.settingsUIRefreshingList[name] = item;//同样的操作只进行最后一次,覆盖掉前一次
-        if (auto.service != null && auto.root.packageName() === context.getPackageName()) {
+        if (auto.service != null && auto.root != null && auto.root.packageName() === context.getPackageName()) {
             floatUI.refreshUI();
         }
     });
