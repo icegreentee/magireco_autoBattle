@@ -567,7 +567,7 @@ ui.emitter.on("options_item_selected", (e, item) => {
             app.openUrl("https://magireco.moe/");
             break;
         case "模拟抽卡":
-            app.openUrl("https://rika.ren/~kuro/workspace/playground/");
+            app.openUrl("https://jp.rika.ren/playground/gachaEmulator/");
             break;
     }
     e.consumed = true;
