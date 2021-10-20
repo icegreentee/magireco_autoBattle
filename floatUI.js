@@ -2861,8 +2861,23 @@ function algo_init() {
     }
 
     function getCostAP() {
-        //正常情况下“消耗AP”文字和数字是分开的
-        let elements = findAll(string.cost_ap);
+        //FIXME 星期副本的选关界面中识别到的是列表中第一个而未必是实际被选中周回的副本，
+        //但第一个出现的也是消耗AP最高的，所以一般问题也不大
+        let elements = matchAll(string.regex_cost_ap);
+
+        //“消耗AP”文字和数字没分开的情况
+        let result = null;
+        elements.find((element) => {
+            let text = getContent(element);
+            let matched = text != null ? text.match(/\d+/) : null;
+            if (matched != null) {
+                result = parseInt(matched[0]);
+                return true;
+            }
+        })
+        if (result != null) return result;
+
+        //“消耗AP”文字和数字分开了的情况
         for (let element of elements) {
             if (element.indexInParent() < element.parent().childCount() - 1) {
                 var next = element.parent().child(element.indexInParent() + 1);
@@ -2871,11 +2886,6 @@ function algo_init() {
                 }
             }
         }
-        //有的时候它没分开
-        let element = match(string.regex_cost_ap);
-        let text = getContent(element);
-        let matched = text != null ? text.match(/\d+/) : null;
-        if (matched != null) return parseInt(matched[0]);
     }
 
     const knownFirstPtPoint = {
@@ -3407,7 +3417,6 @@ function algo_init() {
             "follow",
             "follow_append",
             "battle_confirm",
-            "cost_ap",
             "region",
             "move_to_node",
             "region_lose",
@@ -3442,13 +3451,12 @@ function algo_init() {
             "关注",
             "关注追加",
             "确定",
-            "消耗AP",
             "区域",
             "节点移动",
             "攻略区域失败",
             "CP不足。",
             "CP回复药",
-            /^消耗AP *\d+/,
+            /^消耗AP *\d*/,
             /^\d+个$/,
             /^最终登录.+/,
             /＋\d+个$/,
@@ -3477,13 +3485,12 @@ function algo_init() {
             "關注",
             "追加關注",
             "決定",
-            "消費AP",
             "區域",//同上,在线翻译的
             "節點移動",//同上,在线翻译的
             "攻略區域失敗",//同上,在线翻译的
             "CP不足。",//同上,在线翻译的
             "CP回復藥",//同上,在线翻译的
-            /^消費AP *\d+/,
+            /^消費AP *\d*/,
             /^\d+個$/,
             /^最終登入.+/,
             /＋\d+個$/,
@@ -3512,13 +3519,12 @@ function algo_init() {
             "フォロー",
             "フォロー追加",
             "決定",
-            "消費AP",
             "エリア",//从复刻血夜活动看到了，但是没X用，因为无障碍服务并没有恢复
             "ポイントの移動",//同上
             "エリア攻略失敗",//同上
             "CPが不足しています。",//同上
             "CP回復藥",//同上
-            /^消費AP *\d+/,
+            /^消費AP *\d*/,
             /^\d+個$/,
             /^最終ログイン.+/,
             /＋\d+個$/,
