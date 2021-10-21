@@ -8,7 +8,7 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "6.0.4";
+var version = "6.0.5";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -567,7 +567,7 @@ ui.emitter.on("options_item_selected", (e, item) => {
             app.openUrl("https://magireco.moe/");
             break;
         case "模拟抽卡":
-            app.openUrl("https://rika.ren/~kuro/workspace/playground/");
+            app.openUrl("https://jp.rika.ren/playground/gachaEmulator/");
             break;
     }
     e.consumed = true;

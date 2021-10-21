@@ -247,30 +247,34 @@ floatUI.presetOpLists = [
     },
     {
         name: "国服门票活动剧情1",
-        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-9-23"
-            +"_15-33-10\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2021-10-2"
+            +"1_5-42-11\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
             +"BRANCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":1"
             +"620,\"y\":549,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepT"
             +"ime\":3000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182"
             +",\"pos\":\"top\"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\""
-            +"y\":1062,\"pos\":\"top\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":"
-            +"2000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"p"
-            +"os\":\"top\"},{\"x\":1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"a"
-            +"ction\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\""
-            +"},{\"x\":1092,\"y\":397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"s"
-            +"wipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":11"
-            +"40,\"y\":406,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"sw"
-            +"ipe\":{\"points\":[{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379"
-            +",\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"click\",\"click\":{\"poi"
-            +"nt\":{\"x\":1092,\"y\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep"
-            +"\":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\":"
-            +"\"剧情副本\",\"boundsCenter\":{\"x\":305,\"y\":467,\"pos\":\"top\"},\"found\":{\"ki"
-            +"ll\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\":{"
-            +"\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action\":"
-            +"\"checkText\",\"checkText\":{\"text\":\"BATTLE 1\",\"boundsCenter\":{\"x\":2"
-            +"98,\"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false"
-            +",\"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":fa"
-            +"lse,\"nextAction\":\"fail\"}}}]}",
+            +"y\":950,\"pos\":\"top\"},{\"x\":1134,\"y\":350,\"pos\":\"top\"}],\"duration\":2"
+            +"000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":950,\"po"
+            +"s\":\"top\"},{\"x\":1134,\"y\":350,\"pos\":\"top\"}],\"duration\":2000}},{\"ac"
+            +"tion\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":950,\"pos\":\"top\"},"
+            +"{\"x\":1134,\"y\":350,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swi"
+            +"pe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":950,\"pos\":\"top\"},{\"x\":1134,"
+            +"\"y\":350,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe"
+            +"\":{\"points\":[{\"x\":1144,\"y\":950,\"pos\":\"top\"},{\"x\":1134,\"y\":350,\"p"
+            +"os\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\"points"
+            +"\":[{\"x\":1144,\"y\":950,\"pos\":\"top\"},{\"x\":1134,\"y\":350,\"pos\":\"top\"}"
+            +"],\"duration\":2000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":11"
+            +"44,\"y\":950,\"pos\":\"top\"},{\"x\":1134,\"y\":350,\"pos\":\"top\"}],\"duratio"
+            +"n\":2000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1092,\"y\":775,\""
+            +"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3000}},{"
+            +"\"action\":\"checkText\",\"checkText\":{\"text\":\"剧情副本\",\"boundsCenter\":{"
+            +"\"x\":305,\"y\":467,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":"
+            +"false,\"nextAction\":\"ignore\"},\"notFound\":{\"kill\":true,\"stopScript"
+            +"\":false,\"nextAction\":\"fail\"}}},{\"action\":\"checkText\",\"checkText\""
+            +":{\"text\":\"BATTLE 1\",\"boundsCenter\":{\"x\":298,\"y\":515,\"pos\":\"top\"}"
+            +",\"found\":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"success\""
+            +"},\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\""
+            +"}}}]}",
     },
 ];
 
@@ -2861,8 +2865,23 @@ function algo_init() {
     }
 
     function getCostAP() {
-        //正常情况下“消耗AP”文字和数字是分开的
-        let elements = findAll(string.cost_ap);
+        //FIXME 星期副本的选关界面中识别到的是列表中第一个而未必是实际被选中周回的副本，
+        //但第一个出现的也是消耗AP最高的，所以一般问题也不大
+        let elements = matchAll(string.regex_cost_ap);
+
+        //“消耗AP”文字和数字没分开的情况
+        let result = null;
+        elements.find((element) => {
+            let text = getContent(element);
+            let matched = text != null ? text.match(/\d+/) : null;
+            if (matched != null) {
+                result = parseInt(matched[0]);
+                return true;
+            }
+        })
+        if (result != null) return result;
+
+        //“消耗AP”文字和数字分开了的情况
         for (let element of elements) {
             if (element.indexInParent() < element.parent().childCount() - 1) {
                 var next = element.parent().child(element.indexInParent() + 1);
@@ -2871,11 +2890,6 @@ function algo_init() {
                 }
             }
         }
-        //有的时候它没分开
-        let element = match(string.regex_cost_ap);
-        let text = getContent(element);
-        let matched = text != null ? text.match(/\d+/) : null;
-        if (matched != null) return parseInt(matched[0]);
     }
 
     const knownFirstPtPoint = {
@@ -3407,7 +3421,6 @@ function algo_init() {
             "follow",
             "follow_append",
             "battle_confirm",
-            "cost_ap",
             "region",
             "move_to_node",
             "region_lose",
@@ -3442,13 +3455,12 @@ function algo_init() {
             "关注",
             "关注追加",
             "确定",
-            "消耗AP",
             "区域",
             "节点移动",
             "攻略区域失败",
             "CP不足。",
             "CP回复药",
-            /^消耗AP *\d+/,
+            /^消耗AP *\d*/,
             /^\d+个$/,
             /^最终登录.+/,
             /＋\d+个$/,
@@ -3477,13 +3489,12 @@ function algo_init() {
             "關注",
             "追加關注",
             "決定",
-            "消費AP",
             "區域",//同上,在线翻译的
             "節點移動",//同上,在线翻译的
             "攻略區域失敗",//同上,在线翻译的
             "CP不足。",//同上,在线翻译的
             "CP回復藥",//同上,在线翻译的
-            /^消費AP *\d+/,
+            /^消費AP *\d*/,
             /^\d+個$/,
             /^最終登入.+/,
             /＋\d+個$/,
@@ -3512,13 +3523,12 @@ function algo_init() {
             "フォロー",
             "フォロー追加",
             "決定",
-            "消費AP",
             "エリア",//从复刻血夜活动看到了，但是没X用，因为无障碍服务并没有恢复
             "ポイントの移動",//同上
             "エリア攻略失敗",//同上
             "CPが不足しています。",//同上
             "CP回復藥",//同上
-            /^消費AP *\d+/,
+            /^消費AP *\d*/,
             /^\d+個$/,
             /^最終ログイン.+/,
             /＋\d+個$/,
