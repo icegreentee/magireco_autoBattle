@@ -1337,15 +1337,27 @@ floatUI.main = function () {
 
     //检查并申请root或adb权限
     getEUID = function (procStatusContent) {
-        let matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
+        let matched = null;
+
+        //shellcmd="id"
+        matched = procStatusContent.match(/^uid=\d+/);
+        if (matched != null) {
+            matched = matched[0].match(/\d+/);
+        }
+        if (matched != null) {
+            return parseInt(matched[0]);
+        }
+
+        //shellcmd="cat /proc/self/status"
+        matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
         if (matched != null) {
             matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
         }
         if (matched != null) {
             return parseInt(matched[0]);
-        } else {
-            return -1;
         }
+
+        return -1;
     }
     requestShellPrivilege = function () {
         if (limit.privilege) {
@@ -1353,19 +1365,23 @@ floatUI.main = function () {
             return limit.privilege;
         }
 
+        let euid = -1;
+
         let rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
 
-        let shellcmd = "cat /proc/self/status";
-        let result = null;
-        try {
-            result = shizukuShell(shellcmd);
-        } catch (e) {
-            result = {code: 1, result: "-1", err: ""};
-            logException(e);
-        }
-        let euid = -1;
-        if (result.code == 0) {
-            euid = getEUID(result.result);
+        const idshellcmds = ["id", "cat /proc/self/status"];
+
+        for (let shellcmd of idshellcmds) {
+            let result = null;
+            try {
+                result = shizukuShell(shellcmd);
+            } catch (e) {
+                result = {code: 1, result: "-1", err: ""};
+                logException(e);
+            }
+            if (result.code == 0) {
+                euid = getEUID(result.result);
+            }
             switch (euid) {
             case 0:
                 log("Shizuku有root权限");
@@ -1379,9 +1395,8 @@ floatUI.main = function () {
                 log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
                 limit.privilege = null;
             }
+            if (limit.privilege != null) return;
         }
-
-        if (limit.privilege != null) return;
 
         if (!files.isFile(rootMarkerPath)) {
             toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
@@ -1390,30 +1405,37 @@ floatUI.main = function () {
         } else {
             log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
         }
-        try {
-            result = rootShell(shellcmd);
-        } catch (e) {
-            logException(e);
-            result = {code: 1, result: "-1", err: ""};
-        }
-        euid = -1;
-        if (result.code == 0) euid = getEUID(result.result);
-        if (euid == 0) {
-            log("直接获取root权限成功");
-            limit.privilege = {shizuku: null};
-            files.create(rootMarkerPath);
-        } else {
-            toastLog("直接获取root权限失败！");
-            sleep(2500);
-            limit.privilege = null;
-            files.remove(rootMarkerPath);
-            if (device.sdkInt >= 23) {
-                toastLog("请下载安装Shizuku,并按照说明启动它\n然后在Shizuku中给本应用授权");
-                $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
-            } else {
-                toastLog("Android版本低于6，Shizuku不能使用最新版\n请安装并启动Shizuku 3.6.1，并给本应用授权");
-                $app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
+
+        for (let shellcmd of idshellcmds) {
+            let result = null;
+            try {
+                result = rootShell(shellcmd);
+            } catch (e) {
+                logException(e);
+                result = {code: 1, result: "-1", err: ""};
             }
+            euid = -1;
+            if (result.code == 0) euid = getEUID(result.result);
+            if (euid == 0) {
+                log("直接获取root权限成功");
+                limit.privilege = {shizuku: null};
+                files.create(rootMarkerPath);
+                return limit.privilege;
+            }
+        }
+
+        toastLog("直接获取root权限失败！");
+        sleep(2500);
+        limit.privilege = null;
+        files.remove(rootMarkerPath);
+        if (device.sdkInt >= 23) {
+            toastLog("请下载安装Shizuku,并按照说明启动它\n然后在Shizuku中给本应用授权");
+            $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
+        } else {
+            toastLog("Android版本低于6，Shizuku已不再支持\n必须直接授予root权限，否则无法使用本app");
+            //AutoJS版本更新后，Shizuku 3.6.1就不能识别了，也就无法授权
+            //toastLog("Android版本低于6，Shizuku不能使用最新版\n请安装并启动Shizuku 3.6.1，并给本应用授权");
+            //$app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
         }
 
         return limit.privilege;
