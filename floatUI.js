@@ -87,6 +87,13 @@ var syncer = {
     }
 }
 
+// 为了解决报毒问题，AutoJS Pro V9 内测版 9.0.11-0 混淆了类名和activity名
+var lowestObVerCode = 9101100;
+var splashActivityName = "com.stardust.autojs.inrt.SplashActivity";
+if (parseInt(app.autojs.versionCode) >= lowestObVerCode) {
+    splashActivityName = context.getPackageName()+".SplashActivity";
+}
+
 function restartApp() {
     //重启本app，但因为进程没退出，所以无障碍服务应该还能保持启用；缺点是每重启一次貌似都会泄漏一点内存
     events.on("exit", function () {
@@ -5483,7 +5490,7 @@ function algo_init() {
             +"\n        killall "+name+" || echo -ne \"[killall failed]\";"
             +"\n        pkill "+name+" || echo -ne \"[pkill failed]\";"
             +"\n        echo -ne \"Done, restarting AutoJS ... \";"
-            +"\n        am start -n \""+context.getPackageName()+"/com.stardust.autojs.inrt.SplashActivity\" || echo -ne \"[am start failed]\";"
+            +"\n        am start -n \""+context.getPackageName()+"/"+splashActivityName+"\" || echo -ne \"[am start failed]\";"
             +"\n        echo -ne \"Done.\\n\";"
             +"\n    fi;"
             +"\ndone &"
@@ -11556,9 +11563,11 @@ function killBackground(packageName) {
 function backtoMain() {
     var it = new Intent();
     var name = context.getPackageName();
-    if (name != "org.autojs.autojspro")
-        it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
-    else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+    if (name == "org.autojs.autojspro") {
+        it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+    } else {
+        it.setClassName(name, splashActivityName);
+    }
     it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
     app.startActivity(it);
     floatUI.refreshUI();
