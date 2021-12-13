@@ -8,8 +8,8 @@ function deObStr(s) {
 importClass(android.view.View)
 importClass(android.graphics.Color)
 importClass(android.view.MenuItem)
-importClass(com.stardust.cwvqlu.project.ProjectConfig)
-importClass(com.stardust.cwvqlu.core.ui.inflater.util.Ids)
+importClass(com.stardust[deObStr("cwvqlu")].project.ProjectConfig)
+importClass(com.stardust[deObStr("cwvqlu")].core.ui.inflater.util.Ids)
 importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
@@ -48,7 +48,7 @@ ui.layout(
             <ScrollView id="content">
                 <vertical gravity="center" layout_weight="1">
                     <vertical id="cwvqlu_ver_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
-                        <text id="cwvqlu_ver_text" text="CwvqLU Pro 引擎版本过低" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
+                        <text id="cwvqlu_ver_text" text="" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
                     </vertical>
 
                     <vertical id="task_paused_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
@@ -379,6 +379,7 @@ ui.layout(
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
     </relative>
 );
+ui["cwvqlu_ver_text"].setText(deObStr("CwvqLU Pro 引擎版本过低"));
 
 ui.emitter.on("create_options_menu", menu => {
     //在菜单内显示图标
@@ -512,7 +513,7 @@ function reportBug() {
         let response = null;
         try {
             response = http.post("https://pastebin.ubuntu.com/", {
-                poster: "cwvqlu_"+key,
+                poster: deObStr("cwvqlu_")+key,
                 syntax: uploadContents[key].syntax,
                 expiration: "week",
                 content: uploadContents[key].content
@@ -599,17 +600,17 @@ function detectCwvqLUVersion() {
     ui.run(function() {
         let currentVersionCode = NaN;
         try {
-            currentVersionCode = parseInt(app.cwvqlu.versionCode);
+            currentVersionCode = parseInt(app[deObStr("cwvqlu")].versionCode);
         } catch (e) {
             currentVersionCode = NaN;
         }
         if (isNaN(currentVersionCode)) {
-            ui.cwvqlu_ver_text.setText("无法检测 CwvqLU Pro 引擎版本\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新");
+            ui.cwvqlu_ver_text.setText(deObStr("无法检测 CwvqLU Pro 引擎版本\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新"));
             ui.cwvqlu_ver_vertical.setVisibility(View.VISIBLE);
             return;
         }
         if (currentVersionCode < lowestVersionCode) {
-            ui.cwvqlu_ver_text.setText("CwvqLU Pro 引擎版本过低\n当前版本versionCode=["+currentVersionCode+"]\n最低要求versionCode=["+lowestVersionCode+"]\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新");
+            ui.cwvqlu_ver_text.setText(deObStr("CwvqLU Pro 引擎版本过低\n当前版本versionCode=["+currentVersionCode+"]\n最低要求versionCode=["+lowestVersionCode+"]\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新"));
             ui.cwvqlu_ver_vertical.setVisibility(View.VISIBLE);
             return;
         }

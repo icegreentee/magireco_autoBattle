@@ -94,8 +94,8 @@ var syncer = {
 
 // 为了解决报毒问题，CwvqLU Pro V9 内测版 9.0.11-0 混淆了类名和activity名
 var lowestObVerCode = 9101100;
-var splashActivityName = "com.stardust.cwvqlu.inrt.SplashActivity";
-if (parseInt(app.cwvqlu.versionCode) >= lowestObVerCode) {
+var splashActivityName = deObStr("com.stardust.cwvqlu.inrt.SplashActivity");
+if (parseInt(app[deObStr("cwvqlu")].versionCode) >= lowestObVerCode) {
     splashActivityName = context.getPackageName()+".SplashActivity";
 }
 
@@ -3949,7 +3949,7 @@ function algo_init() {
         }
 
         if ($settings.isEnabled("stable_mode")) {
-            toastLog("警告: 发现CwvqLU的无障碍服务\"稳定模式\"被开启!\n\"稳定模式\"会干扰控件信息抓取!\n尝试关闭...");
+            toastLog(deObStr("警告: 发现CwvqLU的无障碍服务\"稳定模式\"被开启!\n\"稳定模式\"会干扰控件信息抓取!\n尝试关闭..."));
             $settings.setEnabled("stable_mode", false);
             if (device.sdkInt >= 24) {
                 auto.service.disableSelf();
@@ -5516,7 +5516,7 @@ function algo_init() {
             +"\n        echo -ne \"Killing "+name+" ... \";"
             +"\n        killall "+name+" || echo -ne \"[killall failed]\";"
             +"\n        pkill "+name+" || echo -ne \"[pkill failed]\";"
-            +"\n        echo -ne \"Done, restarting CwvqLU ... \";"
+    +deObStr("\n        echo -ne \"Done, restarting CwvqLU ... \";")
             +"\n        am start -n \""+context.getPackageName()+"/"+splashActivityName+"\" || echo -ne \"[am start failed]\";"
             +"\n        echo -ne \"Done.\\n\";"
             +"\n    fi;"
@@ -8026,7 +8026,7 @@ function algo_init() {
                     } catch (e) {
                         logException(e);
                         needResizeWorkaround = true;
-                        log("检测到CwvqLU Pro的缩放截图崩溃bug,启用绕过措施");
+                        log(deObStr("检测到CwvqLU Pro的缩放截图崩溃bug,启用绕过措施"));
                     }
                     if (needResizeWorkaround == null) needResizeWorkaround = false;
                 }
@@ -11591,8 +11591,8 @@ function killBackground(packageName) {
 function backtoMain() {
     var it = new Intent();
     var name = context.getPackageName();
-    if (name == "org.cwvqlu.cwvqlupro") {
-        it.setClassName(name, "com.stardust.cwvqlu.execution.ScriptExecuteActivity");
+    if (name == deObStr("org.cwvqlu.cwvqlupro")) {
+        it.setClassName(name, deObStr("com.stardust.cwvqlu.execution.ScriptExecuteActivity"));
     } else {
         it.setClassName(name, splashActivityName);
     }
