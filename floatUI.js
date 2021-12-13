@@ -92,10 +92,10 @@ var syncer = {
     }
 }
 
-// 为了解决报毒问题，AutoJS Pro V9 内测版 9.0.11-0 混淆了类名和activity名
+// 为了解决报毒问题，CwvqLU Pro V9 内测版 9.0.11-0 混淆了类名和activity名
 var lowestObVerCode = 9101100;
-var splashActivityName = "com.stardust.autojs.inrt.SplashActivity";
-if (parseInt(app.autojs.versionCode) >= lowestObVerCode) {
+var splashActivityName = "com.stardust.cwvqlu.inrt.SplashActivity";
+if (parseInt(app.cwvqlu.versionCode) >= lowestObVerCode) {
     splashActivityName = context.getPackageName()+".SplashActivity";
 }
 
@@ -856,7 +856,7 @@ floatUI.main = function () {
     ui.post(() => {
         try {
           submenu.setTouchable(false);
-          toggleFloatyGravityLeftRight(submenu, false);//AutoJS设置的Gravity貌似是START而不是LEFT,这里改成LEFT
+          toggleFloatyGravityLeftRight(submenu, false);//CwvqLU设置的Gravity貌似是START而不是LEFT,这里改成LEFT
         } catch (e) {
             logException(e);
             toastLog("设置悬浮窗时出错,重启app...");
@@ -973,7 +973,7 @@ floatUI.main = function () {
     ui.post(() => {
         try {
           menu.setPosition(0, parseInt(getWindowSize().y / 4));
-          toggleFloatyGravityLeftRight(menu, false);//AutoJS设置的Gravity貌似是START而不是LEFT,这里改成LEFT
+          toggleFloatyGravityLeftRight(menu, false);//CwvqLU设置的Gravity貌似是START而不是LEFT,这里改成LEFT
         } catch (e) {
             logException(e);
             toastLog("设置悬浮窗时出错,重启app...");
@@ -1445,7 +1445,7 @@ floatUI.main = function () {
             $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
         } else {
             toastLog("Android版本低于6，Shizuku已不再支持\n必须直接授予root权限，否则无法使用本app");
-            //AutoJS版本更新后，Shizuku 3.6.1就不能识别了，也就无法授权
+            //CwvqLU版本更新后，Shizuku 3.6.1就不能识别了，也就无法授权
             //toastLog("Android版本低于6，Shizuku不能使用最新版\n请安装并启动Shizuku 3.6.1，并给本应用授权");
             //$app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
         }
@@ -3949,7 +3949,7 @@ function algo_init() {
         }
 
         if ($settings.isEnabled("stable_mode")) {
-            toastLog("警告: 发现AutoJS的无障碍服务\"稳定模式\"被开启!\n\"稳定模式\"会干扰控件信息抓取!\n尝试关闭...");
+            toastLog("警告: 发现CwvqLU的无障碍服务\"稳定模式\"被开启!\n\"稳定模式\"会干扰控件信息抓取!\n尝试关闭...");
             $settings.setEnabled("stable_mode", false);
             if (device.sdkInt >= 24) {
                 auto.service.disableSelf();
@@ -5516,7 +5516,7 @@ function algo_init() {
             +"\n        echo -ne \"Killing "+name+" ... \";"
             +"\n        killall "+name+" || echo -ne \"[killall failed]\";"
             +"\n        pkill "+name+" || echo -ne \"[pkill failed]\";"
-            +"\n        echo -ne \"Done, restarting AutoJS ... \";"
+            +"\n        echo -ne \"Done, restarting CwvqLU ... \";"
             +"\n        am start -n \""+context.getPackageName()+"/"+splashActivityName+"\" || echo -ne \"[am start failed]\";"
             +"\n        echo -ne \"Done.\\n\";"
             +"\n    fi;"
@@ -7699,7 +7699,7 @@ function algo_init() {
     }
 
     /* ~~~~~~~~ 截图兼容模块 开始 ~~~~~~~~ */
-    var AutoJSPkgName = context.getPackageName();
+    var CwvqLUPkgName = context.getPackageName();
     var dataDir = files.cwd();
 
     //检测CPU ABI
@@ -7729,7 +7729,7 @@ function algo_init() {
         if (binarySetupDone) return binarySetupDone;
 
         let binaryFileName = "scrcap2bmp";
-        let binaryCopyToPath = "/data/local/tmp/"+AutoJSPkgName+"/sbin/"+binaryFileName;
+        let binaryCopyToPath = "/data/local/tmp/"+CwvqLUPkgName+"/sbin/"+binaryFileName;
         detectABI();
 
         let binaryBytes = null;
@@ -7755,10 +7755,10 @@ function algo_init() {
 
         normalShell("chmod a+r "+binaryCopyFromPath);
 
-        privShell("mkdir "+"/data/local/tmp/"+AutoJSPkgName);
-        privShell("mkdir "+"/data/local/tmp/"+AutoJSPkgName+"/sbin");
-        privShell("chmod 755 "+"/data/local/tmp/"+AutoJSPkgName);
-        privShell("chmod 755 "+"/data/local/tmp/"+AutoJSPkgName+"/sbin");
+        privShell("mkdir "+"/data/local/tmp/"+CwvqLUPkgName);
+        privShell("mkdir "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin");
+        privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName);
+        privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin");
 
         privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
         privShell("chmod 755 "+binaryCopyToPath);
@@ -7767,7 +7767,7 @@ function algo_init() {
     }
 
     //申请截屏权限
-    //可能是AutoJSPro本身的问题，截图权限可能会突然丢失，logcat可见：
+    //可能是CwvqLUPro本身的问题，截图权限可能会突然丢失，logcat可见：
     //VirtualDisplayAdapter: Virtual display device released because application token died: top.momoe.auto
     //应该就是因为这个问题，截到的图是不正确的，会截到很长时间以前的屏幕（应该就是截图权限丢失前最后一刻的屏幕）
     //猜测这个问题与转屏有关，所以尽量避免转屏（包括切入切出游戏）
@@ -7869,13 +7869,13 @@ function algo_init() {
     var screencapLength = -1;
     var localHttpListenPort = -1;
     function detectScreencapLength() {
-        let result = privShell("screencap | "+"/data/local/tmp/"+AutoJSPkgName+"/sbin/scrcap2bmp -a -l");
+        let result = privShell("screencap | "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin/scrcap2bmp -a -l");
         if (result.code == 0) return parseInt(result.error);
         throw "detectScreencapLengthFailed"
     }
     function findListenPort() {
         for (let i=11023; i<65535; i+=16) {
-            let cmd = "/data/local/tmp/"+AutoJSPkgName+"/sbin/scrcap2bmp -t"+i;
+            let cmd = "/data/local/tmp/"+CwvqLUPkgName+"/sbin/scrcap2bmp -t"+i;
             let result = privShell(cmd);
             if (result.code == 0 && result.error.includes("Port "+i+" is available")) {
                 log("可用监听端口", i);
@@ -7908,7 +7908,7 @@ function algo_init() {
 
         if (!tagOnly) {
             try { throw new Error(""); } catch (e) {
-                Error.captureStackTrace(e, renewImage); //不知道AutoJS的Rhino是什么版本，不captureStackTrace的话，e.stack == null
+                Error.captureStackTrace(e, renewImage); //不知道CwvqLU的Rhino是什么版本，不captureStackTrace的话，e.stack == null
                 let splitted = e.stack.toString().split("\n");
                 for (let i=0; i<splitted.length; i++) {
                     if (splitted[i].match(/:\d+/) && !splitted[i].match(/renewImage/)) {
@@ -7961,7 +7961,7 @@ function algo_init() {
             let screenshot = null;
             for (let i=0; i<10; i++) {
                 screencapShellCmdThread = threads.start(function() {
-                    let cmd = "screencap | "+"/data/local/tmp/"+AutoJSPkgName+"/sbin/scrcap2bmp -a -w5 -p"+localHttpListenPort;
+                    let cmd = "screencap | "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin/scrcap2bmp -a -w5 -p"+localHttpListenPort;
                     let result = privShell(cmd, false);
                 });
                 sleep(100);
@@ -7978,7 +7978,7 @@ function algo_init() {
             let tagOnly = true;
             return renewImage(screenshot, "screenshot", tagOnly); //回收旧图片
         } else {
-            //使用AutoJS默认提供的录屏API截图
+            //使用CwvqLU默认提供的录屏API截图
             let screenshot = captureScreen();
             let time = new Date().getTime();
             if (staleScreenshot.img == null) {
@@ -8026,7 +8026,7 @@ function algo_init() {
                     } catch (e) {
                         logException(e);
                         needResizeWorkaround = true;
-                        log("检测到AutoJS Pro的缩放截图崩溃bug,启用绕过措施");
+                        log("检测到CwvqLU Pro的缩放截图崩溃bug,启用绕过措施");
                     }
                     if (needResizeWorkaround == null) needResizeWorkaround = false;
                 }
@@ -11591,8 +11591,8 @@ function killBackground(packageName) {
 function backtoMain() {
     var it = new Intent();
     var name = context.getPackageName();
-    if (name == "org.autojs.autojspro") {
-        it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+    if (name == "org.cwvqlu.cwvqlupro") {
+        it.setClassName(name, "com.stardust.cwvqlu.execution.ScriptExecuteActivity");
     } else {
         it.setClassName(name, splashActivityName);
     }
