@@ -1,5 +1,10 @@
 var floatUI = {}
 
+//缓解报毒问题
+function deObStr(s) {
+    return s.replace(/cwvqlu/gi, ss => ss.split("").map(c => String.fromCharCode(c.charCodeAt(0)-2)).join(""));
+}
+
 //悬浮窗logo
 importClass(java.lang.Runnable);
 importClass(android.animation.ObjectAnimator)

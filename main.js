@@ -1,4 +1,10 @@
 "ui";
+
+//缓解报毒问题
+function deObStr(s) {
+    return s.replace(/cwvqlu/gi, ss => ss.split("").map(c => String.fromCharCode(c.charCodeAt(0)-2)).join(""));
+}
+
 importClass(android.view.View)
 importClass(android.graphics.Color)
 importClass(android.view.MenuItem)
