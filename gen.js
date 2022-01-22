@@ -13,6 +13,11 @@ const includeRules = [
         filename: /\.(js|json|xml)$/,
     },
     {
+        dirname: "bin",
+        recursive: false,
+        filename: /.+/,
+    },
+    {
         dirname: "images",
         recursive: false,
         filename: /\.(png|jpg|ico|gif|bmp)$/,
