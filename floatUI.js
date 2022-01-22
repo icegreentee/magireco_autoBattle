@@ -141,6 +141,8 @@ var updateCycleCount = () => { };
 
 floatUI.storage = null;
 
+floatUI.floatyHangWorkaroundLock = threads.lock();
+
 // available script list
 floatUI.scripts = [
     {
@@ -853,10 +855,12 @@ floatUI.main = function () {
     var submenu = floaty.rawWindow(submenuXML);
 
     submenu.container.setVisibility(View.INVISIBLE);
+    floatUI.floatyHangWorkaroundLock.lock();
     ui.post(() => {
         try {
           submenu.setTouchable(false);
           toggleFloatyGravityLeftRight(submenu, false);//CwvqLU设置的Gravity貌似是START而不是LEFT,这里改成LEFT
+          floatUI.floatyHangWorkaroundLock.unlock(); //绕开CwvqLU 9.1.0版上的奇怪假死问题
         } catch (e) {
             logException(e);
             toastLog("设置悬浮窗时出错,重启app...");
@@ -970,10 +974,12 @@ floatUI.main = function () {
         </frame>
     );
 
+    floatUI.floatyHangWorkaroundLock.lock();
     ui.post(() => {
         try {
           menu.setPosition(0, parseInt(getWindowSize().y / 4));
           toggleFloatyGravityLeftRight(menu, false);//CwvqLU设置的Gravity貌似是START而不是LEFT,这里改成LEFT
+          floatUI.floatyHangWorkaroundLock.unlock(); //绕开CwvqLU 9.1.0版上的奇怪假死问题
         } catch (e) {
             logException(e);
             toastLog("设置悬浮窗时出错,重启app...");
