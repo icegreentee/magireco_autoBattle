@@ -90,12 +90,16 @@ async function walkThrough(fullpath) {
 const resultDir = path.join(rootpath, "update");
 const resultPath = path.join(resultDir, "updateList.json");
 const projectJsonPath = path.join(rootpath, "project.json");
+const projectUpdatedJsonPath = path.join(rootpath, "project-updated.json");
 
 
 async function regenerate() {
     console.log("Regenerating update/updateList.json ...");
     let projectJson = await fsPromises.readFile(projectJsonPath);
     let projectObj = JSON.parse(projectJson);
+    //project.json的内容打包后会改变，所以只能复制一份才能通过哈希值检验（而且是在生成哈希值列表之前复制）
+    await fsPromises.writeFile(projectUpdatedJsonPath, projectJson);
+    console.log("Copied project.json to project-updated.json");
     let result = {
         packageName: projectObj.packageName,
         versionName: projectObj.versionName,
