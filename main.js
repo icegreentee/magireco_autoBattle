@@ -1184,6 +1184,32 @@ function readUpdateList() {
     }
 }
 
+function checkFile(fileName, fileHash) {
+    let filePath = files.join(files.cwd(), fileName);
+    if (!files.exists(filePath) || !files.isFile(filePath)) {
+        log("发现缺失的文件: ["+fileName+"]");
+        return false;
+    }
+
+    let fileBytes = null;
+    try {
+        fileBytes = files.readBytes(filePath);
+    } catch (e) {
+        logException(e);
+        log("读取文件时出错 ["+fileName+"]");
+        return false;
+    }
+
+    let actualFileHash = "sha256-"+$crypto.digest(fileBytes, "SHA-256", {input: "bytes", output: "base64"});
+    if (actualFileHash !== fileHash) {
+        log("发现哈希值校验不符的文件: ["+fileName+"]");
+        return false;
+    }
+
+    log("文件校验通过: ["+fileName+"]");
+    return true;
+}
+
 function findCorruptOrMissingFile() {
     let updateListObj = null;
 
@@ -1237,31 +1263,13 @@ function findCorruptOrMissingFile() {
             item.src = item.src.replace("project.json", "project-updated.json");
         }
 
-        let filePath = files.join(files.cwd(), item.src);
-        if (!files.exists(filePath) || !files.isFile(filePath)) {
-            log("发现缺失的文件: ["+item.src+"]");
-            corruptOrMissingFileList.push(item);
-            return;
-        }
+        //先检查project.json哈希值是否符合，如果符合就不加入corruptOrMissingFileList，也就不会被覆写
+        if (item.origFileName != null && checkFile(item.origFileName, item.integrity)) return;
+        //如果不符合，后面下载时会用project.json这个文件名，而写入时会用project-updated.json
+        //除了这个特例之外的其他一般文件也是直接检查即可
+        else if (checkFile(item.src, item.integrity)) return;
 
-        let fileBytes = null;
-        try {
-            fileBytes = files.readBytes(filePath);
-        } catch (e) {
-            logException(e);
-            log("读取文件时出错 ["+item.src+"]");
-            corruptOrMissingFileList.push(item);
-            return;
-        }
-
-        let fileHash = "sha256-"+$crypto.digest(fileBytes, "SHA-256", {input: "bytes", output: "base64"});
-        if (fileHash !== item.integrity) {
-            log("发现哈希值校验不符的文件: ["+item.src+"]");
-            corruptOrMissingFileList.push(item);
-            return;
-        }
-
-        log("文件校验通过: ["+item.src+"]");
+        corruptOrMissingFileList.push(item);
     });
 
     log("发现 "+corruptOrMissingFileList.length+" 个文件丢失或损坏");
