@@ -13,15 +13,44 @@ importClass(com.stardust[deObStr("cwvqlu")].core.ui.inflater.util.Ids)
 importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
-var Name = "AutoBattle";
-var version = "6.0.8";
-var appName = Name + " v" + version;
-
-//注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
+//返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
     if (conf) return conf.versionName;
 }
+
+//返回在线更新后的版本，如果没有project-updated.json则返回null
+const projectUpdatedJsonPath = files.join(files.cwd(), "project-updated.json");
+function getUpdatedVersion() {
+    if (!files.exists(projectUpdatedJsonPath) || !files.isFile(projectUpdatedJsonPath)) {
+        return null;
+    }
+
+    try {
+        let projectUpdatedJSON = files.read(projectUpdatedJsonPath);
+        let projectUpdatedObj = JSON.parse(projectUpdatedJSON);
+        if (projectUpdatedObj != null && typeof projectUpdatedObj.versionName === "string") {
+            return projectUpdatedObj.versionName;
+        }
+    } catch (e) {
+        log("读取或解析project-upated.json时出错");
+    }
+
+    return null;
+}
+
+function getCurrentVersion() {
+    let updatedVersion = getUpdatedVersion();
+    if (updatedVersion != null) {
+        return updatedVersion;
+    } else {
+        return getProjectVersion();
+    }
+}
+
+const Name = "AutoBattle";
+const version = getCurrentVersion();
+const appName = Name + " v" + version;
 
 // 捕获异常时打log记录详细的调用栈
 function logException(e) {
@@ -1151,13 +1180,37 @@ function readUpdateList() {
 }
 
 function findCorruptOrMissingFile() {
-    let updateListLayered = readUpdateList();
-    if (updateListLayered == null) {
+    let updateListObj = null;
+
+    if (getUpdatedVersion() == null) {
+        log("没有project-updated.json，还不知道现在的版本号，先更新文件数据列表");
         downloadUpdateListJSON();
-        updateListLayered = readUpdateList();
+        updateListObj = readUpdateList();
+    } else {
+        updateListObj = readUpdateList();
+        if (updateListObj == null) {
+            log("文件数据列表不存在");
+            downloadUpdateListJSON();
+            updateListObj = readUpdateList();
+        } else if (updateListObj.versionName !== version) {
+            log("文件数据列表需要更新");
+            downloadUpdateListJSON();
+            updateListObj = readUpdateList();
+        }
     }
-    if (updateListLayered == null) {
+
+
+    if (updateListObj == null) {
         toastLog("无法读取或下载文件数据列表");
+        return false;
+    }
+    if (getUpdatedVersion() != null && updateListObj.versionName != version) {
+        //如果没有project-updated.json，就不知道现在的版本号，这个时候直接认为updateList.json里的版本号就是现在的版本号
+        toastLog("下载到的文件数据列表版本不符");
+        return false;
+    }
+    if (updateListObj.fileRootNode == null || !Array.isArray(updateListObj.fileRootNode) || updateListObj.fileRootNode.length == 0) {
+        toastLog("下载到的文件数据列表不含有效文件信息");
         return false;
     }
 
@@ -1169,13 +1222,14 @@ function findCorruptOrMissingFile() {
         updateList.push(data);
       }
     }
-    walkThrough(updateListLayered);
+    walkThrough(updateListObj.fileRootNode);
 
     let corruptOrMissingFileList = [];
     updateList.forEach((item) => {
         //覆写project.json会导致下次启动时文件被强制回滚
         if (item.src === "project.json" || item.src === "/project.json" || item.src === "./project.json") {
-            return;
+            item.origFileName = item.src;
+            item.src = item.src.replace("project.json", "project-updated.json");
         }
 
         let filePath = files.join(files.cwd(), item.src);
@@ -1225,7 +1279,7 @@ var fixFiles = sync(function (corruptOrMissingFileList) {
     corruptOrMissingFileList.forEach((item) => {
         log("下载文件 ["+item.src+"]");
         try {
-            let resp = http.get(downloadURLBase+"/"+item.src);
+            let resp = http.get(downloadURLBase+"/"+(item.origFileName != null ? item.origFileName : item.src));
             if (resp.statusCode == 200) {
                 let downloadedBytes = resp.body.bytes();
 

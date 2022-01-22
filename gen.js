@@ -89,12 +89,19 @@ async function walkThrough(fullpath) {
 
 const resultDir = path.join(rootpath, "update");
 const resultPath = path.join(resultDir, "updateList.json");
+const projectJsonPath = path.join(rootpath, "project.json");
 
 
 async function regenerate() {
     console.log("Regenerating update/updateList.json ...");
-    let result = await walkThrough(rootpath);
-    if (result == null) result = [];
+    let projectJson = await fsPromises.readFile(projectJsonPath);
+    let projectObj = JSON.parse(projectJson);
+    let result = {
+        packageName: projectObj.packageName,
+        versionName: projectObj.versionName,
+        fileRootNode: await walkThrough(rootpath),
+    }
+    if (result.fileRootNode == null) result = [];
     try {
         let stat = await fsPromises.stat(resultDir);
         if (!stat.isDirectory()) {
