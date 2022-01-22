@@ -239,14 +239,14 @@ async function generateHTMLResult(data) {
 }
 var rateLimit = {
     lastTime: new Date().getTime(),
-    remainingReqCount: 20,
+    remainingReqCount: 50,
 };
 function isTooFrequent() {
     let currentTime = new Date().getTime();
     if (currentTime > rateLimit.lastTime + 10000) {
         rateLimit = {
             lastTime: currentTime,
-            remainingReqCount: 10,
+            remainingReqCount: 50,
         };
     } else {
         if (rateLimit.remainingReqCount-- <= 0) {
