@@ -8208,33 +8208,33 @@ function algo_init() {
     const ImgPathBase = files.join(files.cwd(), "images");
     var knownImgs = {};
     const knownImgNames = [
-        "accel.png",
-        "blast.png",
-        "charge.png",
-        "magia.png",
-        "doppel.png",
-        "connectIndicator.png",
-        "connectIndicatorBtnDown.png",
-        "light.png",
-        "dark.png",
-        "water.png",
-        "fire.png",
-        "wood.png",
-        "none.png",
-        "lightBtnDown.png",
-        "darkBtnDown.png",
-        "waterBtnDown.png",
-        "fireBtnDown.png",
-        "woodBtnDown.png",
-        "noneBtnDown.png",
-        "mirrorsWinLetterI.png",
-        "mirrorsLose.png",
-        "skillLocked.png",
-        "skillEmptyCHS.png",
-        "skillEmptyCHT.png",
-        "skillEmptyJP.png",
-        "OKButton.png",
-        "OKButtonGray.png",
+        "accel",
+        "blast",
+        "charge",
+        "magia",
+        "doppel",
+        "connectIndicator",
+        "connectIndicatorBtnDown",
+        "light",
+        "dark",
+        "water",
+        "fire",
+        "wood",
+        "none",
+        "lightBtnDown",
+        "darkBtnDown",
+        "waterBtnDown",
+        "fireBtnDown",
+        "woodBtnDown",
+        "noneBtnDown",
+        "mirrorsWinLetterI",
+        "mirrorsLose",
+        "skillLocked",
+        "skillEmptyCHS",
+        "skillEmptyCHT",
+        "skillEmptyJP",
+        "OKButton",
+        "OKButtonGray",
     ];
 
     var loadAllImages = syncer.syn(function () {
@@ -8242,7 +8242,7 @@ function algo_init() {
             knownImgNames.forEach((key) => {
                 if (knownImgs[key] == null) {
                     log("加载图片 "+key+" ...");
-                    knownImgs[key] = images.read(files.join(ImgPathBase, key));
+                    knownImgs[key] = images.read(files.join(ImgPathBase, key+".png"));
                     if (knownImgs[key] == null) hasNull = true;
                 }
             });
