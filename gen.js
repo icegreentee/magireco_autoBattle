@@ -239,7 +239,7 @@ function generateATags(data) {
     return aLines;
 }
 async function generateHTMLResult(data) {
-    if (data == null) data = await regenerate();
+    if (data == null) data = (await regenerate()).fileRootNode;
     let linkLines = "";
     let aLines = generateATags(data);
     return HTMLHead1+linkLines+HTMLHead2+aLines+HTMLTail;
@@ -289,7 +289,7 @@ const server = http.createServer(async (req, res) => {
         res.setHeader('Content-Type', getMimeTypeUTF8("index.html"));
         res.setHeader('Access-Control-Allow-Origin', '*');
         console.log(`Serving index page`);
-        res.end(await generateHTMLResult(await regenerate()));
+        res.end(await generateHTMLResult((await regenerate()).fileRootNode));
     } else if ("/update/updateList.json" === req.url) {
         if (isTooFrequent()) {
             res.statusCode = 429;
