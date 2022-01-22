@@ -964,7 +964,7 @@ floatUI.main = function () {
                 id="img_logo"
                 w="32"
                 h="32"
-                src="https://cdn.jsdelivr.net/gh/icegreentee/cdn/img/other/qb.png"
+                src={"file://"+files.join(files.join(files.cwd(), "images"), "qb.png")}
                 layout_gravity="center"
             />
         </frame>
