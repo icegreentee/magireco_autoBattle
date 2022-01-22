@@ -1097,6 +1097,7 @@ var toUpdate = sync(function () {
 
 //检查或下载文件数据
 const downloadURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+version;
+//const downloadURLBase = "http://127.0.0.1:9090" //用于调试，从本地gen.js开发服务器下载文件
 const updateListURL = downloadURLBase+"/update/updateList.json";
 const updateListPath = files.join(files.cwd(), "update/updateList.json");
 
