@@ -8199,58 +8199,56 @@ function algo_init() {
     }
 
     //已知参照图像，包括A/B/C/M/D盘等
-    const ImgURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@5.5.0";
+    const ImgPathBase = files.join(files.cwd(), "images");
     var knownImgs = {};
-    const knownImgURLs = {
-        accel: ImgURLBase+"/images/accel.png",
-        blast: ImgURLBase+"/images/blast.png",
-        charge: ImgURLBase+"/images/charge.png",
-        magia: ImgURLBase+"/images/magia.png",
-        doppel: ImgURLBase+"/images/doppel.png",
-        connectIndicator: ImgURLBase+"/images/connectIndicator.png",
-        connectIndicatorBtnDown: ImgURLBase+"/images/connectIndicatorBtnDown.png",
-        light: ImgURLBase+"/images/light.png",
-        dark: ImgURLBase+"/images/dark.png",
-        water: ImgURLBase+"/images/water.png",
-        fire: ImgURLBase+"/images/fire.png",
-        wood: ImgURLBase+"/images/wood.png",
-        none: ImgURLBase+"/images/none.png",
-        lightBtnDown: ImgURLBase+"/images/lightBtnDown.png",
-        darkBtnDown: ImgURLBase+"/images/darkBtnDown.png",
-        waterBtnDown: ImgURLBase+"/images/waterBtnDown.png",
-        fireBtnDown: ImgURLBase+"/images/fireBtnDown.png",
-        woodBtnDown: ImgURLBase+"/images/woodBtnDown.png",
-        noneBtnDown: ImgURLBase+"/images/noneBtnDown.png",
-        mirrorsWinLetterI: ImgURLBase+"/images/mirrorsWinLetterI.png",
-        mirrorsLose: ImgURLBase+"/images/mirrorsLose.png",
-        skillLocked: ImgURLBase+"/images/skillLocked.png",
-        skillEmptyCHS: ImgURLBase+"/images/skillEmptyCHS.png",
-        skillEmptyCHT: ImgURLBase+"/images/skillEmptyCHT.png",
-        skillEmptyJP: ImgURLBase+"/images/skillEmptyJP.png",
-        OKButton: ImgURLBase+"/images/OKButton.png",
-        OKButtonGray: ImgURLBase+"/images/OKButtonGray.png",
-    };
+    const knownImgNames = [
+        "accel.png",
+        "blast.png",
+        "charge.png",
+        "magia.png",
+        "doppel.png",
+        "connectIndicator.png",
+        "connectIndicatorBtnDown.png",
+        "light.png",
+        "dark.png",
+        "water.png",
+        "fire.png",
+        "wood.png",
+        "none.png",
+        "lightBtnDown.png",
+        "darkBtnDown.png",
+        "waterBtnDown.png",
+        "fireBtnDown.png",
+        "woodBtnDown.png",
+        "noneBtnDown.png",
+        "mirrorsWinLetterI.png",
+        "mirrorsLose.png",
+        "skillLocked.png",
+        "skillEmptyCHS.png",
+        "skillEmptyCHT.png",
+        "skillEmptyJP.png",
+        "OKButton.png",
+        "OKButtonGray.png",
+    ];
 
-    var downloadAllImages = syncer.syn(function () {
-        while (true) {
+    var loadAllImages = syncer.syn(function () {
             let hasNull = false;
-            for (let key in knownImgURLs) {
+            knownImgNames.forEach((key) => {
                 if (knownImgs[key] == null) {
-                    log("下载图片 "+knownImgURLs[key]+" ...");
-                    knownImgs[key] = images.load(knownImgURLs[key]);
+                    log("加载图片 "+key+" ...");
+                    knownImgs[key] = images.read(files.join(ImgPathBase, key));
                     if (knownImgs[key] == null) hasNull = true;
                 }
-            }
+            });
             if (!hasNull) {
-                log("全部图片下载完成");
-                break;
+                log("全部图片加载完成");
+                return true;
             } else {
-                log("有图片没下载成功,2秒后重试...");
-                sleep(2000);
+                toastLog("有图片加载失败");
+                return false;
             }
-        }
     });
-    threads.start(function () {downloadAllImages();});
+    threads.start(function () {loadAllImages();});
 
     //矩形参数计算，宽度、高度、中心坐标等等
     function getAreaWidth_(topLeft, bottomRight) {
@@ -10240,7 +10238,9 @@ function algo_init() {
             return;
         }
 
-        downloadAllImages();
+        if (!loadAllImages()) {
+            return;
+        }
 
         initialize();
 
