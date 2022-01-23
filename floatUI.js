@@ -2904,7 +2904,7 @@ function algo_init() {
         return results.filter((result) => result.bounds.left >= left);
     }
 
-    function getCostAP() {
+    function detectCostAP() {
         //FIXME 星期副本的选关界面中识别到的是列表中第一个而未必是实际被选中周回的副本，
         //但第一个出现的也是消耗AP最高的，所以一般问题也不大
         let elements = matchAll(string.regex_cost_ap);
@@ -2929,6 +2929,15 @@ function algo_init() {
                     return Number(getContent(next));
                 }
             }
+        }
+    }
+
+    function getCostAP() {
+        let detectedAPCost = detectCostAP();
+        if (detectedAPCost != null) return detectedAPCost;
+        else if (lastOpList != null && lastOpList.apCost != null && checkNumber(lastOpList.apCost)) {
+            log("没有检测到AP消耗数值,返回动作录制记录里的AP消耗数值["+lastOpList.apCost+"]");
+            return parseInt(lastOpList.apCost);
         }
     }
 
@@ -6135,6 +6144,34 @@ function algo_init() {
             log("录制第"+result.steps.length+"步动作完成");
         }
         if (result != null) {
+            //先记录AP消耗数值
+            let apCost = null;
+            let detectedAPCost = detectCostAP();
+            if (detectedAPCost == null) detectedAPCost = "";
+            while (true) {
+                let recordAPCost = null;
+                apCost = dialogs.rawInputWithContent(
+                    "记录关卡AP消耗",
+                    "是否记录关卡AP消耗数值（如下）？（LAST MAGIA等活动在进入助战选择前无法检测关卡AP消耗数值）\n取消或留空则不记录",
+                    String(detectedAPCost),
+                    () => recordAPCost = true,
+                    () => recordAPCost = false);
+                if (recordAPCost == null) continue;
+                else if (recordAPCost) {
+                    if (!checkNumber(apCost) || parseInt(apCost) <= 0) {
+                        toastLog("AP消耗数值必须是个正整数");
+                    } else if (parseInt(apCost) > 50) {
+                        toastLog("AP消耗数值过大（超过50）");
+                    } else break;
+                } else {
+                    apCost = null;
+                    break;
+                }
+            };
+            if (apCost != null) result.apCost = parseInt(apCost);
+            if (result.apCost != null) toastLog("已记录关卡AP消耗数值: "+result.apCost);
+            else toastLog("未记录关卡AP消耗数值");
+
             saveOpList(result);//写入到文件
             lastOpList = result;
             lastNonPresetOpList = result; //备份刚刚录制好的数据
