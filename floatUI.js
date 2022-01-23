@@ -7194,11 +7194,13 @@ function algo_init() {
 
                     //杜鹃花型活动需要在活动地图上点击开始按钮才能进入助战选择
                     let button = find(string.battle_confirm);
+                    //LAST MAGIA活动的开始按钮
+                    if (button == null) button = findID("battleStartBtn");
                     if (button) {
                         if (lastOpList != null && lastOpList.isEventTypeBRANCH) {
                             BRANCHclickAttemptCount = 0;
                         }
-                        log("点击确认进入battle");
+                        log("点击\""+getContent(button)+"\"(resID=\""+(button.id()!=null?button.id():"")+"\")进入battle");
                         let bound = button.bounds();
                         click(bound.centerX(), bound.centerY());
                         // wait for support screen for 5 seconds
