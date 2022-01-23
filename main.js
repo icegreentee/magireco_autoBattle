@@ -13,28 +13,38 @@ importClass(com.stardust[deObStr("cwvqlu")].core.ui.inflater.util.Ids)
 importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
+
+const updateListPath = files.join(files.join(files.cwd(), "update"), "updateList.json");
+
+function readUpdateList() {
+    log("读取文件数据列表...");
+    try {
+        if (files.exists(updateListPath) && files.isFile(updateListPath)) {
+            let fileContent = files.read(updateListPath);
+            let result = JSON.parse(fileContent);
+            log("已读取文件数据列表");
+            return result;
+        } else {
+            toastLog("文件数据列表文件不存在");
+        }
+    } catch (e) {
+        logException(e);
+        toastLog("读取文件数据列表时出错");
+    }
+}
+
 //返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
     if (conf) return conf.versionName;
 }
 
-//返回在线更新后的版本，如果没有project-updated.json则返回null
-const projectUpdatedJsonPath = files.join(files.cwd(), "project-updated.json");
+//返回在线更新后的版本，如果没有updateList.json则返回null
 function getUpdatedVersion() {
-    if (!files.exists(projectUpdatedJsonPath) || !files.isFile(projectUpdatedJsonPath)) {
-        return null;
-    }
+    let updateListObj = readUpdateList();
 
-    try {
-        let projectUpdatedJSON = files.read(projectUpdatedJsonPath);
-        let projectUpdatedObj = JSON.parse(projectUpdatedJSON);
-        if (projectUpdatedObj != null && typeof projectUpdatedObj.versionName === "string") {
-            return projectUpdatedObj.versionName;
-        }
-    } catch (e) {
-        log("读取或解析project-upated.json时出错");
-    }
+    if (updateListObj != null && updateListObj.versionName != null && typeof updateListObj.versionName === "string")
+        return updateListObj.versionName;
 
     return null;
 }
@@ -1086,7 +1096,31 @@ threads.start(function () {
 });
 
 //版本更新
+const jsdelivrURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle";
+const localURLBase = "http://127.0.0.1:9090" //用于调试，从本地gen.js开发服务器下载文件
+
+var isDevMode = false;
+//isDevMode = true;
+
+function getDownloadURLBase(specifiedVersionName) {
+    if (specifiedVersionName == null) specifiedVersionName = "latest";
+    if (isDevMode) return localURLBase;
+    else return jsdelivrURLBase+"@"+specifiedVersionName;
+}
+
 var updateRestartPending = false;
+
+function restartApp() {
+    events.on("exit", function () {
+        //通过execScriptFile好像会有问题，比如点击悬浮窗QB=>齿轮然后就出现两个QB
+        //engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
+        app.launch(context.getPackageName());
+        toast("更新完毕")
+    })
+    updateRestartPending = true;
+    engines.stopAll();
+}
+
 var toUpdate = sync(function () {
     refreshUpdateStatus();
     if (updateRestartPending) {
@@ -1097,29 +1131,29 @@ var toUpdate = sync(function () {
         if (latestVersionName == null) {
             toastLog("无法获取最新版本号");
         } else {
-            log("之前已经获取到最新版本号"+latestVersionName);
-            if (parseInt(latestVersionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
-                toastLog("无需更新")
-            } else {
-                let main_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+latestVersionName+"/main.js");
-                let float_script = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+latestVersionName+"/floatUI.js");
-                if (main_script.statusCode == 200 && float_script.statusCode == 200) {
-                    toastLog("更新加载中");
-                    let mainjs = main_script.body.string();
-                    let floatjs = float_script.body.string();
-                    files.write(engines.myEngine().cwd() + "/main.js", mainjs)
-                    files.write(engines.myEngine().cwd() + "/floatUI.js", floatjs)
-                    events.on("exit", function () {
-                        //通过execScriptFile好像会有问题，比如点击悬浮窗QB=>齿轮然后就出现两个QB
-                        //engines.execScriptFile(engines.myEngine().cwd() + "/main.js")
-                        app.launch(context.getPackageName())
-                        toast("更新完毕")
-                    })
-                    updateRestartPending = true;
-                    engines.stopAll()
+            log("isDevMode=["+isDevMode+"] 之前已经获取到最新版本号latestVersionName=["+latestVersionName+"]");
+            if (isDevMode || parseInt(latestVersionName.split(".").join("")) > parseInt(version.split(".").join(""))) {
+                let essentialFileList = ["update/updateList.json", "main.js", "floatUI.js"];
+                let responses = [];
+                essentialFileList.forEach((item) => {
+                    responses.push({
+                        fileName: item,
+                        httpResponse: http.get(getDownloadURLBase(latestVersionName)+"/"+item),
+                    });
+                });
+                if (responses.find((item) => item.httpResponse.statusCode != 200) == null) {
+                    toastLog("更新已下载，写入文件并重启...");
+                    responses.forEach((item) => {
+                        let writeToPath = files.join(files.cwd(), item.fileName);
+                        let fileBytes = item.httpResponse.body.bytes();
+                        files.writeBytes(writeToPath, fileBytes);
+                    });
+                    restartApp();
                 } else {
                     toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessage);
                 }
+            } else {
+                toastLog("无需更新");
             }
         }
     } catch (error) {
@@ -1130,14 +1164,10 @@ var toUpdate = sync(function () {
 });
 
 //检查或下载文件数据
-const downloadURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+version;
-//const downloadURLBase = "http://127.0.0.1:9090" //用于调试，从本地gen.js开发服务器下载文件
-const updateListURL = downloadURLBase+"/update/updateList.json";
-const updateListPath = files.join(files.cwd(), "update/updateList.json");
-
-function downloadUpdateListJSON() {
-    toastLog("正在下载文件数据列表...");
+function downloadUpdateListJSON(specifiedVersionName) {
     try {
+        let updateListURL = getDownloadURLBase(specifiedVersionName)+"/update/updateList.json";
+        toastLog("正在下载文件数据列表 ["+updateListURL+"]");
         let resp = http.get(updateListURL);
         if (resp.statusCode == 200) {
             toastLog("已下载文件数据列表");
@@ -1153,34 +1183,19 @@ function downloadUpdateListJSON() {
 
             if (!files.exists(updateListPath) || files.isFile(updateListPath)) {
                 files.write(updateListPath, result);
-                log("写入文件数据列表到文件完成");
+                log("写入文件数据列表到文件");
+                //只有下载并写入成功时，才会返回下载到的JSON字符串
+                if (files.read(updateListPath) === result) return result;
+                else toastLog("文件数据列表内容不符，写入失败");
             } else {
                 toastLog("可能被非空目录占位，无法写入文件数据列表到文件");
             }
-            return result;
         } else {
             toastLog("下载文件数据列表失败\n"+resp.statusCode+" "+resp.statusMessage);
         }
     } catch (e) {
         logException(e);
         toastLog("下载文件数据列表失败");
-    }
-}
-
-function readUpdateList() {
-    log("读取文件数据列表...");
-    try {
-        if (files.exists(updateListPath) && files.isFile(updateListPath)) {
-            let fileContent = files.read(updateListPath);
-            let result = JSON.parse(fileContent);
-            log("已读取文件数据列表");
-            return result;
-        } else {
-            toastLog("文件数据列表文件不存在");
-        }
-    } catch (e) {
-        logException(e);
-        toastLog("读取文件数据列表时出错");
     }
 }
 
@@ -1211,37 +1226,28 @@ function checkFile(fileName, fileHash) {
 }
 
 function findCorruptOrMissingFile() {
-    let updateListObj = null;
-
-    if (getUpdatedVersion() == null) {
-        log("没有project-updated.json，还不知道现在的版本号，先更新文件数据列表");
-        downloadUpdateListJSON();
-        updateListObj = readUpdateList();
-    } else {
-        updateListObj = readUpdateList();
-        if (updateListObj == null) {
-            log("文件数据列表不存在");
-            downloadUpdateListJSON();
-            updateListObj = readUpdateList();
-        } else if (updateListObj.versionName !== version) {
-            log("文件数据列表需要更新");
-            downloadUpdateListJSON();
-            updateListObj = readUpdateList();
+    //从6.1.0开始修正在线更新认不清版本的bug
+    if (parseInt(version.split(".").join("")) < parseInt("6.1.0".split(".").join(""))) {
+        log("版本低于6.1.0，先更新文件数据列表到6.1.0");
+        if (downloadUpdateListJSON("6.1.0") == null) {
+            //如果下载或写入不成功
+            ui.post(function () {dialogs.alert("警告", "下载文件数据列表失败，无法检查文件数据，不能确保文件数据无误");});
+            return false;
         }
     }
 
+    let updateListObj = readUpdateList();
 
     if (updateListObj == null) {
         toastLog("无法读取或下载文件数据列表");
         return false;
     }
-    if (getUpdatedVersion() != null && updateListObj.versionName != version) {
-        //如果没有project-updated.json，就不知道现在的版本号，这个时候直接认为updateList.json里的版本号就是现在的版本号
-        toastLog("下载到的文件数据列表版本不符");
+    if (updateListObj.versionName == null) {
+        toastLog("文件数据列表缺失版本号");
         return false;
     }
     if (updateListObj.fileRootNode == null || !Array.isArray(updateListObj.fileRootNode) || updateListObj.fileRootNode.length == 0) {
-        toastLog("下载到的文件数据列表不含有效文件信息");
+        toastLog("文件数据列表不含有效文件信息");
         return false;
     }
 
@@ -1273,12 +1279,20 @@ function findCorruptOrMissingFile() {
     });
 
     log("发现 "+corruptOrMissingFileList.length+" 个文件丢失或损坏");
-    return corruptOrMissingFileList;
+
+    return {
+        versionName: updateListObj.versionName,
+        corruptOrMissingFileList: corruptOrMissingFileList,
+    };
 }
 
-var fixFiles = sync(function (corruptOrMissingFileList) {
+var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
     if (corruptOrMissingFileList == null || !Array.isArray(corruptOrMissingFileList) || corruptOrMissingFileList.length == 0) {
         toastLog("未传入有效的损坏或丢失文件列表，无法继续进行修复");
+        return false;
+    }
+    if (specifiedVersionName == null || typeof specifiedVersionName !== "string") {
+        toastLog("未传入有效版本号，无法继续进行修复");
         return false;
     }
 
@@ -1292,7 +1306,7 @@ var fixFiles = sync(function (corruptOrMissingFileList) {
     corruptOrMissingFileList.forEach((item) => {
         log("下载文件 ["+item.src+"]");
         try {
-            let resp = http.get(downloadURLBase+"/"+(item.origFileName != null ? item.origFileName : item.src));
+            let resp = http.get(getDownloadURLBase(specifiedVersionName)+"/"+(item.origFileName != null ? item.origFileName : item.src));
             if (resp.statusCode == 200) {
                 let downloadedBytes = resp.body.bytes();
 
@@ -1349,32 +1363,38 @@ var fixFiles = sync(function (corruptOrMissingFileList) {
 
     toastLog("文件数据更新完成\n即将重启app");
 
-    events.on("exit", function () {
-        app.launch(context.getPackageName());
-        toast("更新完毕");
-    });
-    updateRestartPending = true;
-    engines.stopAll();
+    restartApp();
 
     return true;
 });
 
 var checkAgainstUpdateListAndFix = sync(function (showResult) {
-    let corruptOrMissingFileList = findCorruptOrMissingFile();
+    let ret = findCorruptOrMissingFile();
+    let corruptOrMissingFileList = ret.corruptOrMissingFileList;
+    let specifiedVersionName = ret.versionName;
     if (Array.isArray(corruptOrMissingFileList)) {
         if (corruptOrMissingFileList.length > 0) {
-            ui.run(function () {
+            ui.post(function () {
                 dialogs.confirm(
                     "发现文件缺失或损坏",
                     "检查发现有"+corruptOrMissingFileList.length+"个文件缺失或损坏，要尝试重新下载来修复么？"
                 ).then((value) => {
                     if (value) {
                         threads.start(function () {
-                            if (!fixFiles(corruptOrMissingFileList)) {
+                            if (!fixFiles(corruptOrMissingFileList, specifiedVersionName)) {
                                 toastLog("检查并修复文件时出错，请稍后重试");
                             }
                         });
                     }
+                });
+            });
+        } else if (version !== specifiedVersionName) {
+            //一般不会走到这里。所有文件验证通过时，用root权限手动删掉updateList.json后重启才会走到这里
+            //这个时候脚本显示的版本仍然是老的，需要重启一次才能显示正确的版本
+            ui.post(function () {
+                dialogs.confirm("更新完毕", "马上会再重启一次app")
+                .then(function () {
+                    restartApp();
                 });
             });
         } else {
