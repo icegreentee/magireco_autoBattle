@@ -1238,6 +1238,11 @@ function findCorruptOrMissingFile() {
     let updateListObj = readUpdateList();
 
     if (updateListObj == null) {
+        downloadUpdateListJSON(specifiedVersionName);
+        updateListObj = readUpdateList();
+    }
+
+    if (updateListObj == null) {
         toastLog("无法读取或下载文件数据列表");
         return false;
     }
