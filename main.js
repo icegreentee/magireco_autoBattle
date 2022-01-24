@@ -1224,10 +1224,10 @@ function checkFile(fileName, fileHash) {
 }
 
 function findCorruptOrMissingFile() {
-    //从6.1.0开始修正在线更新认不清版本的bug
-    if (parseInt(version.split(".").join("")) < parseInt("6.1.0".split(".").join(""))) {
-        log("版本低于6.1.0，先更新文件数据列表到6.1.0");
-        if (downloadUpdateListJSON("6.1.0") == null) {
+    //从6.1.1开始修正在线更新认不清版本的bug
+    if (parseInt(version.split(".").join("")) < parseInt("6.1.1".split(".").join(""))) {
+        log("版本低于6.1.1，先更新文件数据列表到6.1.1");
+        if (downloadUpdateListJSON("6.1.1") == null) {
             //如果下载或写入不成功
             ui.post(function () {dialogs.alert("警告", "下载文件数据列表失败，无法检查文件数据，不能确保文件数据无误");});
             return false;
