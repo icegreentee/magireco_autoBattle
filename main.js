@@ -1235,12 +1235,12 @@ function checkFile(fileName, fileHash) {
 }
 
 function findCorruptOrMissingFile() {
-    //从6.1.1开始修正在线更新认不清版本的bug
+    //从6.1.2开始修正在线更新认不清版本的bug
     var specifiedVersionName = version;
-    if (parseInt(version.split(".").join("")) < parseInt("6.1.1".split(".").join(""))) {
-        specifiedVersionName = "6.1.1";
-        log("版本低于6.1.1，先更新文件数据列表到6.1.1");
-        if (downloadUpdateListJSON("6.1.1") == null) {
+    if (parseInt(version.split(".").join("")) < parseInt("6.1.2".split(".").join(""))) {
+        specifiedVersionName = "6.1.2";
+        log("版本低于6.1.2，先更新文件数据列表到6.1.2");
+        if (downloadUpdateListJSON(specifiedVersionName) == null) {
             //如果下载或写入不成功
             ui.post(function () {dialogs.alert("警告", "下载文件数据列表失败，无法检查文件数据，不能确保文件数据无误");});
             return false;
