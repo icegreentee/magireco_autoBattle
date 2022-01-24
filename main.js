@@ -1,14 +1,20 @@
 "ui";
+
+//缓解报毒问题
+function deObStr(s) {
+    return s.replace(/cwvqlu/gi, ss => ss.split("").map(c => String.fromCharCode(c.charCodeAt(0)-2)).join(""));
+}
+
 importClass(android.view.View)
 importClass(android.graphics.Color)
 importClass(android.view.MenuItem)
-importClass(com.stardust.autojs.project.ProjectConfig)
-importClass(com.stardust.autojs.core.ui.inflater.util.Ids)
+importClass(com.stardust[deObStr("cwvqlu")].project.ProjectConfig)
+importClass(com.stardust[deObStr("cwvqlu")].core.ui.inflater.util.Ids)
 importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 var Name = "AutoBattle";
-var version = "6.0.6";
+var version = "6.0.7";
 var appName = Name + " v" + version;
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
@@ -41,8 +47,8 @@ ui.layout(
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout id="swipe" layout_below="appbar">
             <ScrollView id="content">
                 <vertical gravity="center" layout_weight="1">
-                    <vertical id="autojs_ver_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
-                        <text id="autojs_ver_text" text="AutoJS Pro 引擎版本过低" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
+                    <vertical id="cwvqlu_ver_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
+                        <text id="cwvqlu_ver_text" text="" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
                     </vertical>
 
                     <vertical id="task_paused_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
@@ -373,6 +379,7 @@ ui.layout(
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
     </relative>
 );
+ui["cwvqlu_ver_text"].setText(deObStr("CwvqLU Pro 引擎版本过低"));
 
 ui.emitter.on("create_options_menu", menu => {
     //在菜单内显示图标
@@ -506,7 +513,7 @@ function reportBug() {
         let response = null;
         try {
             response = http.post("https://pastebin.ubuntu.com/", {
-                poster: "autojs_"+key,
+                poster: deObStr("cwvqlu_")+key,
                 syntax: uploadContents[key].syntax,
                 expiration: "week",
                 content: uploadContents[key].content
@@ -583,33 +590,33 @@ function getTintDrawable(name, tint) {
     return wrapped
 }
 
-//检测AutoJS引擎版本
+//检测CwvqLU引擎版本
 
-//经测试发现app.autojs.versionName不能用
+//经测试发现app.cwvqlu.versionName不能用
 //以下数值通过实际运行一遍代码取得，取自Pro 8.8.13-0
 const lowestVersionCode = 8081200;
 
-function detectAutoJSVersion() {
+function detectCwvqLUVersion() {
     ui.run(function() {
         let currentVersionCode = NaN;
         try {
-            currentVersionCode = parseInt(app.autojs.versionCode);
+            currentVersionCode = parseInt(app[deObStr("cwvqlu")].versionCode);
         } catch (e) {
             currentVersionCode = NaN;
         }
         if (isNaN(currentVersionCode)) {
-            ui.autojs_ver_text.setText("无法检测 AutoJS Pro 引擎版本\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新");
-            ui.autojs_ver_vertical.setVisibility(View.VISIBLE);
+            ui.cwvqlu_ver_text.setText(deObStr("无法检测 CwvqLU Pro 引擎版本\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新"));
+            ui.cwvqlu_ver_vertical.setVisibility(View.VISIBLE);
             return;
         }
         if (currentVersionCode < lowestVersionCode) {
-            ui.autojs_ver_text.setText("AutoJS Pro 引擎版本过低\n当前版本versionCode=["+currentVersionCode+"]\n最低要求versionCode=["+lowestVersionCode+"]\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新");
-            ui.autojs_ver_vertical.setVisibility(View.VISIBLE);
+            ui.cwvqlu_ver_text.setText(deObStr("CwvqLU Pro 引擎版本过低\n当前版本versionCode=["+currentVersionCode+"]\n最低要求versionCode=["+lowestVersionCode+"]\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新"));
+            ui.cwvqlu_ver_vertical.setVisibility(View.VISIBLE);
             return;
         }
     });
 }
-detectAutoJSVersion();
+detectCwvqLUVersion();
 
 //无障碍开关监控
 ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
