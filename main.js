@@ -71,7 +71,7 @@ function getCurrentVersion() {
 
 const Name = "AutoBattle";
 const version = getCurrentVersion();
-const appName = Name + " v" + version;
+const appName = getUpdatedVersion() == null ? Name : Name + " v" + version;
 
 var floatUI = require('floatUI.js');
 
