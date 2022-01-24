@@ -1135,12 +1135,18 @@ var toUpdate = sync(function () {
                 let essentialFileList = ["update/updateList.json", "main.js", "floatUI.js"];
                 let responses = [];
                 essentialFileList.forEach((item) => {
+                    let resp = null;
+                    try {
+                        resp = http.get(getDownloadURLBase(latestVersionName)+"/"+item);
+                    } catch (e) {
+                        resp = null;
+                    }
                     responses.push({
                         fileName: item,
-                        httpResponse: http.get(getDownloadURLBase(latestVersionName)+"/"+item),
+                        httpResponse: resp,
                     });
                 });
-                if (responses.find((item) => item.httpResponse.statusCode != 200) == null) {
+                if (responses.find((item) => item.httpResponse != null && item.httpResponse.statusCode != 200) == null) {
                     setVersionMsgToastLog("更新已下载，写入文件并重启...", "#666666", true);
                     responses.forEach((item) => {
                         let writeToPath = files.join(files.cwd(), item.fileName);
@@ -1149,14 +1155,14 @@ var toUpdate = sync(function () {
                     });
                     restartApp();
                 } else {
-                    toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessage);
+                    toast("有文件下载失败，请稍后重试");
                 }
             } else {
                 toastLog("无需更新");
             }
         }
     } catch (error) {
-        toastLog("请求超时，可再一次尝试")
+        toastLog("更新过程出错");
     } finally {
         ui.run(function() {ui.swipe.setRefreshing(false);});
     }
