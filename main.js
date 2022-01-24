@@ -1033,7 +1033,6 @@ ui["task_paused_button"].setOnClickListener(new android.view.View.OnClickListene
 //版本获取
 var latestVersionName = null;
 var refreshUpdateStatus = sync(function () {
-    var isUpdateAvailable = false;
     http.__okhttp__.setTimeout(5000);
     try {
         let res = null;
@@ -1070,7 +1069,6 @@ var refreshUpdateStatus = sync(function () {
                     ui.versionMsg_vertical.setVisibility(View.GONE);
                 });
             } else {
-                isUpdateAvailable = true;
                 ui.run(function () {
                     ui.versionMsg.setText("最新版本为" + latestVersionName + ",下拉进行更新")
                     ui.versionMsg.setTextColor(colors.RED)
@@ -1086,7 +1084,7 @@ var refreshUpdateStatus = sync(function () {
         })
     }
     //检查当前版本的文件数据
-    if (!isUpdateAvailable) checkAgainstUpdateListAndFix();
+    checkAgainstUpdateListAndFix();
 });
 threads.start(function () {
     //绕开CwvqLU 9.1.0版上的奇怪假死问题，refreshUpdateStatus里的ui.run貌似必须等到对悬浮窗的Java反射操作完成后再进行，否则会假死
