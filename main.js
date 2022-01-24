@@ -14,6 +14,17 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 
+// 捕获异常时打log记录详细的调用栈
+// 貌似（在处理http.get下载失败时？）会导致崩溃，注释掉
+//function logException(e) {
+//    try { throw e; } catch (caught) {
+//        Error.captureStackTrace(caught, logException);
+//        //log(e, caught.stack); //输出挤在一行里了，不好看
+//        log(e);
+//        log(caught.stack);
+//    }
+//}
+
 const updateListPath = files.join(files.join(files.cwd(), "update"), "updateList.json");
 
 function readUpdateList() {
@@ -28,7 +39,7 @@ function readUpdateList() {
             toastLog("文件数据列表文件不存在");
         }
     } catch (e) {
-        logException(e);
+        log(e);
         toastLog("读取文件数据列表时出错");
     }
 }
@@ -61,16 +72,6 @@ function getCurrentVersion() {
 const Name = "AutoBattle";
 const version = getCurrentVersion();
 const appName = Name + " v" + version;
-
-// 捕获异常时打log记录详细的调用栈
-function logException(e) {
-    try { throw e; } catch (caught) {
-        Error.captureStackTrace(caught, logException);
-        //log(e, caught.stack); //输出挤在一行里了，不好看
-        log(e);
-        log(caught.stack);
-    }
-}
 
 var floatUI = require('floatUI.js');
 
@@ -767,7 +768,7 @@ if (!$floaty.checkPermission()) {
         });
     } catch (e) {
         failed = true;
-        logException(e);
+        log(e);
     }
     if (failed) {
         failed = false;
@@ -776,7 +777,7 @@ if (!$floaty.checkPermission()) {
             $floaty.requestPermission();
         } catch (e) {
             failed = true;
-            logException(e);
+            log(e);
         }
     }
     if (failed) {
@@ -1192,7 +1193,7 @@ function downloadUpdateListJSON(specifiedVersionName) {
             toastLog("下载文件数据列表失败\n"+resp.statusCode+" "+resp.statusMessage);
         }
     } catch (e) {
-        logException(e);
+        log(e);
         toastLog("下载文件数据列表失败");
     }
 }
@@ -1208,7 +1209,7 @@ function checkFile(fileName, fileHash) {
     try {
         fileBytes = files.readBytes(filePath);
     } catch (e) {
-        logException(e);
+        log(e);
         log("读取文件时出错 ["+fileName+"]");
         return false;
     }
@@ -1319,7 +1320,7 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
                 log("下载文件 ["+item.src+"] 失败\n"+resp.statusCode+" "+resp.statusMessage);
             }
         } catch (e) {
-            logException(e);
+            log(e);
             log("下载文件 ["+item.src+"] 出错");
         }
     });
@@ -1348,7 +1349,7 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
                 item.isWritten = false;
             }
         } catch (e) {
-            logException(e);
+            log(e);
             log("写入文件时出错 ["+item.src+"]");
             item.isWritten = false;
         }
