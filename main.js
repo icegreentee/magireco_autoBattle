@@ -1303,8 +1303,8 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
     toastLog("开始下载文件数据以供修复...");
 
     corruptOrMissingFileList.forEach((item) => {
-        log("下载文件 ["+item.src+"]");
-        try {
+        if (item.dataBytes == null) try {
+            log("下载文件 ["+item.src+"]");
             let resp = http.get(getDownloadURLBase(specifiedVersionName)+"/"+(item.origFileName != null ? item.origFileName : item.src));
             if (resp.statusCode == 200) {
                 let downloadedBytes = resp.body.bytes();
