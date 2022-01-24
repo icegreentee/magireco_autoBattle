@@ -13,15 +13,44 @@ importClass(com.stardust[deObStr("cwvqlu")].core.ui.inflater.util.Ids)
 importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
-var Name = "AutoBattle";
-var version = "6.0.7";
-var appName = Name + " v" + version;
-
-//注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
+//返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
     if (conf) return conf.versionName;
 }
+
+//返回在线更新后的版本，如果没有project-updated.json则返回null
+const projectUpdatedJsonPath = files.join(files.cwd(), "project-updated.json");
+function getUpdatedVersion() {
+    if (!files.exists(projectUpdatedJsonPath) || !files.isFile(projectUpdatedJsonPath)) {
+        return null;
+    }
+
+    try {
+        let projectUpdatedJSON = files.read(projectUpdatedJsonPath);
+        let projectUpdatedObj = JSON.parse(projectUpdatedJSON);
+        if (projectUpdatedObj != null && typeof projectUpdatedObj.versionName === "string") {
+            return projectUpdatedObj.versionName;
+        }
+    } catch (e) {
+        log("读取或解析project-upated.json时出错");
+    }
+
+    return null;
+}
+
+function getCurrentVersion() {
+    let updatedVersion = getUpdatedVersion();
+    if (updatedVersion != null) {
+        return updatedVersion;
+    } else {
+        return getProjectVersion();
+    }
+}
+
+const Name = "AutoBattle";
+const version = getCurrentVersion();
+const appName = Name + " v" + version;
 
 // 捕获异常时打log记录详细的调用栈
 function logException(e) {
@@ -400,6 +429,9 @@ ui.emitter.on("create_options_menu", menu => {
     item = menu.add("查看日志");
     item.setIcon(getTintDrawable("ic_assignment_black_48dp", colors.WHITE));
     item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item = menu.add("检查文件数据");
+    item.setIcon(getTintDrawable("ic_find_in_page_black_48dp", colors.WHITE));
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
     item = menu.add("魔纪百科");
     item.setIcon(getTintDrawable("ic_book_black_48dp", colors.WHITE));
     item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
@@ -569,6 +601,9 @@ ui.emitter.on("options_item_selected", (e, item) => {
             break;
         case "查看日志":
             app.startActivity("console")
+            break;
+        case "检查文件数据":
+            threads.start(function () {checkAgainstUpdateListAndFix(true);});
             break;
         case "魔纪百科":
             app.openUrl("https://magireco.moe/");
@@ -988,6 +1023,7 @@ ui["task_paused_button"].setOnClickListener(new android.view.View.OnClickListene
 //版本获取
 var latestVersionName = null;
 var refreshUpdateStatus = sync(function () {
+    var isUpdateAvailable = false;
     http.__okhttp__.setTimeout(5000);
     try {
         let res = null;
@@ -1024,6 +1060,7 @@ var refreshUpdateStatus = sync(function () {
                     ui.versionMsg_vertical.setVisibility(View.GONE);
                 });
             } else {
+                isUpdateAvailable = true;
                 ui.run(function () {
                     ui.versionMsg.setText("最新版本为" + latestVersionName + ",下拉进行更新")
                     ui.versionMsg.setTextColor(colors.RED)
@@ -1038,8 +1075,15 @@ var refreshUpdateStatus = sync(function () {
             ui.versionMsg_vertical.setVisibility(View.VISIBLE);
         })
     }
+    //检查当前版本的文件数据
+    if (!isUpdateAvailable) checkAgainstUpdateListAndFix();
 });
-threads.start(function () {refreshUpdateStatus();});
+threads.start(function () {
+    //绕开CwvqLU 9.1.0版上的奇怪假死问题，refreshUpdateStatus里的ui.run貌似必须等到对悬浮窗的Java反射操作完成后再进行，否则会假死
+    floatUI.floatyHangWorkaroundLock.lock();
+    refreshUpdateStatus();
+    floatUI.floatyHangWorkaroundLock.unlock();
+});
 
 //版本更新
 var updateRestartPending = false;
@@ -1082,6 +1126,264 @@ var toUpdate = sync(function () {
         toastLog("请求超时，可再一次尝试")
     } finally {
         ui.run(function() {ui.swipe.setRefreshing(false);});
+    }
+});
+
+//检查或下载文件数据
+const downloadURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@"+version;
+//const downloadURLBase = "http://127.0.0.1:9090" //用于调试，从本地gen.js开发服务器下载文件
+const updateListURL = downloadURLBase+"/update/updateList.json";
+const updateListPath = files.join(files.cwd(), "update/updateList.json");
+
+function downloadUpdateListJSON() {
+    toastLog("正在下载文件数据列表...");
+    try {
+        let resp = http.get(updateListURL);
+        if (resp.statusCode == 200) {
+            toastLog("已下载文件数据列表");
+
+            let result = resp.body.string();
+
+            files.ensureDir(updateListPath);
+
+            if (files.exists(updateListPath) && files.isEmptyDir(updateListPath)) {
+                log("为了写入文件数据列表而删除占位的空目录");
+                files.remove(updateListPath);
+            }
+
+            if (!files.exists(updateListPath) || files.isFile(updateListPath)) {
+                files.write(updateListPath, result);
+                log("写入文件数据列表到文件完成");
+            } else {
+                toastLog("可能被非空目录占位，无法写入文件数据列表到文件");
+            }
+            return result;
+        } else {
+            toastLog("下载文件数据列表失败\n"+resp.statusCode+" "+resp.statusMessage);
+        }
+    } catch (e) {
+        logException(e);
+        toastLog("下载文件数据列表失败");
+    }
+}
+
+function readUpdateList() {
+    log("读取文件数据列表...");
+    try {
+        if (files.exists(updateListPath) && files.isFile(updateListPath)) {
+            let fileContent = files.read(updateListPath);
+            let result = JSON.parse(fileContent);
+            log("已读取文件数据列表");
+            return result;
+        } else {
+            toastLog("文件数据列表文件不存在");
+        }
+    } catch (e) {
+        logException(e);
+        toastLog("读取文件数据列表时出错");
+    }
+}
+
+function checkFile(fileName, fileHash) {
+    let filePath = files.join(files.cwd(), fileName);
+    if (!files.exists(filePath) || !files.isFile(filePath)) {
+        log("发现缺失的文件: ["+fileName+"]");
+        return false;
+    }
+
+    let fileBytes = null;
+    try {
+        fileBytes = files.readBytes(filePath);
+    } catch (e) {
+        logException(e);
+        log("读取文件时出错 ["+fileName+"]");
+        return false;
+    }
+
+    let actualFileHash = "sha256-"+$crypto.digest(fileBytes, "SHA-256", {input: "bytes", output: "base64"});
+    if (actualFileHash !== fileHash) {
+        log("发现哈希值校验不符的文件: ["+fileName+"]");
+        return false;
+    }
+
+    log("文件校验通过: ["+fileName+"]");
+    return true;
+}
+
+function findCorruptOrMissingFile() {
+    let updateListObj = null;
+
+    if (getUpdatedVersion() == null) {
+        log("没有project-updated.json，还不知道现在的版本号，先更新文件数据列表");
+        downloadUpdateListJSON();
+        updateListObj = readUpdateList();
+    } else {
+        updateListObj = readUpdateList();
+        if (updateListObj == null) {
+            log("文件数据列表不存在");
+            downloadUpdateListJSON();
+            updateListObj = readUpdateList();
+        } else if (updateListObj.versionName !== version) {
+            log("文件数据列表需要更新");
+            downloadUpdateListJSON();
+            updateListObj = readUpdateList();
+        }
+    }
+
+
+    if (updateListObj == null) {
+        toastLog("无法读取或下载文件数据列表");
+        return false;
+    }
+    if (getUpdatedVersion() != null && updateListObj.versionName != version) {
+        //如果没有project-updated.json，就不知道现在的版本号，这个时候直接认为updateList.json里的版本号就是现在的版本号
+        toastLog("下载到的文件数据列表版本不符");
+        return false;
+    }
+    if (updateListObj.fileRootNode == null || !Array.isArray(updateListObj.fileRootNode) || updateListObj.fileRootNode.length == 0) {
+        toastLog("下载到的文件数据列表不含有效文件信息");
+        return false;
+    }
+
+    let updateList = [];
+    function walkThrough(data) {
+      if (Array.isArray(data)) {
+        data.forEach((item) => walkThrough(item));
+      } else {
+        updateList.push(data);
+      }
+    }
+    walkThrough(updateListObj.fileRootNode);
+
+    let corruptOrMissingFileList = [];
+    updateList.forEach((item) => {
+        //覆写project.json会导致下次启动时文件被强制回滚
+        if (item.src === "project.json" || item.src === "/project.json" || item.src === "./project.json") {
+            item.origFileName = item.src;
+            item.src = item.src.replace("project.json", "project-updated.json");
+        }
+
+        //先检查project.json哈希值是否符合，如果符合就不加入corruptOrMissingFileList，也就不会被覆写
+        if (item.origFileName != null && checkFile(item.origFileName, item.integrity)) return;
+        //如果不符合，后面下载时会用project.json这个文件名，而写入时会用project-updated.json
+        //除了这个特例之外的其他一般文件也是直接检查即可
+        else if (checkFile(item.src, item.integrity)) return;
+
+        corruptOrMissingFileList.push(item);
+    });
+
+    log("发现 "+corruptOrMissingFileList.length+" 个文件丢失或损坏");
+    return corruptOrMissingFileList;
+}
+
+var fixFiles = sync(function (corruptOrMissingFileList) {
+    if (corruptOrMissingFileList == null || !Array.isArray(corruptOrMissingFileList) || corruptOrMissingFileList.length == 0) {
+        toastLog("未传入有效的损坏或丢失文件列表，无法继续进行修复");
+        return false;
+    }
+
+    if (corruptOrMissingFileList.length == 0) {
+        toastLog("传入了空的损坏或丢失文件列表，无法继续进行修复");
+        return false;
+    }
+
+    toastLog("开始下载文件数据以供修复...");
+
+    corruptOrMissingFileList.forEach((item) => {
+        log("下载文件 ["+item.src+"]");
+        try {
+            let resp = http.get(downloadURLBase+"/"+(item.origFileName != null ? item.origFileName : item.src));
+            if (resp.statusCode == 200) {
+                let downloadedBytes = resp.body.bytes();
+
+                let downloadedHash = "sha256-"+$crypto.digest(downloadedBytes, "SHA-256", {input: "bytes", output: "base64"});
+                if (downloadedHash !== item.integrity) {
+                    log("下载到的文件哈希值校验不符: ["+item.src+"]");
+                    return;
+                }
+
+                item.dataBytes = downloadedBytes;
+            } else {
+                log("下载文件 ["+item.src+"] 失败\n"+resp.statusCode+" "+resp.statusMessage);
+            }
+        } catch (e) {
+            logException(e);
+            log("下载文件 ["+item.src+"] 出错");
+        }
+    });
+
+    if (corruptOrMissingFileList.find((item) => item.dataBytes == null)) {
+        toastLog("有文件下载失败");
+        return false;
+    }
+
+    corruptOrMissingFileList.forEach((item) => {
+        let filePath = files.join(files.cwd(), item.src);
+        try {
+            files.ensureDir(filePath);
+
+            if (files.exists(filePath) && files.isEmptyDir(filePath)) {
+                log("删除空目录 ["+item.src+"]");
+                files.remove(filePath);
+            }
+
+            if (!files.exists(filePath) || files.isFile(filePath)) {
+                log("写入文件 ["+item.src+"]");
+                files.writeBytes(filePath, item.dataBytes);
+                item.isWritten = true;
+            } else {
+                log("可能被非空目录占位，无法写入文件 ["+item.src+"]");
+                item.isWritten = false;
+            }
+        } catch (e) {
+            logException(e);
+            log("写入文件时出错 ["+item.src+"]");
+            item.isWritten = false;
+        }
+    });
+
+    if (corruptOrMissingFileList.find((item) => !item.isWritten)) {
+        toastLog("有文件写入失败");
+        return false;
+    }
+
+    toastLog("文件数据更新完成\n即将重启app");
+
+    events.on("exit", function () {
+        app.launch(context.getPackageName());
+        toast("更新完毕");
+    });
+    updateRestartPending = true;
+    engines.stopAll();
+
+    return true;
+});
+
+var checkAgainstUpdateListAndFix = sync(function (showResult) {
+    let corruptOrMissingFileList = findCorruptOrMissingFile();
+    if (Array.isArray(corruptOrMissingFileList)) {
+        if (corruptOrMissingFileList.length > 0) {
+            ui.run(function () {
+                dialogs.confirm(
+                    "发现文件缺失或损坏",
+                    "检查发现有"+corruptOrMissingFileList.length+"个文件缺失或损坏，要尝试重新下载来修复么？"
+                ).then((value) => {
+                    if (value) {
+                        threads.start(function () {
+                            if (!fixFiles(corruptOrMissingFileList)) {
+                                toastLog("检查并修复文件时出错，请稍后重试");
+                            }
+                        });
+                    }
+                });
+            });
+        } else {
+            if (showResult) {
+                ui.run(function () {
+                    dialogs.alert("检查完成", "未发现有文件缺失或损坏");
+                });
+            }
+        }
     }
 });
 
