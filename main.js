@@ -1372,20 +1372,23 @@ var checkAgainstUpdateListAndFix = sync(function (showResult) {
     let specifiedVersionName = ret.versionName;
     if (Array.isArray(corruptOrMissingFileList)) {
         if (corruptOrMissingFileList.length > 0) {
-            ui.post(function () {
+            function promptRepair(textMsg) {ui.post(function () {
                 dialogs.confirm(
                     "发现文件缺失或损坏",
-                    "检查发现有"+corruptOrMissingFileList.length+"个文件缺失或损坏，要尝试重新下载来修复么？"
+                    textMsg
                 ).then((value) => {
                     if (value) {
                         threads.start(function () {
                             if (!fixFiles(corruptOrMissingFileList, specifiedVersionName)) {
-                                toastLog("检查并修复文件时出错，请稍后重试");
+                                promptRepair("下载或写入文件失败。要重试么？\n"
+                                +"一共有"+corruptOrMissingFileList.length+"个文件需要修复，\n"
+                                +"其中有"+corruptOrMissingFileList.filter((item) => item.dataBytes == null).length+"个文件需要重新下载。");
                             }
                         });
                     }
                 });
-            });
+            });}
+            promptRepair("检查发现有"+corruptOrMissingFileList.length+"个文件缺失或损坏，要尝试重新下载来修复么？");
         } else if (version !== specifiedVersionName) {
             //一般不会走到这里。所有文件验证通过时，用root权限手动删掉updateList.json后重启才会走到这里
             //这个时候脚本显示的版本仍然是老的，需要重启一次才能显示正确的版本
