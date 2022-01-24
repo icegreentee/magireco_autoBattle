@@ -36,11 +36,11 @@ function readUpdateList() {
             log("已读取文件数据列表");
             return result;
         } else {
-            toastLog("文件数据列表文件不存在");
+            log("文件数据列表文件不存在");
         }
     } catch (e) {
         log(e);
-        toastLog("读取文件数据列表时出错");
+        log("读取文件数据列表时出错");
     }
 }
 
@@ -1045,6 +1045,10 @@ function setVersionMsg(textMsg, color, isVisible) {
         ui.versionMsg_vertical.setVisibility(isVisible);
     })
 }
+function setVersionMsgLog(textMsg, color, isVisible) {
+    log(textMsg);
+    setVersionMsg(textMsg, color, isVisible);
+}
 function setVersionMsgToastLog(textMsg, color, isVisible) {
     toastLog(textMsg);
     setVersionMsg(textMsg, color, isVisible);
@@ -1076,9 +1080,9 @@ var refreshUpdateStatus = sync(function () {
                 log("从JSDelivr获取最新版本号"+latestVersionName);
             }
             if (parseInt(latestVersionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
-                setVersionMsgToastLog("当前无需更新", "#666666", false);
+                setVersionMsgLog("当前无需更新", "#666666", false);
             } else {
-                setVersionMsgToastLog("最新版本为" + latestVersionName + ",下拉进行更新", colors.RED, true);
+                setVersionMsgLog("最新版本为" + latestVersionName + ",下拉进行更新", colors.RED, true);
             }
         }
     } catch (e) {
@@ -1147,7 +1151,7 @@ var toUpdate = sync(function () {
                     });
                 });
                 if (responses.find((item) => item.httpResponse != null && item.httpResponse.statusCode != 200) == null) {
-                    setVersionMsgToastLog("更新已下载，写入文件并重启...", "#666666", true);
+                    setVersionMsgLog("更新已下载，写入文件并重启...", "#666666", true);
                     responses.forEach((item) => {
                         let writeToPath = files.join(files.cwd(), item.fileName);
                         let fileBytes = item.httpResponse.body.bytes();
@@ -1172,10 +1176,10 @@ var toUpdate = sync(function () {
 function downloadUpdateListJSON(specifiedVersionName) {
     try {
         let updateListURL = getDownloadURLBase(specifiedVersionName)+"/update/updateList.json";
-        toastLog("正在下载文件数据列表 ["+updateListURL+"]");
+        log("正在下载文件数据列表 ["+updateListURL+"]");
         let resp = http.get(updateListURL);
         if (resp.statusCode == 200) {
-            toastLog("已下载文件数据列表");
+            log("已下载文件数据列表");
 
             let result = resp.body.string();
 
@@ -1290,7 +1294,7 @@ function findCorruptOrMissingFile() {
         corruptOrMissingFileList.push(item);
     });
 
-    (corruptOrMissingFileList.length == 0 ? log : setVersionMsgToastLog)("发现 "+corruptOrMissingFileList.length+" 个文件丢失或损坏");
+    (corruptOrMissingFileList.length == 0 ? log : setVersionMsgLog)("发现 "+corruptOrMissingFileList.length+" 个文件丢失或损坏");
 
     return {
         versionName: updateListObj.versionName,
@@ -1313,7 +1317,7 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
         return false;
     }
 
-    setVersionMsgToastLog("开始下载文件数据以供修复...", "#666666");
+    setVersionMsgLog("开始下载文件数据以供修复...", "#666666");
 
     let downloadedCount = corruptOrMissingFileList.filter((item) => item.dataBytes != null).length;
     corruptOrMissingFileList.forEach((item) => {
@@ -1379,7 +1383,7 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
         return false;
     }
 
-    setVersionMsgToastLog("文件数据更新完成\n即将重启app", "#666666");
+    setVersionMsgLog("文件数据更新完成\n即将重启app", "#666666");
 
     restartApp();
 
