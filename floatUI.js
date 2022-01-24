@@ -87,6 +87,13 @@ var syncer = {
     }
 }
 
+// 为了解决报毒问题，AutoJS Pro V9 内测版 9.0.11-0 混淆了类名和activity名
+var lowestObVerCode = 9101100;
+var splashActivityName = "com.stardust.autojs.inrt.SplashActivity";
+if (parseInt(app.autojs.versionCode) >= lowestObVerCode) {
+    splashActivityName = context.getPackageName()+".SplashActivity";
+}
+
 function restartApp() {
     //重启本app，但因为进程没退出，所以无障碍服务应该还能保持启用；缺点是每重启一次貌似都会泄漏一点内存
     events.on("exit", function () {
@@ -1337,15 +1344,27 @@ floatUI.main = function () {
 
     //检查并申请root或adb权限
     getEUID = function (procStatusContent) {
-        let matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
+        let matched = null;
+
+        //shellcmd="id"
+        matched = procStatusContent.match(/^uid=\d+/);
+        if (matched != null) {
+            matched = matched[0].match(/\d+/);
+        }
+        if (matched != null) {
+            return parseInt(matched[0]);
+        }
+
+        //shellcmd="cat /proc/self/status"
+        matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
         if (matched != null) {
             matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
         }
         if (matched != null) {
             return parseInt(matched[0]);
-        } else {
-            return -1;
         }
+
+        return -1;
     }
     requestShellPrivilege = function () {
         if (limit.privilege) {
@@ -1353,19 +1372,23 @@ floatUI.main = function () {
             return limit.privilege;
         }
 
+        let euid = -1;
+
         let rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
 
-        let shellcmd = "cat /proc/self/status";
-        let result = null;
-        try {
-            result = shizukuShell(shellcmd);
-        } catch (e) {
-            result = {code: 1, result: "-1", err: ""};
-            logException(e);
-        }
-        let euid = -1;
-        if (result.code == 0) {
-            euid = getEUID(result.result);
+        const idshellcmds = ["id", "cat /proc/self/status"];
+
+        for (let shellcmd of idshellcmds) {
+            let result = null;
+            try {
+                result = shizukuShell(shellcmd);
+            } catch (e) {
+                result = {code: 1, result: "-1", err: ""};
+                logException(e);
+            }
+            if (result.code == 0) {
+                euid = getEUID(result.result);
+            }
             switch (euid) {
             case 0:
                 log("Shizuku有root权限");
@@ -1379,9 +1402,8 @@ floatUI.main = function () {
                 log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
                 limit.privilege = null;
             }
+            if (limit.privilege != null) return;
         }
-
-        if (limit.privilege != null) return;
 
         if (!files.isFile(rootMarkerPath)) {
             toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
@@ -1390,30 +1412,37 @@ floatUI.main = function () {
         } else {
             log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
         }
-        try {
-            result = rootShell(shellcmd);
-        } catch (e) {
-            logException(e);
-            result = {code: 1, result: "-1", err: ""};
-        }
-        euid = -1;
-        if (result.code == 0) euid = getEUID(result.result);
-        if (euid == 0) {
-            log("直接获取root权限成功");
-            limit.privilege = {shizuku: null};
-            files.create(rootMarkerPath);
-        } else {
-            toastLog("直接获取root权限失败！");
-            sleep(2500);
-            limit.privilege = null;
-            files.remove(rootMarkerPath);
-            if (device.sdkInt >= 23) {
-                toastLog("请下载安装Shizuku,并按照说明启动它\n然后在Shizuku中给本应用授权");
-                $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
-            } else {
-                toastLog("Android版本低于6，Shizuku不能使用最新版\n请安装并启动Shizuku 3.6.1，并给本应用授权");
-                $app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
+
+        for (let shellcmd of idshellcmds) {
+            let result = null;
+            try {
+                result = rootShell(shellcmd);
+            } catch (e) {
+                logException(e);
+                result = {code: 1, result: "-1", err: ""};
             }
+            euid = -1;
+            if (result.code == 0) euid = getEUID(result.result);
+            if (euid == 0) {
+                log("直接获取root权限成功");
+                limit.privilege = {shizuku: null};
+                files.create(rootMarkerPath);
+                return limit.privilege;
+            }
+        }
+
+        toastLog("直接获取root权限失败！");
+        sleep(2500);
+        limit.privilege = null;
+        files.remove(rootMarkerPath);
+        if (device.sdkInt >= 23) {
+            toastLog("请下载安装Shizuku,并按照说明启动它\n然后在Shizuku中给本应用授权");
+            $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
+        } else {
+            toastLog("Android版本低于6，Shizuku已不再支持\n必须直接授予root权限，否则无法使用本app");
+            //AutoJS版本更新后，Shizuku 3.6.1就不能识别了，也就无法授权
+            //toastLog("Android版本低于6，Shizuku不能使用最新版\n请安装并启动Shizuku 3.6.1，并给本应用授权");
+            //$app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
         }
 
         return limit.privilege;
@@ -5483,7 +5512,7 @@ function algo_init() {
             +"\n        killall "+name+" || echo -ne \"[killall failed]\";"
             +"\n        pkill "+name+" || echo -ne \"[pkill failed]\";"
             +"\n        echo -ne \"Done, restarting AutoJS ... \";"
-            +"\n        am start -n \""+context.getPackageName()+"/com.stardust.autojs.inrt.SplashActivity\" || echo -ne \"[am start failed]\";"
+            +"\n        am start -n \""+context.getPackageName()+"/"+splashActivityName+"\" || echo -ne \"[am start failed]\";"
             +"\n        echo -ne \"Done.\\n\";"
             +"\n    fi;"
             +"\ndone &"
@@ -7242,7 +7271,8 @@ function algo_init() {
                             //杜鹃花型活动
                             if (dialogs.confirm("警告",
                                    "看上去你已进入杜鹃花型活动的剧情地图。\n"
-                                   +"请问你在本次进入剧情地图后,有没有把想刷的那一关重新通关一次？\n"
+                                   +"请问在本次进入剧情地图后,你刚刚有没有把想刷的那一关重新通关一次？\n"
+                                   +"即使之前已经通关过不止一次,只要你退出过(或者拖动过)游戏地图,现在也仍然需要先手动再通关一次。\n"
                                    +"别着急,耐心听我说完。魔纪这个游戏有个特点:\n"
                                    +"杜鹃花型活动在打完一局后,剧情地图会发生\"归中\"移动,导致一个严重的问题:\n"
                                    +"因为周回脚本目前并没有识图能力,只能闭着眼按照之前记录下来的坐标点击选关,\n"
@@ -7274,7 +7304,7 @@ function algo_init() {
                         } else {
                             alert("警告",
                                 "马上会提示你点击想刷的关卡。\n"
-                                +"注意！关卡列表在完成一轮战斗后可能发生移动(一般是刚打完的关卡移动到列表顶端,不保证没有例外),\n"
+                                +"注意！关卡列表在完成一轮战斗后可能发生移动(一般是刚打完的那个关卡在战斗结束后会移动到列表顶端,不保证没有例外),\n"
                                 +"因为目前周回脚本没有识图能力,\n"
                                 +"所以这可能导致从第二轮周回开始,点击选关时就会错位,点到空白处,或者点到其他不想刷的关卡上。\n"
                                 +"\n"
@@ -11556,9 +11586,11 @@ function killBackground(packageName) {
 function backtoMain() {
     var it = new Intent();
     var name = context.getPackageName();
-    if (name != "org.autojs.autojspro")
-        it.setClassName(name, "com.stardust.autojs.inrt.SplashActivity");
-    else it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+    if (name == "org.autojs.autojspro") {
+        it.setClassName(name, "com.stardust.autojs.execution.ScriptExecuteActivity");
+    } else {
+        it.setClassName(name, splashActivityName);
+    }
     it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
     app.startActivity(it);
     floatUI.refreshUI();
