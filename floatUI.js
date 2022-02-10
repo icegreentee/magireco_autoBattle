@@ -290,6 +290,33 @@ floatUI.presetOpLists = [
             +"},\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\""
             +"}}}]}",
     },
+    {
+        name: "国服[由比鹤乃篇①]活动剧情",
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2022-2-10"
+            +"_22-44-10\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
+            +"BRANCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":1"
+            +"620,\"y\":549,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepT"
+            +"ime\":3000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182"
+            +",\"pos\":\"top\"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\""
+            +"y\":1062,\"pos\":\"top\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":"
+            +"2000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"p"
+            +"os\":\"top\"},{\"x\":1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"a"
+            +"ction\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\""
+            +"},{\"x\":1092,\"y\":397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"s"
+            +"wipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":11"
+            +"40,\"y\":406,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"sw"
+            +"ipe\":{\"points\":[{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379"
+            +",\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"click\",\"click\":{\"poi"
+            +"nt\":{\"x\":1092,\"y\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep"
+            +"\":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\":"
+            +"\"剧情副本\",\"boundsCenter\":{\"x\":305,\"y\":467,\"pos\":\"top\"},\"found\":{\"ki"
+            +"ll\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\":{"
+            +"\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action\":"
+            +"\"checkText\",\"checkText\":{\"text\":\"由比鹤乃篇①\",\"boundsCenter\":{\"x\":298"
+            +",\"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false,\""
+            +"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":fals"
+            +"e,\"nextAction\":\"fail\"}}}]}",
+    },
 ];
 
 //当前正在运行的线程
@@ -7863,6 +7890,25 @@ function algo_init() {
         return;
     }
 
+    //有些模拟器无法截屏，返回的截屏数据是空白
+    function isImageBlank(img) {
+        if ([colors.BLACK, colors.WHITE].find((c) => images.findColor(img, c, {threshold: 254}) == null))
+            return true;
+        else
+            return false;
+    }
+    // TODO 这个函数目前只在root权限截屏种使用，但内部也没检测是不是root权限截屏
+    var isRootScreencapBlank = null;
+    function testRootScreencapBlank() {
+        if (isRootScreencapBlank == null) isRootScreencapBlank = isImageBlank(compatCaptureScreen());
+        if (isRootScreencapBlank) {
+            toastLog("截屏结果貌似是空白的，停止运行\n请尝试换一个模拟器");
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
     var needScreenCaptureFix = false;
     var needResizeWorkaround = null;
@@ -7888,15 +7934,7 @@ function algo_init() {
                 needScreenCaptureFix = true;
             }
             log("检测是否返回了空白图像...");
-            let isBlank = false;
-            for (let c of [colors.BLACK, colors.WHITE]) {
-                let p = images.findColor(screenshot, c, {threshold: 254});
-                if (p == null) {
-                    isBlank = true;
-                    break;
-                }
-            }
-            if (isBlank) {
+            if (isImageBlank(screenshot)) {
                 toastLog("录屏API似乎返回了空白图像,\n脚本将停止运行。\n请使用root或adb权限截屏");
                 throw new Error("initializeScreenCaptureFix detected blank screenshot");
             } else {
@@ -10301,6 +10339,7 @@ function algo_init() {
                 log("setupBinary失败,3秒后重试...");
                 sleep(3000);
             }
+            if (testRootScreencapBlank()) return;
         } else if (limit.useCVAutoBattle && (!limit.rootScreencap)) {
             startScreenCapture();
         }
@@ -10966,6 +11005,7 @@ function algo_init() {
                 log("setupBinary失败,3秒后重试...");
                 sleep(3000);
             }
+            if (testRootScreencapBlank()) return;
         } else if (limit.useCVAutoBattle && (!limit.rootScreencap)) {
             startScreenCapture();
         }

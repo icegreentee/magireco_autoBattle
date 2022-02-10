@@ -14,6 +14,17 @@ importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
 
+// 捕获异常时打log记录详细的调用栈
+// 貌似（在处理http.get下载失败时？）会导致崩溃，注释掉
+//function logException(e) {
+//    try { throw e; } catch (caught) {
+//        Error.captureStackTrace(caught, logException);
+//        //log(e, caught.stack); //输出挤在一行里了，不好看
+//        log(e);
+//        log(caught.stack);
+//    }
+//}
+
 const updateListPath = files.join(files.join(files.cwd(), "update"), "updateList.json");
 
 function readUpdateList() {
@@ -25,11 +36,11 @@ function readUpdateList() {
             log("已读取文件数据列表");
             return result;
         } else {
-            toastLog("文件数据列表文件不存在");
+            log("文件数据列表文件不存在");
         }
     } catch (e) {
-        logException(e);
-        toastLog("读取文件数据列表时出错");
+        log(e);
+        log("读取文件数据列表时出错");
     }
 }
 
@@ -60,17 +71,7 @@ function getCurrentVersion() {
 
 const Name = "AutoBattle";
 const version = getCurrentVersion();
-const appName = Name + " v" + version;
-
-// 捕获异常时打log记录详细的调用栈
-function logException(e) {
-    try { throw e; } catch (caught) {
-        Error.captureStackTrace(caught, logException);
-        //log(e, caught.stack); //输出挤在一行里了，不好看
-        log(e);
-        log(caught.stack);
-    }
-}
+const appName = getUpdatedVersion() == null ? Name : Name + " v" + version;
 
 var floatUI = require('floatUI.js');
 
@@ -767,7 +768,7 @@ if (!$floaty.checkPermission()) {
         });
     } catch (e) {
         failed = true;
-        logException(e);
+        log(e);
     }
     if (failed) {
         failed = false;
@@ -776,7 +777,7 @@ if (!$floaty.checkPermission()) {
             $floaty.requestPermission();
         } catch (e) {
             failed = true;
-            logException(e);
+            log(e);
         }
     }
     if (failed) {
@@ -1031,6 +1032,27 @@ ui["task_paused_button"].setOnClickListener(new android.view.View.OnClickListene
 }));
 
 //版本获取
+function setVersionMsg(textMsg, color, isVisible) {
+    if (color == null) color = colors.RED;
+    if (isVisible == null) isVisible = View.VISIBLE;
+
+    if (typeof color === "string") color = colors.parseColor(color);
+    if (typeof isVisible === "boolean") isVisible = isVisible ? View.VISIBLE : View.GONE;
+
+    ui.run(function () {
+        ui.versionMsg.setText(textMsg);
+        ui.versionMsg.setTextColor(color);
+        ui.versionMsg_vertical.setVisibility(isVisible);
+    })
+}
+function setVersionMsgLog(textMsg, color, isVisible) {
+    log(textMsg);
+    setVersionMsg(textMsg, color, isVisible);
+}
+function setVersionMsgToastLog(textMsg, color, isVisible) {
+    toastLog(textMsg);
+    setVersionMsg(textMsg, color, isVisible);
+}
 var latestVersionName = null;
 var refreshUpdateStatus = sync(function () {
     http.__okhttp__.setTimeout(5000);
@@ -1046,12 +1068,7 @@ var refreshUpdateStatus = sync(function () {
             res = http.get("https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@latest/project.json");
         }
         if (res.statusCode != 200) {
-            log("请求失败: " + res.statusCode + " " + res.statusMessage);
-            ui.run(function () {
-                ui.versionMsg.setText("更新信息获取失败 "+res.statusCode+" "+res.statusMessage)
-                ui.versionMsg.setTextColor(colors.parseColor("#666666"))
-                ui.versionMsg_vertical.setVisibility(View.VISIBLE);
-            })
+            setVersionMsgToastLog("更新信息获取失败 "+res.statusCode+" "+res.statusMessage, "#666666", true);
         } else {
             let resJson = res.body.json();
             latestVersionName = null;
@@ -1063,25 +1080,13 @@ var refreshUpdateStatus = sync(function () {
                 log("从JSDelivr获取最新版本号"+latestVersionName);
             }
             if (parseInt(latestVersionName.split(".").join("")) <= parseInt(version.split(".").join(""))) {
-                ui.run(function () {
-                    ui.versionMsg.setText("当前无需更新")
-                    ui.versionMsg.setTextColor(colors.parseColor("#666666"))
-                    ui.versionMsg_vertical.setVisibility(View.GONE);
-                });
+                setVersionMsgLog("当前无需更新", "#666666", false);
             } else {
-                ui.run(function () {
-                    ui.versionMsg.setText("最新版本为" + latestVersionName + ",下拉进行更新")
-                    ui.versionMsg.setTextColor(colors.RED)
-                    ui.versionMsg_vertical.setVisibility(View.VISIBLE);
-                });
+                setVersionMsgLog("最新版本为" + latestVersionName + ",下拉进行更新", colors.RED, true);
             }
         }
     } catch (e) {
-        ui.run(function () {
-            ui.versionMsg.setText("获取更新信息时出错")
-            ui.versionMsg.setTextColor(colors.parseColor("#666666"))
-            ui.versionMsg_vertical.setVisibility(View.VISIBLE);
-        })
+        setVersionMsgToastLog("获取更新信息时出错", "#666666", false);
     }
     //检查当前版本的文件数据
     checkAgainstUpdateListAndFix();
@@ -1134,13 +1139,19 @@ var toUpdate = sync(function () {
                 let essentialFileList = ["update/updateList.json", "main.js", "floatUI.js"];
                 let responses = [];
                 essentialFileList.forEach((item) => {
+                    let resp = null;
+                    try {
+                        resp = http.get(getDownloadURLBase(latestVersionName)+"/"+item);
+                    } catch (e) {
+                        resp = null;
+                    }
                     responses.push({
                         fileName: item,
-                        httpResponse: http.get(getDownloadURLBase(latestVersionName)+"/"+item),
+                        httpResponse: resp,
                     });
                 });
-                if (responses.find((item) => item.httpResponse.statusCode != 200) == null) {
-                    toastLog("更新已下载，写入文件并重启...");
+                if (responses.find((item) => item.httpResponse != null && item.httpResponse.statusCode != 200) == null) {
+                    setVersionMsgLog("更新已下载，写入文件并重启...", "#666666", true);
                     responses.forEach((item) => {
                         let writeToPath = files.join(files.cwd(), item.fileName);
                         let fileBytes = item.httpResponse.body.bytes();
@@ -1148,14 +1159,14 @@ var toUpdate = sync(function () {
                     });
                     restartApp();
                 } else {
-                    toast("脚本获取失败！这可能是您的网络原因造成的，建议您检查网络后再重新运行软件吧\nHTTP状态码:" + main_script.statusMessage, "," + float_script.statusMessage);
+                    toast("有文件下载失败，请稍后重试");
                 }
             } else {
                 toastLog("无需更新");
             }
         }
     } catch (error) {
-        toastLog("请求超时，可再一次尝试")
+        toastLog("更新过程出错");
     } finally {
         ui.run(function() {ui.swipe.setRefreshing(false);});
     }
@@ -1165,10 +1176,10 @@ var toUpdate = sync(function () {
 function downloadUpdateListJSON(specifiedVersionName) {
     try {
         let updateListURL = getDownloadURLBase(specifiedVersionName)+"/update/updateList.json";
-        toastLog("正在下载文件数据列表 ["+updateListURL+"]");
+        log("正在下载文件数据列表 ["+updateListURL+"]");
         let resp = http.get(updateListURL);
         if (resp.statusCode == 200) {
-            toastLog("已下载文件数据列表");
+            log("已下载文件数据列表");
 
             let result = resp.body.string();
 
@@ -1189,11 +1200,11 @@ function downloadUpdateListJSON(specifiedVersionName) {
                 toastLog("可能被非空目录占位，无法写入文件数据列表到文件");
             }
         } else {
-            toastLog("下载文件数据列表失败\n"+resp.statusCode+" "+resp.statusMessage);
+            setVersionMsgToastLog("下载文件数据列表失败\n"+resp.statusCode+" "+resp.statusMessage);
         }
     } catch (e) {
-        logException(e);
-        toastLog("下载文件数据列表失败");
+        log(e);
+        setVersionMsgToastLog("下载文件数据列表失败");
     }
 }
 
@@ -1208,7 +1219,7 @@ function checkFile(fileName, fileHash) {
     try {
         fileBytes = files.readBytes(filePath);
     } catch (e) {
-        logException(e);
+        log(e);
         log("读取文件时出错 ["+fileName+"]");
         return false;
     }
@@ -1224,10 +1235,12 @@ function checkFile(fileName, fileHash) {
 }
 
 function findCorruptOrMissingFile() {
-    //从6.1.1开始修正在线更新认不清版本的bug
-    if (parseInt(version.split(".").join("")) < parseInt("6.1.1".split(".").join(""))) {
-        log("版本低于6.1.1，先更新文件数据列表到6.1.1");
-        if (downloadUpdateListJSON("6.1.1") == null) {
+    //从6.1.2开始修正在线更新认不清版本的bug
+    var specifiedVersionName = version;
+    if (parseInt(version.split(".").join("")) < parseInt("6.1.2".split(".").join(""))) {
+        specifiedVersionName = "6.1.2";
+        log("版本低于6.1.2，先更新文件数据列表到6.1.2");
+        if (downloadUpdateListJSON(specifiedVersionName) == null) {
             //如果下载或写入不成功
             ui.post(function () {dialogs.alert("警告", "下载文件数据列表失败，无法检查文件数据，不能确保文件数据无误");});
             return false;
@@ -1235,6 +1248,11 @@ function findCorruptOrMissingFile() {
     }
 
     let updateListObj = readUpdateList();
+
+    if (updateListObj == null) {
+        downloadUpdateListJSON(specifiedVersionName);
+        updateListObj = readUpdateList();
+    }
 
     if (updateListObj == null) {
         toastLog("无法读取或下载文件数据列表");
@@ -1276,7 +1294,7 @@ function findCorruptOrMissingFile() {
         corruptOrMissingFileList.push(item);
     });
 
-    log("发现 "+corruptOrMissingFileList.length+" 个文件丢失或损坏");
+    (corruptOrMissingFileList.length == 0 ? log : setVersionMsgLog)("发现 "+corruptOrMissingFileList.length+" 个文件丢失或损坏");
 
     return {
         versionName: updateListObj.versionName,
@@ -1299,11 +1317,12 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
         return false;
     }
 
-    toastLog("开始下载文件数据以供修复...");
+    setVersionMsgLog("开始下载文件数据以供修复...", "#666666");
 
+    let downloadedCount = corruptOrMissingFileList.filter((item) => item.dataBytes != null).length;
     corruptOrMissingFileList.forEach((item) => {
-        log("下载文件 ["+item.src+"]");
-        try {
+        if (item.dataBytes == null) try {
+            log("下载文件 ["+item.src+"]");
             let resp = http.get(getDownloadURLBase(specifiedVersionName)+"/"+(item.origFileName != null ? item.origFileName : item.src));
             if (resp.statusCode == 200) {
                 let downloadedBytes = resp.body.bytes();
@@ -1315,20 +1334,23 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
                 }
 
                 item.dataBytes = downloadedBytes;
+                downloadedCount++;
+                setVersionMsg("已下载文件 "+downloadedCount+"/"+corruptOrMissingFileList.length+" 个", "#666666");
             } else {
                 log("下载文件 ["+item.src+"] 失败\n"+resp.statusCode+" "+resp.statusMessage);
             }
         } catch (e) {
-            logException(e);
+            log(e);
             log("下载文件 ["+item.src+"] 出错");
         }
     });
 
     if (corruptOrMissingFileList.find((item) => item.dataBytes == null)) {
-        toastLog("有文件下载失败");
+        setVersionMsgToastLog("有"+(corruptOrMissingFileList.length-downloadedCount)+"个文件下载失败");
         return false;
     }
 
+    let writtenCount = 0;
     corruptOrMissingFileList.forEach((item) => {
         let filePath = files.join(files.cwd(), item.src);
         try {
@@ -1343,23 +1365,25 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
                 log("写入文件 ["+item.src+"]");
                 files.writeBytes(filePath, item.dataBytes);
                 item.isWritten = true;
+                writtenCount++;
+                setVersionMsg("已写入文件 "+writtenCount+"/"+corruptOrMissingFileList.length+" 个", "#666666");
             } else {
                 log("可能被非空目录占位，无法写入文件 ["+item.src+"]");
                 item.isWritten = false;
             }
         } catch (e) {
-            logException(e);
+            log(e);
             log("写入文件时出错 ["+item.src+"]");
             item.isWritten = false;
         }
     });
 
     if (corruptOrMissingFileList.find((item) => !item.isWritten)) {
-        toastLog("有文件写入失败");
+        setVersionMsgToastLog("有"+(corruptOrMissingFileList.length-writtenCount)+"个文件写入失败");
         return false;
     }
 
-    toastLog("文件数据更新完成\n即将重启app");
+    setVersionMsgLog("文件数据更新完成\n即将重启app", "#666666");
 
     restartApp();
 
@@ -1372,20 +1396,23 @@ var checkAgainstUpdateListAndFix = sync(function (showResult) {
     let specifiedVersionName = ret.versionName;
     if (Array.isArray(corruptOrMissingFileList)) {
         if (corruptOrMissingFileList.length > 0) {
-            ui.post(function () {
+            function promptRepair(textMsg) {ui.post(function () {
                 dialogs.confirm(
                     "发现文件缺失或损坏",
-                    "检查发现有"+corruptOrMissingFileList.length+"个文件缺失或损坏，要尝试重新下载来修复么？"
+                    textMsg
                 ).then((value) => {
                     if (value) {
                         threads.start(function () {
                             if (!fixFiles(corruptOrMissingFileList, specifiedVersionName)) {
-                                toastLog("检查并修复文件时出错，请稍后重试");
+                                promptRepair("下载或写入文件失败。要重试么？\n"
+                                +"一共有"+corruptOrMissingFileList.length+"个文件需要修复，\n"
+                                +"其中有"+corruptOrMissingFileList.filter((item) => item.dataBytes == null).length+"个文件需要重新下载。");
                             }
                         });
                     }
                 });
-            });
+            });}
+            promptRepair("检查发现有"+corruptOrMissingFileList.length+"个文件缺失或损坏，要尝试重新下载来修复么？");
         } else if (version !== specifiedVersionName) {
             //一般不会走到这里。所有文件验证通过时，用root权限手动删掉updateList.json后重启才会走到这里
             //这个时候脚本显示的版本仍然是老的，需要重启一次才能显示正确的版本
