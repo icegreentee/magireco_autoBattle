@@ -290,6 +290,33 @@ floatUI.presetOpLists = [
             +"},\"notFound\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\""
             +"}}}]}",
     },
+    {
+        name: "国服[由比鹤乃篇①]活动剧情",
+        content: "{\"package_name\":\"com.bilibili.madoka.bilibili\",\"date\":\"2022-2-10"
+            +"_22-44-10\",\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventType"
+            +"BRANCH\":false,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":1"
+            +"620,\"y\":549,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepT"
+            +"ime\":3000}},{\"action\":\"click\",\"click\":{\"point\":{\"x\":1008,\"y\":182"
+            +",\"pos\":\"top\"}}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1144,\""
+            +"y\":1062,\"pos\":\"top\"},{\"x\":1134,\"y\":454,\"pos\":\"top\"}],\"duration\":"
+            +"2000}},{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1137,\"y\":994,\"p"
+            +"os\":\"top\"},{\"x\":1139,\"y\":400,\"pos\":\"top\"}],\"duration\":2000}},{\"a"
+            +"ction\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1111,\"y\":1045,\"pos\":\"top\""
+            +"},{\"x\":1092,\"y\":397,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"s"
+            +"wipe\",\"swipe\":{\"points\":[{\"x\":1144,\"y\":1048,\"pos\":\"top\"},{\"x\":11"
+            +"40,\"y\":406,\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"swipe\",\"sw"
+            +"ipe\":{\"points\":[{\"x\":1107,\"y\":715,\"pos\":\"top\"},{\"x\":1103,\"y\":379"
+            +",\"pos\":\"top\"}],\"duration\":2000}},{\"action\":\"click\",\"click\":{\"poi"
+            +"nt\":{\"x\":1092,\"y\":775,\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep"
+            +"\":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\":"
+            +"\"剧情副本\",\"boundsCenter\":{\"x\":305,\"y\":467,\"pos\":\"top\"},\"found\":{\"ki"
+            +"ll\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\":{"
+            +"\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action\":"
+            +"\"checkText\",\"checkText\":{\"text\":\"由比鹤乃篇①\",\"boundsCenter\":{\"x\":298"
+            +",\"y\":515,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false,\""
+            +"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript\":fals"
+            +"e,\"nextAction\":\"fail\"}}}]}",
+    },
 ];
 
 //当前正在运行的线程
