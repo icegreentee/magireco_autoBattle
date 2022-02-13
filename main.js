@@ -1100,15 +1100,16 @@ threads.start(function () {
 
 //版本更新
 const jsdelivrURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle";
+const giteeURLBase = "https://gitee.com/segfault-bilibili/magireco_auto-battle/raw/";
 const localURLBase = "http://127.0.0.1:9090" //用于调试，从本地gen.js开发服务器下载文件
 
 var isDevMode = false;
 //isDevMode = true;
 
-function getDownloadURLBase(specifiedVersionName) {
+function getDownloadURLBase(specifiedVersionName, useGitee) {
     if (specifiedVersionName == null) specifiedVersionName = "latest";
     if (isDevMode) return localURLBase;
-    else return jsdelivrURLBase+"@"+specifiedVersionName;
+    else return (useGitee?giteeURLBase+"/":jsdelivrURLBase+"@")+specifiedVersionName;
 }
 
 var updateRestartPending = false;
@@ -1140,10 +1141,13 @@ var toUpdate = sync(function () {
                 let responses = [];
                 essentialFileList.forEach((item) => {
                     let resp = null;
-                    try {
-                        resp = http.get(getDownloadURLBase(latestVersionName)+"/"+item);
-                    } catch (e) {
-                        resp = null;
+                    for (let useGitee of [false, true]) {
+                        try {
+                            resp = http.get(getDownloadURLBase(latestVersionName, useGitee)+"/"+item);
+                            if (resp != null && resp.statusCode == 200) break;
+                        } catch (e) {
+                            resp = null;
+                        }
                     }
                     responses.push({
                         fileName: item,
@@ -1173,9 +1177,9 @@ var toUpdate = sync(function () {
 });
 
 //检查或下载文件数据
-function downloadUpdateListJSON(specifiedVersionName) {
+function downloadUpdateListJSON(specifiedVersionName, useGitee) {
     try {
-        let updateListURL = getDownloadURLBase(specifiedVersionName)+"/update/updateList.json";
+        let updateListURL = getDownloadURLBase(specifiedVersionName, useGitee)+"/update/updateList.json";
         log("正在下载文件数据列表 ["+updateListURL+"]");
         let resp = http.get(updateListURL);
         if (resp.statusCode == 200) {
@@ -1240,7 +1244,12 @@ function findCorruptOrMissingFile() {
     if (parseInt(version.split(".").join("")) < parseInt("6.1.2".split(".").join(""))) {
         specifiedVersionName = "6.1.2";
         log("版本低于6.1.2，先更新文件数据列表到6.1.2");
-        if (downloadUpdateListJSON(specifiedVersionName) == null) {
+        let ret = null;
+        for (let useGitee of [false, true]) {
+            ret = downloadUpdateListJSON(specifiedVersionName, useGitee);
+            if (ret != null) break;
+        }
+        if (ret == null) {
             //如果下载或写入不成功
             ui.post(function () {dialogs.alert("警告", "下载文件数据列表失败，无法检查文件数据，不能确保文件数据无误");});
             return false;
@@ -1250,7 +1259,11 @@ function findCorruptOrMissingFile() {
     let updateListObj = readUpdateList();
 
     if (updateListObj == null) {
-        downloadUpdateListJSON(specifiedVersionName);
+        for (let useGitee of [false, true]) {
+            if (downloadUpdateListJSON(specifiedVersionName, useGitee) != null) {
+                break;
+            }
+        }
         updateListObj = readUpdateList();
     }
 
@@ -1302,7 +1315,7 @@ function findCorruptOrMissingFile() {
     };
 }
 
-var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
+var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName, useGitee) {
     if (corruptOrMissingFileList == null || !Array.isArray(corruptOrMissingFileList) || corruptOrMissingFileList.length == 0) {
         toastLog("未传入有效的损坏或丢失文件列表，无法继续进行修复");
         return false;
@@ -1323,7 +1336,7 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
     corruptOrMissingFileList.forEach((item) => {
         if (item.dataBytes == null) try {
             log("下载文件 ["+item.src+"]");
-            let resp = http.get(getDownloadURLBase(specifiedVersionName)+"/"+(item.origFileName != null ? item.origFileName : item.src));
+            let resp = http.get(getDownloadURLBase(specifiedVersionName, useGitee)+"/"+(item.origFileName != null ? item.origFileName : item.src));
             if (resp.statusCode == 200) {
                 let downloadedBytes = resp.body.bytes();
 
@@ -1403,7 +1416,12 @@ var checkAgainstUpdateListAndFix = sync(function (showResult) {
                 ).then((value) => {
                     if (value) {
                         threads.start(function () {
-                            if (!fixFiles(corruptOrMissingFileList, specifiedVersionName)) {
+                            let ret = null;
+                            for (let useGitee of [false, true]) {
+                                ret = fixFiles(corruptOrMissingFileList, specifiedVersionName, useGitee);
+                                if (ret) break;
+                            }
+                            if (!ret) {
                                 promptRepair("下载或写入文件失败。要重试么？\n"
                                 +"一共有"+corruptOrMissingFileList.length+"个文件需要修复，\n"
                                 +"其中有"+corruptOrMissingFileList.filter((item) => item.dataBytes == null).length+"个文件需要重新下载。");
