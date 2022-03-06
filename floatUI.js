@@ -4498,6 +4498,7 @@ function algo_init() {
             {id: "android:id/aerr_close", text: "关闭应用"},
         ]
         for (let idText of aerrIDTexts) {
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
             let aerrElement = findIDFast(idText.id);
             if (aerrElement == null) aerrElement = findFast(idText.text);
             if (aerrElement != null) {
@@ -5488,6 +5489,7 @@ function algo_init() {
         if (limit.privilege && limit.rootForceStop) {
             log("使用am force-stop、killall和pkill命令...");
             while (true) {
+                resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
                 privShell("am force-stop "+name);
                 sleep(500);
                 privShell("killall "+name);
@@ -5499,6 +5501,7 @@ function algo_init() {
         } else {
             toastLog("为了有权限杀死进程,需要先把游戏切到后台...");
             while (true) {
+                resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
                 backtoMain();
                 sleep(2000);
                 if (detectGameLang() == null) break;
@@ -5507,8 +5510,10 @@ function algo_init() {
             log("再等待2秒...");
             sleep(2000);
             killBackground(name);
-            log("已调用杀死后台进程，等待5秒...")
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
+            log("已调用杀死后台进程，等待5秒...");
             sleep(5000);
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
         }
     }
 
@@ -5549,6 +5554,7 @@ function algo_init() {
 
         toastLog("重新登录...");
         while (true) {
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
             if (isGameDead(1000) == "crashed") {
                 log("检测到游戏再次闪退,无法继续登录");
                 return false;
@@ -5645,6 +5651,8 @@ function algo_init() {
         }
         var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
         var filePath = "/data/local/tmp/auto_magireco_fatal_killer.sh";
+        var selfProcessName = context.getPackageName();
+        var scriptProcessName = selfProcessName+":script";
         var content = "#!/system/bin/sh"
             +"\ndonothing() { echo -ne \"SIGHUP received.\\n\"; }"
             +"\ntrap 'donothing' SIGHUP"
@@ -5670,17 +5678,35 @@ function algo_init() {
             +"\n    exit;"
             +"\nfi"
             +"\n"
-            +"\nlogcat -T 1 *:F | while read line; do"
-            +"\n    if [[ \"$line\" == *\""+name+"\"* ]]; then"
-            +"\n        DATESTR=$(date);"
-            +"\n        echo -ne \"${DATESTR} \";"
-            +"\n        echo -ne \"Killing "+name+" ... \";"
-            +"\n        killall "+name+" || echo -ne \"[killall failed]\";"
-            +"\n        pkill "+name+" || echo -ne \"[pkill failed]\";"
-    +deObStr("\n        echo -ne \"Done, restarting CwvqLU ... \";")
-            +"\n        am start -n \""+context.getPackageName()+"/"+splashActivityName+"\" || echo -ne \"[am start failed]\";"
-            +"\n        echo -ne \"Done.\\n\";"
+            +"\necho test_grep | grep test_grep || exit -1;"
+            +"\nWATCHDOG=0;"
+            +"\nline_on_last_reset=\"\";"
+            +"\nwhile true; do"
+            +"\n    sleep 3;"
+            +"\n    last_line=\"$(logcat -d -t 9999 *:V | grep momoe_auto_magireco_task_alive | tail -n1)\";"
+            +"\n    if [[ \"$last_line\" != \"$line_on_last_reset\" ]]; then"
+            +"\n        line_on_last_reset=\"$line\";"
+            +"\n        WATCHDOG=0;"
+            +"\n    else"
+            +"\n        if ((WATCHDOG > 20)); then"
+            +"\n            DATESTR=$(date);"
+            +"\n            echo -ne \"${DATESTR} \";"
+            +"\n            echo -ne \"Killing "+selfProcessName+" ... \";"
+            +"\n            killall "+selfProcessName+" || echo -ne \"[killall failed]\";"
+            +"\n            pkill "+selfProcessName+" || echo -ne \"[pkill failed]\";"
+            +"\n            echo -ne \"Killing "+scriptProcessName+" ... \";"
+            +"\n            killall "+scriptProcessName+" || echo -ne \"[killall failed]\";"
+            +"\n            pkill "+scriptProcessName+" || echo -ne \"[pkill failed]\";"
+            +"\n            echo -ne \"Killing "+name+" ... \";"
+            +"\n            killall "+name+" || echo -ne \"[killall failed]\";"
+            +"\n            pkill "+name+" || echo -ne \"[pkill failed]\";"
+    +deObStr("\n            echo -ne \"Done, restarting CwvqLU ... \";")
+            +"\n            am start -n \""+context.getPackageName()+"/"+splashActivityName+"\" || echo -ne \"[am start failed]\";"
+            +"\n            echo -ne \"Done.\\n\";"
+            +"\n            exit 0;"
+            +"\n        fi;"
             +"\n    fi;"
+            +"\n    echo WATCHDOG=$((WATCHDOG++));"
             +"\ndone &"
             +"\nPID=$!;"
             +"\necho \"${PID}\" > /data/local/tmp/auto_magireco_fatal_killer.pid;"
@@ -5713,6 +5739,15 @@ function algo_init() {
             });
         } else {
             log("没有root或adb权限,无法停止shell脚本监工");
+        }
+    }
+    var lastFatalKillerWatchDogResetTime = new Date().getTime();
+    function resetFatalKillerWatchDog() {
+        if (!limit.autoRecover) return;
+        let currentTime = new Date().getTime();
+        if (currentTime - lastFatalKillerWatchDogResetTime > 3000) {
+            privShell("log -p v momoe_auto_magireco_task_alive_"+currentTime);
+            lastFatalKillerWatchDogResetTime = currentTime;
         }
     }
 
@@ -6417,6 +6452,7 @@ function algo_init() {
         let endReplaying = false;
         let defaultOpCycleWaitTime = 500 + parseInt(opList.defaultSleepTime);
         for (let i=0; i<opList.steps.length&&!endReplaying; i++) {
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
             switch (isGameDead()) {
                 case "crashed":
                     log("游戏已经闪退,停止重放");
@@ -7117,6 +7153,7 @@ function algo_init() {
         var lastFoundPreferredChara = null;
         var isStartAutoRestartBtnAvailable = true; //一开始不知道自动续战按钮是否存在(后面检测了才知道),默认当作存在,详情见后
         var lastStateRewardCharacterStuckTime = null;
+        lastFatalKillerWatchDogResetTime = new Date().getTime();
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -7127,6 +7164,7 @@ function algo_init() {
         currentTaskCycles = 0;
 
         while (true) {
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
             //先检查是否暂停
             if (isCurrentTaskPaused.compareAndSet(TASK_PAUSING, TASK_PAUSED)) {
                 log("脚本已暂停运行");
@@ -7272,6 +7310,7 @@ function algo_init() {
                         case "crashed":
                             log("等待5秒后重启游戏...");
                             sleep(5000);
+                            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
                             reLaunchGame();
                             log("重启完成,再等待2秒...");
                             sleep(2000);
