@@ -1156,13 +1156,13 @@ var toUpdate = sync(function () {
                     });
                 });
                 if (responses.find((item) => item.httpResponse != null && item.httpResponse.statusCode != 200) == null) {
-                    setVersionMsgLog("更新已下载，写入文件并重启...", "#666666", true);
+                    setVersionMsgLog("已下载必要文件，写入...", "#666666", true);
                     responses.forEach((item) => {
                         let writeToPath = files.join(files.cwd(), item.fileName);
                         let fileBytes = item.httpResponse.body.bytes();
                         files.writeBytes(writeToPath, fileBytes);
                     });
-                    restartApp();
+                    checkAgainstUpdateListAndFix(false, latestVersionName);
                 } else {
                     toast("有文件下载失败，请稍后重试");
                 }
@@ -1239,12 +1239,12 @@ function checkFile(fileName, fileHash) {
     return true;
 }
 
-function findCorruptOrMissingFile() {
-    //从6.1.2开始修正在线更新认不清版本的bug
-    var specifiedVersionName = version;
-    if (parseInt(version.split(".").join("")) < parseInt("6.1.2".split(".").join(""))) {
-        specifiedVersionName = "6.1.2";
-        log("版本低于6.1.2，先更新文件数据列表到6.1.2");
+function findCorruptOrMissingFile(specifiedVersionName) {
+    //从6.1.4开始修正在线更新认不清版本的bug
+    if (specifiedVersionName == null) specifiedVersionName = version;
+    if (parseInt(version.split(".").join("")) < parseInt("6.1.4".split(".").join(""))) {
+        specifiedVersionName = "6.1.4";
+        log("版本低于6.1.4，先更新文件数据列表到6.1.4");
         if (downloadUpdateListJSON(specifiedVersionName) == null) {
             //如果下载或写入不成功
             ui.post(function () {dialogs.alert("警告", "下载文件数据列表失败，无法检查文件数据，不能确保文件数据无误");});
@@ -1395,8 +1395,8 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
     return true;
 });
 
-var checkAgainstUpdateListAndFix = sync(function (showResult) {
-    let ret = findCorruptOrMissingFile();
+var checkAgainstUpdateListAndFix = sync(function (showResult, specifiedVersionName) {
+    let ret = findCorruptOrMissingFile(specifiedVersionName);
     let corruptOrMissingFileList = ret.corruptOrMissingFileList;
     let specifiedVersionName = ret.versionName;
     if (Array.isArray(corruptOrMissingFileList)) {
@@ -1419,8 +1419,6 @@ var checkAgainstUpdateListAndFix = sync(function (showResult) {
             });}
             promptRepair("检查发现有"+corruptOrMissingFileList.length+"个文件缺失或损坏，要尝试重新下载来修复么？");
         } else if (version !== specifiedVersionName) {
-            //一般不会走到这里。所有文件验证通过时，用root权限手动删掉updateList.json后重启才会走到这里
-            //这个时候脚本显示的版本仍然是老的，需要重启一次才能显示正确的版本
             ui.post(function () {
                 dialogs.confirm("更新完毕", "马上会再重启一次app")
                 .then(function () {
