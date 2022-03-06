@@ -1284,7 +1284,7 @@ floatUI.main = function () {
                 }
 
                 isAllFloatyHidden = true;
-                toastLog("未开启无障碍服务\n为避免干扰申请权限,\n已隐藏所有悬浮窗");//TODO 以后也考虑一下申请root权限
+                toastLog("为避免干扰申请权限,\n已隐藏所有悬浮窗");
             } catch (e) {
                 logException(e);
                 toastLog("悬浮窗已丢失\n请重新启动本程序");
@@ -1438,6 +1438,8 @@ floatUI.main = function () {
             return limit.privilege;
         }
 
+        floatUI.hideAllFloaty();
+
         let euid = -1;
 
         let rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
@@ -1468,7 +1470,10 @@ floatUI.main = function () {
                 log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
                 limit.privilege = null;
             }
-            if (limit.privilege != null) return;
+            if (limit.privilege != null) {
+                floatUI.recoverAllFloaty();
+                return;
+            }
         }
 
         if (!files.isFile(rootMarkerPath)) {
@@ -1493,6 +1498,7 @@ floatUI.main = function () {
                 log("直接获取root权限成功");
                 limit.privilege = {shizuku: null};
                 files.create(rootMarkerPath);
+                floatUI.recoverAllFloaty();
                 return limit.privilege;
             }
         }
@@ -1511,6 +1517,7 @@ floatUI.main = function () {
             //$app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
         }
 
+        floatUI.recoverAllFloaty();
         return limit.privilege;
     }
 
