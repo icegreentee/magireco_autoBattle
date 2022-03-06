@@ -8029,11 +8029,15 @@ function algo_init() {
         sleep(500);
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
-            if (!requestScreenCaptureSuccess) try {
-                requestScreenCaptureSuccess = requestScreenCapture(screencap_landscape);
-            } catch (e) {
-                //logException(e); issue #126
-                try {log(e);} catch (e2) {};
+            if (!requestScreenCaptureSuccess) {
+                try {
+                    floatUI.hideAllFloaty();
+                    requestScreenCaptureSuccess = requestScreenCapture(screencap_landscape);
+                } catch (e) {
+                    //logException(e); issue #126
+                    try {log(e);} catch (e2) {};
+                }
+                floatUI.recoverAllFloaty();
             }
             if (requestScreenCaptureSuccess) {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
