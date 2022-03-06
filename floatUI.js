@@ -1591,6 +1591,9 @@ floatUI.main = function () {
             sleep(500);
             result = privShell("settings put secure enabled_accessibility_services \""+servicesStr+"\"");
             sleep(500);
+            // workaround weird bug on MuMu Android 6
+            result = privShell("settings put secure accessibility_enabled \""+((attempt+1)%2)+"\"");
+            sleep(500);
         }
         if (auto.service == null || auto.root == null) {
             log("自动开启无障碍服务失败，清除之前记录的无障碍服务名");
