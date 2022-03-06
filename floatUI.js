@@ -1575,7 +1575,8 @@ floatUI.main = function () {
             }
         }
         let myServiceName = myServiceNamePrefix+accSvcName;
-        let filteredServices = services.filter((item) => item !== myServiceName && item !== "null" && item !== "undefined");
+        let filteredServices = services.filter((item) =>
+            item !== myServiceName && item != null && item !== "" && item !== "null" && item !== "undefined");
         let servicesStrWithoutMe = filteredServices.join(":");
         filteredServices.push(myServiceName);
         let servicesStr = filteredServices.join(":");
