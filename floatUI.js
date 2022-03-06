@@ -1256,7 +1256,7 @@ floatUI.main = function () {
     var floatySizePositions = {};
     var isAllFloatyHidden = false;
     floatUI.hideAllFloaty = function () {
-        ui.run(function () {
+        ui.post(function () {
             if (isAllFloatyHidden) return;
             try {
                 floatyVisibilities.menu = menu.logo.getVisibility();
@@ -1290,10 +1290,10 @@ floatUI.main = function () {
                 toastLog("悬浮窗已丢失\n请重新启动本程序");
                 exit();
             }
-        });
+        }, 500);
     };
     floatUI.recoverAllFloaty = function () {
-        ui.run(function () {
+        ui.post(function () {
             if (!isAllFloatyHidden) return;
 
             toastLog("恢复显示悬浮窗");
@@ -1317,7 +1317,7 @@ floatUI.main = function () {
                 toastLog("悬浮窗已丢失\n请重新启动本程序");
                 exit();
             }
-        });
+        }, 500);
     }
 
     //检测刘海屏参数
@@ -1438,8 +1438,6 @@ floatUI.main = function () {
             return limit.privilege;
         }
 
-        floatUI.hideAllFloaty();
-
         let euid = -1;
 
         let rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
@@ -1471,11 +1469,11 @@ floatUI.main = function () {
                 limit.privilege = null;
             }
             if (limit.privilege != null) {
-                floatUI.recoverAllFloaty();
                 return;
             }
         }
 
+        floatUI.hideAllFloaty();
         if (!files.isFile(rootMarkerPath)) {
             toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
             sleep(2500);
