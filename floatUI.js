@@ -1489,11 +1489,11 @@ floatUI.main = function () {
             }
         }
 
-        floatUI.hideAllFloaty();
         if (!files.isFile(rootMarkerPath)) {
             toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
             sleep(2500);
             toastLog("请务必选择“永久”授权，而不是一次性授权！");
+            floatUI.hideAllFloaty();
         } else {
             log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
         }
