@@ -48,6 +48,8 @@ function logException(e) {
     }
 }
 
+var enableAutoService = () => {};
+
 var origFunc = {
     click: function () {return click.apply(this, arguments)},
     swipe: function () {return swipe.apply(this, arguments)},
@@ -1253,68 +1255,90 @@ floatUI.main = function () {
     var floatyVisibilities = {};
     var floatySizePositions = {};
     var isAllFloatyHidden = false;
-    floatUI.hideAllFloaty = function () {
-        ui.run(function () {
-            if (isAllFloatyHidden) return;
-            try {
-                floatyVisibilities.menu = menu.logo.getVisibility();
-                floatyVisibilities.submenu = submenu.entry0.getVisibility();
-                floatyVisibilities.task_popup = task_popup.container.getVisibility();
-                floatyVisibilities.overlay = overlay.container.getVisibility();
-
-                for (let key in floatyObjs) {
-                    let f = floatyObjs[key];
-                    floatySizePositions[key] = {
-                        size: {w: f.getWidth(), h: f.getHeight()},
-                        pos: {x: f.getX(), y: f.getY()},
+    var showHideAllFloaty = syncer.syn(function (show) {
+        if (ui.isUiThread()) throw new Error("showHideAllFloaty should not run in UI thread");
+        //尝试避免悬浮窗隐藏后无法恢复的问题
+        //floatUI.main在UI线程中第一个执行，然后会上锁，等到反射相关操作做完了才会解锁
+        //然后这里才能上锁（还有refreshUpdateStatus在被调用之前也会尝试上锁，但和这里谁先谁后应该无所谓）
+        floatUI.floatyHangWorkaroundLock.lock();
+        floatUI.floatyHangWorkaroundLock.unlock();
+        //ui.run(function () {
+        ui.post(() => {
+            if (!show) {
+                if (limit.doNotHideFloaty) return;
+                if (isAllFloatyHidden) return;
+                try {
+                    floatyVisibilities.menu = menu.logo.getVisibility();
+                    floatyVisibilities.submenu = submenu.entry0.getVisibility();
+                    floatyVisibilities.task_popup = task_popup.container.getVisibility();
+                    floatyVisibilities.overlay = overlay.container.getVisibility();
+    
+                    for (let key in floatyObjs) {
+                        let f = floatyObjs[key];
+                        floatySizePositions[key] = {
+                            size: {w: f.getWidth(), h: f.getHeight()},
+                            pos: {x: f.getX(), y: f.getY()},
+                        };
                     };
-                };
-
-                menu.logo.setVisibility(View.GONE);
-                for (let i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(View.GONE);
-                task_popup.container.setVisibility(View.GONE);
-                overlay.container.setVisibility(View.GONE);
-
-                for (let key in floatyObjs) {
-                    let f = floatyObjs[key];
-                    f.setSize(1, 1);
-                    f.setPosition(0, 0);
+    
+                    menu.logo.setVisibility(View.GONE);
+                    for (let i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(View.GONE);
+                    task_popup.container.setVisibility(View.GONE);
+                    overlay.container.setVisibility(View.GONE);
+    
+                    for (let key in floatyObjs) {
+                        let f = floatyObjs[key];
+                        f.setSize(1, 1);
+                        f.setPosition(0, 0);
+                    }
+    
+                    isAllFloatyHidden = true;
+                    toastLog("为避免干扰申请权限,\n已隐藏所有悬浮窗");
+                } catch (e) {
+                    logException(e);
+                    toastLog("悬浮窗已丢失\n请重新启动本程序");
+                    exit();
                 }
-
-                isAllFloatyHidden = true;
-                toastLog("未开启无障碍服务\n为避免干扰申请权限,\n已隐藏所有悬浮窗");//TODO 以后也考虑一下申请root权限
-            } catch (e) {
-                logException(e);
-                toastLog("悬浮窗已丢失\n请重新启动本程序");
-                exit();
+            } else {
+                //if (!isAllFloatyHidden) return;
+                if (isAllFloatyHidden) toast("恢复显示悬浮窗");
+                log("尝试恢复显示悬浮窗");
+                try {
+                    for (let key in floatyObjs) {
+                        let f = floatyObjs[key];
+                        let sp = floatySizePositions[key];
+                        if (sp == null) {
+                            //如果之前没隐藏过悬浮窗，sp就是undefined，所以这里不能继续往下执行，只能return
+                            log("floatySizePositions["+key+"] == null");
+                            return;
+                        }
+                        let s = sp.size, p = sp.pos;
+                        f.setPosition(p.x, p.y);
+                        f.setSize(s.w, s.h);
+                    }
+    
+                    menu.logo.setVisibility(floatyVisibilities.menu);
+                    for (var i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(floatyVisibilities.submenu);
+                    task_popup.container.setVisibility(floatyVisibilities.task_popup);
+                    overlay.container.setVisibility(floatyVisibilities.overlay);
+    
+                    isAllFloatyHidden = false;
+                } catch (e) {
+                    logException(e);
+                    toastLog("悬浮窗已丢失\n请重新启动本程序");
+                    exit();
+                }
             }
+        });
+    });
+    floatUI.hideAllFloaty = function () {
+        threads.start(function () {
+            showHideAllFloaty(false);
         });
     };
     floatUI.recoverAllFloaty = function () {
-        ui.run(function () {
-            if (!isAllFloatyHidden) return;
-
-            toastLog("恢复显示悬浮窗");
-            try {
-                for (let key in floatyObjs) {
-                    let f = floatyObjs[key];
-                    let sp = floatySizePositions[key];
-                    let s = sp.size, p = sp.pos;
-                    f.setPosition(p.x, p.y);
-                    f.setSize(s.w, s.h);
-                }
-
-                menu.logo.setVisibility(floatyVisibilities.menu);
-                for (var i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(floatyVisibilities.submenu);
-                task_popup.container.setVisibility(floatyVisibilities.task_popup);
-                overlay.container.setVisibility(floatyVisibilities.overlay);
-
-                isAllFloatyHidden = false;
-            } catch (e) {
-                logException(e);
-                toastLog("悬浮窗已丢失\n请重新启动本程序");
-                exit();
-            }
+        threads.start(function () {
+            showHideAllFloaty(true);
         });
     }
 
@@ -1466,13 +1490,16 @@ floatUI.main = function () {
                 log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
                 limit.privilege = null;
             }
-            if (limit.privilege != null) return;
+            if (limit.privilege != null) {
+                return;
+            }
         }
 
         if (!files.isFile(rootMarkerPath)) {
             toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
             sleep(2500);
             toastLog("请务必选择“永久”授权，而不是一次性授权！");
+            floatUI.hideAllFloaty();
         } else {
             log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
         }
@@ -1491,6 +1518,7 @@ floatUI.main = function () {
                 log("直接获取root权限成功");
                 limit.privilege = {shizuku: null};
                 files.create(rootMarkerPath);
+                floatUI.recoverAllFloaty();
                 return limit.privilege;
             }
         }
@@ -1509,13 +1537,94 @@ floatUI.main = function () {
             //$app.openUrl("https://github.com/RikkaApps/Shizuku/releases/tag/v3.6.1");
         }
 
+        floatUI.recoverAllFloaty();
         return limit.privilege;
     }
 
     if (device.sdkInt < 24) {
         if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
             requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+            requestShellPrivilegeThread.waitFor();
+            threads.start(function () {
+                requestShellPrivilegeThread.join();
+                enableAutoService();
+            });
         }
+    }
+
+    enableAutoService = syncer.syn(function () {
+        if (!floatUI.storage.get("autoEnableAccSvc", false)) return;
+        if (limit.privilege == null) return;
+        if (ui.isUiThread()) throw new Error("enableAutoService should not run on UI thread");
+        $settings.setEnabled("enable_accessibility_service_by_root", false);
+        let accSvcName = floatUI.storage.get("accSvcName", "");
+        function getServices() {
+            let result = privShell("settings get secure enabled_accessibility_services");
+            if (result.code != 0) return;
+            let resultStr = result.result.split("\n").join("").split("\"").join("");
+            return resultStr.split(":");
+        }
+        let myServiceNamePrefix = context.getPackageName()+"/";
+        if (auto.service != null && auto.root != null) {
+            log("无障碍服务已开启，无需再次自动开启");
+            if (accSvcName == null || accSvcName === "") {
+                log("尚未获取无障碍服务名，尝试获取");
+                let found = getServices().find((item) => item.startsWith(myServiceNamePrefix));
+                if (found != null) {
+                    let foundSplitted = found.split("/");
+                    if (foundSplitted[1] != null && foundSplitted[1] !== "") {
+                        floatUI.storage.put("accSvcName", foundSplitted[1]);
+                        accSvcName = floatUI.storage.get("accSvcName", "");
+                    }
+                }
+                if (accSvcName != null && accSvcName !== "") {
+                    log("成功获取无障碍服务名 ["+accSvcName+"]");
+                } else {
+                    log("获取无障碍服务名失败");
+                }
+            } else {
+                log("之前已获取无障碍服务名 ["+accSvcName+"]");
+            }
+            return;
+        } else {
+            log("无障碍服务未开启，尝试自动开启");
+            if (accSvcName == null || accSvcName === "") {
+                log("尚未获取无障碍服务名，无法自动开启");
+                return;
+            } else {
+                log("之前已获取无障碍服务名 ["+accSvcName+"]");
+            }
+        }
+        let myServiceName = myServiceNamePrefix+accSvcName;
+        let filteredServices = getServices().filter((item) =>
+            item !== myServiceName && item != null && item !== "" && item !== "null" && item !== "undefined");
+        let servicesStrWithoutMe = filteredServices.join(":");
+        filteredServices.push(myServiceName);
+        let servicesStr = filteredServices.join(":");
+        for (let attempt = 0; attempt < 10; attempt++) {
+            if (auto.service != null && auto.root != null) {
+                log("已自动开启无障碍服务");
+                floatUI.recoverAllFloaty();
+                updateUI("autoService", "setChecked", true);
+                break;
+            }
+            let result = privShell("settings put secure enabled_accessibility_services \""+servicesStrWithoutMe+"\"");
+            sleep(500);
+            result = privShell("settings put secure enabled_accessibility_services \""+servicesStr+"\"");
+            sleep(500);
+            // workaround weird bug on MuMu Android 6
+            result = privShell("settings put secure accessibility_enabled \""+((attempt+1)%2)+"\"");
+            sleep(500);
+        }
+        if (auto.service == null || auto.root == null) {
+            log("自动开启无障碍服务失败，清除之前记录的无障碍服务名");
+            floatUI.storage.remove("accSvcName");
+        }
+    });
+    floatUI.enableAutoService = function () {
+        threads.start(function() {
+            enableAutoService();
+        });
     }
 
     //嗑药后，更新设置中的嗑药个数限制
@@ -1613,6 +1722,7 @@ var language = {
 var currentLang = language.zh
 var limit = {
     version: '',
+    doNotHideFloaty: false,
     doNotToggleForegroundService: false,
     autoRecover: false,
     helpx: '',
@@ -2365,9 +2475,16 @@ floatUI.adjust = function (key, value) {
         let isPrivNeeded = false;
         if (key == "rootForceStop" && value) isPrivNeeded = true;
         if (key == "rootScreencap" && value) isPrivNeeded = true;
+        if (key == "autoRecover" && value) isPrivNeeded = true;
+        if (key == "autoEnableAccSvc" && value) isPrivNeeded = true;
         if (!limit.privilege && isPrivNeeded) {
             if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
                 requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                requestShellPrivilegeThread.waitFor();
+                threads.start(function () {
+                    requestShellPrivilegeThread.join();
+                    enableAutoService();
+                });
             }
         }
 
@@ -2378,6 +2495,15 @@ floatUI.adjust = function (key, value) {
                 stopFatalKillerShellScriptThread.waitFor();
             } else {
                 log("已经在尝试停止shell脚本监工了");
+            }
+        }
+
+        if (key == "autoEnableAccSvc") {
+            if (value) {
+                if (limit.privilege) {
+                    //自动开启无障碍服务，或者获取无障碍服务名
+                    floatUI.enableAutoService();
+                } //如果是没有权限的情况，上面也一样会在获取权限后调用enableAutoService
             }
         }
     }
@@ -4405,6 +4531,7 @@ function algo_init() {
             {id: "android:id/aerr_close", text: "关闭应用"},
         ]
         for (let idText of aerrIDTexts) {
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
             let aerrElement = findIDFast(idText.id);
             if (aerrElement == null) aerrElement = findFast(idText.text);
             if (aerrElement != null) {
@@ -5395,6 +5522,7 @@ function algo_init() {
         if (limit.privilege && limit.rootForceStop) {
             log("使用am force-stop、killall和pkill命令...");
             while (true) {
+                resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
                 privShell("am force-stop "+name);
                 sleep(500);
                 privShell("killall "+name);
@@ -5406,6 +5534,7 @@ function algo_init() {
         } else {
             toastLog("为了有权限杀死进程,需要先把游戏切到后台...");
             while (true) {
+                resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
                 backtoMain();
                 sleep(2000);
                 if (detectGameLang() == null) break;
@@ -5414,8 +5543,10 @@ function algo_init() {
             log("再等待2秒...");
             sleep(2000);
             killBackground(name);
-            log("已调用杀死后台进程，等待5秒...")
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
+            log("已调用杀死后台进程，等待5秒...");
             sleep(5000);
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
         }
     }
 
@@ -5456,6 +5587,7 @@ function algo_init() {
 
         toastLog("重新登录...");
         while (true) {
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
             if (isGameDead(1000) == "crashed") {
                 log("检测到游戏再次闪退,无法继续登录");
                 return false;
@@ -5552,6 +5684,8 @@ function algo_init() {
         }
         var name = specified_package_name == null ? strings[last_alive_lang][strings.name.findIndex((e) => e == "package_name")] : specified_package_name;
         var filePath = "/data/local/tmp/auto_magireco_fatal_killer.sh";
+        var selfProcessName = context.getPackageName();
+        var scriptProcessName = selfProcessName+":script";
         var content = "#!/system/bin/sh"
             +"\ndonothing() { echo -ne \"SIGHUP received.\\n\"; }"
             +"\ntrap 'donothing' SIGHUP"
@@ -5577,17 +5711,35 @@ function algo_init() {
             +"\n    exit;"
             +"\nfi"
             +"\n"
-            +"\nlogcat -T 1 *:F | while read line; do"
-            +"\n    if [[ \"$line\" == *\""+name+"\"* ]]; then"
-            +"\n        DATESTR=$(date);"
-            +"\n        echo -ne \"${DATESTR} \";"
-            +"\n        echo -ne \"Killing "+name+" ... \";"
-            +"\n        killall "+name+" || echo -ne \"[killall failed]\";"
-            +"\n        pkill "+name+" || echo -ne \"[pkill failed]\";"
-    +deObStr("\n        echo -ne \"Done, restarting CwvqLU ... \";")
-            +"\n        am start -n \""+context.getPackageName()+"/"+splashActivityName+"\" || echo -ne \"[am start failed]\";"
-            +"\n        echo -ne \"Done.\\n\";"
+            +"\necho test_grep | grep -o test_grep || exit -1;"
+            +"\nWATCHDOG=0;"
+            +"\nline_on_last_reset=\"\";"
+            +"\nwhile true; do"
+            +"\n    sleep 3;"
+            +"\n    last_line=\"$(logcat -d -t 9999 *:V | grep -o momoe_auto_magireco_task_alive.* | tail -n1)\";"
+            +"\n    if [[ \"$last_line\" != \"$line_on_last_reset\" ]]; then"
+            +"\n        line_on_last_reset=\"$last_line\";"
+            +"\n        WATCHDOG=0;"
+            +"\n    else"
+            +"\n        if ((WATCHDOG > 20)); then"
+            +"\n            DATESTR=$(date);"
+            +"\n            echo -ne \"${DATESTR} \";"
+            +"\n            echo -ne \"Killing "+selfProcessName+" ... \";"
+            +"\n            killall "+selfProcessName+" || echo -ne \"[killall failed]\";"
+            +"\n            pkill "+selfProcessName+" || echo -ne \"[pkill failed]\";"
+            +"\n            echo -ne \"Killing "+scriptProcessName+" ... \";"
+            +"\n            killall "+scriptProcessName+" || echo -ne \"[killall failed]\";"
+            +"\n            pkill "+scriptProcessName+" || echo -ne \"[pkill failed]\";"
+            +"\n            echo -ne \"Killing "+name+" ... \";"
+            +"\n            killall "+name+" || echo -ne \"[killall failed]\";"
+            +"\n            pkill "+name+" || echo -ne \"[pkill failed]\";"
+    +deObStr("\n            echo -ne \"Done, restarting CwvqLU ... \";")
+            +"\n            am start -n \""+context.getPackageName()+"/"+splashActivityName+"\" || echo -ne \"[am start failed]\";"
+            +"\n            echo -ne \"Done.\\n\";"
+            +"\n            exit 0;"
+            +"\n        fi;"
             +"\n    fi;"
+            +"\n    echo WATCHDOG=$((WATCHDOG++));"
             +"\ndone &"
             +"\nPID=$!;"
             +"\necho \"${PID}\" > /data/local/tmp/auto_magireco_fatal_killer.pid;"
@@ -5622,6 +5774,15 @@ function algo_init() {
             log("没有root或adb权限,无法停止shell脚本监工");
         }
     }
+    var lastFatalKillerWatchDogResetTime = new Date().getTime();
+    function resetFatalKillerWatchDog() {
+        if (!limit.autoRecover) return;
+        let currentTime = new Date().getTime();
+        if (currentTime - lastFatalKillerWatchDogResetTime > 3000) {
+            privShell("log -p v momoe_auto_magireco_task_alive_"+currentTime);
+            lastFatalKillerWatchDogResetTime = currentTime;
+        }
+    }
 
     function getScreenParams() {
         if (screen != null && gameoffset != null)
@@ -5643,6 +5804,11 @@ function algo_init() {
                     toastLog("已经在尝试申请root或adb权限了\n请稍后重试");
                 } else {
                     requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                    requestShellPrivilegeThread.waitFor();
+                    threads.start(function () {
+                        requestShellPrivilegeThread.join();
+                        enableAutoService();
+                    });
                 }
                 return false;//等到权限获取完再重试
             } else {
@@ -6319,6 +6485,7 @@ function algo_init() {
         let endReplaying = false;
         let defaultOpCycleWaitTime = 500 + parseInt(opList.defaultSleepTime);
         for (let i=0; i<opList.steps.length&&!endReplaying; i++) {
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
             switch (isGameDead()) {
                 case "crashed":
                     log("游戏已经闪退,停止重放");
@@ -7019,6 +7186,7 @@ function algo_init() {
         var lastFoundPreferredChara = null;
         var isStartAutoRestartBtnAvailable = true; //一开始不知道自动续战按钮是否存在(后面检测了才知道),默认当作存在,详情见后
         var lastStateRewardCharacterStuckTime = null;
+        lastFatalKillerWatchDogResetTime = new Date().getTime();
         /*
         //实验发现，在战斗之外环节掉线会让游戏重新登录回主页，无法直接重连，所以注释掉
         var stuckatreward = false;
@@ -7029,6 +7197,7 @@ function algo_init() {
         currentTaskCycles = 0;
 
         while (true) {
+            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
             //先检查是否暂停
             if (isCurrentTaskPaused.compareAndSet(TASK_PAUSING, TASK_PAUSED)) {
                 log("脚本已暂停运行");
@@ -7174,6 +7343,7 @@ function algo_init() {
                         case "crashed":
                             log("等待5秒后重启游戏...");
                             sleep(5000);
+                            resetFatalKillerWatchDog(); //重设套娃监工WATCHDOG
                             reLaunchGame();
                             log("重启完成,再等待2秒...");
                             sleep(2000);
@@ -7885,11 +8055,15 @@ function algo_init() {
         sleep(500);
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
-            if (!requestScreenCaptureSuccess) try {
-                requestScreenCaptureSuccess = requestScreenCapture(screencap_landscape);
-            } catch (e) {
-                //logException(e); issue #126
-                try {log(e);} catch (e2) {};
+            if (!requestScreenCaptureSuccess) {
+                try {
+                    floatUI.hideAllFloaty();
+                    requestScreenCaptureSuccess = requestScreenCapture(screencap_landscape);
+                } catch (e) {
+                    //logException(e); issue #126
+                    try {log(e);} catch (e2) {};
+                }
+                floatUI.recoverAllFloaty();
             }
             if (requestScreenCaptureSuccess) {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
@@ -10343,6 +10517,11 @@ function algo_init() {
             toastLog("需要root或shizuku adb权限");
             if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
                 requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                requestShellPrivilegeThread.waitFor();
+                threads.start(function () {
+                    requestShellPrivilegeThread.join();
+                    enableAutoService();
+                });
             }
             return;
         }
@@ -11017,6 +11196,11 @@ function algo_init() {
             toastLog("需要root或shizuku adb权限");
             if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
                 requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                requestShellPrivilegeThread.waitFor();
+                threads.start(function () {
+                    requestShellPrivilegeThread.join();
+                    enableAutoService();
+                });
             }
             return;
         }

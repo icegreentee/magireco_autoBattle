@@ -119,9 +119,13 @@ ui.layout(
                             <text id="doNotToggleForegroundServiceText1" visibility="gone" textSize="12" text="在脚本运行时开启无障碍服务,目的是为了尽量防止脚本进程被杀。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText2" visibility="gone" textSize="12" text="但是,在前台服务开启时,会在通知栏显示一条常驻通知,比较扰民。所以,默认是只在脚本运行时开启前台服务,脚本结束运行后即自动停用前台服务,而且,不仅会自动停用前台服务,如果之前申请了截屏权限,还会把截屏权限也一并停用。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText3" visibility="gone" textSize="12" text="如果不想让脚本自己控制前台服务、不想让脚本自己停用截屏权限,那就把这个选项开启。" textColor="#000000" />
+                            <Switch id="autoEnableAccSvc" margin="0 3" w="*" checked="false" textColor="#000000" text="自动开启无障碍服务" />
+                            <text id="autoEnableAccSvcText1" visibility="gone" textSize="12" text="必须先手动成功开启一次无障碍服务，之后才能自动开启。最好在手动开启成功后，再重新开关一下这个选项。" textColor="#ff0000" />
+                            <text id="autoEnableAccSvcText2" visibility="gone" textSize="12" text="（需要root或adb权限）在脚本启动时自动开启无障碍服务。" textColor="#000000" />
                             <Switch id="autoRecover" margin="0 3" w="*" checked="false" textColor="#000000" text="游戏崩溃带崩脚本的临时解决方案" />
-                            <text id="autoRecoverText1" visibility="gone" textSize="12" text="脚本可以监工游戏,防止游戏因为掉线/闪退/内存泄漏溢出而中断自动周回。但是游戏闪退时貌似有几率会带着脚本一起崩溃,原因不明。" textColor="#000000" />
-                            <text id="autoRecoverText2" visibility="gone" textSize="12" text="为了对付这个问题,目前有个临时的办法(需要root或adb权限),就是在logcat里监控游戏是否崩溃,崩溃后再杀一次游戏进程,然后重启脚本。目前只有“副本周回(剧情/活动通用)”脚本支持这个功能。" textColor="#000000" />
+                            <text id="autoRecoverText1" visibility="gone" textSize="12" text="强烈建议把上面的“自动开启无障碍服务”也一并开启！" textColor="#FF0000" />
+                            <text id="autoRecoverText2" visibility="gone" textSize="12" text="脚本可以监工游戏,防止游戏因为掉线/闪退/内存泄漏溢出而中断自动周回。但是游戏闪退时貌似有几率会带着脚本一起崩溃,原因不明。" textColor="#000000" />
+                            <text id="autoRecoverText3" visibility="gone" textSize="12" text="为了对付这个问题,目前有个临时的办法(需要root或adb权限),就是在logcat里监控脚本是否还在运行,如果发现脚本超过1分钟没动弹,就杀死脚本和游戏进程,然后重启脚本,再由脚本重启游戏。目前只有“副本周回(剧情/活动通用)”脚本支持这个功能。" textColor="#000000" />
                         </vertical>
                     </vertical>
 
@@ -723,6 +727,7 @@ ui.emitter.on("resume", () => {
     if (floatIsActive) {
         floatUI.refreshUI();
         floatUI.recoverAllFloaty();
+        floatUI.enableAutoService();
     } else {
         floatUI.storage = storage; //必须放在floatUI.main()前面
         floatUI.main();
@@ -735,7 +740,6 @@ ui.emitter.on("resume", () => {
 });
 ui.emitter.on("pause", () => {
     //未开启无障碍时,在切出脚本界面时隐藏悬浮窗,避免OPPO等品牌手机拒绝开启无障碍服务
-    //TODO 以后应该还可以把root权限也考虑一下（现在只是在无障碍服务未开启时,才会顺带着在弹出root权限申请时隐藏悬浮窗）
     if (floatIsActive) {
         if (auto.service == null && !ui.doNotHideFloaty.isChecked()) {
             floatUI.hideAllFloaty();
@@ -798,6 +802,7 @@ const persistParamList = [
     "exitOnServiceSettings",
     "doNotHideFloaty",
     "doNotToggleForegroundService",
+    "autoEnableAccSvc",
     "autoRecover",
     "promptAutoRelaunch",
     "reLoginNeverAbandon",
@@ -1039,7 +1044,8 @@ function setVersionMsg(textMsg, color, isVisible) {
     if (typeof color === "string") color = colors.parseColor(color);
     if (typeof isVisible === "boolean") isVisible = isVisible ? View.VISIBLE : View.GONE;
 
-    ui.run(function () {
+    //ui.run(function () {
+    ui.post(function () {
         ui.versionMsg.setText(textMsg);
         ui.versionMsg.setTextColor(color);
         ui.versionMsg_vertical.setVisibility(isVisible);
@@ -1093,9 +1099,11 @@ var refreshUpdateStatus = sync(function () {
 });
 threads.start(function () {
     //绕开CwvqLU 9.1.0版上的奇怪假死问题，refreshUpdateStatus里的ui.run貌似必须等到对悬浮窗的Java反射操作完成后再进行，否则会假死
+    //floatUI.main在UI线程中第一个执行，然后会上锁，等到反射相关操作做完了才会解锁
+    //然后这里才能上锁（还有showHideAllFloaty里也会尝试上锁，但和这里谁先谁后应该无所谓）
     floatUI.floatyHangWorkaroundLock.lock();
-    refreshUpdateStatus();
     floatUI.floatyHangWorkaroundLock.unlock();
+    refreshUpdateStatus();
 });
 
 //版本更新
@@ -1151,13 +1159,13 @@ var toUpdate = sync(function () {
                     });
                 });
                 if (responses.find((item) => item.httpResponse != null && item.httpResponse.statusCode != 200) == null) {
-                    setVersionMsgLog("更新已下载，写入文件并重启...", "#666666", true);
+                    setVersionMsgLog("已下载必要文件，写入...", "#666666", true);
                     responses.forEach((item) => {
                         let writeToPath = files.join(files.cwd(), item.fileName);
                         let fileBytes = item.httpResponse.body.bytes();
                         files.writeBytes(writeToPath, fileBytes);
                     });
-                    restartApp();
+                    checkAgainstUpdateListAndFix(false, latestVersionName);
                 } else {
                     toast("有文件下载失败，请稍后重试");
                 }
@@ -1234,12 +1242,12 @@ function checkFile(fileName, fileHash) {
     return true;
 }
 
-function findCorruptOrMissingFile() {
-    //从6.1.2开始修正在线更新认不清版本的bug
-    var specifiedVersionName = version;
-    if (parseInt(version.split(".").join("")) < parseInt("6.1.2".split(".").join(""))) {
-        specifiedVersionName = "6.1.2";
-        log("版本低于6.1.2，先更新文件数据列表到6.1.2");
+function findCorruptOrMissingFile(specifiedVersionName) {
+    //从6.1.4开始修正在线更新认不清版本的bug
+    if (specifiedVersionName == null) specifiedVersionName = version;
+    if (parseInt(version.split(".").join("")) < parseInt("6.1.4".split(".").join(""))) {
+        specifiedVersionName = "6.1.4";
+        log("版本低于6.1.4，先更新文件数据列表到6.1.4");
         if (downloadUpdateListJSON(specifiedVersionName) == null) {
             //如果下载或写入不成功
             ui.post(function () {dialogs.alert("警告", "下载文件数据列表失败，无法检查文件数据，不能确保文件数据无误");});
@@ -1390,8 +1398,8 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
     return true;
 });
 
-var checkAgainstUpdateListAndFix = sync(function (showResult) {
-    let ret = findCorruptOrMissingFile();
+var checkAgainstUpdateListAndFix = sync(function (showResult, specifiedVersionName) {
+    let ret = findCorruptOrMissingFile(specifiedVersionName);
     let corruptOrMissingFileList = ret.corruptOrMissingFileList;
     let specifiedVersionName = ret.versionName;
     if (Array.isArray(corruptOrMissingFileList)) {
@@ -1414,8 +1422,6 @@ var checkAgainstUpdateListAndFix = sync(function (showResult) {
             });}
             promptRepair("检查发现有"+corruptOrMissingFileList.length+"个文件缺失或损坏，要尝试重新下载来修复么？");
         } else if (version !== specifiedVersionName) {
-            //一般不会走到这里。所有文件验证通过时，用root权限手动删掉updateList.json后重启才会走到这里
-            //这个时候脚本显示的版本仍然是老的，需要重启一次才能显示正确的版本
             ui.post(function () {
                 dialogs.confirm("更新完毕", "马上会再重启一次app")
                 .then(function () {
