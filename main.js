@@ -1044,7 +1044,8 @@ function setVersionMsg(textMsg, color, isVisible) {
     if (typeof color === "string") color = colors.parseColor(color);
     if (typeof isVisible === "boolean") isVisible = isVisible ? View.VISIBLE : View.GONE;
 
-    ui.run(function () {
+    //ui.run(function () {
+    ui.post(function () {
         ui.versionMsg.setText(textMsg);
         ui.versionMsg.setTextColor(color);
         ui.versionMsg_vertical.setVisibility(isVisible);

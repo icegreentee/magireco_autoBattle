@@ -1262,7 +1262,8 @@ floatUI.main = function () {
         //然后这里才能上锁（还有refreshUpdateStatus在被调用之前也会尝试上锁，但和这里谁先谁后应该无所谓）
         floatUI.floatyHangWorkaroundLock.lock();
         floatUI.floatyHangWorkaroundLock.unlock();
-        ui.run(function () {
+        //ui.run(function () {
+        ui.post(() => {
             if (!show) {
                 if (limit.doNotHideFloaty) return;
                 if (isAllFloatyHidden) return;
