@@ -1551,18 +1551,19 @@ floatUI.main = function () {
         if (limit.privilege == null) return;
         if (ui.isUiThread()) throw new Error("enableAutoService should not run on UI thread");
         $settings.setEnabled("enable_accessibility_service_by_root", false);
-        let result = privShell("settings get secure enabled_accessibility_services");
-        if (result.code != 0) return;
         let accSvcName = floatUI.storage.get("accSvcName", "");
-        let resultStr = result.result;
-        resultStr = resultStr.split("\n").join("");
-        let services = resultStr.split(":");
+        function getServices() {
+            let result = privShell("settings get secure enabled_accessibility_services");
+            if (result.code != 0) return;
+            let resultStr = result.result.split("\n").join("").split("\"").join("");
+            return resultStr.split(":");
+        }
         let myServiceNamePrefix = context.getPackageName()+"/";
         if (auto.service != null && auto.root != null) {
             log("无障碍服务已开启，无需再次自动开启");
             if (accSvcName == null || accSvcName === "") {
                 log("尚未获取无障碍服务名，尝试获取");
-                let found = services.find((item) => item.startsWith(myServiceNamePrefix));
+                let found = getServices().find((item) => item.startsWith(myServiceNamePrefix));
                 if (found != null) {
                     let foundSplitted = found.split("/");
                     if (foundSplitted[1] != null && foundSplitted[1] !== "") {
@@ -1589,7 +1590,7 @@ floatUI.main = function () {
             }
         }
         let myServiceName = myServiceNamePrefix+accSvcName;
-        let filteredServices = services.filter((item) =>
+        let filteredServices = getServices().filter((item) =>
             item !== myServiceName && item != null && item !== "" && item !== "null" && item !== "undefined");
         let servicesStrWithoutMe = filteredServices.join(":");
         filteredServices.push(myServiceName);
@@ -1601,7 +1602,7 @@ floatUI.main = function () {
                 updateUI("autoService", "setChecked", true);
                 break;
             }
-            result = privShell("settings put secure enabled_accessibility_services \""+servicesStrWithoutMe+"\"");
+            let result = privShell("settings put secure enabled_accessibility_services \""+servicesStrWithoutMe+"\"");
             sleep(500);
             result = privShell("settings put secure enabled_accessibility_services \""+servicesStr+"\"");
             sleep(500);
