@@ -1305,6 +1305,11 @@ floatUI.main = function () {
                     for (let key in floatyObjs) {
                         let f = floatyObjs[key];
                         let sp = floatySizePositions[key];
+                        if (sp == null) {
+                            //如果之前没隐藏过悬浮窗，sp就是undefined，所以这里不能继续往下执行，只能return
+                            log("floatySizePositions["+key+"] == null");
+                            return;
+                        }
                         let s = sp.size, p = sp.pos;
                         f.setPosition(p.x, p.y);
                         f.setSize(s.w, s.h);
