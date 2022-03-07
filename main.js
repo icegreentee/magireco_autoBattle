@@ -125,7 +125,7 @@ ui.layout(
                             <Switch id="autoRecover" margin="0 3" w="*" checked="false" textColor="#000000" text="游戏崩溃带崩脚本的临时解决方案" />
                             <text id="autoRecoverText1" visibility="gone" textSize="12" text="强烈建议把上面的“自动开启无障碍服务”也一并开启！" textColor="#FF0000" />
                             <text id="autoRecoverText2" visibility="gone" textSize="12" text="脚本可以监工游戏,防止游戏因为掉线/闪退/内存泄漏溢出而中断自动周回。但是游戏闪退时貌似有几率会带着脚本一起崩溃,原因不明。" textColor="#000000" />
-                            <text id="autoRecoverText3" visibility="gone" textSize="12" text="为了对付这个问题,目前有个临时的办法(需要root或adb权限),就是在logcat里监控游戏是否崩溃,崩溃后再杀一次游戏进程,然后重启脚本。目前只有“副本周回(剧情/活动通用)”脚本支持这个功能。" textColor="#000000" />
+                            <text id="autoRecoverText3" visibility="gone" textSize="12" text="为了对付这个问题,目前有个临时的办法(需要root或adb权限),就是在logcat里监控脚本是否还在运行,如果发现脚本超过1分钟没动弹,就杀死脚本和游戏进程,然后重启脚本,再由脚本重启游戏。目前只有“副本周回(剧情/活动通用)”脚本支持这个功能。" textColor="#000000" />
                         </vertical>
                     </vertical>
 
