@@ -1101,8 +1101,8 @@ threads.start(function () {
     //floatUI.main在UI线程中第一个执行，然后会上锁，等到反射相关操作做完了才会解锁
     //然后这里才能上锁（还有showHideAllFloaty里也会尝试上锁，但和这里谁先谁后应该无所谓）
     floatUI.floatyHangWorkaroundLock.lock();
-    refreshUpdateStatus();
     floatUI.floatyHangWorkaroundLock.unlock();
+    refreshUpdateStatus();
 });
 
 //版本更新
