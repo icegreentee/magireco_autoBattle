@@ -120,7 +120,8 @@ ui.layout(
                             <text id="doNotToggleForegroundServiceText2" visibility="gone" textSize="12" text="但是,在前台服务开启时,会在通知栏显示一条常驻通知,比较扰民。所以,默认是只在脚本运行时开启前台服务,脚本结束运行后即自动停用前台服务,而且,不仅会自动停用前台服务,如果之前申请了截屏权限,还会把截屏权限也一并停用。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText3" visibility="gone" textSize="12" text="如果不想让脚本自己控制前台服务、不想让脚本自己停用截屏权限,那就把这个选项开启。" textColor="#000000" />
                             <Switch id="autoEnableAccSvc" margin="0 3" w="*" checked="false" textColor="#000000" text="自动开启无障碍服务" />
-                            <text id="autoEnableAccSvcText1" visibility="gone" textSize="12" text="（需要root或adb权限）在脚本启动时自动开启无障碍服务。" textColor="#000000" />
+                            <text id="autoEnableAccSvcText1" visibility="gone" textSize="12" text="必须先手动成功开启一次无障碍服务，之后才能自动开启。最好在手动开启成功后，再重新开关一下这个选项。" textColor="#ff0000" />
+                            <text id="autoEnableAccSvcText2" visibility="gone" textSize="12" text="（需要root或adb权限）在脚本启动时自动开启无障碍服务。" textColor="#000000" />
                             <Switch id="autoRecover" margin="0 3" w="*" checked="false" textColor="#000000" text="游戏崩溃带崩脚本的临时解决方案" />
                             <text id="autoRecoverText1" visibility="gone" textSize="12" text="强烈建议把上面的“自动开启无障碍服务”也一并开启！" textColor="#FF0000" />
                             <text id="autoRecoverText2" visibility="gone" textSize="12" text="脚本可以监工游戏,防止游戏因为掉线/闪退/内存泄漏溢出而中断自动周回。但是游戏闪退时貌似有几率会带着脚本一起崩溃,原因不明。" textColor="#000000" />
@@ -739,7 +740,6 @@ ui.emitter.on("resume", () => {
 });
 ui.emitter.on("pause", () => {
     //未开启无障碍时,在切出脚本界面时隐藏悬浮窗,避免OPPO等品牌手机拒绝开启无障碍服务
-    //TODO 以后应该还可以把root权限也考虑一下（现在只是在无障碍服务未开启时,才会顺带着在弹出root权限申请时隐藏悬浮窗）
     if (floatIsActive) {
         if (auto.service == null && !ui.doNotHideFloaty.isChecked()) {
             floatUI.hideAllFloaty();
@@ -1098,6 +1098,8 @@ var refreshUpdateStatus = sync(function () {
 });
 threads.start(function () {
     //绕开CwvqLU 9.1.0版上的奇怪假死问题，refreshUpdateStatus里的ui.run貌似必须等到对悬浮窗的Java反射操作完成后再进行，否则会假死
+    //floatUI.main在UI线程中第一个执行，然后会上锁，等到反射相关操作做完了才会解锁
+    //然后这里才能上锁（还有showHideAllFloaty里也会尝试上锁，但和这里谁先谁后应该无所谓）
     floatUI.floatyHangWorkaroundLock.lock();
     refreshUpdateStatus();
     floatUI.floatyHangWorkaroundLock.unlock();
