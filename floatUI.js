@@ -1161,7 +1161,34 @@ floatUI.main = function () {
         }
         //floatUI.storage.remove("last_limit_json");//触发带崩脚本问题时貌似on exit事件也会触发,所以这里就不删除last_limit_json了
         //停止shell脚本监工(在参数修改触发adjust函数后就应该已经停止了)
-        if (limit.autoRecover) stopFatalKillerShellScript();
+        if (limit.autoRecover) {
+            let lastTask = null;
+            try {
+                let lastTaskJson = floatUI.storage.get("last_limit_json", "null");
+                lastTask = JSON.parse(lastTaskJson);
+            } catch (e) {
+                lastTask = null;
+            }
+            if (lastTask != null) {
+                origFunc.buildDialog({
+                    title: "游戏崩溃带崩脚本的临时解决方案",
+                    content: "已保存脚本当前的运行状态，下次启动脚本时，将会自动重启游戏并重新登录、恢复本次脚本运行。"
+                          +"\n如果点击\"不要恢复\"按钮，就会把这个保存下来的状态清除掉，然后就不会恢复了。"
+                          +"\n（一般情况下，弹出这个对话框是为了判断情况：如果是游戏崩溃带崩脚本、而不是用户主动想退出，那么\"不要恢复\"按钮应该就不会被点击，然后在1分钟内，应该就可以检测到脚本已经死掉、从而自动重启脚本，接着，重启后的脚本就会重启并重新登录游戏、恢复上次被打断的任务）",
+                    positive: "不要恢复",
+                    negative: "要恢复",
+                }).on("positive", (d) => {
+                    log("on positive, clear and stop");
+                    floatUI.storage.clear("last_limit_json");
+                    log("cleared last_limit_json");
+                    stopFatalKillerShellScript();
+                }).on("negative", (d) => {
+                    log("on negative, do nothing");
+                }).on("dismiss", (d) => {
+                    log("on dismiss, do nothing");
+                }).show();
+            }
+        }
     });
 
     var touch_down_pos = null;

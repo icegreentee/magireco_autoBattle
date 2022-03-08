@@ -1439,6 +1439,32 @@ var checkAgainstUpdateListAndFix = sync(function (showResult, specifiedVersionNa
 });
 
 floatUI.enableToastParamChanges();
-ui.post(function () {
-    floatUI.recoverLastWork();
-}, 2000);
+function delayedRecoverLastWork(countDown) {
+    if (countDown == null) countDown = 10;
+    if (!(countDown > 0)) return;
+    ui.post(function () {
+        if (auto.service != null && auto.root != null) {
+            log("无障碍服务已开启，恢复上次执行的脚本...");
+            floatUI.recoverLastWork();
+        } else {
+            if (--countDown > 0) {
+                log("无障碍服务还未开启，稍后重试恢复上次执行的脚本（剩余重试次数："+countDown+"）");
+                delayedRecoverLastWork(countDown);
+            } else {
+                log("没等到无障碍服务开启，不再重试恢复上次执行的脚本");
+            }
+        }
+    }, 2000);
+}
+if (floatUI.storage.get("autoRecover", false)) {
+    let lastTask = null;
+    try {
+        let lastTaskJson = floatUI.storage.get("last_limit_json", "null");
+        lastTask = JSON.parse(lastTaskJson);
+    } catch (e) {
+        lastTask = null;
+    }
+    if (lastTask != null) {
+        delayedRecoverLastWork(10);
+    }
+}
