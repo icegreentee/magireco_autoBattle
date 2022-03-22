@@ -1320,7 +1320,7 @@ floatUI.main = function () {
                     }
     
                     isAllFloatyHidden = true;
-                    toastLog("为避免干扰申请权限,\n已隐藏所有悬浮窗");
+                    instantToast("为避免干扰申请权限,\n已隐藏所有悬浮窗");
                 } catch (e) {
                     logException(e);
                     toastLog("悬浮窗已丢失\n请重新启动本程序");
@@ -1328,7 +1328,7 @@ floatUI.main = function () {
                 }
             } else {
                 //if (!isAllFloatyHidden) return;
-                if (isAllFloatyHidden) toast("恢复显示悬浮窗");
+                if (isAllFloatyHidden) instantToast("恢复显示悬浮窗");
                 log("尝试恢复显示悬浮窗");
                 try {
                     for (let key in floatyObjs) {
