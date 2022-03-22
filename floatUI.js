@@ -9599,7 +9599,8 @@ function algo_init() {
         let clickAttemptMax = 10;
         let inconclusiveCount = 0;
         for (let i=0; i<clickAttemptMax; i++) {
-            click(point.x, point.y);
+            //国服2.1.10更新后出现无法点击magia盘的问题，从click改成swipe即可绕开问题
+            swipe(point.x, point.y, point.x, point.y, 100);
             //点击有时候会没效果，还需要监控盘是否按下了
             sleep(333);
             let screenshot = compatCaptureScreen();
