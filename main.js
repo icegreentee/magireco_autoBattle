@@ -394,6 +394,14 @@ ui.layout(
                                 <Switch id="CVAutoBattlePreferABCCombo" w="*" margin="0 3" checked="false" textColor="#000000" text="优先凑A/B/C Combo" />
                                 <text text="默认优先凑出Puella Combo(3个盘都是同一个角色)。开启后,改为优先凑出Accel/Blast/Charge Combo(比如3个盘都是Accel)。" textColor="#000000" />
                             </vertical>
+                            <vertical id="CVAutoBattleExtraSettings7" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <linear>
+                                    <text text="按下后等待" textColor="#000000" />
+                                    <input maxLength="3" id="CVAutoBattleClickDiskDuration" hint="50" text="50" textSize="14" inputType="number|none" />
+                                    <text text="毫秒后再松开行动盘" textColor="#000000" />
+                                </linear>
+                                <text text="国服2.1.10版更新后出现magia盘点不下去的问题,默认按住50毫秒后松开即可绕开这个问题,如果还有问题可以尝试调整这个数值。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -835,6 +843,7 @@ const persistParamList = [
     "CVAutoBattleClickAllMagiaDisks",
     "CVAutoBattlePreferAccel",
     "CVAutoBattlePreferABCCombo",
+    "CVAutoBattleClickDiskDuration",
     "dungeonEventRouteData",
     "dungeonClickNonBattleNodeWaitSec",
     "dungeonPostRewardWaitSec",
@@ -979,6 +988,19 @@ afterTextChanged: function (s) {
     let value = parseInt(str);
     if (isNaN(value) || value < 1 || value > 99) {
         s.replace(0, str.length, "3");
+    }
+}
+})
+);
+
+//限制CVAutoBattleClickDiskDuration的取值
+ui["CVAutoBattleClickDiskDuration"].addTextChangedListener(
+new android.text.TextWatcher({
+afterTextChanged: function (s) {
+    let str = ""+s;
+    let value = parseInt(str);
+    if (isNaN(value) || value < 1 || value > 999) {
+        s.replace(0, str.length, "50");
     }
 }
 })

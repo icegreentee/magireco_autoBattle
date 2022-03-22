@@ -1796,6 +1796,7 @@ var limit = {
     CVAutoBattleClickAllMagiaDisks: true,
     CVAutoBattlePreferAccel: false,
     CVAutoBattlePreferABCCombo: false,
+    CVAutoBattleClickDiskDuration: "50",
     dungeonEventRouteData: "",
     dungeonClickNonBattleNodeWaitSec: "8",
     dungeonPostRewardWaitSec: "8",
@@ -9601,7 +9602,7 @@ function algo_init() {
         let inconclusiveCount = 0;
         for (let i=0; i<clickAttemptMax; i++) {
             //国服2.1.10更新后出现无法点击magia盘的问题，从click改成swipe即可绕开问题
-            swipe(point.x, point.y, point.x, point.y, 100);
+            swipe(point.x, point.y, point.x, point.y, parseInt(limit.CVAutoBattleClickDiskDuration));
             //点击有时候会没效果，还需要监控盘是否按下了
             sleep(333);
             let screenshot = compatCaptureScreen();
