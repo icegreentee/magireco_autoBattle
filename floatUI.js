@@ -8096,11 +8096,12 @@ function algo_init() {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
                 initializeScreenCaptureFix();
 
-                sleep(500);
-                toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
-                sleep(3000);
-                toastLog("转屏可能导致截屏失败，请务必不要转屏，也不要切换出游戏×2");
-                sleep(3000);
+                sleep(2000); //等待toast消失，比如“恢复显示悬浮窗”
+                dialogs.alert(
+                    "提示",
+                    "获取截屏权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏"
+                );
+                log("获取截屏权限成功");
                 canCaptureScreen = true;
                 break;
             } else {
