@@ -1320,7 +1320,7 @@ floatUI.main = function () {
                     }
     
                     isAllFloatyHidden = true;
-                    toastLog("为避免干扰申请权限,\n已隐藏所有悬浮窗");
+                    instantToast("为避免干扰申请权限,\n已隐藏所有悬浮窗");
                 } catch (e) {
                     logException(e);
                     toastLog("悬浮窗已丢失\n请重新启动本程序");
@@ -1328,7 +1328,7 @@ floatUI.main = function () {
                 }
             } else {
                 //if (!isAllFloatyHidden) return;
-                if (isAllFloatyHidden) toast("恢复显示悬浮窗");
+                if (isAllFloatyHidden) instantToast("恢复显示悬浮窗");
                 log("尝试恢复显示悬浮窗");
                 try {
                     for (let key in floatyObjs) {
@@ -1796,6 +1796,7 @@ var limit = {
     CVAutoBattleClickAllMagiaDisks: true,
     CVAutoBattlePreferAccel: false,
     CVAutoBattlePreferABCCombo: false,
+    CVAutoBattleClickDiskDuration: "50",
     dungeonEventRouteData: "",
     dungeonClickNonBattleNodeWaitSec: "8",
     dungeonPostRewardWaitSec: "8",
@@ -8096,11 +8097,12 @@ function algo_init() {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
                 initializeScreenCaptureFix();
 
-                sleep(500);
-                toastLog("获取截图权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏");
-                sleep(3000);
-                toastLog("转屏可能导致截屏失败，请务必不要转屏，也不要切换出游戏×2");
-                sleep(3000);
+                sleep(2000); //等待toast消失，比如“恢复显示悬浮窗”
+                dialogs.alert(
+                    "提示",
+                    "获取截屏权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏"
+                );
+                log("获取截屏权限成功");
                 canCaptureScreen = true;
                 break;
             } else {
@@ -9599,7 +9601,8 @@ function algo_init() {
         let clickAttemptMax = 10;
         let inconclusiveCount = 0;
         for (let i=0; i<clickAttemptMax; i++) {
-            click(point.x, point.y);
+            //国服2.1.10更新后出现无法点击magia盘的问题，从click改成swipe即可绕开问题
+            swipe(point.x, point.y, point.x, point.y, parseInt(limit.CVAutoBattleClickDiskDuration));
             //点击有时候会没效果，还需要监控盘是否按下了
             sleep(333);
             let screenshot = compatCaptureScreen();
