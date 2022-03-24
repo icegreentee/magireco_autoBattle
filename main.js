@@ -347,7 +347,7 @@ ui.layout(
                             </vertical>
                             <vertical id="MirrorsExtraSettings1" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="smartMirrorsPick" w="*" margin="0 3" checked="true" textColor="#000000" text="智能挑选最弱对手" />
-                                <text text="开启此项后会先找总战力低于我方六分之一的弱队,如果找不到就挨个点开队伍详情计算平均战力,从而找到最弱对手。如果碰到问题可以关闭这个选项,然后就只会挑选第3个对手" textColor="#000000" />
+                                <text text="开启此项后会先找总战力低于我方六分之一的弱队,如果找不到就挨个点开队伍详情计算平均战力,从而找到最弱对手。如果碰到问题可以关闭这个选项,然后就只会挑选第1个对手" textColor="#000000" />
                             </vertical>
                             <vertical id="MirrorsExtraSettings2" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="useCVAutoBattle" w="*" margin="0 3" checked="true" textColor="#000000" text="在周回中使用识图自动战斗" />
