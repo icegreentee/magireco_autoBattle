@@ -8171,7 +8171,9 @@ function algo_init() {
             }
         } catch (e) {
             hasScreenCaptureError = true;
-            toastLog("通过录屏API截图时出错\n请使用root或adb权限截屏");
+            dialogs.alert("截屏出错",
+                "通过录屏API截屏时出错。\n"
+                +"请尝试在识图自动战斗脚本设置中开启\"使用root或adb权限截屏\",或者换一个模拟器(比如安卓9的MuMu)再试试。");
             throw e;
         }
     }
