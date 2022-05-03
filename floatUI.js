@@ -1017,16 +1017,33 @@ floatUI.main = function () {
 
     // float button
     var menu = floaty.rawWindow(
-        <frame id="logo" w="44" h="44" alpha="0.4">
-            <img w="44" h="44" src="#ffffff" circle="true" />
-            <img
-                id="img_logo"
-                w="32"
-                h="32"
-                src={"file://"+files.join(files.join(files.cwd(), "images"), "qb.png")}
-                layout_gravity="center"
-            />
-        </frame>
+        <frame id="container" w="44"><vertical>
+            <frame id="logo" w="44" h="44" alpha="0.4">
+                <img w="44" h="44" src="#ffffff" circle="true" />
+                <img
+                    id="img_logo"
+                    w="32"
+                    h="32"
+                    src={"file://"+files.join(files.join(files.cwd(), "images"), "qb.png")}
+                    layout_gravity="center"
+                />
+            </frame>
+            <frame id="clickDiskWorkaround" alpha="0.4" w="44" h="44">
+                <img w="44" h="44" src="#303030" circle="true" />
+                <vertical padding="0 6 0 6">
+                    <img
+                        id="img_magia"
+                        h="16"
+                        src={"file://"+files.join(files.join(files.cwd(), "images"), "magia.png")}
+                    />
+                    <img
+                        id="img_doppel"
+                        h="16"
+                        src={"file://"+files.join(files.join(files.cwd(), "images"), "doppel.png")}
+                    />
+                </vertical>
+            </frame>
+        </vertical></frame>
     );
 
     floatUI.floatyHangWorkaroundLock.lock();
@@ -1113,6 +1130,17 @@ floatUI.main = function () {
                 } else {
                     hideMenu(submenu.container.getVisibility() == View.VISIBLE);
                 }
+        }
+        return true;
+    });
+    var clickDiskWorkaroundThread = null;
+    menu.clickDiskWorkaround.setOnTouchListener(function (self, event) {
+        switch (event.getAction()) {
+            case event.ACTION_UP:
+                if (clickDiskWorkaroundThread == null || !clickDiskWorkaroundThread.isAlive()) {
+                    clickDiskWorkaroundThread = threads.start(tasks.clickDiskWorkaround);
+                }
+                break;
         }
         return true;
     });
@@ -11328,6 +11356,14 @@ function algo_init() {
 
     /* ~~~~~~~~ 镜界自动战斗 结束 ~~~~~~~~ */
 
+    function clickDiskWorkaroundRunnable() {
+        const point = capture("请点击行动盘。若仍无反应，\n"
+            +"可尝试修改“识图自动战斗脚本”脚本设置中的\n"
+            +"“按下后等待多少毫秒后再松开行动盘”").pos_up;
+        //国服2.1.10更新后出现无法点击magia盘的问题，从click改成swipe即可绕开问题
+        swipe(point.x, point.y, point.x, point.y, parseInt(limit.CVAutoBattleClickDiskDuration));
+    }
+
     /* ~~~~~~~~ 来自3.6.0版(以及点SKIP跳过剧情bug修正)的备用周回脚本 开始 ~~~~~~~~ */
 
     // strings constants
@@ -11868,6 +11904,7 @@ function algo_init() {
         testSupportSel: testSupportPicking,
         testReLaunch: testReLaunchRunnable,
         captureText: captureTextRunnable,
+        clickDiskWorkaround: clickDiskWorkaroundRunnable,
     };
 }
 
