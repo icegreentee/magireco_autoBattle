@@ -6970,8 +6970,6 @@ function algo_init() {
         return state;
     }
 
-    var isRelaunchTested = false; //只表示是否测试过,不表示是否成功过
-
     function testReLaunchRunnable() {
         initialize();
         while (true) {
@@ -6994,7 +6992,7 @@ function algo_init() {
                     +"如果不能成功,请搜索你的手机品牌/型号是否有允许关联启动(白名单之类的)的设置方法")
                )
             {
-                isRelaunchTested = true; //只表示是否测试过,不表示是否成功过
+                floatUI.storage.put("isRelaunchTested", true); //只表示是否测试过,不表示是否成功过
                 break;
             }
         }
@@ -7006,12 +7004,14 @@ function algo_init() {
     }
 
     function requestTestReLaunchIfNeeded() {
-        if (isRelaunchTested) return;
-        if (dialogs.confirm("闪退自动重开",
-            "部分手机会拦截关联启动,阻碍自动重开游戏。\n"
-            +"强烈建议:点击\"确定\",这样会先停止脚本,然后测试脚本是否可以正常启动游戏。\n"
-            +"已知情况:\nMIUI上第一次会被拦截关联启动,点\"允许\"后就不会再拦截了。")
-           )
+        const title = "闪退自动重开";
+        const text = "部分手机会拦截关联启动,阻碍自动重开游戏。\n"
+        +"已知情况:\nMIUI上第一次会被拦截关联启动,点\"允许\"后就不会再拦截了。\n"
+        +"强烈建议:点击\"确定\",这样会先停止脚本,然后测试脚本是否可以正常启动游戏。";
+        if (floatUI.storage.get("isRelaunchTested", false)) {
+            return;
+        }
+        if (dialogs.confirm(title, text))
         {
             replaceCurrentTask(floatUI.scripts.find((val) => val.name == "测试闪退自动重开"));
         }
@@ -8098,11 +8098,11 @@ function algo_init() {
                 initializeScreenCaptureFix();
 
                 sleep(2000); //等待toast消失，比如“恢复显示悬浮窗”
-                dialogs.alert(
-                    "提示",
+                instantToast(
                     "获取截屏权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏"
                 );
                 log("获取截屏权限成功");
+                sleep(2000);
                 canCaptureScreen = true;
                 break;
             } else {
