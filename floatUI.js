@@ -1148,7 +1148,7 @@ floatUI.main = function () {
     //转屏时设置悬浮窗的位置和大小
     var receiver = new BroadcastReceiver({
         onReceive: function (ctx, it) {
-            if (menu && menu.logo) {
+            if (menu && menu.container) {
                 var sz = getWindowSize();
 
                 //更新脚本选择悬浮窗的大小和位置
@@ -1323,7 +1323,7 @@ floatUI.main = function () {
                 if (limit.doNotHideFloaty) return;
                 if (isAllFloatyHidden) return;
                 try {
-                    floatyVisibilities.menu = menu.logo.getVisibility();
+                    floatyVisibilities.menu = menu.container.getVisibility();
                     floatyVisibilities.submenu = submenu.entry0.getVisibility();
                     floatyVisibilities.task_popup = task_popup.container.getVisibility();
                     floatyVisibilities.overlay = overlay.container.getVisibility();
@@ -1336,7 +1336,7 @@ floatUI.main = function () {
                         };
                     };
     
-                    menu.logo.setVisibility(View.GONE);
+                    menu.container.setVisibility(View.GONE);
                     for (let i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(View.GONE);
                     task_popup.container.setVisibility(View.GONE);
                     overlay.container.setVisibility(View.GONE);
@@ -1372,7 +1372,7 @@ floatUI.main = function () {
                         f.setSize(s.w, s.h);
                     }
     
-                    menu.logo.setVisibility(floatyVisibilities.menu);
+                    menu.container.setVisibility(floatyVisibilities.menu);
                     for (var i = 0; i < menu_list.length; i++) submenu["entry"+i].setVisibility(floatyVisibilities.submenu);
                     task_popup.container.setVisibility(floatyVisibilities.task_popup);
                     overlay.container.setVisibility(floatyVisibilities.overlay);
