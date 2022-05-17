@@ -1284,8 +1284,7 @@ floatUI.main = function () {
         touch_down_pos = null;
         touch_up_pos = null;
         ui.post(() => {
-            var sz = getWindowSize();
-            overlay.setSize(sz.x, sz.y);
+            overlay.setSize(-1, -1);//android.view.ViewGroup.LayoutParams.MATCH_PARENT
             overlay.container.description_text.setText(description_text);
             overlay.container.setVisibility(View.VISIBLE);
             overlay.setTouchable(true);
