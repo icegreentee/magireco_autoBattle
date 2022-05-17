@@ -8056,19 +8056,7 @@ function algo_init() {
         let binaryCopyToPath = "/data/local/tmp/"+CwvqLUPkgName+"/sbin/"+binaryFileName;
         detectABI();
 
-        let binaryBytes = null;
-        try {
-            let url = binURLBase+"/bin/"+binaryFileName+"-"+shellABI;
-            let response = http.get(url);
-            if (response.statusCode == 200) {
-                binaryBytes = response.body.bytes();
-            }
-        } catch (e) {return;}
-        if (binaryBytes == null) return;
         let binaryCopyFromPath = dataDir+"/bin/"+binaryFileName+"-"+shellABI;
-        files.ensureDir(binaryCopyFromPath);
-        files.create(binaryCopyFromPath);
-        files.writeBytes(binaryCopyFromPath, binaryBytes);
         if (!files.isFile(binaryCopyFromPath)) return;
 
         //adb shell的权限并不能修改APP数据目录的权限，所以先要用APP自己的身份来改权限
