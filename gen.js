@@ -2,11 +2,12 @@ const fs = require("fs");
 const fsPromises = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
+const util = require("util");
 
 
 const rootpath = __dirname;
 const hashFuncName = 'sha256';
-const includeRules = [
+const inclusionRules = [
     {
         dirname: ".",
         recursive: false,
@@ -40,7 +41,7 @@ async function walkThrough(fullpath) {
     let relativepath = path.relative(rootpath, fullpath).replace(new RegExp('\\' + path.sep, 'g'), '/');
 
     if ((await fsPromises.stat(fullpath)).isDirectory()) {
-        if (includeRules.find((rule) => {
+        if (inclusionRules.find((rule) => {
             if (rule.dirname === path.dirname(relativepath)) {
                 return true;
             } else if (rule.recursive) {
@@ -62,7 +63,7 @@ async function walkThrough(fullpath) {
             return result.length > 0 ? result : null;
         }
     } else {
-        if (includeRules.find((rule) => {
+        if (inclusionRules.find((rule) => {
             if (path.basename(relativepath).match(rule.filename)) {
                 if (rule.dirname === path.dirname(relativepath)) {
                     return true;
@@ -92,7 +93,46 @@ const resultPath = path.join(resultDir, "updateList.json");
 const projectJsonPath = path.join(rootpath, "project.json");
 const projectUpdatedJsonPath = path.join(rootpath, "project-updated.json");
 
+const keyPairPath = path.join(rootpath, "..", "magireco_autoBattle_private");
+const publicKeyPath = path.join(keyPairPath, "publicKey.pem");
+const privateKeyPath = path.join(keyPairPath, "privateKey.pem");
+const signaturePath = path.join(resultDir, "updateList.json.sig.txt");
 
+
+async function getPrivateKey() {
+    const yellow = '\x1b[33m\x1b[40m%s\x1b[0m';
+    try {
+        return crypto.createPrivateKey({
+            key: await fsPromises.readFile(privateKeyPath),
+            type: "pkcs8",
+            format: "pem",
+        });;
+    } catch (e) {
+        console.warn(yellow, `Cannot read existing private key from ${privateKeyPath}`);
+        console.log(e);
+    }
+    console.warn(yellow, "================================\nGENERATING NEW KEYPAIR...");
+    const keypair = await util.promisify(crypto.generateKeyPair)("rsa", {
+        modulusLength: 2048,
+    });
+    const publicKey = keypair.publicKey.export({
+        type: "spki",
+        format: "pem",
+    });
+    const privateKey = keypair.privateKey.export({
+        type: "pkcs8",
+        format: "pem",
+    });
+    await fsPromises.mkdir(keyPairPath, {recursive: true});
+    await fsPromises.writeFile(publicKeyPath, publicKey);
+    console.warn("Written newly generated public key to "+publicKeyPath);
+    await fsPromises.writeFile(privateKeyPath, privateKey);
+    console.warn("Written newly generated private key to "+privateKeyPath);
+    console.warn(yellow, "NEW KEYPAIR GENERATED!\n================================");
+    console.warn(publicKey.endsWith("\n") ? publicKey.slice(0, -1) : publicKey);
+    console.warn(yellow, "================================\nPLEASE REPLACE PUBLIC KEY USED IN THE CODE!\n================================");
+    return keypair.privateKey;
+}
 async function regenerate() {
     console.log("Regenerating update/updateList.json ...");
     let projectJson = await fsPromises.readFile(projectJsonPath);
@@ -103,6 +143,13 @@ async function regenerate() {
         fileRootNode: await walkThrough(rootpath),
     }
     if (result.fileRootNode == null) result = [];
+    const toBeSigned = JSON.stringify(result);
+
+    const signer = crypto.createSign("RSA-SHA256");
+    signer.update(toBeSigned);
+    signer.end();
+    const signatureBase64 = signer.sign(await getPrivateKey(), "base64");
+
     try {
         let stat = await fsPromises.stat(resultDir);
         if (!stat.isDirectory()) {
@@ -115,8 +162,10 @@ async function regenerate() {
             throw e;
         }
     }
-    await fsPromises.writeFile(resultPath, JSON.stringify(result));
-    console.log("Written to "+resultPath);
+    await fsPromises.writeFile(resultPath, toBeSigned);
+    console.log("Result written to "+resultPath);
+    await fsPromises.writeFile(signaturePath, signatureBase64);
+    console.log("Signature written to "+signaturePath);
     return result;
 }
 regenerate();
@@ -185,6 +234,7 @@ const HTMLHead2 =
 +"\n        </script>"
 +"\n        <b>JSON data of all files (URLs and SRI hashes):</b><br>"
 +"\n        <a href=\"update/updateList.json\" target=\"_blank\"><b>application/json</b> update/updateList.json</a><br>"
++"\n        <a href=\"update/updateList.json.sig.txt\" target=\"_blank\"><b>application/json</b> update/updateList.json.sig.txt</a><br>"
 +"\n        <b>SRI-consistent downloaded data (click links below to show here):</b><br>"
 +"\n        <iframe id=\"iframeOfData\" width=\"100%\" height=\"50%\"></iframe>"
 +"\n        <b>Links of all files:</b><br>"
@@ -267,7 +317,7 @@ function isTooFrequent() {
 const server = http.createServer(async (req, res) => {
     let relativepath = req.url.replace(/^\//, "");
     let fullpath = path.resolve(relativepath);
-    let found = includeRules.find((rule) => {
+    let found = inclusionRules.find((rule) => {
         if (path.basename(relativepath).match(rule.filename)) {
             if (rule.dirname === path.dirname(relativepath)) {
                 return true;
@@ -304,7 +354,7 @@ const server = http.createServer(async (req, res) => {
         res.setHeader('Cache-control', 'no-cache');
         console.log(`Serving JSON data`);
         res.end(JSON.stringify(await regenerate()));
-    } else if (found != null) {
+    } else if (found != null || "/update/updateList.json.sig.txt" === req.url) {
         res.setHeader('Cache-control', 'no-cache');
         let servingfilepath = path.resolve(path.join(rootpath, relativepath));
         if (path.relative(rootpath, servingfilepath).includes("..") || relativepath.includes(":") || relativepath.includes("$")) {
