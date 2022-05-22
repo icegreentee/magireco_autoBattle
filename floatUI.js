@@ -7665,7 +7665,7 @@ function algo_init() {
                         click(convertCoords(clickSets.back));
                         find(string.support, parseInt(limit.timeout));
                     }
-                    if (findID("questLinkList") || findID("questWrapTitle")) {
+                    if (findID("questLinkList") || findID("questWrapTitle") || match(string.regex_event_branch)) {
                         //助战选择失败后会点击返回
                         //这里不检测BATTLE文字是否出现，避免叫做“BATTLE”的恶搞玩家名干扰
                         state = STATE_MENU;
