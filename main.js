@@ -443,7 +443,7 @@ ui.layout(
                                     <input maxLength="3" id="CVAutoBattleClickDiskDuration" hint="50" text="50" textSize="14" inputType="number|none" />
                                     <text text="毫秒后再松开行动盘" textColor="#000000" />
                                 </linear>
-                                <text text="国服2.1.10版更新后出现magia盘点不下去的问题,默认按住50毫秒后松开即可绕开这个问题,如果还有问题可以尝试调整这个数值。" textColor="#000000" />
+                                <text text="国服2.1.10a版更新后出现magia盘点不下去的问题,默认按住50毫秒后松开即可绕开这个问题,如果还有问题可以尝试调整这个数值。" textColor="#000000" />
                             </vertical>
                         </vertical>
                     </vertical>
