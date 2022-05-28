@@ -1330,7 +1330,7 @@ var toUpdate = sync(function () {
         const extraFileNames = ["main.js", "floatUI.js"];
         let downloaded = downloadAndVerifyEssentialFiles(latestVersionName, extraFileNames);
         if (downloaded == null) {
-            setVersionMsgToastLog("有文件下载或验证失败，请稍后重试");
+            setVersionMsgToastLog("有文件下载或验证失败，请稍后重试，或尝试切换下载源");
             return;
         }
         setVersionMsgLog("已下载必要文件，写入...", "#666666", true);
