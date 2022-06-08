@@ -9732,21 +9732,23 @@ function algo_init() {
     }
 
     function getSkillArea(diskPos, skillNo, isFull) {
+        let known = isFull ? knownFirstSkillFullCoords : knownFirstSkillCoords;
         let area = {};
         for (let corner of ["topLeft", "bottomRight"]) {
             area[corner] = {};
             area[corner].pos = "bottom";
             for (let axis of ["x", "y"]) {
-                if (isFull) {
-                    area[corner][axis] = knownFirstSkillFullCoords[corner][axis];
-                } else {
-                    area[corner][axis] = knownFirstSkillCoords[corner][axis];
-                }
+                area[corner][axis] = known[corner][axis];
             }
             area[corner].x += diskPos * skillCharaDistance;
             area[corner].x += skillNo * skillDistance;
         }
-        return getConvertedArea(area);
+        let converted = getConvertedArea(area);
+        //防止图像大小不符导致MSSIM==-1，或者直接崩溃（CwvqLU 9.1.0）
+        let sizePoint = getConvertedAreaNoCutout(known);
+        converted.bottomRight.x = converted.topLeft.x + getAreaWidth(sizePoint) - 1;
+        converted.bottomRight.y = converted.topLeft.y + getAreaHeight(sizePoint) - 1;
+        return converted;
     }
 
     function getSkillFullArea(diskPos, skillNo) {
