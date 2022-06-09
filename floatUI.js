@@ -9575,13 +9575,14 @@ function algo_init() {
                     clickedDisksCount++;
                     fromDisk.connectedTo = getConnectAcceptorCharaID(fromDisk, clickedDisksCount); //判断接连携的角色是谁
                     thisStandPoint.charaID = fromDisk.connectedTo;
-                    break;
+                    return true;
                 } else {
                     log("连携动作失败，可能是因为连携到了自己身上");
                     //以后也许可以改成根据按下连携盘后地板是否发亮来排除自己
                 }
             }
         }
+        return false;
     }
 
     //点击行动盘
@@ -10869,7 +10870,9 @@ function algo_init() {
                     diskToClick.connectable = isConnectableDown.connectable && (!isConnectableDown.down); //所以这里还无法区分盘是否被按下，但是可以排除只剩一人无法连携的情况
                 }
                 if (diskToClick.connectable) {
-                    connectDisk(diskToClick);
+                    if (!connectDisk(diskToClick)) {
+                        clickDisk(diskToClick);
+                    }
                 } else {
                     clickDisk(diskToClick);
                 }
