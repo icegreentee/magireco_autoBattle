@@ -396,6 +396,13 @@ ui.layout(
                                 <Switch id="useCVAutoBattle" w="*" margin="0 3" checked="true" textColor="#000000" text="在周回中使用识图自动战斗" />
                                 <text text="开启此项,可以通过截屏识图自动完成连携。关闭此项,则镜层周回使用简单无脑点第1/2/3个盘来自动完成战斗" textColor="#000000" />
                             </vertical>
+                            <vertical id="MirrorsExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <linear>
+                                    <text text="对手人数因子" textColor="#000000" />
+                                    <input maxLength="3" id="mirrorsEnemyNumFactor" hint="0" text="0" textSize="14" inputType="number|none" />
+                                </linear>
+                                <text text="可以认为对手人数越多越难打。取值范围0-100。默认不考虑对手人数,即因子为0。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -885,6 +892,7 @@ const persistParamList = [
     "rootForceStop",
     "rootScreencap",
     "smartMirrorsPick",
+    "mirrorsEnemyNumFactor",
     "useCVAutoBattle",
     "CVAutoBattleDebug",
     "CVAutoBattleClickAllSkills",
@@ -1029,6 +1037,19 @@ afterTextChanged: function (s) {
 })
 );
 
+//限制mirrorsEnemyNumFactor的取值
+ui["mirrorsEnemyNumFactor"].addTextChangedListener(
+new android.text.TextWatcher({
+afterTextChanged: function (s) {
+    let str = ""+s;
+    let value = parseInt(str);
+    if (isNaN(value) || value < 0 || value > 100) {
+        s.replace(0, str.length, "0");
+    }
+}
+})
+);
+    
 //限制CVAutoBattleClickSkillsSinceTurn的取值
 ui["CVAutoBattleClickSkillsSinceTurn"].addTextChangedListener(
 new android.text.TextWatcher({
