@@ -1789,6 +1789,7 @@ var limit = {
     rootForceStop: false,
     rootScreencap: false,
     smartMirrorsPick: true,
+    mirrorsEnemyNumFactor: "0",
     useCVAutoBattle: true,
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
@@ -11023,6 +11024,11 @@ function algo_init() {
         if (charaCount == 0) return 0; //对手队伍信息还没出现
         let avgScore = totalScore / totalSqrtLv * Math.sqrt(highestLv); //按队伍里的最高等级进行估计（往高了估，避免错把强队当作弱队）
         log("getMirrorsAverageScore avgScore", avgScore);
+        //可调整考虑队伍人数的因素，人越多被认为越难打（默认不考虑）
+        let factor = 1.0;
+        factor += (charaCount - 1) * parseInt(limit.mirrorsEnemyNumFactor) / 100;
+        avgScore *= factor;
+        log("getMirrorsAverageScore factor", factor, "avgScore", avgScore);
         return avgScore;
     }
 
