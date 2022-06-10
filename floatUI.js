@@ -658,7 +658,7 @@ floatUI.main = function () {
         checkRotationGlitch();
         layoutTaskPopup();
         task_popup.container.setVisibility(View.VISIBLE);
-        task_popup.setTouchable(true);
+        floaty_setTouchable("task_popup", true);
     }
 
     function cancelWrap() {
@@ -798,6 +798,56 @@ floatUI.main = function () {
     }
     var isGravityRight = false;
 
+    //绕过Android 12出现setTouchable(false)无效的问题
+    var floatyObjs = {};
+    var isFloatyTouchable = {};
+    var floatySize = {};
+    function registerFloatyObj(key, obj) {
+        floatyObjs[key] = obj;
+        isFloatyTouchable[key] = true;
+        floatySize[key] = {width: floatyObjs[key].getWidth(), height: floatyObjs[key].getHeight()}; //有时候会返回0
+    }
+    function floaty_getWidth(key) {
+        return floatySize[key].width;
+    }
+    function floaty_getHeight(key) {
+        return floatySize[key].height;
+    }
+    function floaty_setSize(key, width, height) {
+        floatySize[key] = {width: width, height: height};
+        if (isFloatyTouchable[key]) floatyObjs[key].setSize(width, height);
+    }
+    function floaty_setTouchable(key, touchable) {
+        var retryRecordSize = (newTouchable) => {
+            //有时候registerFloatyObj记录下来的原大小是0，这里试图重新记录
+            let size = floatySize[key];
+            if (size.width <= 1 || size.height <= 1) {
+                size = {width: floatyObjs[key].getWidth(), height: floatyObjs[key].getHeight()};
+                log("retryRecordSize", "key", key, "touchable", touchable, "isFloatyTouchable[key]", isFloatyTouchable[key], "size", size);
+            }
+            if (size.width > 1 && size.height > 1) {
+                floatySize[key] = size;
+                if (!newTouchable) floatyObjs[key].setSize(1, 1);
+            } else {
+                ui.post(() => {retryRecordSize(newTouchable);}, 500);
+            }
+        }
+
+        let oldVal = isFloatyTouchable[key] ? true : false;
+        let newVal = touchable ? true : false;
+        floatyObjs[key].setTouchable(newVal);
+        retryRecordSize(newVal);
+        if (oldVal == newVal) {
+            return;
+        }
+        isFloatyTouchable[key] = newVal;
+        if (newVal) {
+            let size = floatySize[key];
+            floatyObjs[key].setSize(size.width, size.height);
+        }
+    }
+
+
     var task_popup = floaty.rawWindow(
         <frame id="container" w="*" h="*">
             <relative w="*" h="*" bg="#f8f8f8" margin="0 15 15 0" padding="2" >
@@ -835,14 +885,15 @@ floatUI.main = function () {
 
     function layoutTaskPopup() {
         var sz = getWindowSize();
-        task_popup.setSize(parseInt(sz.x * 3 / 4), parseInt(sz.y * 3 / 4));
+        floaty_setSize("task_popup", parseInt(sz.x * 3 / 4), parseInt(sz.y * 3 / 4));
         task_popup.setPosition(parseInt(sz.x / 8), parseInt(sz.y / 8));
     }
 
     task_popup.container.setVisibility(View.INVISIBLE);
     ui.post(() => {
         try {
-            task_popup.setTouchable(false);
+            registerFloatyObj("task_popup", task_popup);
+            floaty_setTouchable("task_popup", false);
         } catch (e) {
             logException(e);
             toastLog("设置悬浮窗时出错,重启app...");
@@ -852,7 +903,7 @@ floatUI.main = function () {
     task_popup.list.setDataSource(floatUI.scripts);
     task_popup.list.on("item_click", function (item, i, itemView, listView) {
         task_popup.container.setVisibility(View.INVISIBLE);
-        task_popup.setTouchable(false);
+        floaty_setTouchable("task_popup", false);
         if (item.fn) {
             toastLog("执行 " + item.name + " 脚本");
             replaceCurrentTask(item);
@@ -860,7 +911,7 @@ floatUI.main = function () {
     });
     task_popup.close_button.click(() => {
         task_popup.container.setVisibility(View.INVISIBLE);
-        task_popup.setTouchable(false);
+        floaty_setTouchable("task_popup", false);
     });
 
     // record control info into xml
@@ -913,7 +964,8 @@ floatUI.main = function () {
     floatUI.floatyHangWorkaroundLock.lock();
     ui.post(() => {
         try {
-          submenu.setTouchable(false);
+          registerFloatyObj("submenu", submenu);
+          floaty_setTouchable("submenu", false);
           toggleFloatyGravityLeftRight(submenu, false);//CwvqLU设置的Gravity貌似是START而不是LEFT,这里改成LEFT
           floatUI.floatyHangWorkaroundLock.unlock(); //绕开CwvqLU 9.1.0版上的奇怪假死问题
         } catch (e) {
@@ -939,14 +991,18 @@ floatUI.main = function () {
     function hideMenu(hide) {
         menu.setTouchable(false);
         menu.logo.attr("alpha", "1");
-        submenu.setTouchable(false);
+        floaty_setTouchable("submenu", true); //以前是设为false，之所以要改成这样，
+        //是为了应对Android 12出现setTouchable(false)无效的问题：
+        //floaty_setTouchable实际上不再只是设置点击穿透，
+        //同时也通过设置窗口大小是否为1来切换是否显示或隐藏悬浮窗，从而变相实现“不可点击”
+        //（悬浮窗被设为1像素，或者说，隐藏起来了，也是不可点击）
 
         var angle_base = Math.PI / menu_list.length / 2;
-        var size_base = menu.getWidth();
+        var size_base = floaty_getWidth("menu");
 
         submenu.setPosition(
             0,
-            parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+            parseInt(menu.getY() - (floaty_getHeight("submenu") - floaty_getHeight("menu")) / 2)
         );
 
         for (var i = 0; i < menu_list.length; i++) {
@@ -1004,11 +1060,10 @@ floatUI.main = function () {
         set.addListener({
             onAnimationEnd: (anim) => {
                 menu.setTouchable(true);
+                floaty_setTouchable("submenu", !hide);
                 if (hide) {
                     submenu.container.setVisibility(View.INVISIBLE);
                     menu.logo.attr("alpha", "0.4");
-                } else {
-                    submenu.setTouchable(true);
                 }
             },
         });
@@ -1032,6 +1087,8 @@ floatUI.main = function () {
     floatUI.floatyHangWorkaroundLock.lock();
     ui.post(() => {
         try {
+          registerFloatyObj("menu", menu);
+          floaty_setTouchable("menu", true); //因为registerFloatyObj有时候记录不到大小所以只能这样再加一句
           menu.setPosition(0, parseInt(getWindowSize().y / 4));
           toggleFloatyGravityLeftRight(menu, false);//CwvqLU设置的Gravity貌似是START而不是LEFT,这里改成LEFT
           floatUI.floatyHangWorkaroundLock.unlock(); //绕开CwvqLU 9.1.0版上的奇怪假死问题
@@ -1044,11 +1101,11 @@ floatUI.main = function () {
 
     function calcMenuY() {
         var sz = getWindowSize();
-        var minMargin = parseInt((submenu.getHeight() - menu.getHeight()) / 2);
+        var minMargin = parseInt((floaty_getHeight("submenu") - floaty_getHeight("menu")) / 2);
         var y = menu.getY();
         if (y < minMargin) return minMargin;
-        else if (y > sz.y - minMargin - menu.getHeight())
-            return sz.y - minMargin - menu.getHeight();
+        else if (y > sz.y - minMargin - floaty_getHeight("menu"))
+            return sz.y - minMargin - floaty_getHeight("menu");
         else return y;
     }
 
@@ -1092,7 +1149,7 @@ floatUI.main = function () {
                         isGravityRight = !isGravityRight;
                         toggleFloatyGravityLeftRight(menu);
                         toggleFloatyGravityLeftRight(submenu);
-                        bounceHeight = sz.x - current - menu.getHeight();//刘海屏下不准确,但也无所谓,反正就是个一转眼就消失的动画效果
+                        bounceHeight = sz.x - current - floaty_getHeight("menu");//刘海屏下不准确,但也无所谓,反正就是个一转眼就消失的动画效果
                     }
                     let animator = ValueAnimator.ofInt(bounceHeight, 0);
                     let menu_y = calcMenuY();
@@ -1126,7 +1183,7 @@ floatUI.main = function () {
                 //更新脚本选择悬浮窗的大小和位置
                 try {
                     //因为已经有sz了，就不调用layoutTaskPopup()了
-                    task_popup.setSize(parseInt(sz.x * 3 / 4), parseInt(sz.y * 3 / 4));
+                    floaty_setSize("task_popup", parseInt(sz.x * 3 / 4), parseInt(sz.y * 3 / 4));
                     task_popup.setPosition(parseInt(sz.x / 8), parseInt(sz.y / 8));
                 } catch (e) {
                     logException(e);
@@ -1140,7 +1197,7 @@ floatUI.main = function () {
                 menu.setPosition(0, calcMenuY());
                 submenu.setPosition(
                     0,
-                    parseInt(menu.getY() - (submenu.getHeight() - menu.getHeight()) / 2)
+                    parseInt(menu.getY() - (floaty_getHeight("submenu") - floaty_getHeight("menu")) / 2)
                 );
             } else {
                 try {
@@ -1214,7 +1271,8 @@ floatUI.main = function () {
     overlay.container.setVisibility(View.INVISIBLE);
     ui.post(() => {
         try {
-          overlay.setTouchable(false);
+          registerFloatyObj("overlay", overlay);
+          floaty_setTouchable("overlay", false);
         } catch (e) {
             logException(e);
             toastLog("设置悬浮窗时出错,重启app...");
@@ -1240,7 +1298,7 @@ floatUI.main = function () {
                     y: parseInt(event.getRawY()),
                 };
                 log("捕获触控松开坐标", touch_up_pos.x, touch_up_pos.y);
-                overlay.setTouchable(false);
+                floaty_setTouchable("overlay", false);
                 overlay.container.setVisibility(View.INVISIBLE);
                 break;
         }
@@ -1257,10 +1315,10 @@ floatUI.main = function () {
         touch_up_pos = null;
         ui.post(() => {
             var sz = getWindowSize();
-            overlay.setSize(sz.x, sz.y);
+            floaty_setSize("overlay", sz.x, sz.y);
             overlay.container.description_text.setText(description_text);
             overlay.container.setVisibility(View.VISIBLE);
-            overlay.setTouchable(true);
+            floaty_setTouchable("overlay", true);
         });
         while (overlay.container.getVisibility() == View.INVISIBLE) {
             sleep(200);
@@ -1273,12 +1331,6 @@ floatUI.main = function () {
         return {pos_down: touch_down_pos, pos_up: touch_up_pos, duration: swipe_duration};
     };
 
-    var floatyObjs = {
-        menu: menu,
-        submenu: submenu,
-        task_popup: task_popup,
-        overlay: overlay
-    };
     var floatyVisibilities = {};
     var floatySizePositions = {};
     var isAllFloatyHidden = false;

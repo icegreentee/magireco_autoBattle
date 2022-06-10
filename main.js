@@ -401,7 +401,9 @@ ui.layout(
                                     <text text="对手人数因子" textColor="#000000" />
                                     <input maxLength="3" id="mirrorsEnemyNumFactor" hint="0" text="0" textSize="14" inputType="number|none" />
                                 </linear>
-                                <text text="可以认为对手人数越多越难打。取值范围0-100。默认不考虑对手人数,即因子为0。" textColor="#000000" />
+                                <text text="可以认为对手人数越多越难打。" textColor="#000000" />
+                                <text text="取值范围0-100。典型情况一般设为10以下。比如对手是5人队,5-1=4,然后设为10时会乘1+0.4=1.4,设为100时会乘1+4=5。" textColor="#000000" />
+                                <text text="默认不考虑对手人数,即因子为0。" textColor="#000000" />
                             </vertical>
                         </vertical>
                     </vertical>
