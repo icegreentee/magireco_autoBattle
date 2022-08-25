@@ -11525,11 +11525,11 @@ function algo_init() {
             return;
         }
 
-        initOCR();
-
         initialize();
 
         if (last_alive_lang === "ja") {
+            initOCR();
+    
             log("缩放图片...");
             resizeKnownImgs();//必须放在initialize后面
             log("图片缩放完成");    
