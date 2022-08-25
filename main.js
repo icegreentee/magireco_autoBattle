@@ -424,7 +424,7 @@ ui.layout(
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
-                                <text text="开启后,从(默认)第3回合开始,会放出所有可用的主动技能。如果遇到问题可以关闭。" textColor="#000000" />
+                                <text text="开启后,从(默认)第3回合开始,会放出所有可用的主动技能。暂不支持第三个主动技能。如果遇到问题可以关闭。" textColor="#000000" />
                                 <linear>
                                     <text text="从第" textColor="#000000" />
                                     <input maxLength="2" id="CVAutoBattleClickSkillsSinceTurn" hint="3" text="3" textSize="14" inputType="number|none" />
