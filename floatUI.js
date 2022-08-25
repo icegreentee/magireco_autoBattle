@@ -164,6 +164,10 @@ floatUI.scripts = [
         fn: tasks.simpleAutoBattle,
     },
     {
+        name: "绕过Play检测",
+        fn: tasks.fakeJPInstallSource,
+    },
+    {
         name: "理子活动脚本",
         fn: tasks.dungeonEvent,
     },
@@ -11903,6 +11907,40 @@ function algo_init() {
     //导出这个函数
     floatUI.recoverLastWork = recoverLastWork;
 
+    function fakeJPInstallSourceRunnable() {
+        let dialogResult = dialogs.confirm("绕过Play检测",
+            "要伪装安装来源为Google Play Store来绕过日服的检测吗？\n警告：将会强行停止游戏！");
+        if (!dialogResult) {
+            toastLog("取消绕过Play检测");
+            return;
+        }
+        toastLog("尝试绕过Play检测...");
+        let result = privShell("pm path com.aniplex.magireco");
+        if (result.code != 0) {
+            log(result.code, result.error);
+            result = privShell("cmd package path com.aniplex.magireco");
+        }
+        if (result.code != 0) {
+            log(result.code, result.error);
+            toastLog("绕过Play检测出错");
+            return;
+        }
+        let apkPath = result.result.match(/\/.+\.apk/);
+        if (apkPath != null) apkPath = apkPath[0];
+        log("apkPath", apkPath);
+        if (apkPath == null) {
+            toastLog("未找到日服");
+            return;
+        }
+        result = privShell("pm install -r -i com.android.vending \"" + apkPath.replace(new RegExp("\"", "g"), "\\\"") + "\"");
+        if (result.code != 0) {
+            log(result.code, result.error);
+            toastLog("绕过Play检测出错");
+            return;
+        }
+        toastLog("绕过Play检测完成");
+    }
+
     return {
         default: taskDefault,
         default3_6_0: taskDefault3_6_0,
@@ -11919,6 +11957,7 @@ function algo_init() {
         testSupportSel: testSupportPicking,
         testReLaunch: testReLaunchRunnable,
         captureText: captureTextRunnable,
+        fakeJPInstallSource: fakeJPInstallSourceRunnable,
     };
 }
 
