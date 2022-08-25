@@ -154,10 +154,12 @@ floatUI.scripts = [
     {
         name: "镜层周回",
         fn: tasks.mirrors,
+        availableForJP: true,
     },
     {
         name: "自动点击行动盘(识图,连携)",
         fn: tasks.CVAutoBattle,
+        availableForJP: true,
     },
     {
         name: "自动点击行动盘(无脑123盘)",
@@ -4254,7 +4256,8 @@ function algo_init() {
 
         if (!dontStopOnError) switch (last_alive_lang) {
             case "ja":
-                dialogs.alert(
+                let availableForJP = floatUI.scripts.find((item) => item.name === currentTaskName && item.availableForJP);
+                if (!availableForJP) dialogs.alert(
                     "检测到日服",
                     "自日服游戏客户端强制升级至2.4.1版之后,绝大多数脚本在日服上都已失效!\n"
                     +"失效原因是:无障碍服务在游戏内只能抓取到一个空壳webview控件,除此之外无法抓取到任何控件信息。\n"
