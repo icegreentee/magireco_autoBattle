@@ -57,6 +57,8 @@ var origFunc = {
     buildDialog: function() {return dialogs.build.apply(this, arguments)},
 }
 
+var OCR = null, ocr = null;
+
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
     var conf = ProjectConfig.Companion.fromProjectDir(engines.myEngine().cwd());
@@ -154,10 +156,12 @@ floatUI.scripts = [
     {
         name: "镜层周回",
         fn: tasks.mirrors,
+        availableForJP: true,
     },
     {
         name: "自动点击行动盘(识图,连携)",
         fn: tasks.CVAutoBattle,
+        availableForJP: true,
     },
     {
         name: "自动点击行动盘(无脑123盘)",
@@ -540,6 +544,10 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
         floatUI.storage.remove("last_limit_json");
         //停止shell脚本监工(在参数修改触发adjust函数后就应该已经停止了)
         if (limit.autoRecover) stopFatalKillerShellScript();
+        if (ocr != null) {
+            ocr.end();
+            ocr = null;
+        }
     });
     monitoredTask.waitFor();
 });
@@ -2997,6 +3005,20 @@ function algo_init() {
         return !isNaN(Number(content)) && !isNaN(parseInt(content));
     }
 
+    function initOCR() {
+        if (ocr != null) return true;
+        try {
+            log("加载OCR插件...");
+            if (OCR == null) OCR = $plugins.load('org.autojs.plugin.ocr');
+            if (ocr == null) ocr = new OCR();
+        } catch (e) {
+            toastLog("加载OCR插件失败\n请先安装好OCR插件再试");
+            $app.openUrl("https://pro.autojs.org/docs/#/zh-cn/plugins?id=ocr%e6%8f%92%e4%bb%b6");
+            stopThread();
+        }
+        return true;
+    }
+
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
     //关注追加窗口在MuMu上点这里的close坐标点不到关闭
     //title_to_find可以是数组
@@ -4254,12 +4276,13 @@ function algo_init() {
 
         if (!dontStopOnError) switch (last_alive_lang) {
             case "ja":
-                dialogs.alert(
+                let availableForJP = floatUI.scripts.find((item) => item.name === currentTaskName && item.availableForJP);
+                if (!availableForJP) dialogs.alert(
                     "检测到日服",
                     "自日服游戏客户端强制升级至2.4.1版之后,绝大多数脚本在日服上都已失效!\n"
                     +"失效原因是:无障碍服务在游戏内只能抓取到一个空壳webview控件,除此之外无法抓取到任何控件信息。\n"
-                    +"点击\"确定\"后脚本将继续运行,但副本周回或镜层周回等脚本都无法正常工作。\n"
-                    +"自动点击行动盘脚本应该仍然可以工作,但因为未修正的bug,可能无法正常识别出战斗已经结束。"
+                    +"点击\"确定\"后当前脚本将继续运行,但应该不能正常工作。\n"
+                    +"（目前正在尝试适配不依赖无障碍服务、只基于识图的镜层周回与识图自动战斗脚本）"
                 );
                 break;
         }
@@ -8559,7 +8582,7 @@ function algo_init() {
 
     //已知参照图像，包括A/B/C/M/D盘等
     const ImgPathBase = files.join(files.cwd(), "images");
-    var knownImgs = {};
+    var knownImgs = {}, knownImgOrigSize = {};
     const knownImgNames = [
         "accel",
         "blast",
@@ -8580,8 +8603,21 @@ function algo_init() {
         "fireBtnDown",
         "woodBtnDown",
         "noneBtnDown",
+        "light32x32",
+        "dark32x32",
+        "water32x32",
+        "fire32x32",
+        "wood32x32",
+        "none32x32",
+        "mirrorsVS",
+        "mirrorsRedTriangle",
+        "mirrorsReMatchBtn",
+        "mirrorsExerciseSortingBtn",
+        "bpExhaustRefillBtnJP",
+        "bpRefillBtnJP",
+        "bpRefilledOKBtnJP",
         "mirrorsWinLetterI",
-        "mirrorsLose",
+        "mirrorsLoseLetterE",
         "skillLocked",
         "skillEmptyCHS",
         "skillEmptyCHT",
@@ -8596,6 +8632,7 @@ function algo_init() {
                 if (knownImgs[key] == null) {
                     log("加载图片 "+key+" ...");
                     knownImgs[key] = images.read(files.join(ImgPathBase, key+".png"));
+                    knownImgOrigSize[key] = {x: knownImgs[key].getWidth(), y: knownImgs[key].getHeight()};
                     if (knownImgs[key] == null) hasNull = true;
                 }
             });
@@ -10178,11 +10215,13 @@ function algo_init() {
     }
 
     var knownMagiaButtonCoords = {
+        //"MAGIA"[78,894][224,976]
+        //改用MAGIA字母上方的一块区域来应对日服在方块屏下MAGIA和SKILL按钮上移的问题
         topLeft: {
-            x: 78, y: 894, pos: "bottom"
+            x: 127, y: 859, pos: "bottom"
         },
         bottomRight: {
-            x: 224, y: 976, pos: "bottom"
+            x: 176, y: 908, pos: "bottom"
         }
     };
 
@@ -10305,11 +10344,13 @@ function algo_init() {
             /*
             if (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
             */
-            if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce() || /*镜层结算*/
+            let isBattleEnded = (
+                id("ArenaResult").findOnce() || id("enemyBtn").findOnce() || /*镜层结算*/
                 id("ResultWrap").findOnce() || /*副本结算*/
-                id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
-            //不再通过识图判断战斗是否结束
-            //if (didWeWin(screenshot) || didWeLose(screenshot)) {
+                id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()
+            );
+            if (isBattleEnded) {
+                //日服下因为抓不到控件所以检测无效，所以后面会在检测行动盘后再处理
                 log("战斗已经结束，不再等待我方回合");
                 result = false;
                 break;
@@ -10324,6 +10365,15 @@ function algo_init() {
             } else {
                 log("未出现我方行动盘");
                 diskAppearedCount = 0;
+                if (last_alive_lang === "ja") {
+                    //应对日服因为抓不到控件所以检测无效的问题
+                    isBattleEnded = didWeWin(screenshot) || didWeLose(screenshot);
+                    if (isBattleEnded) {
+                        log("战斗已经结束，不再等待我方回合");
+                        result = false;
+                        break;
+                    }
+                }
             }
             if (limit.CVAutoBattleDebug) {
                 if (cycles < 30) {
@@ -10373,66 +10423,44 @@ function algo_init() {
 
     //判断是否胜利
     var knownMirrorsWinLoseCoords = {
-        mirrorsWinLetterI: {
-            topLeft: {
-                x:   962,
-                y:   370,
-                pos: "center"
-            },
-            bottomRight: {
-                x:   989,
-                y:   464,
-                pos: "center"
-            }
+        topLeft: {
+            x:   480,
+            y:   216,
+            pos: "center"
         },
-        mirrorsLose: {
-            topLeft: {
-                x:   757,
-                y:   371,
-                pos: "center"
-            },
-            bottomRight: {
-                x:   1161,
-                y:   463,
-                pos: "center"
-            }
+        bottomRight: {
+            x:   1440,
+            y:   540,
+            pos: "center"
         }
     };
 
-    function getMirrorsWinLoseArea(winOrLose) {
-        let knownArea = knownMirrorsWinLoseCoords[winOrLose];
+    function getMirrorsWinLoseArea() {
+        let knownArea = knownMirrorsWinLoseCoords;
         let convertedTopLeft = convertCoords(knownArea.topLeft);
         let convertedBottomRight = convertCoords(knownArea.bottomRight);
         let convertedArea = { topLeft: convertedTopLeft, bottomRight: convertedBottomRight };
         return convertedArea;
     }
-    function getMirrorsWinLoseCoords(winOrLose, corner) {
-        let area = getMirrorsWinLoseArea(winOrLose);
-        return area.corner;
-    }
-    function getMirrorsWinLoseImg(screenshot, winOrLose) {
-        let area = getMirrorsWinLoseArea(winOrLose);
+    function getMirrorsWinLoseImg(screenshot) {
+        let area = getMirrorsWinLoseArea();
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
     function didWeWinOrLose(screenshot, winOrLose) {
         //结算页面有闪光，会干扰判断，但是只会产生假阴性，不会出现假阳性
-        let imgA = knownImgs[winOrLose];
-        let imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
-        let similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
-        log("镜界胜负判断", winOrLose, " MSSIM=", similarity);
-        if (similarity > 2.1) {
-            return true;
-        }
-        return false;
+        let template = knownImgs[winOrLose];
+        let img = getMirrorsWinLoseImg(screenshot);
+        let found = images.findImage(img, template, {threshold: 0.9}) ? true : false;
+        log("镜界胜负判断", winOrLose, found);
+        return found;
     }
     function didWeWin(screenshot) {
         return didWeWinOrLose(screenshot, "mirrorsWinLetterI");
     }
     function didWeLose(screenshot) {
-        return didWeWinOrLose(screenshot, "mirrorsLose");
+        return didWeWinOrLose(screenshot, "mirrorsLoseLetterE");
     }
 
-    var failedScreenShots = [null, null, null, null, null]; //保存图片，调查无法判定镜层战斗输赢的问题
     //判断最终输赢
     function clickMirrorsBattleResult() {
         var screenCenter = {
@@ -10440,32 +10468,28 @@ function algo_init() {
             y:   540,
             pos: "center"
         };
-        let failedCount = 0; //调查无法判定镜层战斗输赢的问题
         /* 演习模式没有rankMark
         while (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
         */
-        while (id("ArenaResult").findOnce() || id("enemyBtn").findOnce()) {
-            log("匹配到镜层战斗结算控件");
-            let screenshot = compatCaptureScreen();
-            //调查无法判定镜层战斗输赢的问题
-            //failedScreenShots[failedCount] = images.clip(screenshot, 0, 0, scr.res.width, scr.res.height); //截图会被回收，导致保存失败；这样可以避免回收
-            var win = false;
-            if (didWeWin(screenshot)) {
-                win = true;
-                log("镜界战斗胜利");
-            } else if (didWeLose(screenshot)) {
-                win = false;
-                log("镜界战斗败北");
+        function isWinLoseShown() {
+            if (last_alive_lang === "ja") {
+                let screenshot = compatCaptureScreen();
+                return didWeWin(screenshot) || didWeLose(screenshot);
             } else {
-                //结算页面有闪光，会干扰判断
-                log("没在屏幕上识别到镜界胜利或败北特征");
-                //有时候点击结算页面后会无法正确判断胜利或失败
-                failedCount++;
-                failedCount = failedCount % 5;
+                return id("ArenaResult").findOnce() || id("enemyBtn").findOnce();
             }
-            log("即将点击屏幕以退出结算界面...");
+        }
+
+        //等待结算出现，最多5秒
+        for (let startTime = new Date().getTime(); new Date().getTime() - startTime < 5000 && !isWinLoseShown(); ) {
+            sleep(333);
+        }
+
+        while (isWinLoseShown()) {
+            log("匹配到镜层战斗结算控件,3秒后点击屏幕以退出结算界面...");
+            sleep(3000); //点击太早可能出问题
             click(convertCoords(screenCenter));
-            sleep(1000);
+            sleep(5000); //等待结算界面消失
         }
 
         //用到副本而不是镜层的时候
@@ -10499,24 +10523,24 @@ function algo_init() {
             } else {
                 knownArea = knownFirstStandPointCoords.our[imgName];
                 if (knownArea == null) knownArea = knownFirstDiskCoords[imgName];
-                if (knownArea == null) knownArea = knownMirrorsWinLoseCoords[imgName];
             }
-            if (knownArea != null) {
-                let convertedArea = getConvertedAreaNoCutout(knownArea); //刘海屏的坐标转换会把左上角的0,0加上刘海宽度，用在缩放图片这里会出错，所以要避免这个问题
-                log("缩放图片 imgName", imgName, "knownArea", knownArea, "convertedArea", convertedArea);
-                if (knownImgs[imgName] == null) {
-                    hasError = true;
-                    log("缩放图片出错 imgName", imgName);
-                    break;
+            if (knownArea == null) {
+                log("使用默认缩放比例 imgName", imgName);
+                knownArea = {
+                    topLeft: {x: 0, y: 0, pos: "top"},
+                    bottomRight: {x: knownImgOrigSize[imgName].x, y: knownImgOrigSize[imgName].y, pos: "top"},
                 }
-                let resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(convertedArea), getAreaHeight(convertedArea)]);
-                knownImgs[imgName].recycle();
-                knownImgs[imgName] = resizedImg;
-            } else {
+            }
+            let convertedArea = getConvertedAreaNoCutout(knownArea); //刘海屏的坐标转换会把左上角的0,0加上刘海宽度，用在缩放图片这里会出错，所以要避免这个问题
+            log("缩放图片 imgName", imgName, "knownArea", knownArea, "convertedArea", convertedArea);
+            if (knownImgs[imgName] == null) {
                 hasError = true;
                 log("缩放图片出错 imgName", imgName);
                 break;
             }
+            let resizedImg = images.resize(knownImgs[imgName], [getAreaWidth(convertedArea), getAreaHeight(convertedArea)]);
+            knownImgs[imgName].recycle();
+            knownImgs[imgName] = resizedImg;
         }
         resizeKnownImgsDone = !hasError;
     }
@@ -10939,15 +10963,6 @@ function algo_init() {
         //战斗结算
         //点掉结算界面
         clickMirrorsBattleResult();
-        //调查无法判定镜层战斗输赢的问题
-        //for (i=0; i<failedScreenShots.length; i++) {
-        //    if (failedScreenShots[i] != null) {
-        //        let filename = "/sdcard/1/failed_"+i+".png";
-        //        log("saving image... "+filename);
-        //        images.save(failedScreenShots[i], filename);
-        //        log("done. saved: "+filename);
-        //    }
-        //}
 
         //回收所有图片
         recycleAllImages();
@@ -10955,6 +10970,19 @@ function algo_init() {
 
 
 
+    function ocrGetNumber(area, screenshot) {
+        if (screenshot == null) screenshot = compatCaptureScreen();
+        let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+        let result = ocr.ocrImage(img);
+        if (result.success) {
+            log("OCR text", result.text);
+            let matched = result.text.match(/\d+/g);
+            if (matched != null) {
+                let num = parseInt(matched.join(""));
+                if (!isNaN(num)) return num;
+            }
+        }
+    }
     var knownFirstMirrorsOpponentScoreCoords = {
         //[1246,375][1357,425]
         //[1246,656][1357,706]
@@ -10975,14 +11003,22 @@ function algo_init() {
                 knownArea[point][axis] += knownFirstMirrorsOpponentScoreCoords[point][axis];
             }
         }
-        let convertedArea = getConvertedArea(knownArea);
-        let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
-        for (let i=0; i<uiObjArr.length; i++) {
-            let uiObj = uiObjArr[i];
-            let score = parseInt(getContent(uiObj));
-            if (isNaN(score)) continue;
-            log("getMirrorsScoreAt position", position, "score", score);
-            return score;
+        let area = getConvertedArea(knownArea);
+        if (last_alive_lang === "ja") {
+            let score = ocrGetNumber(area);
+            if (score != null) {
+                log("getMirrorsScoreAt position", position, "score", score);
+                return score;
+            }
+        } else {
+            let uiObjArr = boundsInside(area.topLeft.x, area.topLeft.y, area.bottomRight.x, area.bottomRight.y).find();
+            for (let i=0; i<uiObjArr.length; i++) {
+                let uiObj = uiObjArr[i];
+                let score = parseInt(getContent(uiObj));
+                if (isNaN(score)) continue;
+                log("getMirrorsScoreAt position", position, "score", score);
+                return score;
+            }
         }
         log("getMirrorsScoreAt position", position, "return 0");
         return 0;
@@ -10990,19 +11026,33 @@ function algo_init() {
 
     var knownMirrorsSelfScoreCoords = {
         //[0,804][712,856]
-        topLeft: {x: 0, y: 799, pos: "bottom"},
-        bottomRight: {x: 717, y: 861, pos: "bottom"}
+        accessibility: {
+            topLeft: {x: 0, y: 799, pos: "bottom"},
+            bottomRight: {x: 717, y: 861, pos: "bottom"}
+        },
+        cv: {
+            topLeft: {x: 314, y: 808, pos: "bottom"},
+            bottomRight: {x: 645, y: 850, pos: "bottom"}
+        }
     }
     //获取自己的战力值
     function getMirrorsSelfScore() {
-        let convertedArea = getConvertedArea(knownMirrorsSelfScoreCoords);
-        let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
-        for (let i=0; i<uiObjArr.length; i++) {
-            let uiObj = uiObjArr[i];
-            let score = parseInt(getContent(uiObj));
-            if (score != null && !isNaN(score)) {
+        let area = getConvertedArea(knownMirrorsSelfScoreCoords[last_alive_lang === "ja" ? "cv" : "accessibility"]);
+        if (last_alive_lang === "ja") {
+            let score = ocrGetNumber(area);
+            if (score != null) {
                 log("getMirrorsSelfScore score", score);
                 return score;
+            }
+        } else {
+            let uiObjArr = boundsInside(area.topLeft.x, area.topLeft.y, area.bottomRight.x, area.bottomRight.y).find();
+            for (let i=0; i<uiObjArr.length; i++) {
+                let uiObj = uiObjArr[i];
+                let score = parseInt(getContent(uiObj));
+                if (!isNaN(score)) {
+                    log("getMirrorsSelfScore score", score);
+                    return score;
+                }
             }
         }
         return 0;
@@ -11011,37 +11061,65 @@ function algo_init() {
     var knownFirstMirrorsLvCoords = {
         //r1c1 Lv: [232,236][253,258] 100: [260,228][301,260]
         //r3c3 Lv: [684,688][705,710] 100: [712,680][753,712]
-        topLeft: {x: 227, y: 223, pos: "center"},
-        bottomRight: {x: 306, y: 265, pos: "center"},
+        accessibility: {
+            topLeft: {x: 227, y: 223, pos: "center"},
+            bottomRight: {x: 306, y: 265, pos: "center"},
+        },
+        /* cv: {//空心字OCR识别问题暂未解决，注释掉
+            topLeft: {x: 250, y: 223, pos: "center"},
+            bottomRight: {x: 306, y: 260, pos: "center"},
+        }, */
+        //r1c1 attrib: [166,235][197,266]
+        cv: {//因为暂未解决空心字OCR识别问题，只观察是否有角色站位，有就视作Lv100
+            topLeft: {x: 150, y: 219, pos: "center"},
+            bottomRight: {x: 213, y: 282, pos: "center"},
+        },
         distancex: 226,
         distancey: 226
     }
     //点开某个对手后会显示队伍信息。获取显示出来的角色等级
-    function getMirrorsLvAt(rowNum, columnNum) {
+    function getMirrorsLvAt(rowNum, columnNum, screenshot) {
         let distancex = knownFirstMirrorsLvCoords.distancex * (columnNum - 1);
         let distancey = knownFirstMirrorsLvCoords.distancey * (rowNum - 1);
         let knownArea = {
             topLeft: {x: distancex, y: distancey, pos: "center"},
             bottomRight: {x: distancex, y: distancey, pos: "center"}
         }
+        let type = last_alive_lang === "ja" ? "cv" : "accessibility";
         for (point in knownArea) {
             for (axis of ["x", "y"]) {
-                knownArea[point][axis] += knownFirstMirrorsLvCoords[point][axis];
+                knownArea[point][axis] += knownFirstMirrorsLvCoords[type][point][axis];
             }
         }
-        let convertedArea = getConvertedArea(knownArea);
-        let uiObjArr = boundsInside(convertedArea.topLeft.x, convertedArea.topLeft.y, convertedArea.bottomRight.x, convertedArea.bottomRight.y).find();
-        for (let i=0; i<uiObjArr.length; i++) {
-            let uiObj = uiObjArr[i];
-            let content = getContent(uiObj);
-            if (content != null) {
-                let matched = content.match(/\d+/);
-                if (matched != null) content = matched[0];
-            }
-            lv = parseInt(content);
-            if (lv != null && !isNaN(lv)) {
+        let area = getConvertedArea(knownArea);
+        if (last_alive_lang === "ja") {
+            /* //空心字OCR识别问题暂未解决，注释掉
+            let lv = ocrGetNumber(area, screenshot);
+            if (lv != null) {
                 log("getMirrorsLvAt rowNum", rowNum, "columnNum", columnNum, "lv", lv);
                 return lv;
+            }
+            */
+            let clipped = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+            let found = diskAttribs.find((attrib) => images.findImage(clipped, knownImgs[attrib + "32x32"], {threshold: 0.8}));
+            if (found) {
+                log("getMirrorsLvAt rowNum", rowNum, "columnNum", columnNum, "attrib", found, "assume 100");
+                return 100;
+            }
+        } else {
+            let uiObjArr = boundsInside(area.topLeft.x, area.topLeft.y, area.bottomRight.x, area.bottomRight.y).find();
+            for (let i=0; i<uiObjArr.length; i++) {
+                let uiObj = uiObjArr[i];
+                let content = getContent(uiObj);
+                if (content != null) {
+                    let matched = content.match(/\d+/);
+                    if (matched != null) content = matched[0];
+                }
+                let lv = parseInt(content);
+                if (!isNaN(lv)) {
+                    log("getMirrorsLvAt rowNum", rowNum, "columnNum", columnNum, "lv", lv);
+                    return lv;
+                }
             }
         }
         return 0;
@@ -11058,12 +11136,17 @@ function algo_init() {
         let charaCount = 0;
         let highestLv = 0;
 
-        let attemptMax = 5;
+        let screenshot = null;
+        if (last_alive_lang === "ja") {
+            screenshot = compatCaptureScreen();
+        }
+
+        let attemptMax = last_alive_lang === "ja" ? 1 : 5;
         for (let rowNum=1; rowNum<=3; rowNum++) {
             for (let columnNum=1; columnNum<=3; columnNum++) {
                 let Lv = 0;
                 for (let attempt=0; attempt<attemptMax; attempt++) {
-                    Lv = getMirrorsLvAt(rowNum, columnNum);
+                    Lv = getMirrorsLvAt(rowNum, columnNum, screenshot);
                     if (Lv > 0) {
                         if (Lv > highestLv) highestLv = Lv;
                         totalLv += Lv;
@@ -11088,9 +11171,97 @@ function algo_init() {
         return avgScore;
     }
 
+    var knownMatchingVSArea = {
+        mirrorsVS: {
+            topLeft: {
+                x: 650,
+                y: 500,
+                pos: "center"
+            },
+            bottomRight: {
+                x: 1000,
+                y: 800,
+                pos: "center"
+            }
+        },
+        mirrorsRedTriangle: {
+            topLeft: {
+                x: 760,
+                y: 340,
+                pos: "center"
+            },
+            bottomRight: {
+                x: 950,
+                y: 740,
+                pos: "center"
+            }
+        },
+    }
+    function isMirrorsVSPresent() {
+        let appearing = false;
+        if (last_alive_lang === "ja") {
+            let screenshot = compatCaptureScreen();
+            let imgNames = ["mirrorsVS", "mirrorsRedTriangle"];
+            appearing = imgNames.find((name) => {
+                let area = getConvertedArea(knownMatchingVSArea[name]);
+                let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+                return images.findImage(img, knownImgs[name], {threshold: 0.9});
+            }) ? true : false;
+        } else {
+            appearing = id("matchingWrap").findOnce() || id("matchingList").findOnce();
+        }
+        return appearing;
+    }
+
+    var knownMirrorsExerciseSortingBtnArea = {
+        topLeft: {
+            x: 1830,
+            y: 120,
+            pos: "top"
+        },
+        bottomRight: {
+            x: 1916,
+            y: 220,
+            pos: "top"
+        }
+    }
+    var knownMirrorsReMatchBtnArea = {
+        topLeft: {
+            x: 1720,
+            y: 110,
+            pos: "top"
+        },
+        bottomRight: {
+            x: 1810,
+            y: 230,
+            pos: "top"
+        }
+    }
+    function isMirrorsExerciseMatching(isExercise) {
+        let appearing = false;
+        if (last_alive_lang === "ja") {
+            let screenshot = compatCaptureScreen();
+            let knownArea = isExercise ? knownMirrorsExerciseSortingBtnArea : knownMirrorsReMatchBtnArea;
+            let area = getConvertedArea(knownArea);
+            let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+            let knownImgName = isExercise ? "mirrorsExerciseSortingBtn" : "mirrorsReMatchBtn";
+            appearing = images.findImage(img, knownImgs[knownImgName], {threshold: 0.9}) ? true : false;
+        } else {
+            let idToFind = isExercise ? "matchingList" : "matchingWrap";
+            appearing = id(idToFind).findOnce();
+        }
+        return appearing;
+    }
+    function isMirrorsMatching() {
+        return isMirrorsExerciseMatching(false);
+    }
+    function isMirrorsExercise() {
+        return isMirrorsExerciseMatching(true);
+    }
+
     //在镜层自动挑选最弱的对手
     function mirrorsPickWeakestOpponent() {
-        toast("挑选最弱的镜层对手...");
+        log("挑选最弱的镜层对手...");
 
         var startTime = new Date().getTime();
         var deadlineTime = startTime + 60 * 1000; //最多等待一分钟
@@ -11115,7 +11286,7 @@ function algo_init() {
         let avgScore = [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
         let lowestScorePosition = 3;
 
-        while (!id("matchingWrap").findOnce() && !id("matchingList").findOnce()) {
+        while (!isMirrorsVSPresent()) {
             log("等待对手列表出现...");
             sleep(1000);
             if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
@@ -11126,10 +11297,23 @@ function algo_init() {
 
         stopTime = new Date().getTime() + 5000;
 
-        if (id("matchingList").findOnce()) {
-            toastLog("当前处于演习模式");
+        //如果已经打开了信息面板，先关掉
+        for (let attempt=0; isMirrorsVSPresent(); attempt++) { //如果不小心点到战斗开始，就退出循环
+            if (getMirrorsAverageScore(99999999) <= 0) break; //如果没有打开队伍信息面板，那就直接退出循环，避免点到MENU
+            if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
+            sleep(1000);
+            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
+                log("没等到镜层对手队伍信息面板消失");
+                return false;
+            }
+        }
+
+        stopTime = new Date().getTime() + 5000;
+
+        if (isMirrorsExercise()) {
+            log("当前处于演习模式");
             //演习模式下直接点最上面第一个对手
-            while (id("matchingList").findOnce()) { //如果不小心点到战斗开始，就退出循环
+            while (isMirrorsVSPresent()) { //如果不小心点到战斗开始，就退出循环
                 if (getMirrorsAverageScore(totalScore[1]) > 0) break; //如果已经打开了一个对手，直接战斗开始
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+"1"]));
                 sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
@@ -11138,19 +11322,6 @@ function algo_init() {
                 }
             }
             return true;
-        }
-
-        stopTime = new Date().getTime() + 5000;
-
-        //如果已经打开了信息面板，先关掉
-        for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
-            if (getMirrorsAverageScore(99999999) <= 0) break; //如果没有打开队伍信息面板，那就直接退出循环，避免点到MENU
-            if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
-            sleep(1000);
-            if (new Date().getTime() > (stopTime<deadlineTime?stopTime:deadlineTime)) {
-                log("没等到镜层对手队伍信息面板消失");
-                return false;
-            }
         }
 
         stopTime = new Date().getTime() + 5000;
@@ -11169,7 +11340,7 @@ function algo_init() {
                 }
             }
             if (totalScore[position] <= 0) {
-                toastLog("获取某个对手的总战力失败\n请尝试退出镜层后重新进入");
+                log("获取某个对手的总战力失败\n请尝试退出镜层后重新进入");
                 log("获取第"+position+"个对手的总战力失败");
                 return false;
             }
@@ -11184,8 +11355,8 @@ function algo_init() {
         //福利队
         //因为队伍最多5人，所以总战力比我方总战力六分之一还少应该就是福利队
         if (lowestTotalScore < selfScore / 6) {
-            toastLog("找到了战力低于我方六分之一的对手\n位于第"+lowestScorePosition+"个,战力="+totalScore[lowestScorePosition]);
-            while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
+            log("找到了战力低于我方六分之一的对手\n位于第"+lowestScorePosition+"个,战力="+totalScore[lowestScorePosition]);
+            while (isMirrorsMatching()) { //如果不小心点到战斗开始，就退出循环
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
                 sleep(2000); //等待队伍信息出现，这样就可以点战斗开始
                 if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) break;
@@ -11201,8 +11372,8 @@ function algo_init() {
 
         //找平均战力最低的
         for (let position=1; position<=3; position++) {
-            toast("检查第"+position+"个镜层对手的队伍情况...");
-            while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
+            log("检查第"+position+"个镜层对手的队伍情况...");
+            while (isMirrorsMatching()) { //如果不小心点到战斗开始，就退出循环
                 click(convertCoords(clickSetsMod["mirrorsOpponent"+position]));
                 sleep(2000); //等待对手队伍信息出现（avgScore<=0表示对手队伍信息还没出现）
                 avgScore[position] = getMirrorsAverageScore(totalScore[position]);
@@ -11220,7 +11391,7 @@ function algo_init() {
             }
 
             //关闭信息面板
-            for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
+            for (let attempt=0; isMirrorsVSPresent(); attempt++) { //如果不小心点到战斗开始，就退出循环
                 if (position == 3) break; //第3个对手也有可能是最弱的，暂时不关面板
                 if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
                 sleep(1000);
@@ -11239,7 +11410,7 @@ function algo_init() {
         if (lowestScorePosition == 3) return true; //最弱的就是第3个对手
 
         //最弱的不是第3个对手，先关掉第3个对手的队伍信息面板
-        for (let attempt=0; id("matchingWrap").findOnce(); attempt++) { //如果不小心点到战斗开始，就退出循环
+        for (let attempt=0; isMirrorsVSPresent(); attempt++) { //如果不小心点到战斗开始，就退出循环
             if (attempt % 5 == 0) click(convertCoords(clickSetsMod["mirrorsCloseOpponentInfo"]));
             sleep(1000);
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) <= 0) break;
@@ -11252,7 +11423,7 @@ function algo_init() {
         stopTime = new Date().getTime() + 5000;
 
         //重新打开平均战力最低队伍的队伍信息面板
-        while (id("matchingWrap").findOnce()) { //如果不小心点到战斗开始，就退出循环
+        while (isMirrorsVSPresent()) { //如果不小心点到战斗开始，就退出循环
             click(convertCoords(clickSetsMod["mirrorsOpponent"+lowestScorePosition]));
             sleep(1000); //等待队伍信息出现，这样就可以点战斗开始
             if (getMirrorsAverageScore(totalScore[lowestScorePosition]) > 0) return true;
@@ -11266,8 +11437,8 @@ function algo_init() {
     }
 
     function mirrorsPick1stOpponent() {
-        toastLog("挑选第1个镜层对手...");
-        id("matchingWrap").findOne();
+        log("挑选第1个镜层对手...");
+        while (!isMirrorsMatching()) sleep(1000);
         for (let attempt=0; attempt<3; attempt++) {
             if (id("battleStartBtn").findOnce()) break; //MuMu等控件树残缺环境下永远也找不到battleStartBtn（虽然实际上有战斗开始按钮）
             click(convertCoords(clickSets.mirrors1stOpponent));
@@ -11276,8 +11447,70 @@ function algo_init() {
         log("挑选第1个镜层对手完成");
     }
 
+    var knownBPArea = {
+        bpExhaustRefillBtnJP: {
+            topLeft: {
+                x: 960,
+                y: 750,
+                pos: "center"
+            },
+            bottomRight: {
+                x: 1380,
+                y: 910,
+                pos: "center"
+            }
+        },
+        bpRefillBtnJP: {
+            topLeft: {
+                x: 840,
+                y: 820,
+                pos: "center"
+            },
+            bottomRight: {
+                x: 1090,
+                y: 940,
+                pos: "center"
+            }
+        },
+        bpRefilledOKBtnJP: {
+            topLeft: {
+                x: 760,
+                y: 830,
+                pos: "center"
+            },
+            bottomRight: {
+                x: 1150,
+                y: 980,
+                pos: "center"
+            }
+        },
+    }
+    function detectBPRelatedWindow(stage) {
+        const imgName = ["bpExhaustRefillBtnJP", "bpRefillBtnJP", "bpRefilledOKBtnJP"];
+        const idToFind = ["popupInfoDetailTitle", "bpTextWrap", "popupInfoDetailTitle"];
+        let appearing = false;
+        if (last_alive_lang === "ja") {
+            let screenshot = compatCaptureScreen();
+            let area = getConvertedArea(knownBPArea[imgName[stage]]);
+            let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+            appearing = images.findImage(img, knownImgs[imgName[stage]], {threshold: 0.9}) ? true : false;
+        } else {
+            appearing = id(idToFind[stage]).findOnce();
+        }
+        return appearing;
+    }
+    function isBPExhausted() {
+        return detectBPRelatedWindow(0);
+    }
+    function isBPRefillWindowPresent() {
+        return detectBPRelatedWindow(1);
+    }
+    function isBPRefillDone() {
+        return detectBPRelatedWindow(2);
+    }
+
     function taskMirrors() {
-        toast("镜层周回\n自动战斗策略:"+(limit.useCVAutoBattle?"识图":"无脑123盘"));
+        log("镜层周回\n自动战斗策略:"+(limit.useCVAutoBattle?"识图":"无脑123盘"));
 
         if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
             toastLog("需要root或shizuku adb权限");
@@ -11292,19 +11525,29 @@ function algo_init() {
             return;
         }
 
+        initOCR();
+
         initialize();
 
-        if (limit.useCVAutoBattle && limit.rootScreencap) {
-            while (true) {
-                log("setupBinary...");
-                setupBinary();
-                if (binarySetupDone) break;
-                log("setupBinary失败,3秒后重试...");
-                sleep(3000);
+        if (last_alive_lang === "ja") {
+            log("缩放图片...");
+            resizeKnownImgs();//必须放在initialize后面
+            log("图片缩放完成");    
+        }
+
+        if (last_alive_lang === "ja" || limit.useCVAutoBattle) {
+            if (limit.rootScreencap) {
+                while (true) {
+                    log("setupBinary...");
+                    setupBinary();
+                    if (binarySetupDone) break;
+                    log("setupBinary失败,3秒后重试...");
+                    sleep(3000);
+                }
+                if (testRootScreencapBlank()) return;
+            } else if (!limit.rootScreencap) {
+                startScreenCapture();
             }
-            if (testRootScreencapBlank()) return;
-        } else if (limit.useCVAutoBattle && (!limit.rootScreencap)) {
-            startScreenCapture();
         }
 
         while (true) {
@@ -11317,35 +11560,36 @@ function algo_init() {
                         pickedWeakest = true;
                         break;
                     }
-                    toastLog("挑选镜层最弱对手时出错\n3秒后重试...");
+                    log("挑选镜层最弱对手时出错\n3秒后重试...");
                     sleep(3000);
                 }
                 if (!pickedWeakest) {
-                    toastLog("多次尝试挑选镜层最弱对手时出错,回退到挑选第1个镜层对手...");
+                    log("多次尝试挑选镜层最弱对手时出错,回退到挑选第1个镜层对手...");
                 }
             }
             if (!limit.smartMirrorsPick || !pickedWeakest) {
                 mirrorsPick1stOpponent();
             }
 
-            while (id("matchingWrap").findOnce() || id("matchingList").findOnce()) {
+            while (isMirrorsVSPresent()) {
                 sleep(1000)
                 click(convertCoords(clickSetsMod.mirrorsStartBtn));
                 sleep(1000)
-                if (id("popupInfoDetailTitle").findOnce()) {
-                    if (id("matchingList").findOnce()) {
+                if (isBPExhausted()) {
+                    //日服暂不方便在这里检测是否演习模式
+                    if (last_alive_lang === "ja" && isMirrorsExercise()) {
                         log("镜层演习模式不嗑药");
                         log("不过，开始镜层演习需要至少有1BP");
                         log("镜层周回结束");
                         return;
                     } else if (isDrugEnabled(3)) {
-                        while (!id("bpTextWrap").findOnce()) {
+                        while (!isBPRefillWindowPresent()) {
                             click(convertCoords(clickSetsMod.bpExhaustToBpDrug))
                             sleep(1500)
                         }
                         let attemptMax = 10;
                         for (let attempt=0; attempt<attemptMax; attempt++) {
-                            if (!id("bpTextWrap").findOnce()) {
+                            if (!isBPRefillWindowPresent()) {
                                 updateDrugLimit(3);
                                 break;
                             }
@@ -11356,7 +11600,7 @@ function algo_init() {
                             click(convertCoords(clickSetsMod.bpDrugConfirm))
                             sleep(1500)
                         }
-                        while (id("popupInfoDetailTitle").findOnce()) {
+                        while (isBPRefillDone()) {
                             click(convertCoords(clickSetsMod.bpDrugRefilledOK))
                             sleep(1500)
                         }
@@ -11369,7 +11613,7 @@ function algo_init() {
                 sleep(1000)
             }
             log("进入战斗")
-            if (limit.useCVAutoBattle) {
+            if (last_alive_lang === "ja" || limit.useCVAutoBattle) {
                 //利用截屏识图进行稍复杂的自动战斗（比如连携）
                 log("镜层周回 - 自动战斗开始：使用截屏识图");
                 mirrorsAutoBattleMain();
