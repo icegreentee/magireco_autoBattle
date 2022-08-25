@@ -8676,8 +8676,8 @@ function algo_init() {
                 bottomRight: { x: 1076, y: 303, pos: "center" }
             },
             floor: {
-                topLeft:     { x: 1048, y: 518, pos: "center" },
-                bottomRight: { x: 1168, y: 575, pos: "center" }
+                topLeft:     { x: 1068, y: 498, pos: "center" },
+                bottomRight: { x: 1188, y: 555, pos: "center" }
             }
         },
         their: {
@@ -8686,8 +8686,8 @@ function algo_init() {
                 bottomRight: { x: 259, y: 304, pos: "center" }
             },
             floor: {
-                topLeft:     { x: 258, y: 520, pos: "center" },
-                bottomRight: { x: 361, y: 573, pos: "center" }
+                topLeft:     { x: 238, y: 500, pos: "center" },
+                bottomRight: { x: 341, y: 553, pos: "center" }
             }
         },
         //our
