@@ -11911,6 +11911,7 @@ function algo_init() {
         if (!limit.privilege) {
             dialogs.alert("没有root或adb权限", "请务必选择\"永久授权\"！");
             privShell("id");
+            return;
         }
         let dialogResult = dialogs.confirm("绕过Play检测",
             "要伪装安装来源为Google Play Store来绕过日服的检测吗？\n警告：将会强行停止游戏！");
