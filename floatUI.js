@@ -8581,7 +8581,7 @@ function algo_init() {
         "woodBtnDown",
         "noneBtnDown",
         "mirrorsWinLetterI",
-        "mirrorsLose",
+        "mirrorsLoseLetterE",
         "skillLocked",
         "skillEmptyCHS",
         "skillEmptyCHT",
@@ -10305,11 +10305,13 @@ function algo_init() {
             /*
             if (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
             */
-            if (id("ArenaResult").findOnce() || id("enemyBtn").findOnce() || /*镜层结算*/
+            let isBattleEnded = (
+                id("ArenaResult").findOnce() || id("enemyBtn").findOnce() || /*镜层结算*/
                 id("ResultWrap").findOnce() || /*副本结算*/
-                id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()) {
-            //不再通过识图判断战斗是否结束
-            //if (didWeWin(screenshot) || didWeLose(screenshot)) {
+                id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()
+            );
+            if (isBattleEnded) {
+                //日服下因为抓不到控件所以检测无效，所以后面会在检测行动盘后再处理
                 log("战斗已经结束，不再等待我方回合");
                 result = false;
                 break;
@@ -10324,6 +10326,15 @@ function algo_init() {
             } else {
                 log("未出现我方行动盘");
                 diskAppearedCount = 0;
+                if (last_alive_lang === "ja") {
+                    //应对日服因为抓不到控件所以检测无效的问题
+                    isBattleEnded = didWeWin(screenshot) || didWeLose(screenshot);
+                    if (isBattleEnded) {
+                        log("战斗已经结束，不再等待我方回合");
+                        result = false;
+                        break;
+                    }
+                }
             }
             if (limit.CVAutoBattleDebug) {
                 if (cycles < 30) {
@@ -10373,66 +10384,44 @@ function algo_init() {
 
     //判断是否胜利
     var knownMirrorsWinLoseCoords = {
-        mirrorsWinLetterI: {
-            topLeft: {
-                x:   962,
-                y:   370,
-                pos: "center"
-            },
-            bottomRight: {
-                x:   989,
-                y:   464,
-                pos: "center"
-            }
+        topLeft: {
+            x:   480,
+            y:   216,
+            pos: "center"
         },
-        mirrorsLose: {
-            topLeft: {
-                x:   757,
-                y:   371,
-                pos: "center"
-            },
-            bottomRight: {
-                x:   1161,
-                y:   463,
-                pos: "center"
-            }
+        bottomRight: {
+            x:   1440,
+            y:   540,
+            pos: "center"
         }
     };
 
-    function getMirrorsWinLoseArea(winOrLose) {
-        let knownArea = knownMirrorsWinLoseCoords[winOrLose];
+    function getMirrorsWinLoseArea() {
+        let knownArea = knownMirrorsWinLoseCoords;
         let convertedTopLeft = convertCoords(knownArea.topLeft);
         let convertedBottomRight = convertCoords(knownArea.bottomRight);
         let convertedArea = { topLeft: convertedTopLeft, bottomRight: convertedBottomRight };
         return convertedArea;
     }
-    function getMirrorsWinLoseCoords(winOrLose, corner) {
-        let area = getMirrorsWinLoseArea(winOrLose);
-        return area.corner;
-    }
-    function getMirrorsWinLoseImg(screenshot, winOrLose) {
-        let area = getMirrorsWinLoseArea(winOrLose);
+    function getMirrorsWinLoseImg(screenshot) {
+        let area = getMirrorsWinLoseArea();
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
     function didWeWinOrLose(screenshot, winOrLose) {
         //结算页面有闪光，会干扰判断，但是只会产生假阴性，不会出现假阳性
-        let imgA = knownImgs[winOrLose];
-        let imgB = getMirrorsWinLoseImg(screenshot, winOrLose);
-        let similarity = images.getSimilarity(imgA, imgB, {"type": "MSSIM"});
-        log("镜界胜负判断", winOrLose, " MSSIM=", similarity);
-        if (similarity > 2.1) {
-            return true;
-        }
-        return false;
+        let template = knownImgs[winOrLose];
+        let img = getMirrorsWinLoseImg(screenshot);
+        let found = images.findImage(img, template, {threshold: 0.95}) ? true : false;
+        log("镜界胜负判断", winOrLose, found);
+        return found;
     }
     function didWeWin(screenshot) {
         return didWeWinOrLose(screenshot, "mirrorsWinLetterI");
     }
     function didWeLose(screenshot) {
-        return didWeWinOrLose(screenshot, "mirrorsLose");
+        return didWeWinOrLose(screenshot, "mirrorsLoseLetterE");
     }
 
-    var failedScreenShots = [null, null, null, null, null]; //保存图片，调查无法判定镜层战斗输赢的问题
     //判断最终输赢
     function clickMirrorsBattleResult() {
         var screenCenter = {
@@ -10440,30 +10429,22 @@ function algo_init() {
             y:   540,
             pos: "center"
         };
-        let failedCount = 0; //调查无法判定镜层战斗输赢的问题
         /* 演习模式没有rankMark
         while (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
         */
-        while (id("ArenaResult").findOnce() || id("enemyBtn").findOnce()) {
-            log("匹配到镜层战斗结算控件");
-            let screenshot = compatCaptureScreen();
-            //调查无法判定镜层战斗输赢的问题
-            //failedScreenShots[failedCount] = images.clip(screenshot, 0, 0, scr.res.width, scr.res.height); //截图会被回收，导致保存失败；这样可以避免回收
-            var win = false;
-            if (didWeWin(screenshot)) {
-                win = true;
-                log("镜界战斗胜利");
-            } else if (didWeLose(screenshot)) {
-                win = false;
-                log("镜界战斗败北");
+        while (true) {
+            let foundWinLose = false;
+
+            if (last_alive_lang === "ja") {
+                let screenshot = compatCaptureScreen();
+                foundWinLose = didWeWin(screenshot) || didWeLose(screenshot);
             } else {
-                //结算页面有闪光，会干扰判断
-                log("没在屏幕上识别到镜界胜利或败北特征");
-                //有时候点击结算页面后会无法正确判断胜利或失败
-                failedCount++;
-                failedCount = failedCount % 5;
+                foundWinLose = id("ArenaResult").findOnce() || id("enemyBtn").findOnce();
             }
-            log("即将点击屏幕以退出结算界面...");
+
+            if (!foundWinLose) break;
+
+            log("匹配到镜层战斗结算控件,即将点击屏幕以退出结算界面...");
             click(convertCoords(screenCenter));
             sleep(1000);
         }
@@ -10939,15 +10920,6 @@ function algo_init() {
         //战斗结算
         //点掉结算界面
         clickMirrorsBattleResult();
-        //调查无法判定镜层战斗输赢的问题
-        //for (i=0; i<failedScreenShots.length; i++) {
-        //    if (failedScreenShots[i] != null) {
-        //        let filename = "/sdcard/1/failed_"+i+".png";
-        //        log("saving image... "+filename);
-        //        images.save(failedScreenShots[i], filename);
-        //        log("done. saved: "+filename);
-        //    }
-        //}
 
         //回收所有图片
         recycleAllImages();
