@@ -4,6 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 const util = require("util");
 
+const imageFileExts = /\.(png|jpg|ico|gif|bmp)$/;
 
 const rootpath = __dirname;
 const hashFuncName = 'sha256';
@@ -21,7 +22,7 @@ const inclusionRules = [
     {
         dirname: "images",
         recursive: false,
-        filename: /\.(png|jpg|ico|gif|bmp)$/,
+        filename: imageFileExts,
     },
     {
         dirname: "modules",
@@ -37,6 +38,8 @@ const inclusionRules = [
 
 
 //May return null
+var fileJsonHashes = [], lastFileJsonHashes = [];
+const fileJsonDir = path.join(".", "update", "fileJson");
 async function walkThrough(fullpath) {
     let relativepath = path.relative(rootpath, fullpath).replace(new RegExp('\\' + path.sep, 'g'), '/');
 
@@ -79,10 +82,28 @@ async function walkThrough(fullpath) {
             let content = await fsPromises.readFile(fullpath);
             hash.update(content);
             let digest = hash.digest("base64");
-            return {
+            let item = {
                 src: relativepath,
                 integrity: hashFuncName+"-"+digest,
             };
+            let isBinary = (path.dirname(relativepath) === "bin" && path.basename(relativepath).match(/\./) == null);
+            if (relativepath.match(imageFileExts) || isBinary) {
+                let itemJsonString = JSON.stringify(item);
+                fileJsonHashes.push(itemJsonString);
+                let fileJsonPath = "" + (fileJsonHashes.length - 1) + ".json";
+                fileJsonPath = path.join(fileJsonDir, fileJsonPath).replace(new RegExp('\\' + path.sep, 'g'), '/');
+                if (lastFileJsonHashes[fileJsonHashes.length - 1] === itemJsonString) {
+                    console.log(`Not changed: ${relativepath} stored in ${fileJsonPath}`);
+                } else {
+                    await fsPromises.writeFile(fileJsonPath, JSON.stringify({
+                        src: relativepath, //may actually be ignored
+                        data: content.toString("base64")
+                    }));
+                    console.log(`Converted ${relativepath} to ${fileJsonPath}`);
+                }
+                item.fileJsonPath = fileJsonPath;
+            }
+            return item;
         }
     }
 }
@@ -135,6 +156,8 @@ async function getPrivateKey() {
 }
 async function regenerate() {
     console.log("Regenerating update/updateList.json ...");
+    lastFileJsonHashes = fileJsonHashes;
+    fileJsonHashes = [];
     let projectJson = await fsPromises.readFile(projectJsonPath);
     let projectObj = JSON.parse(projectJson);
     let result = {
@@ -166,9 +189,21 @@ async function regenerate() {
     console.log("Result written to "+resultPath);
     await fsPromises.writeFile(signaturePath, signatureBase64);
     console.log("Signature written to "+signaturePath);
+
+    for (let i = fileJsonHashes.length; i < lastFileJsonHashes.length; i++) {
+        let toDelete = path.join(fileJsonDir, "" + i + ".json")
+        await fsPromises.rm(toDelete);
+        console.log(`Deleted ${toDelete}`);
+    }
+
     return result;
 }
-regenerate();
+(async function () {
+    await fsPromises.rm(fileJsonDir, {recursive: true, force: true});
+    await fsPromises.mkdir(fileJsonDir);
+    console.log(`Deleted contents of directory: ${fileJsonDir}`);
+    await regenerate();
+})();
 
 
 //https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/development_environmentc
@@ -328,7 +363,7 @@ const server = http.createServer(async (req, res) => {
             }
         }
         return false;
-    });
+    }) || "update/fileJson" === path.dirname(relativepath);
     if (req.url === "/") {
         if (isTooFrequent()) {
             res.statusCode = 429;

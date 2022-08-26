@@ -1431,10 +1431,11 @@ function checkFile(fileName, fileHash) {
 function findCorruptOrMissingFile() {
     //从6.1.4开始修正在线更新认不清版本的bug
     //从6.2.0开始验证数字签名
+    //从6.3.3开始绕过jsdelivr对图片的重定向
     let specifiedVersionName = version;
-    if (parseInt(version.split(".").join("")) < parseInt("6.2.0".split(".").join(""))) {
-        specifiedVersionName = "6.2.0";
-        log("版本低于6.2.0，先更新文件数据列表到6.2.0");
+    if (parseInt(version.split(".").join("")) < parseInt("6.3.3".split(".").join(""))) {
+        specifiedVersionName = "6.3.3";
+        log("版本低于6.3.3，先更新文件数据列表到6.3.3");
         if (downloadAndWriteUpdateListJSON(specifiedVersionName) == null) {
             //如果下载或写入不成功
             ui.post(function () {dialogs.alert("警告",
@@ -1512,10 +1513,23 @@ var fixFiles = sync(function (corruptOrMissingFileList, specifiedVersionName) {
     let downloadedCount = corruptOrMissingFileList.filter((item) => item.dataBytes != null).length;
     corruptOrMissingFileList.forEach((item) => {
         if (item.dataBytes == null) try {
-            log("下载文件 ["+item.src+"]");
-            let resp = http.get(getDownloadURLBase(specifiedVersionName)+"/"+(item.origFileName != null ? item.origFileName : item.src));
+            //jsdelivr在国内会重定向图片，转成json绕过
+            let downloadPath = item.src;
+            if (item.fileJsonPath != null) {
+                downloadPath = item.fileJsonPath;
+            } else if (item.origFileName != null) {
+                downloadPath = item.origFileName;
+            }
+            log("下载文件 ["+downloadPath+"]"+(item.fileJsonPath!=null?" ("+item.src+")":""));
+            let resp = http.get(getDownloadURLBase(specifiedVersionName)+"/"+downloadPath);
             if (resp.statusCode == 200) {
-                let downloadedBytes = resp.body.bytes();
+                let downloadedBytes = null;
+                if (item.fileJsonPath == null) {
+                    downloadedBytes = resp.body.bytes();
+                } else {
+                    let downloadedData = JSON.parse(resp.body.string());
+                    downloadedBytes = decodeBase64(downloadedData.data);
+                }
 
                 let downloadedHash = "sha256-"+$crypto.digest(downloadedBytes, "SHA-256", {input: "bytes", output: "base64"});
                 if (downloadedHash !== item.integrity) {
