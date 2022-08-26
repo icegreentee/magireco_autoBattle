@@ -2507,6 +2507,16 @@ function algo_init() {
         let traineddataPath = files.join(traineddataDir, traineddataFileName);
 
         try {
+            const oldTraineddataDir = files.join(files.getSdcardPath(), "auto_magireco/org.autojs.plugin.ocr/tessdata");
+            const oldTraineddataPath = files.join(oldTraineddataDir, traineddataFileName);
+            if (files.isFile(oldTraineddataPath)) files.remove(oldTraineddataPath);
+            if (files.isDir(oldTraineddataDir)) files.remove(oldTraineddataDir);
+            if (files.isDir(oldTraineddataDir.replace(/\/tessdata$/, ""))) files.remove(oldTraineddataDir.replace(/\/tessdata$/, ""));
+        } catch (e) {
+            logException(e);
+        }
+
+        try {
             log("加载OCR插件");
             if (OCR == null) OCR = $plugins.load('org.autojs.plugin.ocr');
             if (ocr == null) ocr = new OCR();
@@ -2517,7 +2527,7 @@ function algo_init() {
         if (ocr == null) {
             if (!files.isFile(traineddataPath)) {
                 log("默认位置自动解压失败，换个路径");
-                traineddataDir = files.join(files.getSdcardPath(), "auto_magireco/org.autojs.plugin.ocr/tessdata");
+                traineddataDir = files.join(files.cwd(), "plugins/org.autojs.plugin.ocr/tessdata");
                 traineddataPath = files.join(traineddataDir, traineddataFileName);
             }
 
@@ -2562,7 +2572,6 @@ function algo_init() {
             dialogs.alert("加载OCR插件出错",
                  "1.请确保OCR插件已经安装好（马上将会弹出下载链接）\n"
                 +"2.目前OCR暂不支持64位重打包版，请安装32位\n"
-                +"3.请务必授予存储权限\n"
             );
             $app.openUrl("https://pro.autojs.org/docs/#/zh-cn/plugins?id=ocr%e6%8f%92%e4%bb%b6");
             stopThread();
