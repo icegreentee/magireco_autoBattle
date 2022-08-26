@@ -9,7 +9,6 @@ importClass(android.view.View)
 importClass(android.graphics.Color)
 importClass(android.view.MenuItem)
 importClass(com.stardust[deObStr("cwvqlu")].project.ProjectConfig)
-importClass(com.stardust[deObStr("cwvqlu")].core.ui.inflater.util.Ids)
 importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
@@ -457,22 +456,6 @@ ui.layout(
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
-                        <text text="副本/活动周回2(备用可选)脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
-                        <vertical padding="10 6 0 6" w="*" h="auto">
-                            <text text="活动周回关卡选择:" textColor="#000000" margin="0 5" />
-                            <radiogroup id="battleNo" padding="10 3 0 3">
-                                <radio id="cb1" text="初级" />
-                                <radio id="cb2" text="中级" />
-                                <radio id="cb3" text="高级" checked="true" />
-                            </radiogroup>
-                            <linear margin="0 3">
-                                <text text="助战x，y坐标自定义:" textColor="#000000" layout_gravity="center_vertical" />
-                                <input maxLength="4" id="helpx" text="" hint="横坐标" textSize="14" inputType="number|none" />
-                                <input maxLength="4" id="helpy" text="" hint="纵坐标" textSize="14" inputType="number|none" />
-                            </linear>
-                        </vertical>
-                    </vertical>
-                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="关于" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <linear padding="10 6" bg="#ffffff">
                             <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，且永久免费，不可进行出售盈利。作者bilibili 虹之宝玉  群号：453053507" />
@@ -881,9 +864,6 @@ const persistParamList = [
     "excludedSupportCharaNames",
     //"preferredSupportMemorias",//未实现
     "autoForPreferredOnly",
-    "helpx",
-    "helpy",
-    "battleNo",
     "useAuto",
     "autoFollow",
     "breakAutoCycleDuration",
@@ -925,15 +905,6 @@ const tempParamList = [
     "apmul",
 ];
 
-var idmap = {};
-var field = (new Ids()).getClass().getDeclaredField("ids");
-field.setAccessible(true);
-var iter = field.get(null).keySet().iterator();
-while (iter.hasNext()) {
-    let item = iter.next();
-    idmap[Ids.getId(item)] = item;
-}
-
 function syncValue(key, value) {
     switch (ui[key].getClass().getSimpleName()) {
         // input
@@ -953,15 +924,6 @@ function syncValue(key, value) {
                 ui[key].setSelection(0, true) //FIXME when list is empty
             }
             return ui[key].getSelectedItemPosition()
-        case "RadioGroup": {
-            if (value !== undefined && ui[value])
-                ui[value].setChecked(true)
-            let name = "";
-            let id = ui[key].getCheckedRadioButtonId();
-            if (id >= 0)
-                name = idmap[ui[key].getCheckedRadioButtonId()]
-            return name
-        }
 
     }
 }
@@ -1006,19 +968,6 @@ function setOnChangeListener(key) {
             onItemSelected: function (spinnerparent, spinnerview, spinnerposition, spinnerid) {
                 saveParamIfPersist(key, spinnerposition);
                 floatUI.adjust(key, spinnerposition);
-            }
-            })
-            );
-            break;
-        case "RadioGroup":
-            ui[key].setOnCheckedChangeListener(
-            new android.widget.RadioGroup.OnCheckedChangeListener({
-            onCheckedChanged: function (group, checkedId) {
-                let name = idmap[checkedId];
-                if (name) {
-                    saveParamIfPersist(key, name);
-                    floatUI.adjust(key, name);
-                }
             }
             })
             );
