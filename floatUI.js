@@ -9391,7 +9391,18 @@ function algo_init() {
                 area[corner][axis] = known[corner][axis];
             }
             area[corner].x += diskPos * skillCharaDistance;
-            area[corner].x += skillNo * skillDistance;
+            switch (skillNo) {
+                case 0:
+                case 1:
+                    area[corner].x += skillNo * skillDistance;
+                    break;
+                case 2:
+                    area[corner].x += Math.round(skillDistance / 2);
+                    area[corner].y -= Math.round(skillDistance * Math.sqrt(3) / 2);
+                    break;
+                default:
+                    throw new Error("skillNo out of range");
+            }
         }
         let converted = getConvertedArea(area);
         //防止图像大小不符导致MSSIM==-1，或者直接崩溃（CwvqLU 9.1.0）
@@ -9702,7 +9713,7 @@ function algo_init() {
             var availableSkillCount = 0;
             let screenshot = renewImage(images.copy(compatCaptureScreen())); //复制一遍以避免toggleSkillPanel回收screenshot导致崩溃退出的问题
             for (let diskPos=0; diskPos<5; diskPos++) {
-                for (let skillNo=0; skillNo<2; skillNo++) {
+                for (let skillNo=0; skillNo<3; skillNo++) {
                     if (isSkillAvailable(screenshot, diskPos, skillNo)) {
                         availableSkillCount++;
                         let isSkillButtonClicked = false;
