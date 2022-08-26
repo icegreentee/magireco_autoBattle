@@ -1838,7 +1838,7 @@ var limit = {
     useCVAutoBattle: true,
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
-    CVAutoBattleClickSkillsSinceTurn: "3",
+    CVAutoBattleClickSkillsSinceTurn: "1",
     CVAutoBattleClickAllMagiaDisks: true,
     CVAutoBattlePreferAccel: false,
     CVAutoBattlePreferABCCombo: false,

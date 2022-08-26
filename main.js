@@ -425,13 +425,13 @@ ui.layout(
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
-                                <text text="开启后,从(默认)第3回合开始,会放出所有可用的主动技能。如果遇到问题可以关闭。" textColor="#000000" />
+                                <text text="开启后,会放出所有可用的主动技能。如果遇到问题可以关闭。" textColor="#000000" />
                                 <linear>
                                     <text text="从第" textColor="#000000" />
-                                    <input maxLength="2" id="CVAutoBattleClickSkillsSinceTurn" hint="3" text="3" textSize="14" inputType="number|none" />
+                                    <input maxLength="2" id="CVAutoBattleClickSkillsSinceTurn" hint="1" text="1" textSize="14" inputType="number|none" />
                                     <text text="回合起使用主动技能" textColor="#000000" />
                                 </linear>
-                                <text text="脚本暂不能识别技能面板切换按钮(行动盘右边的大“SKILL”按钮)是否处于闪烁状态,考虑到在镜层(如果不是镜层而是副本,那情况又不一样,一般是第1回合即可发动主动技能)大多数主动技能都只在第3回合才冷却完毕,为了避免点开技能面板后又关闭导致浪费时间,默认只从第3回合开始使用主动技能。" textColor="#000000" />
+                                <text text="脚本暂不能识别技能面板切换按钮(行动盘右边的大“SKILL”按钮)是否处于闪烁状态,必须点开技能面板才能确认是否有技能可用。" textColor="#000000" />
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllMagiaDisks" w="*" margin="0 3" checked="true" textColor="#000000" text="使用Magia/Doppel大招" />
@@ -1020,7 +1020,7 @@ afterTextChanged: function (s) {
     let str = ""+s;
     let value = parseInt(str);
     if (isNaN(value) || value < 1 || value > 99) {
-        s.replace(0, str.length, "3");
+        s.replace(0, str.length, "1");
     }
 }
 })
