@@ -131,6 +131,8 @@ ui.layout(
                 <vertical gravity="center" layout_weight="1">
                     <vertical id="cwvqlu_ver_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <text id="cwvqlu_ver_text" text="" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
+                        <text id="open_intro_on_bili_text" text="下载链接见B站视频简介 BV1nf4y1y713" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
+                        <button id="open_intro_on_bili" text="打开B站视频" textColor="#000000" textSize="16" w="wrap_content" h="wrap_content"/>
                     </vertical>
 
                     <vertical id="task_paused_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
@@ -692,8 +694,10 @@ function getTintDrawable(name, tint) {
 //检测CwvqLU引擎版本
 
 //经测试发现app.cwvqlu.versionName不能用
-//以下数值通过实际运行一遍代码取得，取自Pro 8.8.13-0
-const lowestVersionCode = 8081200;
+//以下数值通过实际运行一遍代码取得
+//8081200取自Pro 8.8.13-0
+//9120700取自Pro 9.2.7-0
+const lowestVersionCode = 9120700;
 
 function detectCwvqLUVersion() {
     ui.run(function() {
@@ -708,6 +712,7 @@ function detectCwvqLUVersion() {
             ui.cwvqlu_ver_vertical.setVisibility(View.VISIBLE);
             return;
         }
+        log(deObStr("CwvqLU Pro 引擎版本versionCode"), currentVersionCode);
         if (currentVersionCode < lowestVersionCode) {
             ui.cwvqlu_ver_text.setText(deObStr("CwvqLU Pro 引擎版本过低\n当前版本versionCode=["+currentVersionCode+"]\n最低要求versionCode=["+lowestVersionCode+"]\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新"));
             ui.cwvqlu_ver_vertical.setVisibility(View.VISIBLE);
@@ -716,6 +721,13 @@ function detectCwvqLUVersion() {
     });
 }
 detectCwvqLUVersion();
+
+//点击按钮进入B站视频，下载链接在简介里
+ui["open_intro_on_bili"].setOnClickListener(new android.view.View.OnClickListener({
+    onClick: function (view) {
+        $app.openUrl("https://www.bilibili.com/video/BV1nf4y1y713");
+    }
+}));
 
 //无障碍开关监控
 ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
