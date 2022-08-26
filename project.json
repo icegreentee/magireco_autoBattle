@@ -12,5 +12,14 @@
     "launchConfig":{
         "splashIcon":"./images/start.jpg",
         "splashText":""
-    }
+    },
+    "optimization": {
+        "obfuscateComponents": true,
+        "removeAccessibilityService": false,
+        "removeOpenCv": false,
+        "unusedResources": false
+    },
+    "abis": [
+        "armeabi-v7a"
+    ]
 }
