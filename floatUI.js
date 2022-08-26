@@ -3007,16 +3007,77 @@ function algo_init() {
 
     function initOCR() {
         if (ocr != null) return true;
+
+        const traineddataFileName = "chi_sim.traineddata";
+        let traineddataDir = files.join(files.getSdcardPath(), "Android/obb/org.autojs.plugin.ocr/tessdata");
+        let traineddataPath = files.join(traineddataDir, traineddataFileName);
+
         try {
-            log("加载OCR插件...");
+            log("加载OCR插件");
             if (OCR == null) OCR = $plugins.load('org.autojs.plugin.ocr');
             if (ocr == null) ocr = new OCR();
         } catch (e) {
-            toastLog("加载OCR插件失败\n请先安装好OCR插件再试");
+            logException(e);
+        }
+
+        if (ocr == null) {
+            if (!files.isFile(traineddataPath)) {
+                log("默认位置自动解压失败，换个路径");
+                traineddataDir = files.join(files.getSdcardPath(), "auto_magireco/org.autojs.plugin.ocr/tessdata");
+                traineddataPath = files.join(traineddataDir, traineddataFileName);
+            }
+
+            if (!files.isFile(traineddataPath)) {
+                log("重新解压");
+                let result = normalShell("pm path org.autojs.plugin.ocr");
+                if (result.code != 0)
+                    result = normalShell("cmd package path org.autojs.plugin.ocr");
+                if (result.code == 0) {
+                    let apkPath = result.result.match(/\/.+\.apk/);
+                    if (apkPath != null) apkPath = apkPath[0];
+                    if (apkPath != null) try {
+                        let apkUnzipDir = files.join(traineddataDir, "unzip");
+                        files.ensureDir(files.join(apkUnzipDir, "file"));
+                        log("isDir", apkUnzipDir, files.isDir(apkUnzipDir));
+    
+                        $zip.unzip(apkPath, apkUnzipDir);
+                        log("unzip done");
+    
+                        let fromPath = files.join(apkUnzipDir, "assets")
+                        fromPath = files.join(fromPath, traineddataFileName);
+                        let isMoveSuccessful = files.move(fromPath, traineddataPath);
+                        log("move", fromPath, traineddataPath, isMoveSuccessful);
+    
+                        let isRemoveDirSuccessful = files.removeDir(apkUnzipDir);
+                        log("removeDir", apkUnzipDir, isRemoveDirSuccessful);
+    
+                        log("解压完成");
+                    } catch (e) {
+                        logException(e);
+                    }
+                }
+            }
+        }
+
+        if (ocr == null) try {
+            log("重试加载OCR插件");
+            if (OCR == null) OCR = $plugins.load('org.autojs.plugin.ocr');
+            if (ocr == null) ocr = new OCR(traineddataDir.replace(/\/tessdata$/, ""), "chi_sim");
+        } catch (e) {
+            logException(e);
+            dialogs.alert("加载OCR插件出错",
+                 "1.请确保OCR插件已经安装好（马上将会弹出下载链接）\n"
+                +"2.目前OCR暂不支持64位重打包版，请安装32位\n"
+                +"3.请务必授予存储权限\n"
+            );
             $app.openUrl("https://pro.autojs.org/docs/#/zh-cn/plugins?id=ocr%e6%8f%92%e4%bb%b6");
             stopThread();
         }
-        return true;
+
+        if (ocr != null) {
+            log("已加载OCR插件");
+            return true;
+        }
     }
 
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
