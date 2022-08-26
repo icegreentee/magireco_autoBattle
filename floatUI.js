@@ -10666,6 +10666,14 @@ function algo_init() {
                 toggleMagiaPanel(false);
             }
 
+            if (limit.CVAutoBattleClickAllSkills) {
+                if (turn >= parseInt(limit.CVAutoBattleClickSkillsSinceTurn)) {
+                    //一般在第3回合后主动技能才冷却完毕
+                    //闭着眼放出所有主动技能，可能有洗盘动作
+                    clickAllSkills();
+                }
+            }
+
             //扫描行动盘和战场信息
             scanDisks();
             scanBattleField("our");
@@ -10779,14 +10787,6 @@ function algo_init() {
                 let advAttrEnemies = [];
                 if (advAttribs.length > 0) advAttrEnemies = getEnemiesByAttrib(advAttribs[0]);
                 if (advAttrEnemies.length > 0) avoidAimAtEnemies(advAttrEnemies);
-            }
-
-            if (limit.CVAutoBattleClickAllSkills) {
-                if (turn >= parseInt(limit.CVAutoBattleClickSkillsSinceTurn)) {
-                    //一般在第3回合后主动技能才冷却完毕
-                    //闭着眼放出所有主动技能
-                    clickAllSkills();
-                }
             }
 
             if (limit.CVAutoBattleClickAllMagiaDisks) {
