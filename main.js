@@ -9,7 +9,6 @@ importClass(android.view.View)
 importClass(android.graphics.Color)
 importClass(android.view.MenuItem)
 importClass(com.stardust[deObStr("cwvqlu")].project.ProjectConfig)
-importClass(com.stardust[deObStr("cwvqlu")].core.ui.inflater.util.Ids)
 importClass(Packages.androidx.core.graphics.drawable.DrawableCompat)
 importClass(Packages.androidx.appcompat.content.res.AppCompatResources)
 
@@ -132,6 +131,8 @@ ui.layout(
                 <vertical gravity="center" layout_weight="1">
                     <vertical id="cwvqlu_ver_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <text id="cwvqlu_ver_text" text="" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
+                        <text id="open_intro_on_bili_text" text="下载链接见B站视频简介 BV1nf4y1y713" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
+                        <button id="open_intro_on_bili" text="打开B站视频" textColor="#000000" textSize="16" w="wrap_content" h="wrap_content"/>
                     </vertical>
 
                     <vertical id="task_paused_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
@@ -424,13 +425,13 @@ ui.layout(
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllSkills" w="*" margin="0 3" checked="true" textColor="#000000" text="使用主动技能" />
-                                <text text="开启后,从(默认)第3回合开始,会放出所有可用的主动技能。暂不支持第三个主动技能。如果遇到问题可以关闭。" textColor="#000000" />
+                                <text text="开启后,会放出所有可用的主动技能。如果遇到问题可以关闭。" textColor="#000000" />
                                 <linear>
                                     <text text="从第" textColor="#000000" />
-                                    <input maxLength="2" id="CVAutoBattleClickSkillsSinceTurn" hint="3" text="3" textSize="14" inputType="number|none" />
+                                    <input maxLength="2" id="CVAutoBattleClickSkillsSinceTurn" hint="1" text="1" textSize="14" inputType="number|none" />
                                     <text text="回合起使用主动技能" textColor="#000000" />
                                 </linear>
-                                <text text="脚本暂不能识别技能面板切换按钮(行动盘右边的大“SKILL”按钮)是否处于闪烁状态,考虑到在镜层(如果不是镜层而是副本,那情况又不一样,一般是第1回合即可发动主动技能)大多数主动技能都只在第3回合才冷却完毕,为了避免点开技能面板后又关闭导致浪费时间,默认只从第3回合开始使用主动技能。" textColor="#000000" />
+                                <text text="脚本暂不能识别技能面板切换按钮(行动盘右边的大“SKILL”按钮)是否处于闪烁状态,必须点开技能面板才能确认是否有技能可用。" textColor="#000000" />
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattleClickAllMagiaDisks" w="*" margin="0 3" checked="true" textColor="#000000" text="使用Magia/Doppel大招" />
@@ -454,22 +455,6 @@ ui.layout(
                                 </linear>
                                 <text text="国服2.1.10a版更新后出现magia盘点不下去的问题,默认按住50毫秒后松开即可绕开这个问题,如果还有问题可以尝试调整这个数值。" textColor="#000000" />
                             </vertical>
-                        </vertical>
-                    </vertical>
-                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
-                        <text text="副本/活动周回2(备用可选)脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
-                        <vertical padding="10 6 0 6" w="*" h="auto">
-                            <text text="活动周回关卡选择:" textColor="#000000" margin="0 5" />
-                            <radiogroup id="battleNo" padding="10 3 0 3">
-                                <radio id="cb1" text="初级" />
-                                <radio id="cb2" text="中级" />
-                                <radio id="cb3" text="高级" checked="true" />
-                            </radiogroup>
-                            <linear margin="0 3">
-                                <text text="助战x，y坐标自定义:" textColor="#000000" layout_gravity="center_vertical" />
-                                <input maxLength="4" id="helpx" text="" hint="横坐标" textSize="14" inputType="number|none" />
-                                <input maxLength="4" id="helpy" text="" hint="纵坐标" textSize="14" inputType="number|none" />
-                            </linear>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -709,8 +694,10 @@ function getTintDrawable(name, tint) {
 //检测CwvqLU引擎版本
 
 //经测试发现app.cwvqlu.versionName不能用
-//以下数值通过实际运行一遍代码取得，取自Pro 8.8.13-0
-const lowestVersionCode = 8081200;
+//以下数值通过实际运行一遍代码取得
+//8081200取自Pro 8.8.13-0
+//9120700取自Pro 9.2.7-0
+const lowestVersionCode = 9120700;
 
 function detectCwvqLUVersion() {
     ui.run(function() {
@@ -725,6 +712,7 @@ function detectCwvqLUVersion() {
             ui.cwvqlu_ver_vertical.setVisibility(View.VISIBLE);
             return;
         }
+        log(deObStr("CwvqLU Pro 引擎版本versionCode"), currentVersionCode);
         if (currentVersionCode < lowestVersionCode) {
             ui.cwvqlu_ver_text.setText(deObStr("CwvqLU Pro 引擎版本过低\n当前版本versionCode=["+currentVersionCode+"]\n最低要求versionCode=["+lowestVersionCode+"]\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新"));
             ui.cwvqlu_ver_vertical.setVisibility(View.VISIBLE);
@@ -733,6 +721,13 @@ function detectCwvqLUVersion() {
     });
 }
 detectCwvqLUVersion();
+
+//点击按钮进入B站视频，下载链接在简介里
+ui["open_intro_on_bili"].setOnClickListener(new android.view.View.OnClickListener({
+    onClick: function (view) {
+        $app.openUrl("https://www.bilibili.com/video/BV1nf4y1y713");
+    }
+}));
 
 //无障碍开关监控
 ui.autoService.setOnCheckedChangeListener(function (widget, checked) {
@@ -881,9 +876,6 @@ const persistParamList = [
     "excludedSupportCharaNames",
     //"preferredSupportMemorias",//未实现
     "autoForPreferredOnly",
-    "helpx",
-    "helpy",
-    "battleNo",
     "useAuto",
     "autoFollow",
     "breakAutoCycleDuration",
@@ -925,15 +917,6 @@ const tempParamList = [
     "apmul",
 ];
 
-var idmap = {};
-var field = (new Ids()).getClass().getDeclaredField("ids");
-field.setAccessible(true);
-var iter = field.get(null).keySet().iterator();
-while (iter.hasNext()) {
-    let item = iter.next();
-    idmap[Ids.getId(item)] = item;
-}
-
 function syncValue(key, value) {
     switch (ui[key].getClass().getSimpleName()) {
         // input
@@ -953,15 +936,6 @@ function syncValue(key, value) {
                 ui[key].setSelection(0, true) //FIXME when list is empty
             }
             return ui[key].getSelectedItemPosition()
-        case "RadioGroup": {
-            if (value !== undefined && ui[value])
-                ui[value].setChecked(true)
-            let name = "";
-            let id = ui[key].getCheckedRadioButtonId();
-            if (id >= 0)
-                name = idmap[ui[key].getCheckedRadioButtonId()]
-            return name
-        }
 
     }
 }
@@ -1010,19 +984,6 @@ function setOnChangeListener(key) {
             })
             );
             break;
-        case "RadioGroup":
-            ui[key].setOnCheckedChangeListener(
-            new android.widget.RadioGroup.OnCheckedChangeListener({
-            onCheckedChanged: function (group, checkedId) {
-                let name = idmap[checkedId];
-                if (name) {
-                    saveParamIfPersist(key, name);
-                    floatUI.adjust(key, name);
-                }
-            }
-            })
-            );
-            break;
     }
 }
 
@@ -1059,7 +1020,7 @@ afterTextChanged: function (s) {
     let str = ""+s;
     let value = parseInt(str);
     if (isNaN(value) || value < 1 || value > 99) {
-        s.replace(0, str.length, "3");
+        s.replace(0, str.length, "1");
     }
 }
 })

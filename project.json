@@ -5,12 +5,21 @@
         "build"
     ],
     "packageName": "top.momoe.auto",
-    "versionName": "6.3.5",
+    "versionName": "6.3.6",
     "versionInfo": "",
     "versionCode": 1,
     "icon":"./images/icon.png",
     "launchConfig":{
         "splashIcon":"./images/start.jpg",
         "splashText":""
-    }
+    },
+    "optimization": {
+        "obfuscateComponents": true,
+        "removeAccessibilityService": false,
+        "removeOpenCv": false,
+        "unusedResources": false
+    },
+    "abis": [
+        "armeabi-v7a"
+    ]
 }
