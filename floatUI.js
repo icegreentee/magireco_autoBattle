@@ -11152,7 +11152,7 @@ function algo_init() {
                 sleep(1000)
                 if (isBPExhausted()) {
                     //日服暂不方便在这里检测是否演习模式
-                    if (last_alive_lang === "ja" && isMirrorsExercise()) {
+                    if (last_alive_lang !== "ja" && isMirrorsExercise()) {
                         log("镜层演习模式不嗑药");
                         log("不过，开始镜层演习需要至少有1BP");
                         log("镜层周回结束");
