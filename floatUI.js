@@ -7740,6 +7740,28 @@ function algo_init() {
                 //雷电模拟器下，返回的截屏数据是横屏强制转竖屏的，需要检测这种情况
                 initializeScreenCaptureFix();
 
+                if (!floatUI.storage.get("doNotRemindAboutScreencap", false)) {
+                    while (true) {
+                        let startTime = new Date().getTime();
+                        dialogs.alert("⚠️警告⚠️",
+                            "很抱歉,但请拿出至少5秒时间,先看完。\n"
+                            +"已成功申请截屏权限,但部分环境下截屏可能不稳定。\n"
+                            +"如果发现脚本只能运行一小会,然后就出现不点击或反复点击行动盘等异常现象,\n"
+                            +"这很可能是截屏后台服务崩溃(多见于真机环境),这时可以看见状态栏中表示“正在投屏”的图标(一般是红色)消失;\n"
+                            +"或者可能是从系统获取到了错位的图像(比如夜神模拟器小概率出现,重启后可恢复正常)。\n"
+                            +"\n"
+                            +"这个问题的对策一般是:\n"
+                            +"在[识图自动战斗脚本设置]中开启[使用root或adb权限截屏],\n"
+                            +"但也存在部分模拟器(比如上次在MuMu9上观察到这个问题)开启后可能反而无法正常截屏的问题,\n"
+                            +"如果仍有问题请尝试换一个模拟器;\n"
+                            +"也可以加QQ群反馈问题,群号见脚本设置底部。\n"
+                            +"\n"
+                            +"点击[确定]将不再弹出这个提示。"
+                        );
+                        if (new Date().getTime() - startTime >= 5000) break;
+                    }
+                    floatUI.storage.put("doNotRemindAboutScreencap", true);
+                }
                 sleep(2000); //等待toast消失，比如“恢复显示悬浮窗”
                 instantToast(
                     "获取截屏权限成功。\n为避免截屏出现问题，请务必不要转屏，也不要切换出游戏"
