@@ -4,7 +4,7 @@
 
 ## how to use
 
-1. [下载最新apk](https://github.com/magirecoAutoBattle/magireco_autoBattle/releases/tag/6.2.6)，安装
+1. [下载最新apk](https://github.com/magirecoAutoBattle/magireco_autoBattle/releases/tag/6.3.6)，安装
 2. 脚本本身运行只需APP悬浮窗权限，存储权限用于保存一些调试信息。MuMu模拟器等Android 7（不含）以下的环境还需要root权限，否则脚本无法自动点击。
 3. 每一次运行，需开启无障碍服务，设置需要的参数
 4. 进入游戏选择助战阶段，悬浮窗中启动脚本
