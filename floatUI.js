@@ -1836,6 +1836,7 @@ var limit = {
     smartMirrorsPick: true,
     mirrorsEnemyNumFactor: "0",
     useCVAutoBattle: true,
+    mirrorsWatchman: true,
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
     CVAutoBattleClickSkillsSinceTurn: "1",
@@ -2033,6 +2034,16 @@ var clickSets = {
     cpExhaustRefill: {
         x: 1175,
         y: 832,
+        pos: "center"
+    },
+    screenCenter: {
+        x:   960,
+        y:   540,
+        pos: "center"
+    },
+    mirrorsTop: {
+        x:   620,
+        y:   500,
         pos: "center"
     },
 }
@@ -8087,6 +8098,11 @@ function algo_init() {
             y: 830,
             pos: "center"
         },
+        bpClose2: {
+            x: 1455,
+            y: 80,
+            pos: "center"
+        },
         battlePan1: {
             x: 400,
             y: 950,
@@ -8182,6 +8198,10 @@ function algo_init() {
         "bpRefilledOKBtnJP",
         "mirrorsWinLetterI",
         "mirrorsLoseLetterE",
+        "nextMirrorLowerCaseI",
+        "mirrorsTop",
+        "skipBtn",
+        "backToMirrorsTop",
         "skillLocked",
         "skillEmptyCHS",
         "skillEmptyCHT",
@@ -9997,7 +10017,7 @@ function algo_init() {
     }
 
     //判断是否胜利
-    var knownMirrorsWinLoseCoords = {
+    var knownMirrorsResultCoords = {
         topLeft: {
             x:   480,
             y:   216,
@@ -10009,40 +10029,104 @@ function algo_init() {
             pos: "center"
         }
     };
-
-    function getMirrorsWinLoseArea() {
-        let knownArea = knownMirrorsWinLoseCoords;
+    function getMirrorsResultArea() {
+        let knownArea = knownMirrorsResultCoords;
         let convertedTopLeft = convertCoords(knownArea.topLeft);
         let convertedBottomRight = convertCoords(knownArea.bottomRight);
         let convertedArea = { topLeft: convertedTopLeft, bottomRight: convertedBottomRight };
         return convertedArea;
     }
-    function getMirrorsWinLoseImg(screenshot) {
-        let area = getMirrorsWinLoseArea();
+    function getMirrorsResultImg(screenshot) {
+        let area = getMirrorsResultArea();
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
-    function didWeWinOrLose(screenshot, winOrLose) {
+    function detectMirrorsResult(screenshot, type) {
         //结算页面有闪光，会干扰判断，但是只会产生假阴性，不会出现假阳性
-        let template = knownImgs[winOrLose];
-        let img = getMirrorsWinLoseImg(screenshot);
+        let template = knownImgs[type];
+        let img = getMirrorsResultImg(screenshot);
         let found = images.findImage(img, template, {threshold: 0.9}) ? true : false;
-        log("镜界胜负判断", winOrLose, found);
+        log(type, found);
         return found;
     }
     function didWeWin(screenshot) {
-        return didWeWinOrLose(screenshot, "mirrorsWinLetterI");
+        return detectMirrorsResult(screenshot, "mirrorsWinLetterI");
     }
     function didWeLose(screenshot) {
-        return didWeWinOrLose(screenshot, "mirrorsLoseLetterE");
+        return detectMirrorsResult(screenshot, "mirrorsLoseLetterE");
+    }
+    function isNextMirror(screenshot) {
+        return detectMirrorsResult(screenshot, "nextMirrorLowerCaseI");
+    }
+    function isMirrorsTop(screenshot) {
+        return detectMirrorsResult(screenshot, "mirrorsTop");
+    }
+
+    //判断是否出现跳过剧情按钮
+    var knownSkipButtonCoords = {
+        topLeft: {
+            x:   1650,
+            y:   10,
+            pos: "top"
+        },
+        bottomRight: {
+            x:   1860,
+            y:   120,
+            pos: "top"
+        }
+    };
+    function getSkipButtonArea() {
+        let knownArea = knownSkipButtonCoords;
+        let convertedTopLeft = convertCoords(knownArea.topLeft);
+        let convertedBottomRight = convertCoords(knownArea.bottomRight);
+        let convertedArea = { topLeft: convertedTopLeft, bottomRight: convertedBottomRight };
+        return convertedArea;
+    }
+    function getSkipButtonImg(screenshot) {
+        let area = getSkipButtonArea();
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+    function isSkipButtonPresent(screenshot) {
+        let template = knownImgs["skipBtn"];
+        let img = getSkipButtonImg(screenshot);
+        let found = images.findImage(img, template, {threshold: 0.9}) ? true : false;
+        log("skipBtn", found);
+        return found;
+    }
+
+    //判断是否出现超时回镜层首页按钮
+    var knownBackToMirrorsTopButtonCoords = {
+        topLeft: {
+            x:   720,
+            y:   680,
+            pos: "center"
+        },
+        bottomRight: {
+            x:   1200,
+            y:   840,
+            pos: "center"
+        }
+    };
+    function getBackToMirrorsTopButtonArea() {
+        let knownArea = knownBackToMirrorsTopButtonCoords;
+        let convertedTopLeft = convertCoords(knownArea.topLeft);
+        let convertedBottomRight = convertCoords(knownArea.bottomRight);
+        let convertedArea = { topLeft: convertedTopLeft, bottomRight: convertedBottomRight };
+        return convertedArea;
+    }
+    function getBackToMirrorsTopButtonImg(screenshot) {
+        let area = getBackToMirrorsTopButtonArea();
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+    function isBackToMirrorsTopButtonPresent(screenshot) {
+        let template = knownImgs["backToMirrorsTop"];
+        let img = getBackToMirrorsTopButtonImg(screenshot);
+        let found = images.findImage(img, template, {threshold: 0.9}) ? true : false;
+        log("backToMirrorsTop", found);
+        return found;
     }
 
     //判断最终输赢
     function clickMirrorsBattleResult() {
-        var screenCenter = {
-            x:   960,
-            y:   540,
-            pos: "center"
-        };
         /* 演习模式没有rankMark
         while (id("ArenaResult").findOnce() || (id("enemyBtn").findOnce() && id("rankMark").findOnce())) {
         */
@@ -10063,7 +10147,7 @@ function algo_init() {
         while (isWinLoseShown()) {
             log("匹配到镜层战斗结算控件,3秒后点击屏幕以退出结算界面...");
             sleep(3000); //点击太早可能出问题
-            click(convertCoords(screenCenter));
+            click(convertCoords(clickSets.screenCenter));
             sleep(5000); //等待结算界面消失
         }
 
@@ -11125,7 +11209,58 @@ function algo_init() {
             }
         }
 
+        function watchmanWait() {
+            log("进入镜层守夜模式");
+            for (let waitTime = 910, interval = 5; waitTime > 0; waitTime -= interval) {
+                if (waitTime >= 10) instantToast("镜层守夜模式 "+(waitTime)+"秒后重试开始战斗");
+                sleep(interval * 1000);
+            }
+        }
+
         while (true) {
+            //等待进入镜层对手匹配,如果在首页就点击进入,如果有next mirror、skip、超时回首页等就点掉
+            if (last_alive_lang === "ja") {
+                for (let startTime = new Date().getTime(); !isMirrorsVSPresent(); ) {
+                    if (new Date().getTime() > startTime + 600 * 1000) {
+                        log("10分钟没有等到进入镜层对手匹配,退出");
+                        return;
+                    }
+
+                    let knownClickPos = null;
+                    let screenshot = compatCaptureScreen();
+                    if (isMirrorsTop(screenshot)) {
+                        log("镜层首页");
+                        knownClickPos = clickSets.mirrorsTop;
+                    } else if (isNextMirror(screenshot)) {
+                        log("next mirror");
+                        knownClickPos = clickSets.screenCenter;
+                    } else if (isSkipButtonPresent(screenshot)) {
+                        log("skip剧情");
+                        knownClickPos = getAreaCenter(knownSkipButtonCoords);
+                    } else if (isBackToMirrorsTopButtonPresent(screenshot)) {
+                        log("超时回镜层首页");
+                        knownClickPos = getAreaCenter(knownBackToMirrorsTopButtonCoords);
+                    } else if (isBPExhausted()) {
+                        log("BP耗尽窗口");
+                        knownClickPos = clickSetsMod.bpClose;
+                    } else if (isBPRefillWindowPresent()) {
+                        log("BP药窗口");
+                        knownClickPos = clickSetsMod.bpClose2;
+                    } else if (isBPRefillDone()) {
+                        log("BP嗑药完成窗口");
+                        knownClickPos = clickSetsMod.bpDrugRefilledOK;
+                    }
+    
+                    if (knownClickPos != null) {
+                        sleep(3000); //点击太早可能出问题
+                        click(convertCoords(knownClickPos));
+                        sleep(5000); //等待结算界面消失
+                    } else {
+                        sleep(1000);
+                    }
+                }
+            }
+
             var pickedWeakest = false;
             if (limit.smartMirrorsPick) {
                 //挑选最弱的对手
@@ -11146,10 +11281,19 @@ function algo_init() {
                 mirrorsPick1stOpponent();
             }
 
+            let backToMirrorTopRequired = false;
             while (isMirrorsVSPresent()) {
+                //点击进入战斗及嗑药
                 sleep(1000)
                 click(convertCoords(clickSetsMod.mirrorsStartBtn));
                 sleep(1000)
+                if (last_alive_lang === "ja") {
+                    if (isBackToMirrorsTopButtonPresent(compatCaptureScreen())) {
+                        //超时回镜层首页,无法继续开始战斗
+                        backToMirrorTopRequired = true;
+                        break;
+                    }
+                }
                 if (isBPExhausted()) {
                     //日服暂不方便在这里检测是否演习模式
                     if (last_alive_lang !== "ja" && isMirrorsExercise()) {
@@ -11169,24 +11313,40 @@ function algo_init() {
                                 break;
                             }
                             if (attempt == attemptMax - 1) {
-                                log("多次嗑BP药仍然没有反应,应该是BP药用完了,退出");
-                                return;
+                                log("多次嗑BP药仍然没有反应,应该是BP药用完了");
+                                if (last_alive_lang === "ja" && limit.mirrorsWatchman) {
+                                    //未禁用嗑药，所以下次仍然会跑到这里，但问题不大
+                                    watchmanWait();
+                                    backToMirrorTopRequired = true;
+                                    break;
+                                } else {
+                                    log("镜层周回结束");
+                                    return;
+                                }
                             }
                             click(convertCoords(clickSetsMod.bpDrugConfirm))
                             sleep(1500)
                         }
+                        if (backToMirrorTopRequired) break; //多次嗑BP药仍然没有反应,应该是BP药用完了,然后进入守夜模式
                         while (isBPRefillDone()) {
                             click(convertCoords(clickSetsMod.bpDrugRefilledOK))
                             sleep(1500)
                         }
                     } else {
                         click(convertCoords(clickSetsMod.bpClose))
-                        log("镜层周回结束")
-                        return;
+                        if (last_alive_lang === "ja" && limit.mirrorsWatchman) {
+                            watchmanWait();
+                            backToMirrorTopRequired = true;
+                            break;
+                        } else {
+                            log("镜层周回结束");
+                            return;
+                        }
                     }
                 }
                 sleep(1000)
             }
+            if (backToMirrorTopRequired) continue; //超时回镜层首页,无法继续开始战斗
             log("进入战斗")
             if (last_alive_lang === "ja" || limit.useCVAutoBattle) {
                 //利用截屏识图进行稍复杂的自动战斗（比如连携）

@@ -406,6 +406,10 @@ ui.layout(
                                 <text text="取值范围0-100。典型情况一般设为10以下。比如对手是5人队,5-1=4,然后设为10时会乘1+0.4=1.4,设为100时会乘1+4=5。" textColor="#000000" />
                                 <text text="默认不考虑对手人数,即因子为0。" textColor="#000000" />
                             </vertical>
+                            <vertical id="MirrorsExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <Switch id="mirrorsWatchman" w="*" margin="0 3" checked="true" textColor="#000000" text="镜层守夜人模式" />
+                                <text text="开启此项,则在BP耗尽且无BP药可使用时等待BP自回,然后再进入战斗。仅日服可用。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -888,6 +892,7 @@ const persistParamList = [
     "smartMirrorsPick",
     "mirrorsEnemyNumFactor",
     "useCVAutoBattle",
+    "mirrorsWatchman",
     "CVAutoBattleDebug",
     "CVAutoBattleClickAllSkills",
     "CVAutoBattleClickSkillsSinceTurn",
@@ -1012,7 +1017,7 @@ afterTextChanged: function (s) {
 }
 })
 );
-    
+
 //限制CVAutoBattleClickSkillsSinceTurn的取值
 ui["CVAutoBattleClickSkillsSinceTurn"].addTextChangedListener(
 new android.text.TextWatcher({
