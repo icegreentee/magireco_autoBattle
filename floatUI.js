@@ -154,6 +154,11 @@ floatUI.scripts = [
         fn: tasks.default,
     },
     {
+        name: "临时开荒辅助",
+        fn: tasks.openUp,
+        availableForJP: true,
+    },
+    {
         name: "镜层周回",
         fn: tasks.mirrors,
         availableForJP: true,
@@ -2046,6 +2051,11 @@ var clickSets = {
         y:   500,
         pos: "center"
     },
+    closeFollowPrompt: {
+        x:   1754,
+        y:   130,
+        pos: "center"
+    }
 }
 
 //立即就会显示出来、不会一个个攒起来连续冒出来的toast
@@ -8230,6 +8240,8 @@ function algo_init() {
         "skillEmptyJP",
         "OKButton",
         "OKButtonGray",
+        "initialAuto",
+        "startBtn",
     ];
 
     var loadAllImages = syncer.syn(function () {
@@ -10083,36 +10095,48 @@ function algo_init() {
         return detectMirrorsResult(screenshot, "mirrorsTop");
     }
 
-    //判断是否出现跳过剧情按钮
-    var knownSkipButtonCoords = {
-        topLeft: {
-            x:   1650,
-            y:   10,
-            pos: "top"
+    //判断是否出现战斗开始/跳过剧情按钮
+    var knownButtonCoords = {
+        startBtn: {
+            topLeft: {
+                x: 1640, y: 850, pos: "bottom"
+            },
+            bottomRight: {
+                x: 1910, y: 1078, pos: "bottom"
+            }
         },
-        bottomRight: {
-            x:   1860,
-            y:   120,
-            pos: "top"
-        }
+        skipBtn: {
+            topLeft: {
+                x: 1650, y: 10, pos: "top"
+            },
+            bottomRight: {
+                x: 1860, y: 120, pos: "top"
+            }
+        },
     };
-    function getSkipButtonArea() {
-        let knownArea = knownSkipButtonCoords;
+    function getButtonArea(type) {
+        let knownArea = knownButtonCoords[type];
         let convertedTopLeft = convertCoords(knownArea.topLeft);
         let convertedBottomRight = convertCoords(knownArea.bottomRight);
         let convertedArea = { topLeft: convertedTopLeft, bottomRight: convertedBottomRight };
         return convertedArea;
     }
-    function getSkipButtonImg(screenshot) {
-        let area = getSkipButtonArea();
+    function getButtonImg(screenshot, type) {
+        let area = getButtonArea(type);
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
-    function isSkipButtonPresent(screenshot) {
-        let template = knownImgs["skipBtn"];
-        let img = getSkipButtonImg(screenshot);
+    function isButtonPresent(screenshot, type) {
+        let template = knownImgs[type];
+        let img = getButtonImg(screenshot, type);
         let found = images.findImage(img, template, {threshold: 0.9}) ? true : false;
-        log("skipBtn", found);
+        log(type, found);
         return found;
+    }
+    function isStartButtonPresent(screenshot) {
+        return isButtonPresent(screenshot, "startBtn");
+    }
+    function isSkipButtonPresent(screenshot) {
+        return isButtonPresent(screenshot, "skipBtn");
     }
 
     //判断是否出现超时回镜层首页按钮
@@ -11258,7 +11282,7 @@ function algo_init() {
                         knownClickPos = clickSets.screenCenter;
                     } else if (isSkipButtonPresent(screenshot)) {
                         log("skip剧情");
-                        knownClickPos = getAreaCenter(knownSkipButtonCoords);
+                        knownClickPos = getAreaCenter(knownButtonCoords["skipBtn"]);
                     } else if (isBackToMirrorsTopButtonPresent(screenshot)) {
                         log("超时回镜层首页");
                         knownClickPos = getAreaCenter(knownBackToMirrorsTopButtonCoords);
@@ -11484,6 +11508,141 @@ function algo_init() {
         toastLog("绕过Play检测完成");
     }
 
+    /* ~~~~~~~~ 临时开荒辅助 开始 ~~~~~~~~ */
+    var knownInitialAutoCoords = {
+        //[1531,481][1674,514]
+        topLeft: {
+            x:   1459,
+            y:   464,
+            pos: "top"
+        },
+        bottomRight: {
+            x:   1747,
+            y:   532,
+            pos: "top"
+        }
+    };
+    function getInitialAutoArea() {
+        let knownArea = knownInitialAutoCoords;
+        let convertedTopLeft = convertCoords(knownArea.topLeft);
+        let convertedBottomRight = convertCoords(knownArea.bottomRight);
+        let convertedArea = { topLeft: convertedTopLeft, bottomRight: convertedBottomRight };
+        return convertedArea;
+    }
+    function getInitialAutoImg(screenshot) {
+        let area = getInitialAutoArea();
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+    function isMarkedAsInitialAuto(screenshot) {
+        let template = knownImgs["initialAuto"];
+        let img = getInitialAutoImg(screenshot);
+        let found = images.findImage(img, template, {threshold: 0.9}) ? true : false;
+        log("initialAuto", found);
+        return found;
+    }
+
+    function taskOpenUp() {
+        if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
+            toastLog("需要root或shizuku adb权限");
+            if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
+                requestShellPrivilegeThread = threads.start(requestShellPrivilege);
+                requestShellPrivilegeThread.waitFor();
+                threads.start(function () {
+                    requestShellPrivilegeThread.join();
+                    enableAutoService();
+                });
+            }
+            return;
+        }
+
+        initialize();
+
+        if (last_alive_lang !== "ja") {
+            dialogs.alert("临时开荒仅支持日服");
+            return;
+        }
+
+        //initOCR();
+
+        dialogs.alert("临时开荒辅助",
+            "临时开荒辅助脚本能够在一个章节(section)内自动选BATTLE进行周回,\n"
+            +"但不会嗑药,也不会处理掉线等情况。"
+        );
+
+        log("缩放图片...");
+        resizeKnownImgs();//必须放在initialize后面
+        log("图片缩放完成");  
+
+        if (limit.rootScreencap) {
+            while (true) {
+                log("setupBinary...");
+                setupBinary();
+                if (binarySetupDone) break;
+                log("setupBinary失败,3秒后重试...");
+                sleep(3000);
+            }
+            if (testRootScreencapBlank()) return;
+        } else if (!limit.rootScreencap) {
+            startScreenCapture();
+        }
+
+        const knownCoords = {
+            playerSupport: {
+                topLeft: {x: 1490, y: 301, pos: "top"},
+                bottomRight: {x: 1529, y: 340, pos: "top"},
+            },
+            NPCSupport: {
+                topLeft: {x: 1490, y: 301, pos: "top"},
+                bottomRight: {x: 1529, y: 340, pos: "top"},
+            },
+            followPrompt: {
+                topLeft: {x: 801, y: 374, pos: "center"},
+                bottomRight: {x: 832, y: 405, pos: "center"},
+            },
+            resultExpItem: {
+                topLeft: {x: 801, y: 374, pos: "center"},
+                bottomRight: {x: 832, y: 405, pos: "center"},
+            },
+        }
+        const knownColors = {
+            playerSupport: "#7363a0",
+            NPCSupport: "#f26482",
+            followPrompt: "#f7f7f7",
+            resultExpItem: "#b28750",
+        }
+        function detectPureColor(screenshot, type) {
+            let area = getConvertedArea(knownCoords[type]);
+            let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)))
+            let imgRanged = renewImage(images.interval(img, knownColors[type], 0));
+            let found = images.findColor(imgRanged, "#000000", 0) ? false : true;
+            log(type, found);
+            return found;
+        }
+        function isFirstSupportAvailable(screenshot) {
+            let found = ["playerSupport", "NPCSupport"].find((type) => detectPureColor(screenshot, type)) ? true : false;
+            return found;
+        }
+        function isFollowPromptOrResultExpItem(screenshot) {
+            let found = ["followPrompt", "resultExpItem"].find((type) => detectPureColor(screenshot, type)) ? true : false;
+            return found;
+        }
+        while (true) {
+            let screenshot = compatCaptureScreen();
+            if (isMarkedAsInitialAuto(screenshot)) {
+                click(convertCoords(getAreaCenter(knownInitialAutoCoords)));
+            } else if (isFirstSupportAvailable(screenshot)) {
+                click(convertCoords(knownFirstPtPoint));
+            } else if (isStartButtonPresent(screenshot)) {
+                click(convertCoords(clickSets.start))
+            } else if (isSkipButtonPresent(screenshot)) {
+                click(convertCoords(getAreaCenter(knownButtonCoords["skipBtn"])));
+            } else if (isFollowPromptOrResultExpItem(screenshot)) {
+                click(convertCoords(clickSets.closeFollowPrompt));
+            }
+            sleep(1000);
+        }
+    }
+
     return {
         default: taskDefault,
         mirrors: taskMirrors,
@@ -11500,6 +11659,7 @@ function algo_init() {
         testReLaunch: testReLaunchRunnable,
         captureText: captureTextRunnable,
         fakeJPInstallSource: fakeJPInstallSourceRunnable,
+        openUp: taskOpenUp,
     };
 }
 
