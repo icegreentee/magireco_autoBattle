@@ -8250,7 +8250,7 @@ function algo_init() {
                 if (knownImgs[key] == null) {
                     log("加载图片 "+key+" ...");
                     knownImgs[key] = images.read(files.join(ImgPathBase, key+".png"));
-                    knownImgOrigSize[key] = {x: knownImgs[key].getWidth(), y: knownImgs[key].getHeight()};
+                    knownImgOrigSize[key] = {x: knownImgs[key].getWidth() - 1, y: knownImgs[key].getHeight() - 1};
                     if (knownImgs[key] == null) hasNull = true;
                 }
             });
