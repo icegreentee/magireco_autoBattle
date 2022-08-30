@@ -11665,11 +11665,32 @@ function algo_init() {
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
     function isMarkedAsNewQuest(screenshot) {
+        const knownBattleTextArea = {
+            topLeft: {
+                x: 1137, y: 552, pos: "top"
+            },
+            bottomRight: {
+                x: 1300, y: 589, pos: "top"
+            }
+        }
+        let battleTextArea = getConvertedArea(knownBattleTextArea);
+        let battleTextImg = renewImage(images.clip(screenshot, battleTextArea.topLeft.x, battleTextArea.topLeft.y, getAreaWidth(battleTextArea), getAreaHeight(battleTextArea)));
+        let result = ocr.ocrImage(battleTextImg);
+        if (!result.success) {
+            log("newQuest", "not successful");
+            return;
+        }
+        let ocrText = result.text.replace(/ /g, "");
+        if (ocrText.match(/^BATTLE$/) == null) {
+            log("newQuest", "matched null");
+            return;
+        }
+
         let template = knownImgs["newQuest"];
         let img = getNewQuestImg(screenshot);
         let found = null;
         try {
-            found = images.matchTemplate(img, template, {threshold: 0.89, transparentMask: true}); //Pro 9.2.7在这里会抛Java异常
+            found = images.matchTemplate(img, template, {threshold: 0.8, transparentMask: true}); //Pro 9.2.7在这里会抛Java异常
             if (found != null && found.matches.length > 0) {
                 found = found.best();
             } else {
