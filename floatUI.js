@@ -211,6 +211,7 @@ floatUI.scripts = [
     {
         name: "测试闪退自动重开",
         fn: tasks.testReLaunch,
+        availableForJP: true,
     },
     {
         name: "活动周回,自动重开(备用)",
@@ -533,6 +534,7 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
         floatUI.storage.remove("last_limit_json");
         //停止shell脚本监工(在参数修改触发adjust函数后就应该已经停止了)
         if (limit.autoRecover) stopFatalKillerShellScript();
+        //释放OCR
         if (ocr != null) {
             ocr.end();
             ocr = null;
@@ -1842,6 +1844,7 @@ var limit = {
     mirrorsEnemyNumFactor: "0",
     useCVAutoBattle: true,
     mirrorsWatchman: true,
+    mirrorsRelaunchTime: "900",
     CVAutoBattleDebug: false,
     CVAutoBattleClickAllSkills: true,
     CVAutoBattleClickSkillsSinceTurn: "1",
@@ -2055,7 +2058,12 @@ var clickSets = {
         x:   1754,
         y:   130,
         pos: "center"
-    }
+    },
+    enterMirrors: {
+        x:   1283,
+        y:   646,
+        pos: "bottom"
+    },
 }
 
 //立即就会显示出来、不会一个个攒起来连续冒出来的toast
@@ -2607,7 +2615,7 @@ function algo_init() {
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
     //关注追加窗口在MuMu上点这里的close坐标点不到关闭
     //title_to_find可以是数组
-    function findPopupInfoDetailTitle(title_to_find, wait) {
+    function findPopupInfoDetailTitleLegacy(title_to_find, wait) {
         let default_x = getFragmentViewBounds().right - 1;
         let default_y = 0;
         let result = {
@@ -2673,9 +2681,42 @@ function algo_init() {
 
         return result;
     }
+    function findPopupInfoDetailTitleJP(title_to_find, wait) {
+        let default_x = getFragmentViewBounds().right - 1;
+        let default_y = 0;
+        let result = {
+            element: null,
+            title: "暂不使用OCR检测",
+            close: {
+                //getFragmentViewBounds其实是在后面定义的
+                x: default_x,
+                y: default_y
+            }
+        };
+
+        if (last_alive_lang !== "ja") throw new Error("last_alive_lang must be ja");
+
+        let screenshot = compatCaptureScreen();
+        let halfWidth = parseInt(screenshot.getWidth() / 2);
+        let halfHeight = parseInt(screenshot.getHeight() / 2);
+        let img = images.clip(screenshot, screenshot.getWidth() - halfWidth, 0, halfWidth, halfHeight);
+        let template = knownImgs["closeBtn"];
+        let foundPoint = images.findImage(img, template, {threshold: 0.9});
+        if (foundPoint == null) {
+            result = null;
+        } else {
+            result.close.x = foundPoint.x + parseInt(template.getWidth() / 2);
+            result.close.y = foundPoint.y + parseInt(template.getHeight() / 2);
+        }
+        return result;
+    }
+    function findPopupInfoDetailTitle(title_to_find, wait) {
+        if (last_alive_lang === "ja") return findPopupInfoDetailTitleJP(title_to_find, wait);
+        else return findPopupInfoDetailTitleLegacy(title_to_find, wait);
+    }
 
     //检测AP，缺省wait的情况下只检测一次就退出
-    function getAP(wait) {
+    function getAPLegacy(wait) {
         var startTime = new Date().getTime();
 
         if (findID("baseContainer")) {
@@ -2737,6 +2778,37 @@ function algo_init() {
                 sleep(100);
             } while (wait === true || (wait && new Date().getTime() < startTime + wait));
         }
+    }
+    const knownAPTextCoords = {
+        topLeft: {
+            x: 972, y: 43, pos: "top"
+        },
+        bottomRight: {
+            x: 1118, y: 68, pos: "top"
+        }
+    }
+    function getAPJP(wait) {
+        if (last_alive_lang !== "ja") throw new Error("last_alive_lang must be ja");
+        let screenshot = compatCaptureScreen();
+        if (!isAPButtonPresent(screenshot)) return null;
+        let area = getConvertedArea(knownAPTextCoords);
+        let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+        let result = ocr.ocrImage(img);
+        log("ap ocr result", result);
+        if (!result.success)
+            throw new Error("ap ocr result not successful");
+        let apText = result.text.replace(/ /g, "");
+        if (apText.match(/^\d+\/\d+$/) == null)
+            throw new Error("cannot get ap through ocr");
+        return {
+            value: parseInt(apText.match(/^\d+/)[0]),
+            total: parseInt(apText.match(/\d+$/)[0]),
+            bounds: new android.graphics.Rect(area.topLeft.x, area.topLeft.y, area.bottomRight.x + 1, area.bottomRight.y + 1),
+        }
+    }
+    function getAP(wait) {
+        if (last_alive_lang === "ja") return getAPJP(wait);
+        else return getAPLegacy(wait);
     }
 
     function getPTList() {
@@ -3655,7 +3727,7 @@ function algo_init() {
         //因为STATE_TEAM状态下这里的掉线弹窗检查非常慢,所以跳过头4回检查
         if (bypassPopupCheck.get() == 0) do {
             let found_popup = null;
-            try {
+            if (last_alive_lang !== "ja") try { //日服暂未OCR识别窗口标题所以无法检测
                 found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated", "unexpected_error"].map((val) => string[val]));
             } catch (e) {
                 logException(e);
@@ -6669,13 +6741,15 @@ function algo_init() {
     }
 
     function requestTestReLaunchIfNeeded() {
-        const title = "闪退自动重开";
-        const text = "部分手机会拦截关联启动,阻碍自动重开游戏。\n"
-        +"已知情况:\nMIUI上第一次会被拦截关联启动,点\"允许\"后就不会再拦截了。\n"
-        +"强烈建议:点击\"确定\",这样会先停止脚本,然后测试脚本是否可以正常启动游戏。";
         if (floatUI.storage.get("isRelaunchTested", false)) {
             return;
         }
+        const title = "闪退自动重开";
+        const text = "部分手机会拦截关联启动,阻碍自动重开游戏。\n"
+        +"已知情况:\n"
+        +"1.真机MIUI上第一次会被拦截关联启动,点\"允许\"后就不会再拦截了。\n"
+        +"2.MuMu模拟器(安卓6,非安卓9测试版)必须在[默认脚本设置]的[闪退自动重开设置]中勾选[优先使用root或adb权限杀进程]。\n"
+        +"强烈建议:点击\"确定\",这样会先停止脚本,然后测试脚本是否可以正常启动游戏。";
         if (dialogs.confirm(title, text))
         {
             replaceCurrentTask(floatUI.scripts.find((val) => val.name == "测试闪退自动重开"));
@@ -7913,10 +7987,10 @@ function algo_init() {
 
         if (imgRecycleMap[key] != null) {
             try {imgRecycleMap[key].recycle();} catch (e) {log("renewImage", e)};
-            imgRecycleMap[key] = null;
+            delete imgRecycleMap[key];
         }
 
-        imgRecycleMap[key] = imageObj;
+        if (imageObj != null) imgRecycleMap[key] = imageObj;
 
         return imageObj;
     }
@@ -8221,6 +8295,7 @@ function algo_init() {
         "fire32x32",
         "wood32x32",
         "none32x32",
+        "mirrorsEntranceBtn",
         "mirrorsVS",
         "mirrorsRedTriangle",
         "mirrorsReMatchBtn",
@@ -8240,8 +8315,11 @@ function algo_init() {
         "skillEmptyJP",
         "OKButton",
         "OKButtonGray",
-        "initialAuto",
+        "downloadDataOKBtn",
+        "newQuest",
         "startBtn",
+        "closeBtn",
+        "apBtn",
     ];
 
     var loadAllImages = syncer.syn(function () {
@@ -10095,8 +10173,18 @@ function algo_init() {
         return detectMirrorsResult(screenshot, "mirrorsTop");
     }
 
-    //判断是否出现战斗开始/跳过剧情按钮
+    //判断是否出现AP/战斗开始/跳过剧情按钮
     var knownButtonCoords = {
+        apBtn: {
+            //AP以及多往右稍微多取一些像素[915,43][971,68]
+            //圆形按钮[900,22][967,89]
+            topLeft: {
+                x: 900, y: 22, pos: "top"
+            },
+            bottomRight: {
+                x: 990, y: 89, pos: "top"
+            }
+        },
         startBtn: {
             topLeft: {
                 x: 1640, y: 850, pos: "bottom"
@@ -10113,6 +10201,24 @@ function algo_init() {
                 x: 1860, y: 120, pos: "top"
             }
         },
+        downloadDataOKBtn: {
+            //[782,705][1137,824]
+            topLeft: {
+                x: 730, y: 650, pos: "center"
+            },
+            bottomRight: {
+                x: 1190, y: 880, pos: "center"
+            }
+        },
+        mirrorsEntranceBtn: {
+            //[1213,613][1354,679]
+            topLeft: {
+                x: 1150, y: 550, pos: "bottom"
+            },
+            bottomRight: {
+                x: 1400, y: 730, pos: "bottom"
+            }
+        },
     };
     function getButtonArea(type) {
         let knownArea = knownButtonCoords[type];
@@ -10125,18 +10231,30 @@ function algo_init() {
         let area = getButtonArea(type);
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
-    function isButtonPresent(screenshot, type) {
+    function findButton(screenshot, type) {
         let template = knownImgs[type];
         let img = getButtonImg(screenshot, type);
-        let found = images.findImage(img, template, {threshold: 0.9}) ? true : false;
-        log(type, found);
-        return found;
+        let point = images.findImage(img, template, {threshold: 0.9});
+        log(type, point);
+        return point;
+    }
+    function isButtonPresent(screenshot, type) {
+        return findButton(screenshot, type) ? true : false;
+    }
+    function isAPButtonPresent(screenshot) {
+        return isButtonPresent(screenshot, "apBtn");
     }
     function isStartButtonPresent(screenshot) {
         return isButtonPresent(screenshot, "startBtn");
     }
     function isSkipButtonPresent(screenshot) {
         return isButtonPresent(screenshot, "skipBtn");
+    }
+    function isDownloadDataOKButtonPresent(screenshot) {
+        return isButtonPresent(screenshot, "downloadDataOKBtn");
+    }
+    function isMirrorsEntranceButtonPresent(screenshot) {
+        return isButtonPresent(screenshot, "mirrorsEntranceBtn");
     }
 
     //判断是否出现超时回镜层首页按钮
@@ -11233,11 +11351,13 @@ function algo_init() {
         initialize();
 
         if (last_alive_lang === "ja") {
+            requestTestReLaunchIfNeeded();//测试是否可以正常重开
+
             initOCR();
     
             log("缩放图片...");
             resizeKnownImgs();//必须放在initialize后面
-            log("图片缩放完成");    
+            log("图片缩放完成");
         }
 
         if (last_alive_lang === "ja" || limit.useCVAutoBattle) {
@@ -11263,6 +11383,7 @@ function algo_init() {
             }
         }
 
+        let totalBattleTime = 0;
         while (true) {
             //等待进入镜层对手匹配,如果在首页就点击进入,如果有next mirror、skip、超时回首页等就点掉
             if (last_alive_lang === "ja") {
@@ -11329,13 +11450,13 @@ function algo_init() {
 
             let backToMirrorTopRequired = false;
             while (isMirrorsVSPresent()) {
-                //点击进入战斗及嗑药
+                log("点击开始战斗");
                 sleep(1000)
                 click(convertCoords(clickSetsMod.mirrorsStartBtn));
                 sleep(1000)
                 if (last_alive_lang === "ja") {
                     if (isBackToMirrorsTopButtonPresent(compatCaptureScreen())) {
-                        //超时回镜层首页,无法继续开始战斗
+                        log("超时回镜层首页,无法继续开始战斗");
                         backToMirrorTopRequired = true;
                         break;
                     }
@@ -11394,14 +11515,39 @@ function algo_init() {
             }
             if (backToMirrorTopRequired) continue; //超时回镜层首页,无法继续开始战斗
             log("进入战斗")
+            let battleStartTime = new Date().getTime();
             if (last_alive_lang === "ja" || limit.useCVAutoBattle) {
                 //利用截屏识图进行稍复杂的自动战斗（比如连携）
                 log("镜层周回 - 自动战斗开始：使用截屏识图");
-                mirrorsAutoBattleMain();
+                mirrorsAutoBattleMain(); //战斗完毕后会回收所有图片
             } else {
                 //简单镜层自动战斗
                 log("镜层周回 - 自动战斗开始：简单自动战斗");
                 mirrorsSimpleAutoBattleMain();
+            }
+            if (last_alive_lang === "ja") {
+                let battleTime = (new Date().getTime() - battleStartTime) / 1000;
+                totalBattleTime += battleTime; //一局结束，统计战斗时间
+                log("镜层战斗时间["+battleTime+"]秒 累计["+totalBattleTime+"]秒");
+                if (limit.mirrorsRelaunchTime !== "" && totalBattleTime >= parseInt(limit.mirrorsRelaunchTime)) {
+                    log("镜层累计周回战斗时间["+totalBattleTime+"]秒已超过设定值["+limit.mirrorsRelaunchTime+"],杀进程重开");
+                    killGame();
+                    log("等待10秒");
+                    sleep(10 * 1000);
+                    log("重启游戏");
+                    reLaunchGame();
+                    log("等待5秒");
+                    sleep(5000);
+                    log("重新登录");
+                    reLogin();
+                    while (isMirrorsEntranceButtonPresent(compatCaptureScreen())) {
+                        log("点击进入镜层");
+                        click(convertCoords(clickSets.enterMirrors));
+                        sleep(5000);
+                    }
+                    log("已重新进入镜层");
+                    totalBattleTime = 0;
+                }
             }
         }
     }
@@ -11509,35 +11655,37 @@ function algo_init() {
     }
 
     /* ~~~~~~~~ 临时开荒辅助 开始 ~~~~~~~~ */
-    var knownInitialAutoCoords = {
-        //[1531,481][1674,514]
+    var knownNewQuestCoords = {
+        //[1078,473][1232,513]
         topLeft: {
-            x:   1459,
-            y:   464,
-            pos: "top"
+            x: 1078, y: 473, pos: "top"
         },
         bottomRight: {
-            x:   1747,
-            y:   532,
-            pos: "top"
+            x: 1232, y: 513, pos: "top"
         }
     };
-    function getInitialAutoArea() {
-        let knownArea = knownInitialAutoCoords;
+    function getNewQuestArea() {
+        let knownArea = knownNewQuestCoords;
         let convertedTopLeft = convertCoords(knownArea.topLeft);
         let convertedBottomRight = convertCoords(knownArea.bottomRight);
         let convertedArea = { topLeft: convertedTopLeft, bottomRight: convertedBottomRight };
         return convertedArea;
     }
-    function getInitialAutoImg(screenshot) {
-        let area = getInitialAutoArea();
+    function getNewQuestImg(screenshot) {
+        let area = getNewQuestArea();
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
-    function isMarkedAsInitialAuto(screenshot) {
-        let template = knownImgs["initialAuto"];
-        let img = getInitialAutoImg(screenshot);
-        let found = images.findImage(img, template, {threshold: 0.9}) ? true : false;
-        log("initialAuto", found);
+    function isMarkedAsNewQuest(screenshot) {
+        let template = knownImgs["newQuest"];
+        let img = getNewQuestImg(screenshot);
+        let found = null;
+        try {
+            found = images.matchTemplate(img, template, {threshold: 0.9, transparentMask: true}) ? true : false; //Pro 9.2.7在这里会抛Java异常
+        } catch (e) {
+            //logException(e);
+            found = null;
+        }
+        log("newQuest", found);
         return found;
     }
 
@@ -11562,7 +11710,7 @@ function algo_init() {
             return;
         }
 
-        //initOCR();
+        initOCR();
 
         dialogs.alert("临时开荒辅助",
             "临时开荒辅助脚本能够在一个章节(section)内自动选BATTLE进行周回,\n"
@@ -11633,12 +11781,14 @@ function algo_init() {
         }
         while (true) {
             let screenshot = compatCaptureScreen();
-            if (isMarkedAsInitialAuto(screenshot)) {
-                click(convertCoords(getAreaCenter(knownInitialAutoCoords)));
+            if (isMarkedAsNewQuest(screenshot)) {
+                click(convertCoords(getAreaCenter(knownNewQuestCoords)));
             } else if (isFirstSupportAvailable(screenshot)) {
                 click(convertCoords(knownFirstPtPoint));
             } else if (isStartButtonPresent(screenshot)) {
-                click(convertCoords(clickSets.start))
+                click(convertCoords(clickSets.start));
+            } else if (isDownloadDataOKButtonPresent(screenshot)) {
+                click(convertCoords(clickSets.dataDownloadOK));
             } else if (isSkipButtonPresent(screenshot)) {
                 click(convertCoords(getAreaCenter(knownButtonCoords["skipBtn"])));
             } else if (isQuestResult(screenshot)) {

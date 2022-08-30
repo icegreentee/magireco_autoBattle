@@ -410,6 +410,15 @@ ui.layout(
                                 <Switch id="mirrorsWatchman" w="*" margin="0 3" checked="true" textColor="#000000" text="镜层守夜人模式" />
                                 <text text="开启此项,则在BP耗尽且无BP药可使用时等待BP自回,然后再进入战斗。仅日服可用。" textColor="#000000" />
                             </vertical>
+                            <vertical id="MirrorsExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <linear>
+                                    <text text="定时杀进程重开,每隔" textColor="#000000" />
+                                    <input maxLength="5" id="mirrorsRelaunchTime" hint="留空即不强关重开" text="900" textSize="14" inputType="number|none" />
+                                    <text text="秒" textColor="#000000" />
+                                </linear>
+                                <text text="MuMu模拟器(安卓6,非安卓9测试版)请务必在[默认脚本设置]的[闪退自动重开设置]中开启[优先使用root或adb权限杀进程]。" textColor="#ff0000" />
+                                <text text="为避免游戏内存泄漏导致整个系统卡死崩溃,默认每15分钟(900秒)杀进程重开一次游戏。仅日服可用。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -893,6 +902,7 @@ const persistParamList = [
     "mirrorsEnemyNumFactor",
     "useCVAutoBattle",
     "mirrorsWatchman",
+    "mirrorsRelaunchTime",
     "CVAutoBattleDebug",
     "CVAutoBattleClickAllSkills",
     "CVAutoBattleClickSkillsSinceTurn",
