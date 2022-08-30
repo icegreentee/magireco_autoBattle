@@ -2790,16 +2790,19 @@ function algo_init() {
     function getAPJP(wait) {
         if (last_alive_lang !== "ja") throw new Error("last_alive_lang must be ja");
         let screenshot = compatCaptureScreen();
-        if (!isAPButtonPresent(screenshot)) return null;
         let area = getConvertedArea(knownAPTextCoords);
         let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
         let result = ocr.ocrImage(img);
         log("ap ocr result", result);
-        if (!result.success)
-            throw new Error("ap ocr result not successful");
+        if (!result.success) {
+            log("ap ocr result not successful");
+            return;
+        }
         let apText = result.text.replace(/ /g, "");
-        if (apText.match(/^\d+\/\d+$/) == null)
-            throw new Error("cannot get ap through ocr");
+        if (apText.match(/^\d+\/\d+$/) == null) {
+            log("cannot get ap through ocr");
+            return;
+        }
         return {
             value: parseInt(apText.match(/^\d+/)[0]),
             total: parseInt(apText.match(/\d+$/)[0]),
@@ -8319,7 +8322,6 @@ function algo_init() {
         "newQuest",
         "startBtn",
         "closeBtn",
-        "apBtn",
     ];
 
     var loadAllImages = syncer.syn(function () {
@@ -10175,16 +10177,6 @@ function algo_init() {
 
     //判断是否出现AP/战斗开始/跳过剧情按钮
     var knownButtonCoords = {
-        apBtn: {
-            //AP以及多往右稍微多取一些像素[915,43][971,68]
-            //圆形按钮[900,22][967,89]
-            topLeft: {
-                x: 900, y: 22, pos: "top"
-            },
-            bottomRight: {
-                x: 990, y: 89, pos: "top"
-            }
-        },
         startBtn: {
             topLeft: {
                 x: 1640, y: 850, pos: "bottom"
@@ -10240,9 +10232,6 @@ function algo_init() {
     }
     function isButtonPresent(screenshot, type) {
         return findButton(screenshot, type) ? true : false;
-    }
-    function isAPButtonPresent(screenshot) {
-        return isButtonPresent(screenshot, "apBtn");
     }
     function isStartButtonPresent(screenshot) {
         return isButtonPresent(screenshot, "startBtn");
@@ -11680,13 +11669,18 @@ function algo_init() {
         let img = getNewQuestImg(screenshot);
         let found = null;
         try {
-            found = images.matchTemplate(img, template, {threshold: 0.9, transparentMask: true}) ? true : false; //Pro 9.2.7在这里会抛Java异常
+            found = images.matchTemplate(img, template, {threshold: 0.89, transparentMask: true}); //Pro 9.2.7在这里会抛Java异常
+            if (found != null && found.matches.length > 0) {
+                found = found.best();
+            } else {
+                found = null;
+            }
         } catch (e) {
             //logException(e);
             found = null;
         }
         log("newQuest", found);
-        return found;
+        return found ? true : false;
     }
 
     function taskOpenUp() {
