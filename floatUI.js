@@ -2699,14 +2699,16 @@ function algo_init() {
         let screenshot = compatCaptureScreen();
         let halfWidth = parseInt(screenshot.getWidth() / 2);
         let halfHeight = parseInt(screenshot.getHeight() / 2);
-        let img = images.clip(screenshot, screenshot.getWidth() - halfWidth, 0, halfWidth, halfHeight);
+        let clipX = screenshot.getWidth() - halfWidth;
+        let clipY = 0;
+        let img = images.clip(screenshot, clipX, clipY, halfWidth, halfHeight);
         let template = knownImgs["closeBtn"];
         let foundPoint = images.findImage(img, template, {threshold: 0.9});
         if (foundPoint == null) {
             result = null;
         } else {
-            result.close.x = foundPoint.x + parseInt(template.getWidth() / 2);
-            result.close.y = foundPoint.y + parseInt(template.getHeight() / 2);
+            result.close.x = clipX + foundPoint.x + parseInt(template.getWidth() / 2);
+            result.close.y = clipY + foundPoint.y + parseInt(template.getHeight() / 2);
         }
         return result;
     }
