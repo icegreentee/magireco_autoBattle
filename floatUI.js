@@ -11766,6 +11766,10 @@ function algo_init() {
                 topLeft: {x: 224, y: 332, pos: "center"},
                 bottomRight: {x: 256, y: 364, pos: "center"},
             },
+            playerLvUp: {
+                topLeft: {x: 900, y: 439, pos: "center"},
+                bottomRight: {x: 1019, y: 441, pos: "center"},
+            },
             resultExpItem: {
                 topLeft: {x: 801, y: 374, pos: "center"},
                 bottomRight: {x: 832, y: 405, pos: "center"},
@@ -11776,6 +11780,7 @@ function algo_init() {
             NPCSupport: "#f26482",
             followPrompt: "#f7f7f7",
             charaExpEventLvUp: "#f26c84",
+            playerLvUp: "#b28750",
             resultExpItem: "#b28750",
         }
         function detectPureColor(screenshot, type) {
@@ -11789,6 +11794,9 @@ function algo_init() {
         function isFirstSupportAvailable(screenshot) {
             let found = ["playerSupport", "NPCSupport"].find((type) => detectPureColor(screenshot, type)) ? true : false;
             return found;
+        }
+        function isPlayerLvUp(screenshot) {
+            return detectPureColor(screenshot, "playerLvUp");
         }
         function isQuestResult(screenshot) {
             let found = ["followPrompt", "charaExpEventLvUp", "resultExpItem"].find((type) => detectPureColor(screenshot, type)) ? true : false;
@@ -11806,6 +11814,8 @@ function algo_init() {
                 click(convertCoords(clickSets.dataDownloadOK));
             } else if (isSkipButtonPresent(screenshot)) {
                 click(convertCoords(getAreaCenter(knownButtonCoords["skipBtn"])));
+            } else if (isPlayerLvUp(screenshot)) {
+                click(convertCoords(clickSets.levelup));
             } else if (isQuestResult(screenshot)) {
                 click(convertCoords(clickSets.closeFollowPrompt));
             }
