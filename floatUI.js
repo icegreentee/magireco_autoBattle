@@ -2699,14 +2699,16 @@ function algo_init() {
         let screenshot = compatCaptureScreen();
         let halfWidth = parseInt(screenshot.getWidth() / 2);
         let halfHeight = parseInt(screenshot.getHeight() / 2);
-        let img = images.clip(screenshot, screenshot.getWidth() - halfWidth, 0, halfWidth, halfHeight);
+        let clipX = screenshot.getWidth() - halfWidth;
+        let clipY = 0;
+        let img = images.clip(screenshot, clipX, clipY, halfWidth, halfHeight);
         let template = knownImgs["closeBtn"];
         let foundPoint = images.findImage(img, template, {threshold: 0.9});
         if (foundPoint == null) {
             result = null;
         } else {
-            result.close.x = foundPoint.x + parseInt(template.getWidth() / 2);
-            result.close.y = foundPoint.y + parseInt(template.getHeight() / 2);
+            result.close.x = clipX + foundPoint.x + parseInt(template.getWidth() / 2);
+            result.close.y = clipY + foundPoint.y + parseInt(template.getHeight() / 2);
         }
         return result;
     }
@@ -10211,6 +10213,14 @@ function algo_init() {
                 x: 1400, y: 730, pos: "bottom"
             }
         },
+        closeBtn: {
+            topLeft: {
+                x: 960, y: 0, pos: "center"
+            },
+            bottomRight: {
+                x: 1919, y: 539, pos: "center"
+            }
+        }
     };
     function getButtonArea(type) {
         let knownArea = knownButtonCoords[type];
@@ -11384,6 +11394,7 @@ function algo_init() {
 
                     let knownClickPos = null;
                     let screenshot = compatCaptureScreen();
+                    let buttonPoint = null;
                     if (isMirrorsTop(screenshot)) {
                         log("镜层首页");
                         knownClickPos = clickSets.mirrorsTop;
@@ -11405,6 +11416,10 @@ function algo_init() {
                     } else if (isBPRefillDone()) {
                         log("BP嗑药完成窗口");
                         knownClickPos = clickSetsMod.bpDrugRefilledOK;
+                    //因为BP耗尽时findButton会匹配到背后那个不可点击的X，所以只能放在BP耗尽检测之后，而且必须重新截图
+                    } else if ((buttonPoint = findPopupInfoDetailTitle()) != null) {
+                        log("有对话框需要关闭");//可能是前一天的镜层防守结果
+                        knownClickPos = buttonPoint.close;
                     }
     
                     if (knownClickPos != null) {
