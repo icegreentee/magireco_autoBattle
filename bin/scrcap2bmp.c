@@ -31,6 +31,8 @@ int px_size32 = 0;
 int px_size24 = 0;
 int line_size32 = 0;
 int line_size24 = 0;
+int line_padding_size = 0;
+int total_padding_size = 0;
 
 unsigned char *buf, *ptr, *ptr2, *tmp_buf;
 
@@ -311,7 +313,7 @@ static void flip_pixels(unsigned char *group, int elements_per_group, int bytes_
         len = elements_per_group / 2 - 1;
     }
 
-    if (elements_per_group >= 4) memcpy(px1, px2, (elements_per_group/2-1)*bytes_per_element);
+    if (elements_per_group >= 4) memmove(px1, px2, (elements_per_group/2-1)*bytes_per_element);
 
     memcpy(group + group_size_bytes - bytes_per_element, tmp_buf, bytes_per_element);
 
@@ -544,6 +546,12 @@ int main(int argc, char **argv) {
     px_size24 = px_count * 3;
     line_size32 = scr_width * 4;
     line_size24 = scr_width * 3;
+    line_padding_size = (4 - line_size24 % 4) % 4;
+    total_padding_size = line_padding_size * scr_height;
+    if (bmp && line_padding_size != 0) {
+        line_size24 += line_padding_size;
+        px_size24 += total_padding_size;
+    }
 
     scrdump_header_size = scrdump_size - px_size32;
     if (scrdump_header_size < 0 || (scrdump_header_size != 12 && scrdump_header_size != 16)) {
@@ -609,20 +617,22 @@ int main(int argc, char **argv) {
         ptr = buf + scrdump_header_size + del - 1;
         ptr2 = ptr + 1;
 
-        if (del >= 1 && del <= 3 && px_count >= 2) {
+        for (i = 1, j = 1; i <= px_count - 1; i++, j++) {
             memmove(ptr, ptr2, 3);
             ptr += 3;
             ptr2 += 4;
+            if (line_padding_size != 0 && j == scr_width) {
+                memset(ptr - (del - 1), 0, line_padding_size);
+                ptr += line_padding_size;
+                j = 0;
+            }
         }
 
-        for (i=0; i<px_count-2; i++) {
-            memmove(ptr, ptr2, 3);
+        memmove(ptr, ptr2, 4 - del);
+        if (line_padding_size != 0) {
             ptr += 3;
-            ptr2 += 4;
+            memset(ptr - (del - 1), 0, line_padding_size);
         }
-
-        if (del >= 1 && del <= 3) memmove(ptr, ptr2, 4-del);
-        if (del == 4) memmove(ptr, ptr2, 3);
         break;
     default:
         fprintf(stderr, "Unknown del=%d\n", del);
