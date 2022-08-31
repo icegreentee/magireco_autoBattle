@@ -311,7 +311,7 @@ static void flip_pixels(unsigned char *group, int elements_per_group, int bytes_
         len = elements_per_group / 2 - 1;
     }
 
-    if (elements_per_group >= 4) memcpy(px1, px2, (elements_per_group/2-1)*bytes_per_element);
+    if (elements_per_group >= 4) memmove(px1, px2, (elements_per_group/2-1)*bytes_per_element);
 
     memcpy(group + group_size_bytes - bytes_per_element, tmp_buf, bytes_per_element);
 
