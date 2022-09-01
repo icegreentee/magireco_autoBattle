@@ -8326,6 +8326,7 @@ function algo_init() {
         "closeBtn",
         "sectionClearMagiaStone",
         "sectionOnMapJP",
+        "intermission",
         "shinnyNew",
     ];
 
@@ -10242,6 +10243,15 @@ function algo_init() {
                 x: 1919, y: 1079, pos: "bottom"
             }
         },
+        intermission: {
+            //搜索整个地图
+            topLeft: {
+                x: 0, y: 128, pos: "top"
+            },
+            bottomRight: {
+                x: 1919, y: 1079, pos: "bottom"
+            }
+        },
     };
     function getButtonArea(type) {
         let knownArea = knownButtonCoords[type];
@@ -10294,21 +10304,33 @@ function algo_init() {
         return isButtonPresent(screenshot, "sectionClearMagiaStone");
     }
     function findNewSectionOnMap(screenshot) {
-        const imgName = "sectionOnMapJP";
-        let points = findAllButtons(screenshot, imgName);
-        if (points == null) return null;
-
-        const btnSize = getConvertedAreaNoCutout({
+        const btnSize = {
             topLeft: {x: 0, y: 0, pos: "top"},
             bottomRight: {x: 270, y: 210, pos: "top"}
-        });
-        const btnOffset = getConvertedAreaNoCutout({
-            topLeft: {x: 0, y: 0, pos: "top"},
-            bottomRight: {x: 206, y: 22, pos: "top"}
-        });
+        }
+        const btnOffset = {
+            sectionOnMapJP: getConvertedAreaNoCutout({
+                topLeft: {x: 0, y: 0, pos: "top"},
+                bottomRight: {x: 206, y: 22, pos: "top"}
+            }),
+            intermission: getConvertedAreaNoCutout({
+                topLeft: {x: 0, y: 0, pos: "top"},
+                bottomRight: {x: 26, y: 22, pos: "top"}
+            }),
+        }
+
+        let points = [];
+        for (let imgName in btnOffset) {
+            let found = findAllButtons(screenshot, imgName);
+            if (found != null) found.forEach((point) => {
+                //换算坐标为：在地图区域内看到整个按钮的右上角。如果超出屏幕则会在后面处理
+                ["x", "y"].forEach((axis) => point[axis] -= btnOffset[imgName].bottomRight[axis]);
+                points.push(point);
+            });
+        }
 
         let areas = [];
-        const searchedArea = getButtonArea(imgName);
+        const searchedArea = getButtonArea("sectionOnMapJP");
         points.forEach((point) => {
             let area = {topLeft: {pos: "top"}, bottomRight: {pos: "top"}};
             for (let corner in btnSize) {
@@ -10316,8 +10338,7 @@ function algo_init() {
                     //计算出整个按钮所在区域
                     area[corner][axis] = searchedArea.topLeft[axis]
                         + point[axis]
-                        + btnSize[corner][axis]
-                        - btnOffset.bottomRight[axis];
+                        + btnSize[corner][axis];
                     //防止超出屏幕边界（否则后面截取部分图片时会崩溃）
                     if (area[corner][axis] < searchedArea.topLeft[axis])
                         area[corner][axis] = searchedArea.topLeft[axis];
