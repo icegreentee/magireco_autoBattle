@@ -11653,15 +11653,25 @@ function algo_init() {
                 log("镜层战斗时间["+battleTime+"]秒 累计["+totalBattleTime+"]秒");
                 if (limit.mirrorsRelaunchTime !== "" && totalBattleTime >= parseInt(limit.mirrorsRelaunchTime)) {
                     log("镜层累计周回战斗时间["+totalBattleTime+"]秒已超过设定值["+limit.mirrorsRelaunchTime+"],杀进程重开");
-                    killGame();
-                    log("等待10秒");
-                    sleep(10 * 1000);
-                    log("重启游戏");
-                    reLaunchGame();
-                    log("等待5秒");
-                    sleep(5000);
-                    log("重新登录");
-                    reLogin();
+                    let reloginSuccess = false;
+                    for (let attempt = 0; attempt < 10; attempt++) {
+                        killGame();
+                        log("等待10秒");
+                        sleep(10 * 1000);
+                        log("重启游戏");
+                        reLaunchGame();
+                        log("等待5秒");
+                        sleep(5000);
+                        log("重新登录");
+                        if (reLogin()) {
+                            reloginSuccess = true;
+                            break;
+                        }
+                    }
+                    if (!reloginSuccess) {
+                        log("多次重新登录失败,停止运行");
+                        return;
+                    }
                     while (isMirrorsEntranceButtonPresent(compatCaptureScreen())) {
                         log("点击进入镜层");
                         click(convertCoords(clickSets.enterMirrors));
