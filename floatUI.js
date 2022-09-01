@@ -10335,7 +10335,11 @@ function algo_init() {
             screenshot = compatCaptureScreen();
             areas.find((area) => {
                 let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
-                point = images.findImage(img, template, {threshold: 0.85});
+                try {
+                    point = images.findImage(img, template, {threshold: 0.85});
+                } catch (e) {
+                    point = null;
+                }
                 if (point != null) {
                     ["x", "y"].forEach((axis) => point[axis] += area.topLeft[axis]);
                     point.x += parseInt(template.getWidth() / 2);
