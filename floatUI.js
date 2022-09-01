@@ -10319,6 +10319,8 @@ function algo_init() {
                         + btnSize[corner][axis]
                         - btnOffset.bottomRight[axis];
                     //防止超出屏幕边界（否则后面截取部分图片时会崩溃）
+                    if (area[corner][axis] < searchedArea.topLeft[axis])
+                        area[corner][axis] = searchedArea.topLeft[axis];
                     if (area[corner][axis] > searchedArea.bottomRight[axis])
                         area[corner][axis] = searchedArea.bottomRight[axis];
                 });
