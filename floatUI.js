@@ -10234,9 +10234,9 @@ function algo_init() {
             }
         },
         sectionOnMapJP: {
-            //搜索右大半边地图
+            //搜索整个地图
             topLeft: {
-                x: 600, y: 128, pos: "top"
+                x: 0, y: 128, pos: "top"
             },
             bottomRight: {
                 x: 1919, y: 1079, pos: "bottom"
