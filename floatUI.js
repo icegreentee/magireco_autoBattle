@@ -10351,6 +10351,8 @@ function algo_init() {
         log("areas", areas);
 
         let point = null;
+        if (areas.length == 0) return point;
+
         const template = knownImgs["shinnyNew"];
         for (let deadlineTime = new Date().getTime() + 5000; new Date().getTime() <= deadlineTime; ) {
             screenshot = compatCaptureScreen();
