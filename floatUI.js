@@ -2800,7 +2800,7 @@ function algo_init() {
             log("ap ocr result not successful");
             return;
         }
-        let apText = result.text.replace(/ /g, "");
+        let apText = result.text.replace(/ /g, "").replace(/(\(\))|(O)/g, "0");
         if (apText.match(/^\d+\/\d+$/) == null) {
             log("cannot get ap through ocr");
             return;
