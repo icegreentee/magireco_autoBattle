@@ -8324,6 +8324,7 @@ function algo_init() {
         "newQuest",
         "startBtn",
         "closeBtn",
+        "sectionClearMagiaStone",
     ];
 
     var loadAllImages = syncer.syn(function () {
@@ -10220,7 +10221,16 @@ function algo_init() {
             bottomRight: {
                 x: 1919, y: 539, pos: "center"
             }
-        }
+        },
+        sectionClearMagiaStone: {
+            //[895,482][1001,589]
+            topLeft: {
+                x: 885, y: 472, pos: "center"
+            },
+            bottomRight: {
+                x: 1011, y: 599, pos: "center"
+            }
+        },
     };
     function getButtonArea(type) {
         let knownArea = knownButtonCoords[type];
@@ -10254,6 +10264,9 @@ function algo_init() {
     }
     function isMirrorsEntranceButtonPresent(screenshot) {
         return isButtonPresent(screenshot, "mirrorsEntranceBtn");
+    }
+    function isSectionClear(screenshot) {
+        return isButtonPresent(screenshot, "sectionClearMagiaStone");
     }
 
     //判断是否出现超时回镜层首页按钮
@@ -11833,6 +11846,8 @@ function algo_init() {
                 click(convertCoords(clickSets.levelup));
             } else if (isQuestResult(screenshot)) {
                 click(convertCoords(clickSets.closeFollowPrompt));
+            } else if (isSectionClear(screenshot)) {
+                click(convertCoords(clickSets.screenCenter));
             }
             sleep(1000);
         }
