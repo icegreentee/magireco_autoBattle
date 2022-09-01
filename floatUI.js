@@ -8325,6 +8325,8 @@ function algo_init() {
         "startBtn",
         "closeBtn",
         "sectionClearMagiaStone",
+        "sectionOnMapJP",
+        "shinnyNew",
     ];
 
     var loadAllImages = syncer.syn(function () {
@@ -10231,6 +10233,15 @@ function algo_init() {
                 x: 1011, y: 599, pos: "center"
             }
         },
+        sectionOnMapJP: {
+            //搜索右大半边地图
+            topLeft: {
+                x: 600, y: 128, pos: "top"
+            },
+            bottomRight: {
+                x: 1919, y: 1079, pos: "bottom"
+            }
+        },
     };
     function getButtonArea(type) {
         let knownArea = knownButtonCoords[type];
@@ -10250,6 +10261,20 @@ function algo_init() {
         log(type, point);
         return point;
     }
+    function findAllButtons(screenshot, type) {
+        let template = knownImgs[type];
+        let img = getButtonImg(screenshot, type);
+        let matched = null;
+        try {
+            matched = images.matchTemplate(img, template, {threshold: 0.9, max: 64});
+        } catch (e) {
+            matched = null;
+        }
+        if (matched != null && matched.first() != null) matched = matched.points;
+        else matched = null;
+        log(type, matched);
+        return matched;
+    }
     function isButtonPresent(screenshot, type) {
         return findButton(screenshot, type) ? true : false;
     }
@@ -10267,6 +10292,59 @@ function algo_init() {
     }
     function isSectionClear(screenshot) {
         return isButtonPresent(screenshot, "sectionClearMagiaStone");
+    }
+    function findNewSectionOnMap(screenshot) {
+        const imgName = "sectionOnMapJP";
+        let points = findAllButtons(screenshot, imgName);
+        if (points == null) return null;
+
+        const btnSize = getConvertedAreaNoCutout({
+            topLeft: {x: 0, y: 0, pos: "top"},
+            bottomRight: {x: 270, y: 210, pos: "top"}
+        });
+        const btnOffset = getConvertedAreaNoCutout({
+            topLeft: {x: 0, y: 0, pos: "top"},
+            bottomRight: {x: 206, y: 22, pos: "top"}
+        });
+
+        let areas = [];
+        const searchedArea = getButtonArea(imgName);
+        points.forEach((point) => {
+            let area = {topLeft: {pos: "top"}, bottomRight: {pos: "top"}};
+            for (let corner in btnSize) {
+                ["x", "y"].forEach((axis) => {
+                    //计算出整个按钮所在区域
+                    area[corner][axis] = searchedArea.topLeft[axis]
+                        + point[axis]
+                        + btnSize[corner][axis]
+                        - btnOffset.bottomRight[axis];
+                    //防止超出屏幕边界（否则后面截取部分图片时会崩溃）
+                    if (area[corner][axis] > searchedArea.bottomRight[axis])
+                        area[corner][axis] = searchedArea.bottomRight[axis];
+                });
+            }
+            areas.push(area);
+        });
+        log("areas", areas);
+
+        let point = null;
+        const template = knownImgs["shinnyNew"];
+        for (let deadlineTime = new Date().getTime() + 5000; new Date().getTime() <= deadlineTime; ) {
+            screenshot = compatCaptureScreen();
+            areas.find((area) => {
+                let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+                point = images.findImage(img, template, {threshold: 0.85});
+                if (point != null) {
+                    ["x", "y"].forEach((axis) => point[axis] += area.topLeft[axis]);
+                    point.x += parseInt(template.getWidth() / 2);
+                    return true;
+                }
+            });
+        }
+
+        log("shinnyNew(click)", point);
+
+        return point;
     }
 
     //判断是否出现超时回镜层首页按钮
@@ -11756,8 +11834,9 @@ function algo_init() {
         initOCR();
 
         dialogs.alert("临时开荒辅助",
-            "临时开荒辅助脚本能够在一个章节(section)内自动选BATTLE进行周回,\n"
-            +"但不会嗑药,也不会处理掉线等情况。"
+            "临时开荒辅助脚本能够在一个章节(section)内自动选BATTLE进行周回；\n"
+            +"以及支持地图型周回,但在找不到没打过(new)的关卡时不会自动拖动地图；\n"
+            +"另外,不会嗑药,也不会处理掉线等情况。"
         );
 
         log("缩放图片...");
@@ -11831,6 +11910,8 @@ function algo_init() {
             return found;
         }
         while (true) {
+            let newSectionOnMapPoint = null;
+
             let screenshot = compatCaptureScreen();
             if (isMarkedAsNewQuest(screenshot)) {
                 click(convertCoords(getAreaCenter(knownNewQuestCoords)));
@@ -11848,6 +11929,10 @@ function algo_init() {
                 click(convertCoords(clickSets.closeFollowPrompt));
             } else if (isSectionClear(screenshot)) {
                 click(convertCoords(clickSets.screenCenter));
+            } else if ((newSectionOnMapPoint = findNewSectionOnMap(screenshot))) {
+                click(newSectionOnMapPoint);
+                newSectionOnMapPoint = null;
+                sleep(3000);
             }
             sleep(1000);
         }
