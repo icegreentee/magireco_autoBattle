@@ -11750,9 +11750,10 @@ function algo_init() {
     floatUI.recoverLastWork = recoverLastWork;
 
     function fakeJPInstallSourceRunnable() {
-        if (!limit.privilege) {
-            dialogs.alert("没有root或adb权限", "请务必选择\"永久授权\"！");
+        try {
             privShell("id");
+        } catch (e) {
+            toastLog("没有root或shizuku adb权限\n无法执行绕过Play检测");
             return;
         }
         let dialogResult = dialogs.confirm("绕过Play检测",
