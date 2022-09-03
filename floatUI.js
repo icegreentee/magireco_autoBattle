@@ -11753,7 +11753,7 @@ function algo_init() {
         try {
             privShell("id");
         } catch (e) {
-            toastLog("没有root或shizuku adb权限\n无法执行绕过Play检测");
+            toastLog("需要root或shizuku adb权限\n请确保永久授权后重试");
             return;
         }
         let dialogResult = dialogs.confirm("绕过Play检测",
