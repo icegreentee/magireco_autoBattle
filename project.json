@@ -5,7 +5,7 @@
         "build"
     ],
     "packageName": "top.momoe.auto",
-    "versionName": "6.5.8",
+    "versionName": "6.6.0",
     "versionInfo": "",
     "versionCode": 1,
     "icon":"./images/icon.png",
@@ -20,6 +20,10 @@
         "unusedResources": false
     },
     "abis": [
+        "arm64-v8a",
         "armeabi-v7a"
-    ]
+    ],
+    "features": {
+      "builtInOCR": "with-models"
+    }
 }

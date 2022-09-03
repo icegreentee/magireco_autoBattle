@@ -536,9 +536,11 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
         if (limit.autoRecover) stopFatalKillerShellScript();
         //释放OCR
         if (ocr != null) {
-            ocr.end();
+            ocr.release();
             ocr = null;
         }
+        //回收所有图片
+        tasks.recycleAllImages();
     });
     monitoredTask.waitFor();
 });
@@ -2531,11 +2533,16 @@ function algo_init() {
     function initOCR() {
         if (ocr != null) return true;
 
-        const traineddataFileName = "chi_sim.traineddata";
-        let traineddataDir = files.join(files.getSdcardPath(), "Android/obb/org.autojs.plugin.ocr/tessdata");
-        let traineddataPath = files.join(traineddataDir, traineddataFileName);
-
+        //删除旧OCR文件
         try {
+            const traineddataFileName = "chi_sim.traineddata";
+
+            const traineddataDir = files.join(files.cwd(), "plugins/org.autojs.plugin.ocr/tessdata");
+            const traineddataPath = files.join(traineddataDir, traineddataFileName);
+            if (files.isFile(traineddataPath)) files.remove(traineddataPath);
+            if (files.isDir(traineddataDir)) files.remove(traineddataDir);
+            if (files.isDir(traineddataDir.replace(/\/tessdata$/, ""))) files.remove(traineddataDir.replace(/\/tessdata$/, ""));
+
             const oldTraineddataDir = files.join(files.getSdcardPath(), "auto_magireco/org.autojs.plugin.ocr/tessdata");
             const oldTraineddataPath = files.join(oldTraineddataDir, traineddataFileName);
             if (files.isFile(oldTraineddataPath)) files.remove(oldTraineddataPath);
@@ -2547,69 +2554,20 @@ function algo_init() {
 
         try {
             log("加载OCR插件");
-            if (OCR == null) OCR = $plugins.load('org.autojs.plugin.ocr');
-            if (ocr == null) ocr = new OCR();
+            if (ocr == null) ocr = $ocr.create({
+                models: "default", //官方示例提到slim模型更快，但default模型更准
+            });
         } catch (e) {
             logException(e);
         }
 
         if (ocr == null) {
-            if (!files.isFile(traineddataPath)) {
-                log("默认位置自动解压失败，换个路径");
-                traineddataDir = files.join(files.cwd(), "plugins/org.autojs.plugin.ocr/tessdata");
-                traineddataPath = files.join(traineddataDir, traineddataFileName);
-            }
-
-            if (!files.isFile(traineddataPath)) {
-                log("重新解压");
-                let result = normalShell("pm path org.autojs.plugin.ocr");
-                if (result.code != 0)
-                    result = normalShell("cmd package path org.autojs.plugin.ocr");
-                if (result.code == 0) {
-                    let apkPath = result.result.match(/\/.+\.apk/);
-                    if (apkPath != null) apkPath = apkPath[0];
-                    if (apkPath != null) try {
-                        let apkUnzipDir = files.join(traineddataDir, "unzip");
-                        files.ensureDir(files.join(apkUnzipDir, "file"));
-                        log("isDir", apkUnzipDir, files.isDir(apkUnzipDir));
-    
-                        $zip.unzip(apkPath, apkUnzipDir);
-                        log("unzip done");
-    
-                        let fromPath = files.join(apkUnzipDir, "assets")
-                        fromPath = files.join(fromPath, traineddataFileName);
-                        let isMoveSuccessful = files.move(fromPath, traineddataPath);
-                        log("move", fromPath, traineddataPath, isMoveSuccessful);
-    
-                        let isRemoveDirSuccessful = files.removeDir(apkUnzipDir);
-                        log("removeDir", apkUnzipDir, isRemoveDirSuccessful);
-    
-                        log("解压完成");
-                    } catch (e) {
-                        logException(e);
-                    }
-                }
-            }
-        }
-
-        if (ocr == null) try {
-            log("重试加载OCR插件");
-            if (OCR == null) OCR = $plugins.load('org.autojs.plugin.ocr');
-            if (ocr == null) ocr = new OCR(traineddataDir.replace(/\/tessdata$/, ""), "chi_sim");
-        } catch (e) {
-            logException(e);
-            dialogs.alert("加载OCR插件出错",
-                 "1.请确保OCR插件已经安装好（马上将会弹出下载链接）\n"
-                +"2.目前OCR暂不支持64位重打包版，请安装32位\n"
-            );
-            $app.openUrl("https://pro.autojs.org/docs/#/zh-cn/plugins?id=ocr%e6%8f%92%e4%bb%b6");
+            dialogs.alert("加载OCR插件出错");
             stopThread();
         }
 
-        if (ocr != null) {
-            log("已加载OCR插件");
-            return true;
-        }
+        log("已加载OCR插件");
+        return true;
     }
 
     //AP回复、更改队伍名称、连线超时等弹窗都属于这种类型
@@ -2783,10 +2741,10 @@ function algo_init() {
     }
     const knownAPTextCoords = {
         topLeft: {
-            x: 972, y: 43, pos: "top"
+            x: 972 - 40, y: 43 - 40, pos: "top"
         },
         bottomRight: {
-            x: 1118, y: 68, pos: "top"
+            x: 1118 + 40, y: 68 + 40, pos: "top"
         }
     }
     function getAPJP(wait) {
@@ -2794,17 +2752,20 @@ function algo_init() {
         let screenshot = compatCaptureScreen();
         let area = getConvertedArea(knownAPTextCoords);
         let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
-        let result = ocr.ocrImage(img);
-        log("ap ocr result", result);
-        if (!result.success) {
-            log("ap ocr result not successful");
+        let results = ocr.detect(img);
+        log("ap ocr results", results);
+        if (results.length == 0) {
             return;
         }
-        let apText = result.text.replace(/ /g, "").replace(/(\(\))|(O)/g, "0");
-        if (apText.match(/^\d+\/\d+$/) == null) {
+        let found = null;
+        results.find((item) =>
+            (found = item.words.replace(/ /g, "").replace(/(\(\))|(O)/g, "0").match(/^\d+\/\d+$/)) != null
+        );
+        if (found == null) {
             log("cannot get ap through ocr");
             return;
         }
+        let apText = found[0];
         return {
             value: parseInt(apText.match(/^\d+/)[0]),
             total: parseInt(apText.match(/\d+$/)[0]),
@@ -7816,6 +7777,23 @@ function algo_init() {
         for (let attempt = 1; attempt <= 3; attempt++) {
             let screencap_landscape = true;
             if (!requestScreenCaptureSuccess) {
+                let isInitialPortrait = true;
+                if (initialWindowSize.size != null) {
+                    if (initialWindowSize.size.x > initialWindowSize.size.y) isInitialPortrait = false;
+                }
+                if (isInitialPortrait && !floatUI.storage.get("doNotRemindAboutMuMu9RotationBug", false)) {
+                    let result = dialogs.confirm("⚠️警告⚠️",
+                        "马上会开始申请截屏。如果你在使用MuMu9等模拟器，继续进行可能触发无限转屏卡死bug！\n"
+                        +"所以（如果你在用模拟器）请务必修改模拟器分辨率设置，确保宽度大于（不能等于）高度，然后必须重启一次模拟器！\n"
+                        +"点击\"确定\"继续申请截屏；\"取消\"则放弃申请截屏。");
+                    if (dialogs.confirm("是否不再提醒？", "点击\"确定\"，则不再就MuMu9模拟器无限转屏卡死bug再次弹窗提醒。")) {
+                        floatUI.storage.put("doNotRemindAboutMuMu9RotationBug", true);
+                    }
+                    if (!result) {
+                        toastLog("已取消申请截屏");
+                        stopThread();
+                    }
+                }
                 try {
                     floatUI.hideAllFloaty();
                     requestScreenCaptureSuccess = requestScreenCapture(screencap_landscape);
@@ -10949,14 +10927,14 @@ function algo_init() {
     function ocrGetNumber(area, screenshot) {
         if (screenshot == null) screenshot = compatCaptureScreen();
         let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
-        let result = ocr.ocrImage(img);
-        if (result.success) {
-            log("OCR text", result.text);
-            let matched = result.text.match(/\d+/g);
-            if (matched != null) {
-                let num = parseInt(matched.join(""));
-                if (!isNaN(num)) return num;
-            }
+        let results = ocr.detect(img);
+        log("OCR results", results);
+        if (results.length == 0) return;
+        let matched = null;
+        results.find((item) => (matched = item.words.match(/\d+/g)));
+        if (matched != null) {
+            let num = parseInt(matched.join(""));
+            if (!isNaN(num)) return num;
         }
     }
     var knownFirstMirrorsOpponentScoreCoords = {
@@ -11826,11 +11804,12 @@ function algo_init() {
     /* ~~~~~~~~ 临时开荒辅助 开始 ~~~~~~~~ （有部分函数在外边） */
     var knownNewQuestCoords = {
         //[1078,473][1232,513]
+        //内置OCR插件貌似传入更大图片区域识别效果更好，所以这里传入整个关卡按钮
         topLeft: {
-            x: 1078, y: 473, pos: "top"
+            x: 1000, y: 420, pos: "top"
         },
         bottomRight: {
-            x: 1232, y: 513, pos: "top"
+            x: 1919, y: 654, pos: "top"
         }
     };
     function getNewQuestArea() {
@@ -11844,24 +11823,26 @@ function algo_init() {
         let area = getNewQuestArea();
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
+    //TODO isBattleThere应该和isMarkedAsNewQuest合并
     function isBattleThere(screenshot) {
         const knownBattleTextArea = {
             topLeft: {
-                x: 1137, y: 552, pos: "top"
+                x: 1097, y: 512, pos: "top"
             },
             bottomRight: {
-                x: 1300, y: 589, pos: "top"
+                x: 1470, y: 629, pos: "top"
             }
         }
         let battleTextArea = getConvertedArea(knownBattleTextArea);
         let battleTextImg = renewImage(images.clip(screenshot, battleTextArea.topLeft.x, battleTextArea.topLeft.y, getAreaWidth(battleTextArea), getAreaHeight(battleTextArea)));
-        let result = ocr.ocrImage(battleTextImg);
-        if (!result.success) {
-            log("isBattleThere", "not successful");
+        let results = ocr.detect(battleTextImg);
+        log("isBattleThere", results);
+        if (results.length == 0) {
             return;
         }
-        let ocrText = result.text.replace(/ /g, "");
-        if (ocrText.match(/^BATTLE$/) == null) {
+        let found = null;
+        results.find((item) => (found = item.words.replace(/ /g, "").match(/^BATTLE.*/)) != null);
+        if (found == null) {
             log("isBattleThere", "matched null");
             return;
         }
@@ -11886,16 +11867,12 @@ function algo_init() {
             found = null;
         }
         if (found != null) {
-            let imgInRange = renewImage(images.inRange(img, "#e09b0f", "#ffffa9"));
-            let imgMedianBlur = renewImage(images.medianBlur(imgInRange, 5));
-            let imgInRange2 = renewImage(images.inRange(imgMedianBlur, "#808080", "#ffffff"));
-            let result = ocr.ocrImage(imgInRange2);
-            if (!result.success) {
+            let results = ocr.detect(img);
+            log("newQuest", results);
+            if (results.length == 0) {
                 found = null;
             } else {
-                log("newQuest ocr result", result.text);
-                let matched = result.text.replace(/ /g, "").match(/NEW/i);
-                if (matched == null) found = null;
+                results.find((item) => (found = item.words.replace(/ /g, "").match(/NE(W|w|V|v)/)) != null);
             }
         }
         log("newQuest", found);
@@ -12034,6 +12011,7 @@ function algo_init() {
     }
 
     return {
+        recycleAllImages: recycleAllImages,
         default: taskDefault,
         mirrors: taskMirrors,
         CVAutoBattle: mirrorsAutoBattleMain,
