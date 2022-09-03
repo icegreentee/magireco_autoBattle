@@ -539,6 +539,8 @@ var syncedReplaceCurrentTask = syncer.syn(function(taskItem, callback) {
             ocr.end();
             ocr = null;
         }
+        //回收所有图片
+        tasks.recycleAllImages();
     });
     monitoredTask.waitFor();
 });
@@ -12034,6 +12036,7 @@ function algo_init() {
     }
 
     return {
+        recycleAllImages: recycleAllImages,
         default: taskDefault,
         mirrors: taskMirrors,
         CVAutoBattle: mirrorsAutoBattleMain,
