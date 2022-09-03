@@ -11873,11 +11873,9 @@ function algo_init() {
 
         initOCR();
 
-        dialogs.alert("临时开荒辅助",
-            "临时开荒辅助脚本能够在一个章节(section)内自动选BATTLE进行周回；\n"
-            +"以及支持地图型周回(一部7章尚未适配),但在找不到没打过(new)的关卡时不会自动拖动地图；\n"
-            +"另外,不会嗑药,也不会处理掉线等情况。"
-        );
+        toastLog("临时开荒辅助脚本能够在一个章节(section)内自动选BATTLE进行周回；");
+        toastLog("以及支持地图型周回(一部7章尚未适配),但在找不到没打过(new)的关卡时不会自动拖动地图；");
+        toastLog("另外,不会嗑药,也不会处理掉线等情况。");
 
         log("缩放图片...");
         resizeKnownImgs();//必须放在initialize后面
