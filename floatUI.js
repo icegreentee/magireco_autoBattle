@@ -11787,11 +11787,12 @@ function algo_init() {
     /* ~~~~~~~~ 临时开荒辅助 开始 ~~~~~~~~ （有部分函数在外边） */
     var knownNewQuestCoords = {
         //[1078,473][1232,513]
+        //内置OCR插件貌似传入更大图片区域识别效果更好，所以这里传入整个关卡按钮
         topLeft: {
-            x: 1038, y: 433, pos: "top"
+            x: 1000, y: 420, pos: "top"
         },
         bottomRight: {
-            x: 1272, y: 553, pos: "top"
+            x: 1919, y: 654, pos: "top"
         }
     };
     function getNewQuestArea() {
@@ -11805,6 +11806,7 @@ function algo_init() {
         let area = getNewQuestArea();
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
+    //TODO isBattleThere应该和isMarkedAsNewQuest合并
     function isBattleThere(screenshot) {
         const knownBattleTextArea = {
             topLeft: {
