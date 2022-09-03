@@ -10326,7 +10326,7 @@ function algo_init() {
             },
             sectionOnMapChap7JP: {
                 topLeft: {x: 0, y: 0, pos: "top"},
-                bottomRight: {x: 180, y: 150, pos: "top"}
+                bottomRight: {x: 210, y: 150, pos: "top"}
             },
         }
         const btnOffset = {
