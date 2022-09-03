@@ -20,6 +20,10 @@
         "unusedResources": false
     },
     "abis": [
+        "arm64-v8a",
         "armeabi-v7a"
-    ]
+    ],
+    "features": {
+      "builtInOCR": "with-models"
+    }
 }

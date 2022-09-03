@@ -710,7 +710,8 @@ function getTintDrawable(name, tint) {
 //以下数值通过实际运行一遍代码取得
 //8081200取自Pro 8.8.13-0
 //9120700取自Pro 9.2.7-0
-const lowestVersionCode = 9120700;
+//9121000取自Pro 9.2.10-0
+const lowestVersionCode = 9121000;
 
 function detectCwvqLUVersion() {
     ui.run(function() {
