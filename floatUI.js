@@ -10343,6 +10343,11 @@ function algo_init() {
                 bottomRight: {x: 116, y: 22, pos: "top"}
             }),
         }
+        const shinnyNewMap = {
+            sectionOnMapJP: "shinnyNew",
+            intermission: "shinnyNew",
+            sectionOnMapChap7JP: "shinnyNewChap7",
+        }
 
         let points = [];
         for (let imgName in btnOffset) {
@@ -10383,20 +10388,21 @@ function algo_init() {
 
         for (let deadlineTime = new Date().getTime() + 5000; new Date().getTime() <= deadlineTime; ) {
             screenshot = compatCaptureScreen();
-            areas.find((area) => {
+            if (areas.find((area) => {
                 let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
-                let template = knownImgs[area.imgName];
+                let template = knownImgs[shinnyNewMap[area.imgName]];
                 try {
                     point = images.findImage(img, template, {threshold: 0.85});
                 } catch (e) {
                     point = null;
                 }
                 if (point != null) {
+                    log("found area", area);
                     ["x", "y"].forEach((axis) => point[axis] += area.topLeft[axis]);
                     point.x += parseInt(template.getWidth() / 2);
                     return true;
                 }
-            });
+            }) != null) break;
         }
 
         log("shinnyNew(click)", point);
