@@ -8326,8 +8326,10 @@ function algo_init() {
         "closeBtn",
         "sectionClearMagiaStone",
         "sectionOnMapJP",
+        "sectionOnMapChap7JP",
         "intermission",
         "shinnyNew",
+        "shinnyNewChap7",
     ];
 
     var loadAllImages = syncer.syn(function () {
@@ -10243,6 +10245,15 @@ function algo_init() {
                 x: 1919, y: 1079, pos: "bottom"
             }
         },
+        sectionOnMapChap7JP: {
+            //搜索整个地图
+            topLeft: {
+                x: 0, y: 128, pos: "top"
+            },
+            bottomRight: {
+                x: 1919, y: 1079, pos: "bottom"
+            }
+        },
         intermission: {
             //搜索整个地图
             topLeft: {
@@ -10305,8 +10316,18 @@ function algo_init() {
     }
     function findNewSectionOnMap(screenshot) {
         const btnSize = {
-            topLeft: {x: 0, y: 0, pos: "top"},
-            bottomRight: {x: 270, y: 210, pos: "top"}
+            sectionOnMapJP: {
+                topLeft: {x: 0, y: 0, pos: "top"},
+                bottomRight: {x: 270, y: 210, pos: "top"}
+            },
+            intermission: {
+                topLeft: {x: 0, y: 0, pos: "top"},
+                bottomRight: {x: 270, y: 210, pos: "top"}
+            },
+            sectionOnMapChap7JP: {
+                topLeft: {x: 0, y: 0, pos: "top"},
+                bottomRight: {x: 180, y: 150, pos: "top"}
+            },
         }
         const btnOffset = {
             sectionOnMapJP: getConvertedAreaNoCutout({
@@ -10317,6 +10338,10 @@ function algo_init() {
                 topLeft: {x: 0, y: 0, pos: "top"},
                 bottomRight: {x: 26, y: 22, pos: "top"}
             }),
+            sectionOnMapChap7JP: getConvertedAreaNoCutout({
+                topLeft: {x: 0, y: 0, pos: "top"},
+                bottomRight: {x: 116, y: 22, pos: "top"}
+            }),
         }
 
         let points = [];
@@ -10325,25 +10350,28 @@ function algo_init() {
             if (found != null) found.forEach((point) => {
                 //换算坐标为：在地图区域内看到整个按钮的右上角。如果超出屏幕则会在后面处理
                 ["x", "y"].forEach((axis) => point[axis] -= btnOffset[imgName].bottomRight[axis]);
-                points.push(point);
+                points.push({point: point, imgName: imgName});
             });
         }
 
         let areas = [];
         const searchedArea = getButtonArea("sectionOnMapJP");
-        points.forEach((point) => {
+        points.forEach((item) => {
+            let point = item.point;
+            let imgName = item.imgName;
             let area = {topLeft: {pos: "top"}, bottomRight: {pos: "top"}};
-            for (let corner in btnSize) {
+            for (let corner in btnSize[imgName]) {
                 ["x", "y"].forEach((axis) => {
                     //计算出整个按钮所在区域
                     area[corner][axis] = searchedArea.topLeft[axis]
                         + point[axis]
-                        + btnSize[corner][axis];
+                        + btnSize[imgName][corner][axis];
                     //防止超出屏幕边界（否则后面截取部分图片时会崩溃）
                     if (area[corner][axis] < searchedArea.topLeft[axis])
                         area[corner][axis] = searchedArea.topLeft[axis];
                     if (area[corner][axis] > searchedArea.bottomRight[axis])
                         area[corner][axis] = searchedArea.bottomRight[axis];
+                    area.imgName = imgName;
                 });
             }
             areas.push(area);
@@ -10353,11 +10381,11 @@ function algo_init() {
         let point = null;
         if (areas.length == 0) return point;
 
-        const template = knownImgs["shinnyNew"];
         for (let deadlineTime = new Date().getTime() + 5000; new Date().getTime() <= deadlineTime; ) {
             screenshot = compatCaptureScreen();
             areas.find((area) => {
                 let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+                let template = knownImgs[area.imgName];
                 try {
                     point = images.findImage(img, template, {threshold: 0.85});
                 } catch (e) {
@@ -11789,7 +11817,7 @@ function algo_init() {
         toastLog("绕过Play检测完成");
     }
 
-    /* ~~~~~~~~ 临时开荒辅助 开始 ~~~~~~~~ */
+    /* ~~~~~~~~ 临时开荒辅助 开始 ~~~~~~~~ （有部分函数在外边） */
     var knownNewQuestCoords = {
         //[1078,473][1232,513]
         topLeft: {
@@ -11810,7 +11838,7 @@ function algo_init() {
         let area = getNewQuestArea();
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
-    function isMarkedAsNewQuest(screenshot) {
+    function isBattleThere(screenshot) {
         const knownBattleTextArea = {
             topLeft: {
                 x: 1137, y: 552, pos: "top"
@@ -11823,19 +11851,24 @@ function algo_init() {
         let battleTextImg = renewImage(images.clip(screenshot, battleTextArea.topLeft.x, battleTextArea.topLeft.y, getAreaWidth(battleTextArea), getAreaHeight(battleTextArea)));
         let result = ocr.ocrImage(battleTextImg);
         if (!result.success) {
-            log("newQuest", "not successful");
+            log("isBattleThere", "not successful");
             return;
         }
         let ocrText = result.text.replace(/ /g, "");
         if (ocrText.match(/^BATTLE$/) == null) {
-            log("newQuest", "matched null");
+            log("isBattleThere", "matched null");
             return;
         }
+        return true;
+    }
+    function isMarkedAsNewQuest(screenshot) {
+        //if (!isBattleThere(screenshot)) return;
 
         let template = knownImgs["newQuest"];
         let img = getNewQuestImg(screenshot);
         let found = null;
         try {
+            //还是可能误判，所以下面会OCR再次确认
             found = images.matchTemplate(img, template, {threshold: 0.8, transparentMask: true}); //Pro 9.2.7在这里会抛Java异常
             if (found != null && found.matches.length > 0) {
                 found = found.best();
@@ -11845,6 +11878,19 @@ function algo_init() {
         } catch (e) {
             //logException(e);
             found = null;
+        }
+        if (found != null) {
+            let imgInRange = renewImage(images.inRange(img, "#e09b0f", "#ffffa9"));
+            let imgMedianBlur = renewImage(images.medianBlur(imgInRange, 5));
+            let imgInRange2 = renewImage(images.inRange(imgMedianBlur, "#808080", "#ffffff"));
+            let result = ocr.ocrImage(imgInRange2);
+            if (!result.success) {
+                found = null;
+            } else {
+                log("newQuest ocr result", result.text);
+                let matched = result.text.replace(/ /g, "").match(/NEW/i);
+                if (matched == null) found = null;
+            }
         }
         log("newQuest", found);
         return found ? true : false;
@@ -11874,7 +11920,7 @@ function algo_init() {
         initOCR();
 
         toastLog("临时开荒辅助脚本能够在一个章节(section)内自动选BATTLE进行周回；");
-        toastLog("以及支持地图型周回(一部7章尚未适配),但在找不到没打过(new)的关卡时不会自动拖动地图；");
+        toastLog("以及支持地图型周回,但在找不到没打过(new)的关卡时不会自动拖动地图；");
         toastLog("另外,不会嗑药,也不会处理掉线等情况。");
 
         log("缩放图片...");
@@ -11951,8 +11997,12 @@ function algo_init() {
             let newSectionOnMapPoint = null;
 
             let screenshot = compatCaptureScreen();
-            if (isMarkedAsNewQuest(screenshot)) {
-                click(convertCoords(getAreaCenter(knownNewQuestCoords)));
+            if (isBattleThere(screenshot)) {
+                if (isMarkedAsNewQuest(screenshot)) {
+                    click(convertCoords(getAreaCenter(knownNewQuestCoords)));
+                } else {
+                    click(convertCoords(clickSets.back));
+                }
             } else if (isFirstSupportAvailable(screenshot)) {
                 click(convertCoords(knownFirstPtPoint));
             } else if (isStartButtonPresent(screenshot)) {
@@ -11968,6 +12018,7 @@ function algo_init() {
             } else if (isSectionClear(screenshot)) {
                 click(convertCoords(clickSets.screenCenter));
             } else if ((newSectionOnMapPoint = findNewSectionOnMap(screenshot))) {
+                //这个匹配很慢所以放到最后
                 click(newSectionOnMapPoint);
                 newSectionOnMapPoint = null;
                 sleep(3000);
