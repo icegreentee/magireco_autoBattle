@@ -9770,7 +9770,7 @@ function algo_init() {
         log("isAUTOEnabled onePx", colors.toString(images.pixel(onePx, 0, 0)));
         for (let status in knownColors) {
             let c = knownColors[status];
-            if (images.detectsColor(onePx, c, 0, 0, 16, "rgb")) {
+            if (images.detectsColor(onePx, c, 0, 0, 10, "rgb")) {
                 let area = getConvertedArea(knownAUTOSpeedButtonArea);
                 let clickPos = area.topLeft;
                 clickPos.x += parseInt(bounds.width() / 2);
@@ -10166,6 +10166,9 @@ function algo_init() {
                 id("ResultWrap").findOnce() || /*副本结算*/
                 id("retryWrap").findOnce() || id("hasTotalRiche").findOnce()
             );
+            if (mirrorsAutoBattleConfig.CVAutoBattleTryToConnect) {
+                isBattleEnded = isBattleEnded || isQuestResult(screenshot);
+            }
             if (isBattleEnded) {
                 //日服下因为抓不到控件所以检测无效，所以后面会在检测行动盘后再处理
                 log("战斗已经结束，不再等待我方回合");
@@ -12051,6 +12054,60 @@ function algo_init() {
         return found ? true : false;
     }
 
+    const knownQuestCoords = {
+        playerSupport: {
+            topLeft: {x: 1490, y: 301, pos: "top"},
+            bottomRight: {x: 1529, y: 340, pos: "top"},
+        },
+        NPCSupport: {
+            topLeft: {x: 1490, y: 301, pos: "top"},
+            bottomRight: {x: 1529, y: 340, pos: "top"},
+        },
+        followPrompt: {
+            topLeft: {x: 801, y: 374, pos: "center"},
+            bottomRight: {x: 832, y: 405, pos: "center"},
+        },
+        charaExpEventLvUp: {
+            topLeft: {x: 224, y: 332, pos: "center"},
+            bottomRight: {x: 256, y: 364, pos: "center"},
+        },
+        playerLvUp: {
+            topLeft: {x: 900, y: 439, pos: "center"},
+            bottomRight: {x: 1019, y: 441, pos: "center"},
+        },
+        resultExpItem: {
+            topLeft: {x: 801, y: 374, pos: "center"},
+            bottomRight: {x: 832, y: 405, pos: "center"},
+        },
+    }
+    const knownQuestColors = {
+        playerSupport: "#7363a0",
+        NPCSupport: "#f26482",
+        followPrompt: "#f7f7f7",
+        charaExpEventLvUp: "#f26c84",
+        playerLvUp: "#b28750",
+        resultExpItem: "#b28750",
+    }
+    function detectPureColor(screenshot, type) {
+        let area = getConvertedArea(knownQuestCoords[type]);
+        let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)))
+        let imgRanged = renewImage(images.interval(img, knownQuestColors[type], 0));
+        let found = images.findColor(imgRanged, "#000000", 0) ? false : true;
+        log(type, found);
+        return found;
+    }
+    function isFirstSupportAvailable(screenshot) {
+        let found = ["playerSupport", "NPCSupport"].find((type) => detectPureColor(screenshot, type)) ? true : false;
+        return found;
+    }
+    function isPlayerLvUp(screenshot) {
+        return detectPureColor(screenshot, "playerLvUp");
+    }
+    function isQuestResult(screenshot) {
+        let found = ["followPrompt", "charaExpEventLvUp", "resultExpItem"].find((type) => detectPureColor(screenshot, type)) ? true : false;
+        return found;
+    }
+
     function taskOpenUp() {
         if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
             toastLog("需要root或shizuku adb权限");
@@ -12095,59 +12152,6 @@ function algo_init() {
             startScreenCapture();
         }
 
-        const knownCoords = {
-            playerSupport: {
-                topLeft: {x: 1490, y: 301, pos: "top"},
-                bottomRight: {x: 1529, y: 340, pos: "top"},
-            },
-            NPCSupport: {
-                topLeft: {x: 1490, y: 301, pos: "top"},
-                bottomRight: {x: 1529, y: 340, pos: "top"},
-            },
-            followPrompt: {
-                topLeft: {x: 801, y: 374, pos: "center"},
-                bottomRight: {x: 832, y: 405, pos: "center"},
-            },
-            charaExpEventLvUp: {
-                topLeft: {x: 224, y: 332, pos: "center"},
-                bottomRight: {x: 256, y: 364, pos: "center"},
-            },
-            playerLvUp: {
-                topLeft: {x: 900, y: 439, pos: "center"},
-                bottomRight: {x: 1019, y: 441, pos: "center"},
-            },
-            resultExpItem: {
-                topLeft: {x: 801, y: 374, pos: "center"},
-                bottomRight: {x: 832, y: 405, pos: "center"},
-            },
-        }
-        const knownColors = {
-            playerSupport: "#7363a0",
-            NPCSupport: "#f26482",
-            followPrompt: "#f7f7f7",
-            charaExpEventLvUp: "#f26c84",
-            playerLvUp: "#b28750",
-            resultExpItem: "#b28750",
-        }
-        function detectPureColor(screenshot, type) {
-            let area = getConvertedArea(knownCoords[type]);
-            let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)))
-            let imgRanged = renewImage(images.interval(img, knownColors[type], 0));
-            let found = images.findColor(imgRanged, "#000000", 0) ? false : true;
-            log(type, found);
-            return found;
-        }
-        function isFirstSupportAvailable(screenshot) {
-            let found = ["playerSupport", "NPCSupport"].find((type) => detectPureColor(screenshot, type)) ? true : false;
-            return found;
-        }
-        function isPlayerLvUp(screenshot) {
-            return detectPureColor(screenshot, "playerLvUp");
-        }
-        function isQuestResult(screenshot) {
-            let found = ["followPrompt", "charaExpEventLvUp", "resultExpItem"].find((type) => detectPureColor(screenshot, type)) ? true : false;
-            return found;
-        }
         while (true) {
             let newSectionOnMapPoint = null;
 
