@@ -11981,7 +11981,12 @@ function algo_init() {
 
             let screenshot = compatCaptureScreen();
             if (isBattleThere(screenshot)) {
-                if (isMarkedAsNewQuest(screenshot)) {
+                let isNewQuest = false;
+                for (let i = 0, deadlineTime = new Date().getTime() + 5000; i < 2 || new Date().getTime() < deadlineTime; i++) {
+                    isNewQuest = isMarkedAsNewQuest((screenshot = compatCaptureScreen()));
+                    if (isNewQuest) break; //再三确认已经不是new了
+                }
+                if (isNewQuest) {
                     click(convertCoords(getAreaCenter(knownNewQuestCoords)));
                 } else {
                     click(convertCoords(clickSets.back));
