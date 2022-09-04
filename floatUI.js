@@ -9773,8 +9773,8 @@ function algo_init() {
             if (images.detectsColor(onePx, c, 0, 0, 10, "rgb")) {
                 let area = getConvertedArea(knownAUTOSpeedButtonArea);
                 let clickPos = area.topLeft;
-                clickPos.x += parseInt(bounds.width() / 2);
-                clickPos.y += parseInt(bounds.height() / 2);
+                clickPos.x += parseInt(bounds.top + bounds.width() / 2);
+                clickPos.y += parseInt(bounds.left + bounds.height() / 2);
                 let result = {status: status, clickPos: clickPos};
                 log("isAUTOEnabled result", result);
                 return result;
@@ -12179,7 +12179,7 @@ function algo_init() {
             //下面两个匹配很慢所以放到最后
             } else if (isBattleThere(screenshot)) {
                 let isNewQuest = false;
-                for (let i = 0, deadlineTime = new Date().getTime() + 5000; i < 2 || new Date().getTime() < deadlineTime; i++) {
+                for (let i = 0, deadlineTime = new Date().getTime() + 2000; i < 2 || new Date().getTime() < deadlineTime; i++) {
                     isNewQuest = isMarkedAsNewQuest((screenshot = compatCaptureScreen()));
                     if (isNewQuest) break; //再三确认已经不是new了
                 }
