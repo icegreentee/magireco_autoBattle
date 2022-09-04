@@ -1859,6 +1859,8 @@ var limit = {
     dungeonPostRewardWaitSec: "8",
     dungeonBattleTimeoutSec: "1200",
     dungeonBattleCountBeforeKill: "20",
+    openUpTryToConnect: false,
+    openUpClickAllSkills: false,
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -8258,6 +8260,11 @@ function algo_init() {
         "charge",
         "magia",
         "doppel",
+        "accelBtnDown",
+        "blastBtnDown",
+        "chargeBtnDown",
+        "magiaBtnDown",
+        "doppelBtnDown",
         "connectIndicator",
         "connectIndicatorBtnDown",
         "light",
@@ -8278,6 +8285,7 @@ function algo_init() {
         "fire32x32",
         "wood32x32",
         "none32x32",
+        "support",
         "mirrorsEntranceBtn",
         "mirrorsVS",
         "mirrorsRedTriangle",
@@ -8627,6 +8635,18 @@ function algo_init() {
                 pos: "bottom"
             }
         },
+        support: {
+            topLeft: {
+                x:  375,
+                y:  1047,
+                pos: "bottom"
+            },
+            bottomRight: {
+                x:   463,
+                y:   1066,
+                pos: "bottom"
+            }
+        },
         //行动盘之间的距离
         distance: 270
     };
@@ -8642,7 +8662,8 @@ function algo_init() {
             charaImg:    null,
             charaID:     0,
             connectable: false,
-            connectedTo:   -1
+            connectedTo:   -1,
+            isSupport: false,
         },
         {
             position:    1,
@@ -8653,7 +8674,8 @@ function algo_init() {
             charaImg:    null,
             charaID:     1,
             connectable: false,
-            connectedTo:   -1
+            connectedTo:   -1,
+            isSupport: false,
         },
         {
             position:    2,
@@ -8665,7 +8687,8 @@ function algo_init() {
             charaImg:    null,
             charaID:     2,
             connectable: false,
-            connectedTo:   -1
+            connectedTo:   -1,
+            isSupport: false,
         },
         {
             position:    3,
@@ -8676,7 +8699,8 @@ function algo_init() {
             charaImg:    null,
             charaID:     3,
             connectable: false,
-            connectedTo:   -1
+            connectedTo:   -1,
+            isSupport: false,
         },
         {
             position:    4,
@@ -8687,7 +8711,8 @@ function algo_init() {
             charaImg:    null,
             charaID:     4,
             connectable: false,
-            connectedTo:   -1
+            connectedTo:   -1,
+            isSupport: false,
         }
     ];
     var clickedDisksCount = 0;
@@ -8708,9 +8733,9 @@ function algo_init() {
         let downStr = "未按下"
         if (disk.down) downStr = "【按下】"
         if (isMagiaDoppel) {
-            log("第", disk.position+1, "号盘", disk.action, disk.priority, /*"角色", disk.charaID, */"属性", disk.attrib, downStr);
+            log("第", disk.position+1, "号盘", disk.action, disk.priority, /*"角色", disk.charaID, */"属性", disk.attrib, disk.isSupport?"【助战】":"自带角色", downStr);
         } else {
-            log("第", disk.position+1, "号盘", disk.action, disk.priority, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
+            log("第", disk.position+1, "号盘", disk.action, disk.priority, "角色", disk.charaID, "属性", disk.attrib, disk.isSupport?"【助战】":"自带角色", connectableStr, "连携到角色", disk.connectedTo, downStr);
         }
     }
 
@@ -8763,8 +8788,12 @@ function algo_init() {
         let mostSimilar = 0;
 
         let possibilities = null;
-        if (recogWhat == "action") {
-            possibilities = diskActions;
+        if (recogWhat.match(/^action/)) {
+            possibilities = [];
+            for (let i=0; i<diskActions.length; i++){
+                possibilities.push(diskActions[i]);
+                if (recogWhat.match(/^actionAlsoBtnDown$/)) possibilities.push(diskActions[i]+"BtnDown");
+            }
         } else if (recogWhat.startsWith("attrib")) {
             possibilities = [];
             let recogWhatArr = recogWhat.split("_");
@@ -8808,6 +8837,7 @@ function algo_init() {
             log("MSSIM=", maxSimilarity, "小于阈值=", threshold, "无法识别", recogWhat);
             throw "recognizeDiskLowerThanThreshold";
         }
+        if (recogWhat.match(/^actionAlsoBtnDown$/)) possibilities.forEach((item, index, arr) => arr[index] = item.replace(/BtnDown$/, ""));
         log("识别为", possibilities[mostSimilar], "盘 MSSIM=", maxSimilarity);
         return possibilities[mostSimilar];
     }
@@ -8828,7 +8858,7 @@ function algo_init() {
                 result = null;
             }
             if (result == null) {
-                if (recogWhat == "action") result = "accel";
+                if (recogWhat.match(/^action/)) result = "accel";
                 log("当作", result, "盘，继续运行");
             }
             break;
@@ -8972,6 +9002,27 @@ function algo_init() {
         return result;
     }
 
+    //判断盘是否助战
+    function isDiskSupport(screenshot, diskPos) {
+        let img = getDiskImg(screenshot, diskPos, "support");
+        let refImg = knownImgs.support;
+        let firstDiskArea = getDiskArea(0, "support");
+        let gaussianX = parseInt(getAreaWidth(firstDiskArea) / 3);
+        let gaussianY = parseInt(getAreaHeight(firstDiskArea) / 3);
+        if (gaussianX % 2 == 0) gaussianX += 1;
+        if (gaussianY % 2 == 0) gaussianY += 1;
+        let gaussianSize = [gaussianX, gaussianY];
+        let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
+        let imgBlur = renewImage(images.gaussianBlur(img, gaussianSize));
+        let similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
+        let result = false
+        if (similarity > 2.1) {
+            log("第", diskPos+1, "号盘【是助战】，MSSIM=", similarity);
+            result = true;
+        }
+        return result;
+    }
+
     //判断两个盘是否是同一角色
     function areDisksSimilar(screenshot, diskAPos, diskBPos) {
         let diskA = allActionDisks[diskAPos];
@@ -9009,6 +9060,7 @@ function algo_init() {
             allActionDisks[i].charaID = i;
             allActionDisks[i].connectable = false;
             allActionDisks[i].connectedTo = -1;
+            allActionDisks[i].isSupport = false;
         }
         clickedDisksCount = 0;
 
@@ -9024,6 +9076,7 @@ function algo_init() {
             let diskAttribDown = getDiskAttribDown(screenshot, i);
             disk.attrib = diskAttribDown.attrib;
             disk.down = diskAttribDown.down; //这里，虽然getDiskAttribDown()可以识别盘是否按下，但是因为后面分辨不同的角色的问题还无法解决，所以意义不是很大
+            disk.isSupport = isDiskSupport(screenshot, i);
         }
         //分辨不同的角色，用charaID标记
         //如果有盘被点击过，在有属性克制的情况下，这个检测可能被闪光特效干扰
@@ -9032,7 +9085,7 @@ function algo_init() {
             let diskI = allActionDisks[i];
             for (let j=i+1; j<allActionDisks.length; j++) {
                 let diskJ = allActionDisks[j];
-                if (areDisksSimilar(screenshot, i, j)) {
+                if (diskI.isSupport == diskJ.isSupport && areDisksSimilar(screenshot, i, j)) {
                     diskJ.charaID = diskI.charaID;
                 }
             }
@@ -9371,7 +9424,7 @@ function algo_init() {
         let inconclusiveCount = 0;
         for (let i=0; i<clickAttemptMax; i++) {
             //国服2.1.10更新后出现无法点击magia盘的问题，从click改成swipe即可绕开问题
-            swipe(point.x, point.y, point.x, point.y, parseInt(limit.CVAutoBattleClickDiskDuration));
+            swipe(point.x, point.y, point.x, point.y, parseInt(mirrorsAutoBattleConfig.CVAutoBattleClickDiskDuration));
             //点击有时候会没效果，还需要监控盘是否按下了
             sleep(333);
             let screenshot = compatCaptureScreen();
@@ -9618,7 +9671,7 @@ function algo_init() {
     }
 
     //是否有我方行动盘出现
-    function detectAppearingDiskType(screenshot) {
+    function detectAppearingDiskType(screenshot, alsoBtnDown) {
         let img = getDiskImg(screenshot, 0, "action");
         if (img != null) {
             log("已截取第一个盘的动作图片");
@@ -9627,7 +9680,7 @@ function algo_init() {
         }
         let result = null;
         try {
-            result = recognizeDisk(img, "action", 2.1);
+            result = recognizeDisk(img, "action"+(alsoBtnDown?"AlsoBtnDown":""), 2.1);
             switch (result) {
                 case "accel":
                 case "blast":
@@ -9647,14 +9700,16 @@ function algo_init() {
         }
         return result;
     }
-    function isMagiaDiskAppearing(screenshot) {
-        return detectAppearingDiskType(screenshot) == "magiadoppel" ? true : false;
+    function isMagiaDiskAppearing(screenshot, alsoBtnDown) {
+        return detectAppearingDiskType(screenshot, alsoBtnDown) == "magiadoppel" ? true : false;
     }
-    function isABCDiskAppearing(screenshot) {
-        return detectAppearingDiskType(screenshot) == "abc" ? true : false;
+    function isABCDiskAppearing(screenshot, alsoBtnDown) {
+        return detectAppearingDiskType(screenshot, alsoBtnDown) == "abc" ? true : false;
     }
     function isDiskAppearing(screenshot) {
-        switch (detectAppearingDiskType(screenshot)) {
+        //只是等待行动盘出现的话，用A/B/C/M/D盘按下的图像作为比对参考好像容易出现误识别，
+        //所以这里alsoBtnDown设为false
+        switch (detectAppearingDiskType(screenshot, false)) {
             case "abc":
             case "magiadoppel":
                 return true;
@@ -9681,6 +9736,71 @@ function algo_init() {
             }
             log("点击切换技能面板/行动盘面板");
             click(convertCoords(clickSetsMod.skillPanelSwitch));
+            sleep(1000);
+        }
+    }
+
+    const knownAUTOSpeedButtonArea = {
+        topLeft: {
+            x: 1560, y: 0, pos: "top"
+        },
+        bottomRight: {
+            x: 1919, y: 160, pos: "top"
+        }
+    }
+    function getAUTOSpeedImg(screenshot) {
+        let area = getConvertedArea(knownAUTOSpeedButtonArea);
+        return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
+    function getAUTOButtonStatus(screenshot) {
+        const knownColors = {
+            on: "#ff95a8",
+            off: "#eee5da",
+            disabled: "#393939",
+        }
+        let img = getAUTOSpeedImg(screenshot);
+        let results = ocr.detect(img);
+        log("isAUTOEnabled results", results);
+        let foundResult = results.find((item) => item.words.match(/A(U|u)T(O|0)/) != null);
+        log("isAUTOEnabled foundResult", foundResult);
+        if (foundResult == null) return {}; //镜层没有AUTO
+        let bounds = foundResult.bounds;
+        let autoImg = renewImage(images.clip(img, bounds.left, bounds.top, bounds.width(), bounds.height()))
+        let onePx = renewImage(images.resize(autoImg, [1, 1], "LINEAR"));
+        log("isAUTOEnabled onePx", colors.toString(images.pixel(onePx, 0, 0)));
+        for (let status in knownColors) {
+            let c = knownColors[status];
+            if (images.detectsColor(onePx, c, 0, 0, 16, "rgb")) {
+                let area = getConvertedArea(knownAUTOSpeedButtonArea);
+                let clickPos = area.topLeft;
+                clickPos.x += parseInt(bounds.width() / 2);
+                clickPos.y += parseInt(bounds.height() / 2);
+                let result = {status: status, clickPos: clickPos};
+                log("isAUTOEnabled result", result);
+                return result;
+            }
+        }
+        log("可能找到了AUTO按钮但无法判断状态");
+        return {};
+    }
+    function toggleAutoBtn(enable) {
+        enable = enable ? "on" : "off";
+        log("游戏内建AUTO["+enable+"]...");
+        for (let attempt=0; true; attempt++) {
+            let result = getAUTOButtonStatus(compatCaptureScreen());
+            let status = result.status;
+            let clickPos = result.clickPos;
+            if (status == null || status === "disabled") {
+                log("找不到AUTO按钮或AUTO被禁用");
+                break;
+            } else if (status === enable) return true;
+
+            if (attempt >= 10) {
+                log("游戏内建AUTO["+enable+"]出错");
+                stopThread();
+            }
+            log("点击切换游戏内建AUTO");
+            click(clickPos.x, clickPos.y);
             sleep(1000);
         }
     }
@@ -9953,7 +10073,7 @@ function algo_init() {
         log((open?"打开":"关闭")+"Magia面板...");
         let screenshot = compatCaptureScreen();
         if (!isMagiaAvailable(screenshot)) return false;
-        for (let attempt=0; open?!isMagiaDiskAppearing(screenshot):!isABCDiskAppearing(screenshot); attempt++) {
+        for (let attempt=0; open?!isMagiaDiskAppearing(screenshot, true):!isABCDiskAppearing(screenshot, true); attempt++) {
             if (attempt >= 10) {
                 log((open?"打开":"关闭")+"Magia面板时出错");
                 stopThread();
@@ -9979,7 +10099,8 @@ function algo_init() {
                 action:      "magia",
                 attrib:      "none",
                 //charaImg:    null,
-                //charaID:     0
+                //charaID:     0,
+                isSupport:   false,
             };
             let action = getDiskActionMagiaDoppel(screenshot, i);
             if (action != "magia" && action != "doppel") break;
@@ -9988,6 +10109,7 @@ function algo_init() {
             let diskAttribDown = getDiskAttribDown(screenshot, i);
             disk.attrib = diskAttribDown.attrib;
             disk.down = diskAttribDown.down; //这里，虽然getDiskAttribDown()可以识别盘是否按下，但是因为后面分辨不同的角色的问题还无法解决，所以意义不是很大
+            disk.isSupport = isDiskSupport(screenshot, i);
             result.push(disk);
         }
         //分辨不同的角色，用charaID标记
@@ -10070,7 +10192,7 @@ function algo_init() {
                     }
                 }
             }
-            if (limit.CVAutoBattleDebug) {
+            if (mirrorsAutoBattleConfig.CVAutoBattleDebug) {
                 if (cycles < 30) {
                     if (cycles == 1) toastLog("识图自动战斗已启用调试模式\n不会点击任何行动盘\n将会在保存图片后退出");
                 } else {
@@ -10101,7 +10223,7 @@ function algo_init() {
                 }
             }
             if (diskAppearedCount >= 3) {
-                if (!limit.CVAutoBattleDebug) {
+                if (!mirrorsAutoBattleConfig.CVAutoBattleDebug) {
                     //为保证调试模式有机会保存图片，调试模式开启时不break
                     result = true;
                     break;
@@ -10570,7 +10692,19 @@ function algo_init() {
         }
     }
 
-    function mirrorsAutoBattleMain() {
+    var mirrorsAutoBattleConfig = {};
+    function mirrorsAutoBattleMain(overrideCfg) {
+        //临时覆盖某些设置参数，主要用于开荒时凑连携
+        log("overrideCfg", overrideCfg);
+        if (overrideCfg == null) overrideCfg = {};
+        mirrorsAutoBattleConfig = overrideCfg;
+        for (key in limit) {
+            if (key.match(/^CVAutoBattle.+/) && mirrorsAutoBattleConfig[key] == null) {
+                mirrorsAutoBattleConfig[key] = limit[key];
+            }
+        }
+        log("mirrorsAutoBattleConfig", mirrorsAutoBattleConfig);
+
         if (!limit.privilege && (limit.useCVAutoBattle && limit.rootScreencap)) {
             toastLog("需要root或shizuku adb权限");
             if (requestShellPrivilegeThread == null || !requestShellPrivilegeThread.isAlive()) {
@@ -10607,6 +10741,23 @@ function algo_init() {
             startScreenCapture();
         }
 
+        if (mirrorsAutoBattleConfig.CVAutoBattleTryToConnect) {
+            //尽量连携，此参数只用于临时覆盖
+            //为了尽量连携肯定要偏向于Puella Combo
+            mirrorsAutoBattleConfig.CVAutoBattlePreferABCCombo = false;
+            //为尽量连携，第一回合先解除auto
+            for (let deadlineTime = new Date().getTime() + 30 * 1000; //等待AUTO按钮出现最多30秒
+                new Date().getTime() < deadlineTime;
+            ) {
+                if (isSkipButtonPresent(compatCaptureScreen())) {
+                    click(convertCoords(getAreaCenter(knownButtonCoords["skipBtn"])));
+                } else {
+                    if (toggleAutoBtn(false)) break;
+                }
+                sleep(50);
+            }
+        }
+
         //利用截屏识图进行稍复杂的自动战斗（比如连携）
         //开始一次镜界自动战斗
         turn = 0;
@@ -10620,8 +10771,8 @@ function algo_init() {
                 toggleMagiaPanel(false);
             }
 
-            if (limit.CVAutoBattleClickAllSkills) {
-                if (turn >= parseInt(limit.CVAutoBattleClickSkillsSinceTurn)) {
+            if (mirrorsAutoBattleConfig.CVAutoBattleClickAllSkills) {
+                if (turn >= parseInt(mirrorsAutoBattleConfig.CVAutoBattleClickSkillsSinceTurn)) {
                     //一般在第3回合后主动技能才冷却完毕
                     //闭着眼放出所有主动技能，可能有洗盘动作
                     clickAllSkills();
@@ -10629,7 +10780,7 @@ function algo_init() {
             }
 
             //扫描行动盘和战场信息
-            scanDisks();
+            scanDisks();//FIXME 如果有已经按下的盘则没计入clickedDisksCount
             scanBattleField("our");
             scanBattleField("their");
 
@@ -10743,9 +10894,10 @@ function algo_init() {
                 if (advAttrEnemies.length > 0) avoidAimAtEnemies(advAttrEnemies);
             }
 
-            if (limit.CVAutoBattleClickAllMagiaDisks) {
+            if (mirrorsAutoBattleConfig.CVAutoBattleClickAllMagiaDisks) {
                 //闭着眼放出所有Magia/Doppel大招
-                clickAllMagiaDisks();
+                if (mirrorsAutoBattleConfig.CVAutoBattleTryToConnect && turn <= 2) log("第二回合先点连携盘");
+                else clickAllMagiaDisks();
                 //如果三个盘都是Magia/Doppel那就不用选A/B/C盘了
                 if (clickedDisksCount >= 3) continue;
             }
@@ -10765,23 +10917,29 @@ function algo_init() {
                 //如果有连携，第一个盘上连携
                 let selectedDisk = connectableDisks[0];
                 //连携尽量用accel/blast盘
-                let AorBConnectableDisks = findSameActionDisks(connectableDisks, limit.CVAutoBattlePreferAccel ? "accel" : "blast");
+                let AorBConnectableDisks = findSameActionDisks(connectableDisks, mirrorsAutoBattleConfig.CVAutoBattlePreferAccel ? "accel" : "blast");
                 if (AorBConnectableDisks.length > 0) selectedDisk = AorBConnectableDisks[0];
                 prioritiseDisks([selectedDisk]); //将当前连携盘从选盘中排除
-                connectDisk(selectedDisk);
+                if (connectDisk(selectedDisk)) {
+                    if (mirrorsAutoBattleConfig.CVAutoBattleTryToConnect && turn == 2) {
+                        //在第2回合如预期一样凑出了连携
+                        //闭着眼放出所有Magia/Doppel大招
+                        clickAllMagiaDisks();
+                    }
+                }
                 //上连携后，尽量用接连携的角色
                 let connectAcceptorDisks = findDisksByCharaID(allActionDisks, selectedDisk.connectedTo);
                 prioritiseDisks(connectAcceptorDisks);
                 //连携的角色尽量打出Accel/Blast/Charge Combo
                 let sameActionComboDisks = findSameActionDisks(
-                    limit.CVAutoBattlePreferABCCombo
+                    mirrorsAutoBattleConfig.CVAutoBattlePreferABCCombo
                         ? allActionDisks.filter((val) => ordinalNum[val.priority] >= clickedDisksCount)
                         : connectAcceptorDisks,
                     selectedDisk.action
                 );
                 if (sameActionComboDisks.length >= 2) {
                     prioritiseDisks(sameActionComboDisks);
-                    if (limit.CVAutoBattlePreferABCCombo) {
+                    if (mirrorsAutoBattleConfig.CVAutoBattlePreferABCCombo) {
                         prioritiseDisks(sameActionComboDisks.filter(
                             (disk) => connectAcceptorDisks.find((val) => disk.position == val.position) != null
                         ));
@@ -10790,9 +10948,9 @@ function algo_init() {
                     //凑不够Accel/Blast/Charge Combo，再试试XCA/XCB
                     let chargeDisks = findSameActionDisks(connectAcceptorDisks, "charge");
                     if (chargeDisks.length > 0) {
-                        let AccelOrBlastDisks = findSameActionDisks(connectAcceptorDisks, limit.CVAutoBattlePreferAccel ? "accel" : "blast");
+                        let AccelOrBlastDisks = findSameActionDisks(connectAcceptorDisks, mirrorsAutoBattleConfig.CVAutoBattlePreferAccel ? "accel" : "blast");
                         if (AccelOrBlastDisks.length == 0) {
-                            AccelOrBlastDisks = findSameActionDisks(connectAcceptorDisks, limit.CVAutoBattlePreferAccel ? "blast" : "accel");
+                            AccelOrBlastDisks = findSameActionDisks(connectAcceptorDisks, mirrorsAutoBattleConfig.CVAutoBattlePreferAccel ? "blast" : "accel");
                         }
                         if (AccelOrBlastDisks.length > 0) {
                             prioritiseDisks([chargeDisks[0], AccelOrBlastDisks[0]]);
@@ -10805,19 +10963,19 @@ function algo_init() {
                 //默认先找Puella Combo
                 let sameCharaDisks = findSameCharaDisks(allActionDisks);
                 if (sameCharaDisks.length >= 3) {
-                    candidateDisks = limit.CVAutoBattlePreferABCCombo ? allActionDisks : sameCharaDisks;
-                    if (!limit.CVAutoBattlePreferABCCombo) {
+                    candidateDisks = mirrorsAutoBattleConfig.CVAutoBattlePreferABCCombo ? allActionDisks : sameCharaDisks;
+                    if (!mirrorsAutoBattleConfig.CVAutoBattlePreferABCCombo) {
                         prioritiseDisks(sameCharaDisks);
                     }
                 }
                 //再依次找Accel/Blast/Charge Combo
                 let comboDisks = [];
-                let sameactionseq = limit.CVAutoBattlePreferAccel ? ["accel", "blast", "charge"] : ["blast", "accel", "charge"];
+                let sameactionseq = mirrorsAutoBattleConfig.CVAutoBattlePreferAccel ? ["accel", "blast", "charge"] : ["blast", "accel", "charge"];
                 for (let action of sameactionseq) {
                     comboDisks = findSameActionDisks(candidateDisks, action);
                     if (comboDisks.length >= 3) {
                         prioritiseDisks(comboDisks);
-                        if (limit.CVAutoBattlePreferABCCombo) {
+                        if (mirrorsAutoBattleConfig.CVAutoBattlePreferABCCombo) {
                             //已经优先凑出了Accel/Blast/Charge Combo，继续尝试在Accel/Blast/Charge Combo凑出Puella Combo
                             prioritiseDisks(findSameCharaDisks(comboDisks));
                         }
@@ -10836,7 +10994,7 @@ function algo_init() {
                             ACB: ["accel", "charge", "blast"],
                         };
                         //如果开启优先用Accel盘,则优先找ACA、ACB
-                        for (let name of (limit.CVAutoBattlePreferAccel ? ["ACA", "ACB"] : ["ACB", "ACA"])) {
+                        for (let name of (mirrorsAutoBattleConfig.CVAutoBattlePreferAccel ? ["ACA", "ACB"] : ["ACB", "ACA"])) {
                             if (lastPreferredDisksCandidates[name] == null)
                                 lastPreferredDisksCandidates[name] = [];
                             let nonsameactionseq = nonsameactionsequences[name];
@@ -10870,7 +11028,7 @@ function algo_init() {
                     //(应该是点击了magia/doppel盘)没有连携,但已点击盘数大于0(且小于3,否则3个盘已经全点完了,不过点完3个M/D盘后也不应该走到这里),
                     //为了方便单鹤乃这种只有2个A的盘型(比如鹤乃是AABBC),放出magia后,就继续点击剩下2个A盘(总体上是点击了MAA这3个盘)
                     //简而言之,(只在开启“优先用Accel盘”的情况下)方便连续点击MAA这3个盘
-                    let accelOrBlastDisks = findSameActionDisks(allActionDisks, limit.CVAutoBattlePreferAccel ? "accel" : "blast");
+                    let accelOrBlastDisks = findSameActionDisks(allActionDisks, mirrorsAutoBattleConfig.CVAutoBattlePreferAccel ? "accel" : "blast");
                     if (accelOrBlastDisks.length >= 2) {
                         //A/B盘有2个或以上,继续点击剩下的A/B盘
                         prioritiseDisks(accelOrBlastDisks);
@@ -10895,7 +11053,7 @@ function algo_init() {
             }
 
             //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
-            for (let i=clickedDisksCount; i<3; i++) {
+            for (let i=clickedDisksCount, triedMagia = false; i<3; i++) {
                 let diskToClick = getDiskByPriority(allActionDisks, ordinalWord[i]);
                 //有时候点连携盘会变成长按拿起又放下，改成拖出去连携来避免这个问题
                 if (diskToClick.connectable) {
@@ -10910,6 +11068,20 @@ function algo_init() {
                     }
                 } else {
                     clickDisk(diskToClick);
+                }
+            }
+
+            if (mirrorsAutoBattleConfig.CVAutoBattleTryToConnect) {
+                if (turn + 1 >= 3) {
+                    for (let deadlineTime = new Date().getTime() + 10 * 1000; //等待AUTO按钮出现最多10秒
+                        new Date().getTime() < deadlineTime;
+                    ) {
+                        if (toggleAutoBtn(true)) break;
+                        sleep(500);
+                    }
+                    recycleAllImages();//回收所有图片
+                    log("交给游戏内建AUTO");
+                    return;//放飞
                 }
             }
         }
@@ -11980,21 +12152,16 @@ function algo_init() {
             let newSectionOnMapPoint = null;
 
             let screenshot = compatCaptureScreen();
-            if (isBattleThere(screenshot)) {
-                let isNewQuest = false;
-                for (let i = 0, deadlineTime = new Date().getTime() + 5000; i < 2 || new Date().getTime() < deadlineTime; i++) {
-                    isNewQuest = isMarkedAsNewQuest((screenshot = compatCaptureScreen()));
-                    if (isNewQuest) break; //再三确认已经不是new了
-                }
-                if (isNewQuest) {
-                    click(convertCoords(getAreaCenter(knownNewQuestCoords)));
-                } else {
-                    click(convertCoords(clickSets.back));
-                }
-            } else if (isFirstSupportAvailable(screenshot)) {
+            if (isFirstSupportAvailable(screenshot)) {
                 click(convertCoords(knownFirstPtPoint));
             } else if (isStartButtonPresent(screenshot)) {
                 click(convertCoords(clickSets.start));
+                if (limit.openUpTryToConnect) {
+                    mirrorsAutoBattleMain({
+                        CVAutoBattleTryToConnect: true,
+                        CVAutoBattleClickAllSkills: limit.openUpClickAllSkills ? true : false,
+                    });
+                }
             } else if (isDownloadDataOKButtonPresent(screenshot)) {
                 click(convertCoords(clickSets.dataDownloadOK));
             } else if (isSkipButtonPresent(screenshot)) {
@@ -12005,11 +12172,21 @@ function algo_init() {
                 click(convertCoords(clickSets.closeFollowPrompt));
             } else if (isSectionClear(screenshot)) {
                 click(convertCoords(clickSets.screenCenter));
+            //下面两个匹配很慢所以放到最后
+            } else if (isBattleThere(screenshot)) {
+                let isNewQuest = false;
+                for (let i = 0, deadlineTime = new Date().getTime() + 5000; i < 2 || new Date().getTime() < deadlineTime; i++) {
+                    isNewQuest = isMarkedAsNewQuest((screenshot = compatCaptureScreen()));
+                    if (isNewQuest) break; //再三确认已经不是new了
+                }
+                if (isNewQuest) {
+                    click(convertCoords(getAreaCenter(knownNewQuestCoords)));
+                } else {
+                    click(convertCoords(clickSets.back));
+                }
             } else if ((newSectionOnMapPoint = findNewSectionOnMap(screenshot))) {
-                //这个匹配很慢所以放到最后
                 click(newSectionOnMapPoint);
                 newSectionOnMapPoint = null;
-                sleep(3000);
             }
             sleep(1000);
         }

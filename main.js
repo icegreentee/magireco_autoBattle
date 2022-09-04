@@ -471,6 +471,24 @@ ui.layout(
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
+                        <text text="(日服)临时开荒辅助脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
+                        <vertical padding="10 6 0 6" w="*" h="auto">
+                            <vertical padding="0 8 0 6" w="*" h="auto">
+                                <Switch id="toggleOpenUpExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
+                            </vertical>
+                            <vertical id="OpenUpExtraSettings1" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <Switch id="openUpTryToConnect" w="*" margin="0 3" checked="false" textColor="#000000" text="尽量凑连携" />
+                                <text text="开启后会利用识图自动战斗脚本先解除游戏内建AUTO，然后在第1回合打出Puella Combo、第2回合尽量凑出连携，再重新开启内建AUTO。" textColor="#000000" />
+                                <text text="开启后推荐使用双人队（包括助战在内共2人），否则第2回合可能凑不出连携。" textColor="#ff0000" />
+                            </vertical>
+                            <vertical id="OpenUpExtraSettings2" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <Switch id="openUpClickAllSkills" w="*" margin="0 3" checked="false" textColor="#000000" text="凑连携时使用主动技能" />
+                                <text text="为节省时间，在凑连携时默认不使用主动技能。" textColor="#000000" />
+                                <text text="注：是否使用Magia仍然依照识图自动战斗脚本的设置。" textColor="#000000" />
+                            </vertical>
+                        </vertical>
+                    </vertical>
+                    <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
                         <text text="关于" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <linear padding="10 6" bg="#ffffff">
                             <text id="" layout_weight="1" color="#666666" text="版权声明，本app仅供娱乐学习使用，且永久免费，不可进行出售盈利。作者bilibili 虹之宝玉  群号：453053507" />
@@ -791,7 +809,7 @@ function setToggleListener(key) {
         }
     });
 }
-for (let key of ["Default", "DefaultCrashRestart", "Dungeon", "Mirrors", "CVAutoBattle"]) {
+for (let key of ["Default", "DefaultCrashRestart", "Dungeon", "Mirrors", "CVAutoBattle", "OpenUp"]) {
     setToggleListener(key);
 }
 
@@ -916,6 +934,8 @@ const persistParamList = [
     "dungeonPostRewardWaitSec",
     "dungeonBattleTimeoutSec",
     "dungeonBattleCountBeforeKill",
+    "openUpTryToConnect",
+    "openUpClickAllSkills",
 ];
 const tempParamList = [
     "drug1",
