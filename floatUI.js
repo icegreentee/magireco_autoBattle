@@ -8285,6 +8285,7 @@ function algo_init() {
         "fire32x32",
         "wood32x32",
         "none32x32",
+        "support",
         "mirrorsEntranceBtn",
         "mirrorsVS",
         "mirrorsRedTriangle",
@@ -8634,6 +8635,18 @@ function algo_init() {
                 pos: "bottom"
             }
         },
+        support: {
+            topLeft: {
+                x:  375,
+                y:  1047,
+                pos: "bottom"
+            },
+            bottomRight: {
+                x:   463,
+                y:   1066,
+                pos: "bottom"
+            }
+        },
         //行动盘之间的距离
         distance: 270
     };
@@ -8649,7 +8662,8 @@ function algo_init() {
             charaImg:    null,
             charaID:     0,
             connectable: false,
-            connectedTo:   -1
+            connectedTo:   -1,
+            isSupport: false,
         },
         {
             position:    1,
@@ -8660,7 +8674,8 @@ function algo_init() {
             charaImg:    null,
             charaID:     1,
             connectable: false,
-            connectedTo:   -1
+            connectedTo:   -1,
+            isSupport: false,
         },
         {
             position:    2,
@@ -8672,7 +8687,8 @@ function algo_init() {
             charaImg:    null,
             charaID:     2,
             connectable: false,
-            connectedTo:   -1
+            connectedTo:   -1,
+            isSupport: false,
         },
         {
             position:    3,
@@ -8683,7 +8699,8 @@ function algo_init() {
             charaImg:    null,
             charaID:     3,
             connectable: false,
-            connectedTo:   -1
+            connectedTo:   -1,
+            isSupport: false,
         },
         {
             position:    4,
@@ -8694,7 +8711,8 @@ function algo_init() {
             charaImg:    null,
             charaID:     4,
             connectable: false,
-            connectedTo:   -1
+            connectedTo:   -1,
+            isSupport: false,
         }
     ];
     var clickedDisksCount = 0;
@@ -8715,9 +8733,9 @@ function algo_init() {
         let downStr = "未按下"
         if (disk.down) downStr = "【按下】"
         if (isMagiaDoppel) {
-            log("第", disk.position+1, "号盘", disk.action, disk.priority, /*"角色", disk.charaID, */"属性", disk.attrib, downStr);
+            log("第", disk.position+1, "号盘", disk.action, disk.priority, /*"角色", disk.charaID, */"属性", disk.attrib, disk.isSupport?"【助战】":"自带角色", downStr);
         } else {
-            log("第", disk.position+1, "号盘", disk.action, disk.priority, "角色", disk.charaID, "属性", disk.attrib, connectableStr, "连携到角色", disk.connectedTo, downStr);
+            log("第", disk.position+1, "号盘", disk.action, disk.priority, "角色", disk.charaID, "属性", disk.attrib, disk.isSupport?"【助战】":"自带角色", connectableStr, "连携到角色", disk.connectedTo, downStr);
         }
     }
 
@@ -8984,6 +9002,27 @@ function algo_init() {
         return result;
     }
 
+    //判断盘是否助战
+    function isDiskSupport(screenshot, diskPos) {
+        let img = getDiskImg(screenshot, diskPos, "support");
+        let refImg = knownImgs.support;
+        let firstDiskArea = getDiskArea(0, "support");
+        let gaussianX = parseInt(getAreaWidth(firstDiskArea) / 3);
+        let gaussianY = parseInt(getAreaHeight(firstDiskArea) / 3);
+        if (gaussianX % 2 == 0) gaussianX += 1;
+        if (gaussianY % 2 == 0) gaussianY += 1;
+        let gaussianSize = [gaussianX, gaussianY];
+        let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
+        let imgBlur = renewImage(images.gaussianBlur(img, gaussianSize));
+        let similarity = images.getSimilarity(refImgBlur, imgBlur, {"type": "MSSIM"});
+        let result = false
+        if (similarity > 2.1) {
+            log("第", diskPos+1, "号盘【是助战】，MSSIM=", similarity);
+            result = true;
+        }
+        return result;
+    }
+
     //判断两个盘是否是同一角色
     function areDisksSimilar(screenshot, diskAPos, diskBPos) {
         let diskA = allActionDisks[diskAPos];
@@ -9021,6 +9060,7 @@ function algo_init() {
             allActionDisks[i].charaID = i;
             allActionDisks[i].connectable = false;
             allActionDisks[i].connectedTo = -1;
+            allActionDisks[i].isSupport = false;
         }
         clickedDisksCount = 0;
 
@@ -9036,6 +9076,7 @@ function algo_init() {
             let diskAttribDown = getDiskAttribDown(screenshot, i);
             disk.attrib = diskAttribDown.attrib;
             disk.down = diskAttribDown.down; //这里，虽然getDiskAttribDown()可以识别盘是否按下，但是因为后面分辨不同的角色的问题还无法解决，所以意义不是很大
+            disk.isSupport = isDiskSupport(screenshot, i);
         }
         //分辨不同的角色，用charaID标记
         //如果有盘被点击过，在有属性克制的情况下，这个检测可能被闪光特效干扰
@@ -9044,7 +9085,7 @@ function algo_init() {
             let diskI = allActionDisks[i];
             for (let j=i+1; j<allActionDisks.length; j++) {
                 let diskJ = allActionDisks[j];
-                if (areDisksSimilar(screenshot, i, j)) {
+                if (diskI.isSupport == diskJ.isSupport && areDisksSimilar(screenshot, i, j)) {
                     diskJ.charaID = diskI.charaID;
                 }
             }
@@ -10058,7 +10099,8 @@ function algo_init() {
                 action:      "magia",
                 attrib:      "none",
                 //charaImg:    null,
-                //charaID:     0
+                //charaID:     0,
+                isSupport:   false,
             };
             let action = getDiskActionMagiaDoppel(screenshot, i);
             if (action != "magia" && action != "doppel") break;
@@ -10067,6 +10109,7 @@ function algo_init() {
             let diskAttribDown = getDiskAttribDown(screenshot, i);
             disk.attrib = diskAttribDown.attrib;
             disk.down = diskAttribDown.down; //这里，虽然getDiskAttribDown()可以识别盘是否按下，但是因为后面分辨不同的角色的问题还无法解决，所以意义不是很大
+            disk.isSupport = isDiskSupport(screenshot, i);
             result.push(disk);
         }
         //分辨不同的角色，用charaID标记
