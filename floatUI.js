@@ -2564,7 +2564,10 @@ function algo_init() {
         }
 
         if (ocr == null) {
-            dialogs.alert("加载OCR插件出错");
+            dialogs.alert("加载OCR插件出错",
+                "可能是因为AutoJSPro引擎版本过旧,但仍未下载安装最新apk安装包进行更新。\n"
+                +"注意:因为6.3.6更换了签名私钥,所以无法从比6.3.6老的“底包”直接覆盖安装,会报错签名不符,需要先卸载旧版。"
+            );
             stopThread();
         }
 
@@ -3904,8 +3907,8 @@ function algo_init() {
                 let availableForJP = floatUI.scripts.find((item) => item.name === currentTaskName && item.availableForJP);
                 if (!availableForJP) dialogs.alert(
                     "检测到日服",
-                    "自日服游戏客户端强制升级至2.4.1版之后,绝大多数脚本在日服上都已失效!\n"
-                    +"失效原因是:无障碍服务在游戏内只能抓取到一个空壳webview控件,除此之外无法抓取到任何控件信息。\n"
+                    "大约自日服游戏客户端强制升级至2.4.1版的时间点(大约2021年8月下旬)之后,绝大多数脚本在日服上都已失效!\n"
+                    +"失效原因是:脚本依赖无障碍服务抓取文字、按钮位置等控件信息,而日服自那时起在Web层面已经主动屏蔽无障碍服务。。\n"
                     +"点击\"确定\"后当前脚本将继续运行,但应该不能正常工作。\n"
                     +"（目前正在尝试适配不依赖无障碍服务、只基于识图的镜层周回与识图自动战斗脚本）"
                 );
@@ -11191,7 +11194,7 @@ function algo_init() {
         //r1c1 Lv: [232,236][253,258] 100: [260,228][301,260]
         //r3c3 Lv: [684,688][705,710] 100: [712,680][753,712]
         accessibility: {
-            topLeft: {x: 227, y: 223, pos: "center"},
+            topLeft: {x: 220, y: 223, pos: "center"},
             bottomRight: {x: 306, y: 265, pos: "center"},
         },
         /* cv: {//空心字OCR识别问题暂未解决，注释掉
@@ -11981,7 +11984,8 @@ function algo_init() {
         //[1078,473][1232,513]
         //内置OCR插件貌似传入更大图片区域识别效果更好，所以这里传入整个关卡按钮
         topLeft: {
-            x: 1000, y: 420, pos: "top"
+            //x: 1000, y: 420, pos: "top" //门票活动貌似更偏左上方，故改成下一行这样
+            x: 855, y: 340, pos: "top"
         },
         bottomRight: {
             x: 1919, y: 654, pos: "top"
@@ -12002,7 +12006,8 @@ function algo_init() {
     function isBattleThere(screenshot) {
         const knownBattleTextArea = {
             topLeft: {
-                x: 1097, y: 512, pos: "top"
+                //x: 1097, y: 512, pos: "top" //门票活动貌似更偏左上方，故改成下一行这样
+                x: 952, y: 392, pos: "top"
             },
             bottomRight: {
                 x: 1470, y: 629, pos: "top"
@@ -12056,12 +12061,12 @@ function algo_init() {
 
     const knownQuestCoords = {
         playerSupport: {
-            topLeft: {x: 1490, y: 301, pos: "top"},
-            bottomRight: {x: 1529, y: 340, pos: "top"},
+            topLeft: {x: 1401, y: 301, pos: "top"},
+            bottomRight: {x: 1440, y: 340, pos: "top"},
         },
         NPCSupport: {
-            topLeft: {x: 1490, y: 301, pos: "top"},
-            bottomRight: {x: 1529, y: 340, pos: "top"},
+            topLeft: {x: 1401, y: 301, pos: "top"},
+            bottomRight: {x: 1440, y: 340, pos: "top"},
         },
         followPrompt: {
             topLeft: {x: 801, y: 374, pos: "center"},
