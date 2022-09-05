@@ -739,14 +739,18 @@ function detectCwvqLUVersion() {
         } catch (e) {
             currentVersionCode = NaN;
         }
+        const reminderStr = "继续使用可能碰到问题\n"
+            +"推荐下载最新apk安装包进行更新\n"
+            +"注意:因为6.3.6更换了签名私钥,所以无法从比6.3.6老的“底包”直接覆盖安装,会报错签名不符,需要先卸载旧版。\n"
+            +"(当前打包版本:["+getProjectVersion()+"])";
         if (isNaN(currentVersionCode)) {
-            ui.cwvqlu_ver_text.setText(deObStr("无法检测 CwvqLU Pro 引擎版本\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新"));
+            ui.cwvqlu_ver_text.setText(deObStr("无法检测 CwvqLU Pro 引擎版本\n"+reminderStr));
             ui.cwvqlu_ver_vertical.setVisibility(View.VISIBLE);
             return;
         }
         log(deObStr("CwvqLU Pro 引擎版本versionCode"), currentVersionCode);
         if (currentVersionCode < lowestVersionCode) {
-            ui.cwvqlu_ver_text.setText(deObStr("CwvqLU Pro 引擎版本过低\n当前版本versionCode=["+currentVersionCode+"]\n最低要求versionCode=["+lowestVersionCode+"]\n继续使用可能碰到问题\n推荐下载最新apk安装包进行更新"));
+            ui.cwvqlu_ver_text.setText(deObStr("CwvqLU Pro 引擎版本过低\n当前版本versionCode=["+currentVersionCode+"]\n最低要求versionCode=["+lowestVersionCode+"]\n"+reminderStr));
             ui.cwvqlu_ver_vertical.setVisibility(View.VISIBLE);
             return;
         }

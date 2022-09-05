@@ -2564,7 +2564,10 @@ function algo_init() {
         }
 
         if (ocr == null) {
-            dialogs.alert("加载OCR插件出错");
+            dialogs.alert("加载OCR插件出错",
+                "可能是因为AutoJSPro引擎版本过旧,但仍未下载安装最新apk安装包进行更新。\n"
+                +"注意:因为6.3.6更换了签名私钥,所以无法从比6.3.6老的“底包”直接覆盖安装,会报错签名不符,需要先卸载旧版。"
+            );
             stopThread();
         }
 
