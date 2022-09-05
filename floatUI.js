@@ -11981,7 +11981,8 @@ function algo_init() {
         //[1078,473][1232,513]
         //内置OCR插件貌似传入更大图片区域识别效果更好，所以这里传入整个关卡按钮
         topLeft: {
-            x: 1000, y: 420, pos: "top"
+            //x: 1000, y: 420, pos: "top" //门票活动貌似更偏左上方，故改成下一行这样
+            x: 855, y: 340, pos: "top"
         },
         bottomRight: {
             x: 1919, y: 654, pos: "top"
@@ -12002,7 +12003,8 @@ function algo_init() {
     function isBattleThere(screenshot) {
         const knownBattleTextArea = {
             topLeft: {
-                x: 1097, y: 512, pos: "top"
+                //x: 1097, y: 512, pos: "top" //门票活动貌似更偏左上方，故改成下一行这样
+                x: 952, y: 392, pos: "top"
             },
             bottomRight: {
                 x: 1470, y: 629, pos: "top"
