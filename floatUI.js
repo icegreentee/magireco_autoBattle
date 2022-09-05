@@ -12058,12 +12058,12 @@ function algo_init() {
 
     const knownQuestCoords = {
         playerSupport: {
-            topLeft: {x: 1490, y: 301, pos: "top"},
-            bottomRight: {x: 1529, y: 340, pos: "top"},
+            topLeft: {x: 1401, y: 301, pos: "top"},
+            bottomRight: {x: 1440, y: 340, pos: "top"},
         },
         NPCSupport: {
-            topLeft: {x: 1490, y: 301, pos: "top"},
-            bottomRight: {x: 1529, y: 340, pos: "top"},
+            topLeft: {x: 1401, y: 301, pos: "top"},
+            bottomRight: {x: 1440, y: 340, pos: "top"},
         },
         followPrompt: {
             topLeft: {x: 801, y: 374, pos: "center"},
