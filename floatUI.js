@@ -11191,7 +11191,7 @@ function algo_init() {
         //r1c1 Lv: [232,236][253,258] 100: [260,228][301,260]
         //r3c3 Lv: [684,688][705,710] 100: [712,680][753,712]
         accessibility: {
-            topLeft: {x: 227, y: 223, pos: "center"},
+            topLeft: {x: 220, y: 223, pos: "center"},
             bottomRight: {x: 306, y: 265, pos: "center"},
         },
         /* cv: {//空心字OCR识别问题暂未解决，注释掉
