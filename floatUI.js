@@ -58,6 +58,7 @@ var origFunc = {
 }
 
 var OCR = null, ocr = null;
+const extFilesDir = context.getExternalFilesDir(null).getAbsolutePath(); //用于中转存放可执行文件
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
@@ -5487,7 +5488,7 @@ function algo_init() {
             +"\nPID=$!;"
             +"\necho \"${PID}\" > /data/local/tmp/auto_magireco_fatal_killer.pid;"
             +"\n"
-        let binaryCopyFromPath = files.cwd()+"/bin/auto_magireco_fatal_killer.sh";
+        let binaryCopyFromPath = extFilesDir+"/bin/auto_magireco_fatal_killer.sh";
         files.ensureDir(binaryCopyFromPath);
         files.create(binaryCopyFromPath);
         files.write(binaryCopyFromPath, content);
@@ -7737,7 +7738,6 @@ function algo_init() {
     }
     //在/data/local/tmp/下安装scrcap2bmp
     var binarySetupDone = false;
-    const binURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.6.0";
     function setupBinary() {
         if (binarySetupDone) return binarySetupDone;
 
@@ -7761,11 +7761,20 @@ function algo_init() {
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName);
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin");
 
-        log(privShell("rm "+binaryCopyToPath));
-        let result = privShell("cp "+binaryCopyFromPath+" "+binaryCopyToPath);
-        log(result);
-        if (result.code != 0) result = privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
+        normalShell("rm -f "+binaryCopyToPath);
+        privShell("rm -f "+binaryCopyToPath);
+
+        let result = privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
         log(result.code, result.error);
+        if (result.code != 0) {
+            let newBinaryCopyFromPath = files.join(extFilesDir, binaryFileName);
+            files.ensureDir(newBinaryCopyFromPath);
+            files.copy(binaryCopyFromPath, newBinaryCopyFromPath);
+            result = privShell("cat "+newBinaryCopyFromPath+" > "+binaryCopyToPath);
+            log(result.code, result.error);
+            files.remove(newBinaryCopyFromPath);
+        }
+
         privShell("chmod 755 "+binaryCopyToPath);
 
         binarySetupDone = true;
