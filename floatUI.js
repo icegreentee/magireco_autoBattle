@@ -7756,6 +7756,13 @@ function algo_init() {
 
         normalShell("chmod a+r "+binaryCopyFromPath);
 
+        //调查红米K50电竞版不能shizuku截屏的问题(device=ingres model=21121210C)
+        for (let path of [dataDir+"/../../../", dataDir+"/../../", dataDir+"/../", dataDir, binaryCopyFromPath]) {
+            for (let func of [normalShell, privShell]) {
+                log(func("stat "+path));
+            }
+        }
+
         privShell("mkdir "+"/data/local/tmp/"+CwvqLUPkgName);
         privShell("mkdir "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin");
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName);
@@ -7932,7 +7939,7 @@ function algo_init() {
     var localHttpListenPort = -1;
     function detectScreencapLength() {
         let result = privShell("screencap | "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin/scrcap2bmp -a -l");
-        if (result.code == 0) return parseInt(result.error);
+        if (result.code == 0 && !isNaN(parseInt(result.error))) return parseInt(result.error);
         else log(result);
         throw "detectScreencapLengthFailed"
     }
