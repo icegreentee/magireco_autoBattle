@@ -7922,6 +7922,7 @@ function algo_init() {
     function detectScreencapLength() {
         let result = privShell("screencap | "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin/scrcap2bmp -a -l");
         if (result.code == 0) return parseInt(result.error);
+        else log(result);
         throw "detectScreencapLengthFailed"
     }
     function findListenPort() {
@@ -8003,8 +8004,8 @@ function algo_init() {
         if (limit.rootScreencap) {
             //使用shell命令 screencap 截图
             try {screencapShellCmdThread.interrupt();} catch (e) {};
-            if (localHttpListenPort<0) localHttpListenPort = findListenPort();
             if (screencapLength < 0) screencapLength = detectScreencapLength();
+            if (localHttpListenPort<0) localHttpListenPort = findListenPort();
             if (screencapLength <= 0) {
                 log("screencapLength="+screencapLength+"<= 0, exit");
                 stopThread();
