@@ -9785,7 +9785,8 @@ function algo_init() {
         log("isAUTOEnabled onePx", colors.toString(images.pixel(onePx, 0, 0)));
         for (let status in knownColors) {
             let c = knownColors[status];
-            if (images.detectsColor(onePx, c, 0, 0, 10, "rgb")) {
+            let threshold = 27; //on与off之间的rgb距离貌似是58
+            if (images.detectsColor(onePx, c, 0, 0, threshold, "rgb")) {
                 let area = getConvertedArea(knownAUTOSpeedButtonArea);
                 let clickPos = area.topLeft;
                 clickPos.x += parseInt(bounds.top + bounds.width() / 2);
