@@ -7929,7 +7929,7 @@ function algo_init() {
         for (let i=11023; i<65535; i+=16) {
             let cmd = "/data/local/tmp/"+CwvqLUPkgName+"/sbin/scrcap2bmp -t"+i;
             let result = privShell(cmd);
-            if (result.code == 0 && result.error.includes("Port "+i+" is available")) {
+            if (result.code == 0) {//原先这里会检查stderr的内容，端口监听成功会写到stderr，但红米K50游戏版shizuku似乎不行
                 log("可用监听端口", i);
                 return i;
             }
