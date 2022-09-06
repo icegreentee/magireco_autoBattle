@@ -5488,14 +5488,17 @@ function algo_init() {
             +"\nPID=$!;"
             +"\necho \"${PID}\" > /data/local/tmp/auto_magireco_fatal_killer.pid;"
             +"\n"
+        let oldBinaryCopyFromPath = dataDir+"/bin/auto_magireco_fatal_killer.sh";
         let binaryCopyFromPath = extFilesDir+"/bin/auto_magireco_fatal_killer.sh";
-        files.ensureDir(binaryCopyFromPath);
-        files.create(binaryCopyFromPath);
-        files.write(binaryCopyFromPath, content);
-        normalShell("chmod 644 "+binaryCopyFromPath);
+        for (let path of [oldBinaryCopyFromPath, binaryCopyFromPath]) {
+            files.ensureDir(path);
+            files.write(path, content);
+            normalShell("chmod 644 "+path);
+        }
         if (limit.privilege != null) {
             privShell("cat \""+binaryCopyFromPath+"\" > \""+filePath+"\"");
             privShell("chmod 755 "+filePath);
+            if (!compareFiles(oldBinaryCopyFromPath, filePath)) throw new Error("compareFiles returned false");
             var shellcmd = "runbg() { \""+filePath+"\" > /dev/null & }; runbgbg() { runbg & }; runbgbg & exit;\n";
             let t = threads.start(function () {privShell(shellcmd);});
             t.waitFor();
@@ -7712,6 +7715,27 @@ function algo_init() {
         }
     }
 
+    function compareFiles(fileA, fileB) {
+        let lastFileHash = null;
+        for (let filePath of [fileA, fileB]) {
+            let fileBytes = null;
+            try {
+                fileBytes = files.readBytes(filePath);
+            } catch (e) {
+                log(e);
+            }
+            if (fileBytes != null) {
+                let fileHash = $crypto.digest(fileBytes, "SHA-256", {input: "bytes", output: "base64"});
+                if (lastFileHash == null) lastFileHash = fileHash;
+                if (lastFileHash !== fileHash) {
+                    log("lastFileHash !== fileHash");
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     /* ~~~~~~~~ 截图兼容模块 开始 ~~~~~~~~ */
     var CwvqLUPkgName = context.getPackageName();
     var dataDir = files.cwd();
@@ -7777,7 +7801,8 @@ function algo_init() {
 
         privShell("chmod 755 "+binaryCopyToPath);
 
-        binarySetupDone = true;
+        if (!compareFiles(binaryCopyFromPath, binaryCopyToPath)) binarySetupDone = false;
+        else binarySetupDone = true;
     }
 
     //申请截屏权限
