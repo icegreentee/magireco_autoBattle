@@ -7761,36 +7761,11 @@ function algo_init() {
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName);
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin");
 
-        let result = normalShell("id");
+        log(privShell("rm "+binaryCopyToPath));
+        let result = privShell("cp "+binaryCopyFromPath+" "+binaryCopyToPath);
         log(result);
-        if (result.code == 0) {
-            let username = result.result.match(/^uid=\d+\(u\d+_a\d+\)/);
-            if (username != null) username = username[0].match(/u\d+_a\d+/);
-            if (username != null) username = username[0];
-            if (username != null) {
-                privShell("chown -R "+username+":"+username+" "+"/data/local/tmp/"+CwvqLUPkgName);
-            }
-        }
-
-        privShell("rm -f "+binaryCopyToPath);
-        normalShell("rm -f "+binaryCopyToPath);
-
-        const shellcmds = [
-            "cp "+binaryCopyFromPath+" "+binaryCopyToPath,
-            "cat "+binaryCopyFromPath+" > "+binaryCopyToPath,
-        ];
-        for (let shellFunc of [normalShell, privShell]) {
-            for (let shellcmd of shellcmds)  {
-                result = shellFunc(shellcmd);
-                if (result.code == 0) break;
-            }
-            if (result.code == 0) break;
-        }
-        if (result.code != 0) {
-            log(result.code, result.error);
-            binarySetupDone = false;
-            return;
-        }
+        if (result.code != 0) result = privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
+        log(result.code, result.error);
         privShell("chmod 755 "+binaryCopyToPath);
 
         binarySetupDone = true;
