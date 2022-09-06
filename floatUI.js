@@ -58,6 +58,7 @@ var origFunc = {
 }
 
 var OCR = null, ocr = null;
+const extFilesDir = context.getExternalFilesDir(null).getAbsolutePath(); //用于中转存放可执行文件
 
 //注意:这个函数只会返回打包时的版本，而不是在线更新后的版本！
 function getProjectVersion() {
@@ -3915,7 +3916,7 @@ function algo_init() {
                 if (!availableForJP) dialogs.alert(
                     "检测到日服",
                     "大约自日服游戏客户端强制升级至2.4.1版的时间点(大约2021年8月下旬)之后,绝大多数脚本在日服上都已失效!\n"
-                    +"失效原因是:脚本依赖无障碍服务抓取文字、按钮位置等控件信息,而日服自那时起在Web层面已经主动屏蔽无障碍服务。。\n"
+                    +"失效原因是:脚本依赖无障碍服务抓取文字、按钮位置等控件信息,而日服自那时起在Web层面已经主动屏蔽无障碍服务。\n"
                     +"点击\"确定\"后当前脚本将继续运行,但应该不能正常工作。\n"
                     +"（目前正在尝试适配不依赖无障碍服务、只基于识图的镜层周回与识图自动战斗脚本）"
                 );
@@ -5487,14 +5488,17 @@ function algo_init() {
             +"\nPID=$!;"
             +"\necho \"${PID}\" > /data/local/tmp/auto_magireco_fatal_killer.pid;"
             +"\n"
-        let binaryCopyFromPath = files.cwd()+"/bin/auto_magireco_fatal_killer.sh";
-        files.ensureDir(binaryCopyFromPath);
-        files.create(binaryCopyFromPath);
-        files.write(binaryCopyFromPath, content);
-        normalShell("chmod 644 "+binaryCopyFromPath);
+        let oldBinaryCopyFromPath = dataDir+"/bin/auto_magireco_fatal_killer.sh";
+        let binaryCopyFromPath = extFilesDir+"/bin/auto_magireco_fatal_killer.sh";
+        for (let path of [oldBinaryCopyFromPath, binaryCopyFromPath]) {
+            files.ensureDir(path);
+            files.write(path, content);
+            normalShell("chmod 644 "+path);
+        }
         if (limit.privilege != null) {
             privShell("cat \""+binaryCopyFromPath+"\" > \""+filePath+"\"");
             privShell("chmod 755 "+filePath);
+            if (!compareFiles(oldBinaryCopyFromPath, filePath)) throw new Error("compareFiles returned false");
             var shellcmd = "runbg() { \""+filePath+"\" > /dev/null & }; runbgbg() { runbg & }; runbgbg & exit;\n";
             let t = threads.start(function () {privShell(shellcmd);});
             t.waitFor();
@@ -7711,6 +7715,27 @@ function algo_init() {
         }
     }
 
+    function compareFiles(fileA, fileB) {
+        let lastFileHash = null;
+        for (let filePath of [fileA, fileB]) {
+            let fileBytes = null;
+            try {
+                fileBytes = files.readBytes(filePath);
+            } catch (e) {
+                log(e);
+            }
+            if (fileBytes != null) {
+                let fileHash = $crypto.digest(fileBytes, "SHA-256", {input: "bytes", output: "base64"});
+                if (lastFileHash == null) lastFileHash = fileHash;
+                if (lastFileHash !== fileHash) {
+                    log("lastFileHash !== fileHash");
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     /* ~~~~~~~~ 截图兼容模块 开始 ~~~~~~~~ */
     var CwvqLUPkgName = context.getPackageName();
     var dataDir = files.cwd();
@@ -7737,7 +7762,6 @@ function algo_init() {
     }
     //在/data/local/tmp/下安装scrcap2bmp
     var binarySetupDone = false;
-    const binURLBase = "https://cdn.jsdelivr.net/gh/icegreentee/magireco_autoBattle@4.6.0";
     function setupBinary() {
         if (binarySetupDone) return binarySetupDone;
 
@@ -7761,14 +7785,24 @@ function algo_init() {
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName);
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin");
 
-        log(privShell("rm "+binaryCopyToPath));
-        let result = privShell("cp "+binaryCopyFromPath+" "+binaryCopyToPath);
-        log(result);
-        if (result.code != 0) result = privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
+        normalShell("rm -f "+binaryCopyToPath);
+        privShell("rm -f "+binaryCopyToPath);
+
+        let result = privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
         log(result.code, result.error);
+        if (result.code != 0) {
+            let newBinaryCopyFromPath = files.join(extFilesDir, binaryFileName);
+            files.ensureDir(newBinaryCopyFromPath);
+            files.copy(binaryCopyFromPath, newBinaryCopyFromPath);
+            result = privShell("cat "+newBinaryCopyFromPath+" > "+binaryCopyToPath);
+            log(result.code, result.error);
+            files.remove(newBinaryCopyFromPath);
+        }
+
         privShell("chmod 755 "+binaryCopyToPath);
 
-        binarySetupDone = true;
+        if (!compareFiles(binaryCopyFromPath, binaryCopyToPath)) binarySetupDone = false;
+        else binarySetupDone = true;
     }
 
     //申请截屏权限
