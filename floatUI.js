@@ -1473,7 +1473,7 @@ floatUI.main = function () {
         $shell.setDefaultOptions({adb: true});
         let result = $shell(shellcmd);
         $shell.setDefaultOptions({adb: false});
-        if (logstring !== false) log("使用Shizuku"+logstring+" 完成");
+        if (logstring !== false) log("使用Shizuku"+logstring+" ["+result.code+"]");
         return result;
     };
     //直接使用root权限执行shell命令
@@ -1483,7 +1483,7 @@ floatUI.main = function () {
         if (logstring !== false) log("直接使用root权限"+logstring);
         $shell.setDefaultOptions({adb: false});
         let result = $shell(shellcmd, true);
-        if (logstring !== false) log("直接使用root权限"+logstring+" 完成");
+        if (logstring !== false) log("直接使用root权限"+logstring+" ["+result.code+"]");
         return result;
     };
     //根据情况使用Shizuku还是直接使用root执行shell命令
@@ -1510,7 +1510,7 @@ floatUI.main = function () {
         if (logstring !== false) log("不使用特权"+logstring);
         $shell.setDefaultOptions({adb: false});
         let result = $shell(shellcmd);
-        if (logstring !== false) log("不使用特权"+logstring+" 完成");
+        if (logstring !== false) log("不使用特权"+logstring+" ["+result.code+"]");
         return result;
     }
 
