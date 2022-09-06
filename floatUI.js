@@ -7761,7 +7761,11 @@ function algo_init() {
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName);
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin");
 
-        privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
+        log(privShell("rm "+binaryCopyToPath));
+        let result = privShell("cp "+binaryCopyFromPath+" "+binaryCopyToPath);
+        log(result);
+        if (result.code != 0) result = privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
+        log(result.code, result.error);
         privShell("chmod 755 "+binaryCopyToPath);
 
         binarySetupDone = true;
