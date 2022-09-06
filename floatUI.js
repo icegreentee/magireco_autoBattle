@@ -7833,7 +7833,9 @@ function algo_init() {
                 }
                 if (isInitialPortrait && !floatUI.storage.get("doNotRemindAboutMuMu9RotationBug", false)) {
                     let result = dialogs.confirm("⚠️警告⚠️",
-                        "马上会开始申请截屏。如果你在使用MuMu9等模拟器，继续进行可能触发无限转屏卡死bug！\n"
+                        "马上会开始申请截屏。\n"
+                        +"如果是真机,尚无已知严重问题。\n"
+                        +"但如果你在使用MuMu9等模拟器，继续进行可能触发无限转屏卡死bug！\n"
                         +"所以（如果你在用模拟器）请务必修改模拟器分辨率设置，确保宽度大于（不能等于）高度，然后必须重启一次模拟器！\n"
                         +"点击\"确定\"继续申请截屏；\"取消\"则放弃申请截屏。");
                     if (dialogs.confirm("是否不再提醒？", "点击\"确定\"，则不再就MuMu9模拟器无限转屏卡死bug再次弹窗提醒。")) {
