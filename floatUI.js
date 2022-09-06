@@ -10773,13 +10773,9 @@ function algo_init() {
         log("图片缩放完成");
 
         if (limit.useCVAutoBattle && limit.rootScreencap) {
-            while (true) {
-                log("setupBinary...");
-                setupBinary();
-                if (binarySetupDone) break;
-                log("setupBinary失败,3秒后重试...");
-                sleep(3000);
-            }
+            log("setupBinary...");
+            setupBinary();
+            if (!binarySetupDone) return;
             if (testRootScreencapBlank()) return;
         } else if (limit.useCVAutoBattle && (!limit.rootScreencap)) {
             startScreenCapture();
@@ -11709,13 +11705,9 @@ function algo_init() {
 
         if (last_alive_lang === "ja" || limit.useCVAutoBattle) {
             if (limit.rootScreencap) {
-                while (true) {
-                    log("setupBinary...");
-                    setupBinary();
-                    if (binarySetupDone) break;
-                    log("setupBinary失败,3秒后重试...");
-                    sleep(3000);
-                }
+                log("setupBinary...");
+                setupBinary();
+                if (!binarySetupDone) return;
                 if (testRootScreencapBlank()) return;
             } else if (!limit.rootScreencap) {
                 startScreenCapture();
@@ -12183,13 +12175,9 @@ function algo_init() {
         log("图片缩放完成");  
 
         if (limit.rootScreencap) {
-            while (true) {
-                log("setupBinary...");
-                setupBinary();
-                if (binarySetupDone) break;
-                log("setupBinary失败,3秒后重试...");
-                sleep(3000);
-            }
+            log("setupBinary...");
+            setupBinary();
+            if (!binarySetupDone) return;
             if (testRootScreencapBlank()) return;
         } else if (!limit.rootScreencap) {
             startScreenCapture();
