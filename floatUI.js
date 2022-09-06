@@ -7756,23 +7756,41 @@ function algo_init() {
 
         normalShell("chmod a+r "+binaryCopyFromPath);
 
-        //调查红米K50电竞版不能shizuku截屏的问题(device=ingres model=21121210C)
-        for (let path of [dataDir+"/../../../", dataDir+"/../../", dataDir+"/../", dataDir, binaryCopyFromPath]) {
-            for (let func of [normalShell, privShell]) {
-                log(func("stat "+path));
-            }
-        }
-
         privShell("mkdir "+"/data/local/tmp/"+CwvqLUPkgName);
         privShell("mkdir "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin");
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName);
         privShell("chmod 755 "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin");
 
-        log(privShell("rm "+binaryCopyToPath));
-        let result = privShell("cp "+binaryCopyFromPath+" "+binaryCopyToPath);
+        let result = normalShell("id");
         log(result);
-        if (result.code != 0) result = privShell("cat "+binaryCopyFromPath+" > "+binaryCopyToPath);
-        log(result.code, result.error);
+        if (result.code == 0) {
+            let username = result.result.match(/^uid=\d+\(u\d+_a\d+\)/);
+            if (username != null) username = username[0].match(/u\d+_a\d+/);
+            if (username != null) username = username[0];
+            if (username != null) {
+                privShell("chown -R "+username+":"+username+" "+"/data/local/tmp/"+CwvqLUPkgName);
+            }
+        }
+
+        privShell("rm -f "+binaryCopyToPath);
+        normalShell("rm -f "+binaryCopyToPath);
+
+        const shellcmds = [
+            "cp "+binaryCopyFromPath+" "+binaryCopyToPath,
+            "cat "+binaryCopyFromPath+" > "+binaryCopyToPath,
+        ];
+        for (let shellFunc of [normalShell, privShell]) {
+            for (let shellcmd of shellcmds)  {
+                result = shellFunc(shellcmd);
+                if (result.code == 0) break;
+            }
+            if (result.code == 0) break;
+        }
+        if (result.code != 0) {
+            log(result.code, result.error);
+            binarySetupDone = false;
+            return;
+        }
         privShell("chmod 755 "+binaryCopyToPath);
 
         binarySetupDone = true;
