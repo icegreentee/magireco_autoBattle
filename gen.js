@@ -212,7 +212,8 @@ const hostname = '127.0.0.1';
 var port = 9090;
 
 const HTMLHead1 =
-   "<html>"
+   "<!DOCTYPE html>"
++"\n<html>"
 +"\n    <meta charset='UTF-8'>"
 +"\n    <meta http-equiv=\"cache-control\" content=\"no-cache\" />"
 +"\n    <head>"
