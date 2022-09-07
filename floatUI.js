@@ -12195,7 +12195,7 @@ function algo_init() {
         try {
             privShell("id");
         } catch (e) {
-            toastLog("需要root权限,Shizuku同理\n请确保永久授权,若已授权请再试一次");
+            dialogs.alert("需要root权限,Shizuku同理\n请确保永久授权,若已授权请再试一次");
             return;
         }
 
@@ -12306,7 +12306,7 @@ function algo_init() {
             );
         } catch (e) {
             logException(e);
-            toastLog("解压或复制文件时出错");
+            dialogs.alert("解压或复制文件时出错");
         }
     }
 
