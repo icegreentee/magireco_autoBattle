@@ -174,6 +174,10 @@ floatUI.scripts = [
         fn: tasks.simpleAutoBattle,
     },
     {
+        name: "复活日服脚本",
+        fn: tasks.unlockAccessibilitySvc,
+    },
+    {
         name: "绕过Play检测",
         fn: tasks.fakeJPInstallSource,
     },
@@ -224,6 +228,86 @@ floatUI.presetOpLists = [
     {
         name: "不使用预设数据",
         content: null,
+    },
+    {
+        name: "日服主线2-1-4普通本(水波祭)",
+        content: "{\"package_name\":\"com.aniplex.magireco\",\"date\":\"2022-9-7_19-1-1\","
+            +"\"isGeneric\":true,\"defaultSleepTime\":1500,\"isEventTypeBRANCH\":fal"
+            +"se,\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"x\":1533,\"y\":976"
+            +",\"pos\":\"bottom\"}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3000}}"
+            +",{\"action\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1338,\"y\":823,\"pos\":\"c"
+            +"enter\"},{\"x\":1350,\"y\":182,\"pos\":\"center\"}],\"duration\":2000}},{\"a"
+            +"ction\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1338,\"y\":823,\"pos\":\"cente"
+            +"r\"},{\"x\":1350,\"y\":182,\"pos\":\"center\"}],\"duration\":2000}},{\"actio"
+            +"n\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1338,\"y\":823,\"pos\":\"center\"},"
+            +"{\"x\":1350,\"y\":182,\"pos\":\"center\"}],\"duration\":2000}},{\"action\":\""
+            +"swipe\",\"swipe\":{\"points\":[{\"x\":1338,\"y\":823,\"pos\":\"center\"},{\"x\""
+            +":1350,\"y\":182,\"pos\":\"center\"}],\"duration\":2000}},{\"action\":\"clic"
+            +"k\",\"click\":{\"point\":{\"x\":1160,\"y\":201,\"pos\":\"center\"}}},{\"action"
+            +"\":\"swipe\",\"swipe\":{\"points\":[{\"x\":1159,\"y\":820,\"pos\":\"center\"},{"
+            +"\"x\":1170,\"y\":206,\"pos\":\"center\"}],\"duration\":2000}},{\"action\":\"s"
+            +"wipe\",\"swipe\":{\"points\":[{\"x\":1152,\"y\":843,\"pos\":\"center\"},{\"x\":"
+            +"1131,\"y\":218,\"pos\":\"center\"}],\"duration\":2000}},{\"action\":\"click"
+            +"\",\"click\":{\"point\":{\"x\":1122,\"y\":190,\"pos\":\"center\"}}},{\"action\""
+            +":\"sleep\",\"sleep\":{\"sleepTime\":3000}},{\"action\":\"click\",\"click\":{"
+            +"\"point\":{\"x\":1193,\"y\":570,\"pos\":\"top\"}}},{\"action\":\"sleep\",\"slee"
+            +"p\":{\"sleepTime\":3000}},{\"action\":\"checkText\",\"checkText\":{\"text\""
+            +":\"BATTLE 4\",\"boundsCenter\":{\"x\":304,\"y\":514,\"pos\":\"top\"},\"found\""
+            +":{\"kill\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFou"
+            +"nd\":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"act"
+            +"ion\":\"checkText\",\"checkText\":{\"text\":\"第2章\",\"boundsCenter\":{\"x\":3"
+            +"05,\"y\":250,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":false"
+            +",\"nextAction\":\"ignore\"},\"notFound\":{\"kill\":true,\"stopScript\":fal"
+            +"se,\"nextAction\":\"fail\"}}},{\"action\":\"checkText\",\"checkText\":{\"te"
+            +"xt\":\"1話\",\"boundsCenter\":{\"x\":303,\"y\":296,\"pos\":\"top\"},\"found\":{\""
+            +"kill\":false,\"stopScript\":false,\"nextAction\":\"ignore\"},\"notFound\""
+            +":{\"kill\":true,\"stopScript\":false,\"nextAction\":\"fail\"}}},{\"action"
+            +"\":\"checkText\",\"checkText\":{\"text\":\"ふたりの親友を訪ねて\",\"boundsCenter\":{\""
+            +"x\":305,\"y\":436,\"pos\":\"top\"},\"found\":{\"kill\":false,\"stopScript\":f"
+            +"alse,\"nextAction\":\"success\"},\"notFound\":{\"kill\":true,\"stopScript"
+            +"\":false,\"nextAction\":\"fail\"}}}]}",
+    },
+    {
+        name: "日服门票活动剧情[BATTLE 1]",
+        content: "{\"date\":\"2022-9-7_19-25-10\",\"defaultSleepTime\":1500,\"isEventType"
+            +"BRANCH\":false,\"isGeneric\":true,\"package_name\":\"com.aniplex.magir"
+            +"eco\",\"steps\":[{\"action\":\"click\",\"click\":{\"point\":{\"pos\":\"bottom\""
+            +",\"x\":1608,\"y\":743}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3000"
+            +"}},{\"action\":\"click\",\"click\":{\"point\":{\"pos\":\"top\",\"x\":982,\"y\":"
+            +"172}}},{\"action\":\"swipe\",\"swipe\":{\"duration\":2000,\"points\":[{\"po"
+            +"s\":\"top\",\"x\":1070,\"y\":915},{\"pos\":\"top\",\"x\":1070,\"y\":306}]}},{\"a"
+            +"ction\":\"swipe\",\"swipe\":{\"duration\":2000,\"points\":[{\"pos\":\"top\",\""
+            +"x\":1070,\"y\":915},{\"pos\":\"top\",\"x\":1070,\"y\":306}]}},{\"action\":\"sw"
+            +"ipe\",\"swipe\":{\"duration\":2000,\"points\":[{\"pos\":\"top\",\"x\":1070,\"y"
+            +"\":915},{\"pos\":\"top\",\"x\":1070,\"y\":306}]}},{\"action\":\"swipe\",\"swip"
+            +"e\":{\"duration\":2000,\"points\":[{\"pos\":\"top\",\"x\":1070,\"y\":915},{\"p"
+            +"os\":\"top\",\"x\":1070,\"y\":306}]}},{\"action\":\"swipe\",\"swipe\":{\"durat"
+            +"ion\":2000,\"points\":[{\"pos\":\"top\",\"x\":1070,\"y\":915},{\"pos\":\"top\","
+            +"\"x\":1070,\"y\":306}]}},{\"action\":\"swipe\",\"swipe\":{\"duration\":2000,"
+            +"\"points\":[{\"pos\":\"top\",\"x\":1070,\"y\":915},{\"pos\":\"top\",\"x\":1070,\""
+            +"y\":306}]}},{\"action\":\"swipe\",\"swipe\":{\"duration\":2000,\"points\":["
+            +"{\"pos\":\"top\",\"x\":1070,\"y\":915},{\"pos\":\"top\",\"x\":1070,\"y\":306}]}}"
+            +",{\"action\":\"swipe\",\"swipe\":{\"duration\":2000,\"points\":[{\"pos\":\"to"
+            +"p\",\"x\":1070,\"y\":915},{\"pos\":\"top\",\"x\":1070,\"y\":306}]}},{\"action\""
+            +":\"swipe\",\"swipe\":{\"duration\":2000,\"points\":[{\"pos\":\"top\",\"x\":107"
+            +"0,\"y\":915},{\"pos\":\"top\",\"x\":1070,\"y\":306}]}},{\"action\":\"swipe\",\""
+            +"swipe\":{\"duration\":2000,\"points\":[{\"pos\":\"top\",\"x\":1070,\"y\":915}"
+            +",{\"pos\":\"top\",\"x\":1070,\"y\":306}]}},{\"action\":\"swipe\",\"swipe\":{\"d"
+            +"uration\":2000,\"points\":[{\"pos\":\"top\",\"x\":1070,\"y\":915},{\"pos\":\"t"
+            +"op\",\"x\":1070,\"y\":306}]}},{\"action\":\"swipe\",\"swipe\":{\"duration\":2"
+            +"000,\"points\":[{\"pos\":\"top\",\"x\":1070,\"y\":915},{\"pos\":\"top\",\"x\":10"
+            +"70,\"y\":306}]}},{\"action\":\"swipe\",\"swipe\":{\"duration\":2000,\"point"
+            +"s\":[{\"pos\":\"top\",\"x\":1070,\"y\":915},{\"pos\":\"top\",\"x\":1070,\"y\":306"
+            +"}]}},{\"action\":\"click\",\"click\":{\"point\":{\"pos\":\"bottom\",\"x\":1092"
+            +",\"y\":775}}},{\"action\":\"sleep\",\"sleep\":{\"sleepTime\":3000}},{\"acti"
+            +"on\":\"checkText\",\"checkText\":{\"boundsCenter\":{\"pos\":\"top\",\"x\":305"
+            +",\"y\":467},\"found\":{\"kill\":false,\"nextAction\":\"ignore\",\"stopScrip"
+            +"t\":false},\"notFound\":{\"kill\":true,\"nextAction\":\"fail\",\"stopScrip"
+            +"t\":false},\"text\":\"ストーリークエスト\"}},{\"action\":\"checkText\",\"checkText\""
+            +":{\"boundsCenter\":{\"pos\":\"top\",\"x\":298,\"y\":515},\"found\":{\"kill\":f"
+            +"alse,\"nextAction\":\"success\",\"stopScript\":false},\"notFound\":{\"kil"
+            +"l\":true,\"nextAction\":\"fail\",\"stopScript\":false},\"text\":\"BATTLE 1"
+            +"\"}}]}",
     },
     {
         name: "国服主线2-1-4普通本(水波祭)",
@@ -1565,11 +1649,11 @@ floatUI.main = function () {
             switch (euid) {
             case 0:
                 log("Shizuku有root权限");
-                limit.privilege = {shizuku: {uid: euid}};
+                limit.privilege = {shizuku: true, uid: euid};
                 break;
             case 2000:
                 log("Shizuku有adb shell权限");
-                limit.privilege = {shizuku: {uid: euid}};
+                limit.privilege = {shizuku: true, uid: euid};
                 break;
             default:
                 log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
@@ -1601,7 +1685,7 @@ floatUI.main = function () {
             if (result.code == 0) euid = getEUID(result.result);
             if (euid == 0) {
                 log("直接获取root权限成功");
-                limit.privilege = {shizuku: null};
+                limit.privilege = {shizuku: null, uid: euid};
                 files.create(rootMarkerPath);
                 floatUI.recoverAllFloaty();
                 return limit.privilege;
@@ -2684,7 +2768,7 @@ function algo_init() {
         return result;
     }
     function findPopupInfoDetailTitle(title_to_find, wait) {
-        if (last_alive_lang === "ja") return findPopupInfoDetailTitleJP(title_to_find, wait);
+        if (!floatUI.storage.get("isJPAccSvcUnlocked", false) && last_alive_lang === "ja") return findPopupInfoDetailTitleJP(title_to_find, wait);
         else return findPopupInfoDetailTitleLegacy(title_to_find, wait);
     }
 
@@ -2786,7 +2870,7 @@ function algo_init() {
         }
     }
     function getAP(wait) {
-        if (last_alive_lang === "ja") return getAPJP(wait);
+        if (!floatUI.storage.get("isJPAccSvcUnlocked", false) && last_alive_lang === "ja") return getAPJP(wait);
         else return getAPLegacy(wait);
     }
 
@@ -3913,13 +3997,23 @@ function algo_init() {
         if (!dontStopOnError) switch (last_alive_lang) {
             case "ja":
                 let availableForJP = floatUI.scripts.find((item) => item.name === currentTaskName && item.availableForJP);
-                if (!availableForJP) dialogs.alert(
-                    "检测到日服",
-                    "大约自日服游戏客户端强制升级至2.4.1版的时间点(大约2021年8月下旬)之后,绝大多数脚本在日服上都已失效!\n"
-                    +"失效原因是:脚本依赖无障碍服务抓取文字、按钮位置等控件信息,而日服自那时起在Web层面已经主动屏蔽无障碍服务。\n"
-                    +"点击\"确定\"后当前脚本将继续运行,但应该不能正常工作。\n"
-                    +"（目前正在尝试适配不依赖无障碍服务、只基于识图的镜层周回与识图自动战斗脚本）"
-                );
+                let isJPAccSvcUnlocked = floatUI.storage.get("isJPAccSvcUnlocked", false);
+                if (!availableForJP) {
+                    if (isJPAccSvcUnlocked) {
+                        toastLog("已通过[复活日服脚本]解除限制");
+                    } else {
+                        dialogs.alert("检测到日服",
+                            "大约自日服游戏客户端强制升级至2.4.1版的时间点(大约2021年8月下旬)之后,绝大多数脚本在日服上都已失效!\n"
+                            +"失效原因是:脚本依赖无障碍服务抓取文字、按钮位置等控件信息,而日服自那时起在Web层面已经主动屏蔽无障碍服务。\n"
+                            +"点击\"确定\"后当前脚本将继续运行,但应该不能正常工作。\n"
+                            +"（目前正在尝试适配不依赖无障碍服务、只基于识图的镜层周回与识图自动战斗脚本）"
+                        );
+                        let result = dialogs.confirm("检测到日服",
+                            "现已发现解除限制、复活失效脚本的方法,请问要尝试吗？"
+                        );
+                        if (result) replaceCurrentTask(floatUI.scripts.find((val) => val.name == "复活日服脚本"));
+                    }
+                }
                 break;
         }
 
@@ -7833,7 +7927,9 @@ function algo_init() {
                 }
                 if (isInitialPortrait && !floatUI.storage.get("doNotRemindAboutMuMu9RotationBug", false)) {
                     let result = dialogs.confirm("⚠️警告⚠️",
-                        "马上会开始申请截屏。如果你在使用MuMu9等模拟器，继续进行可能触发无限转屏卡死bug！\n"
+                        "马上会开始申请截屏。\n"
+                        +"如果是真机,尚无已知严重问题。\n"
+                        +"但如果你在使用MuMu9等模拟器，继续进行可能触发无限转屏卡死bug！\n"
                         +"所以（如果你在用模拟器）请务必修改模拟器分辨率设置，确保宽度大于（不能等于）高度，然后必须重启一次模拟器！\n"
                         +"点击\"确定\"继续申请截屏；\"取消\"则放弃申请截屏。");
                     if (dialogs.confirm("是否不再提醒？", "点击\"确定\"，则不再就MuMu9模拟器无限转屏卡死bug再次弹窗提醒。")) {
@@ -11978,6 +12074,26 @@ function algo_init() {
     //导出这个函数
     floatUI.recoverLastWork = recoverLastWork;
 
+    function getPathArg(path) {
+        return "\"" + path.replace(new RegExp("\"", "g"), "\\\"") + "\"";
+    }
+
+    function getAPKPath(packageName) {
+        let result = privShell("pm path " + getPathArg(packageName));
+        if (result.code != 0) {
+            log(result.code, result.error);
+            result = privShell("cmd package path " + getPathArg(packageName));
+        }
+        if (result.code != 0) {
+            log(result.code, result.error);
+            return;
+        }
+        let apkPath = result.result.match(/\/[^:\n]+\.apk/);
+        if (apkPath != null) apkPath = apkPath[0];
+        log("apkPath", apkPath);
+        return apkPath;
+    }
+
     function fakeJPInstallSourceRunnable() {
         try {
             privShell("id");
@@ -11992,30 +12108,205 @@ function algo_init() {
             return;
         }
         toastLog("尝试绕过Play检测...");
-        let result = privShell("pm path com.aniplex.magireco");
-        if (result.code != 0) {
-            log(result.code, result.error);
-            result = privShell("cmd package path com.aniplex.magireco");
-        }
-        if (result.code != 0) {
-            log(result.code, result.error);
-            toastLog("绕过Play检测出错");
-            return;
-        }
-        let apkPath = result.result.match(/\/.+\.apk/);
-        if (apkPath != null) apkPath = apkPath[0];
-        log("apkPath", apkPath);
+        const apkPath = getAPKPath("com.aniplex.magireco");
         if (apkPath == null) {
-            toastLog("未找到日服");
+            toastLog("获取APK路径失败\n可能未安装日服");
             return;
         }
-        result = privShell("pm install -r -i com.android.vending \"" + apkPath.replace(new RegExp("\"", "g"), "\\\"") + "\"");
+        result = privShell("pm install -r -i com.android.vending " + getPathArg(apkPath));
         if (result.code != 0) {
             log(result.code, result.error);
             toastLog("绕过Play检测出错");
             return;
         }
         toastLog("绕过Play检测完成");
+    }
+
+    function binaryReplaceText(bytes, pattern, replacement) {
+        if (typeof pattern !== "string" || typeof replacement !== "string") throw new Error("not string");
+        pattern = new java.lang.String(pattern).getBytes("US-ASCII");
+        replacement = new java.lang.String(replacement).getBytes("US-ASCII");
+        const patternString = new java.lang.String(pattern, "US-ASCII");
+        const replacementString = new java.lang.String(replacement, "US-ASCII");
+        if (pattern.length != replacement.length) throw new Error("lengths not equal");
+
+        let replaceCount = 0;
+        let copiedSubArray = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, pattern.length);
+        for (let asciiString = new java.lang.String(bytes, "US-ASCII"), from = 0; true; ) {
+            let start = asciiString.indexOf(patternString, from);
+            if (start < 0) break;
+
+            java.lang.System.arraycopy(bytes, start, copiedSubArray, 0, pattern.length);
+            if (!java.util.Arrays.equals(copiedSubArray, pattern)) throw new Error("unexpected mismatch");
+
+            java.lang.System.arraycopy(replacement, 0, bytes, start, pattern.length);
+            from = start + pattern.length;
+            log("replaced ["+patternString+"] with ["+replacementString+"] at "+start);
+            replaceCount++;
+        }
+        return replaceCount;
+    }
+
+    function unlockAccessibilitySvcRunnable() {
+        const currentStateText = "当前"+(floatUI.storage.get("isJPAccSvcUnlocked", false)?"已解除":"未解除")+"限制。";
+        let result = dialogs.confirm("⚠️警告⚠️",
+            currentStateText+"\n"
+            +"（若之前碰到问题,可点击[取消]）\n"
+            +"目前复活日服脚本的方法存在未知风险,因为很多App(包括设置、短信、电话等系统App)都可能依赖Webview,\n"
+            +"因此修改Webview有可能导致App大面积崩溃,从而导致设备【近乎变砖】！\n"
+            +"（对于模拟器而言,则是数据损坏、无法启动）\n"
+            +"仍要继续吗？\n"
+            +"如果确实要冒险继续,请确认当前环境的重要数据已经备份妥当！\n"
+            +"另外请注意:过程中会杀掉游戏进程！"
+        );
+        if (!result) {
+            let dialog_options = [
+                "当作未解除限制来运行",
+                "当作已解除限制来运行",
+                "维持现状",
+            ]
+            let values = [
+                false,
+                true,
+                null,
+            ]
+            result = dialogs.select(currentStateText+"设置脚本:", dialog_options);
+            if (result == null) result = dialog_options.length - 1;
+            if (values[result] != null) {
+                floatUI.storage.put("isJPAccSvcUnlocked", values[result]);
+            }
+            toastLog("已设置脚本"+dialog_options[result]);
+            return;
+        }
+
+        result = dialogs.confirm("复活日服脚本",
+            "请问当前环境是模拟器(包括云手机)吗？\n"
+            +"真机请点击“取消”。"
+        );
+        if (!result) {
+            dialogs.alert("复活日服脚本",
+                "真机预计将会通过安装修改过的Webview、然后在开发者选项中将其指定为当前[Webview实现]来达成。\n"
+                +"目前还请耐心等待。"
+            );
+            return;
+        }
+
+        try {
+            privShell("id");
+        } catch (e) {
+            toastLog("需要root权限,Shizuku同理\n请确保永久授权,若已授权请再试一次");
+            return;
+        }
+
+        if (limit.privilege == null || !(limit.privilege.uid == 0)) {
+            dialogs.alert("复活日服脚本",
+                "必须授予root权限才能继续操作。\n"
+                +"若通过Shizuku授权,则Shizuku同理也必须是root权限。"
+            );
+            log("无root权限");
+            return;
+        }
+
+        let isRevert = dialogs.confirm("复活日服脚本",
+            currentStateText+"\n"
+            +"点击[确定]解除限制；\n"
+            +"点击[取消]恢复限制。"
+        ) ? false : true;
+        result = dialogs.confirm("复活日服脚本",
+            currentStateText+"\n"
+            +"确定要继续"+(isRevert?"恢复":"解除")+"限制吗？\n"
+            +"注意:真机请点击取消,因为相关分区一般处于只读状态无法修改,需要创建Magisk模块来绕过只读限制。\n"
+            +"另外请注意:过程中会杀掉游戏进程！"
+        );
+        if (!result) {
+            toastLog("已放弃继续操作");
+            return;
+        }
+
+        toastLog("即将杀进程关闭游戏..."); //必须先杀进程
+        const killerCmds = [
+            "am force-stop",
+            "killall",
+            "pkill",
+        ];
+        killerCmds.forEach((cmd) => privShell(cmd + " " + "com.aniplex.magireco"));
+        sleep(2000);
+
+        const webviewPkgName = "com.android.webview";
+        const apkPath = getAPKPath(webviewPkgName);
+        if (apkPath == null) {
+            toastLog("找不到"+webviewPkgName);
+            return;
+        }
+
+        try {
+            let fileNames = [];
+            const extractDir = files.join(files.cwd(), "webview_mod");
+            files.ensureDir(files.join(extractDir, "lib"));
+            let zipfile = java.util.zip.ZipFile(apkPath);
+            let zipentries = zipfile.entries();
+            while (zipentries.hasMoreElements()) {
+                let entry = zipentries.nextElement();
+                let name = entry.getName();
+
+                if (!name.match(/^lib\//)) continue;
+                if (entry.isDirectory()) continue;
+
+                let newName = name
+                    .replace(/^lib\/armeabi-v7a\//, "lib/arm/")
+                    .replace(/^lib\/arm64-v8a\//, "lib/arm64/");
+                let path = files.join(extractDir, newName);
+                files.ensureDir(path);
+                let size = entry.getSize();
+                if (size < 0) throw new Error("ZipEntry.size < 0");
+                let bytes = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, size);
+                let stream = zipfile.getInputStream(entry);
+                for (let off = 0, len = 65536; off < size; ) {
+                    let readSize = stream.read(bytes, off, len);
+                    if (readSize < 0) throw new Error("unexpected EOF");
+                    off += readSize;
+                    if (off > size) throw new Error("unexpected data beyond end");
+                }
+                stream.close();
+
+                if (isRevert) {
+                    log("keep file as-is");
+                } else if (name.match(/\.so$/)) {
+                    let count = binaryReplaceText(bytes, "aria-hidden", "aria-nohide");
+                    log("replaced "+count+" occurrences in ["+name+"]");
+                }
+
+                files.writeBytes(path, bytes);
+                log("written to ["+path+"]");
+                fileNames.push(newName);
+            }
+            zipfile.close();
+            log("解压完成");
+
+            const libParentPath = apkPath.replace(/\/[^\/]+\.apk$/, "/");
+            privShell("mkdir -p " + getPathArg(libParentPath));
+            privShell("chmod 755 " + getPathArg(libParentPath));
+            fileNames.forEach((newName) => {
+                let srcPath = files.join(extractDir, newName);
+                let dstPath = files.join(libParentPath, newName);
+                let dstParentPath = dstPath.replace(/\/[^\/]+$/, "/");
+                privShell("mkdir -p " + getPathArg(dstParentPath));
+                privShell("chmod 755 " + getPathArg(dstParentPath));
+                privShell("cat " + getPathArg(srcPath) + " > " + getPathArg(dstPath));
+                privShell("chmod 644 " + getPathArg(dstPath));
+            });
+            files.removeDir(extractDir);
+            log("文件复制完成");
+
+            floatUI.storage.put("isJPAccSvcUnlocked", isRevert ? false : true);
+            dialogs.alert("复活日服脚本",
+                "操作完成,已"+(isRevert?"恢复":"解除")+"限制。\n"
+                +"请手动重启游戏和想要执行的脚本。"
+            );
+        } catch (e) {
+            logException(e);
+            toastLog("解压或复制文件时出错");
+        }
     }
 
     /* ~~~~~~~~ 临时开荒辅助 开始 ~~~~~~~~ （有部分函数在外边） */
@@ -12252,6 +12543,7 @@ function algo_init() {
         testSupportSel: testSupportPicking,
         testReLaunch: testReLaunchRunnable,
         captureText: captureTextRunnable,
+        unlockAccessibilitySvc: unlockAccessibilitySvcRunnable,
         fakeJPInstallSource: fakeJPInstallSourceRunnable,
         openUp: taskOpenUp,
     };
