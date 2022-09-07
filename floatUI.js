@@ -3790,7 +3790,8 @@ function algo_init() {
         //因为STATE_TEAM状态下这里的掉线弹窗检查非常慢,所以跳过头4回检查
         if (bypassPopupCheck.get() == 0) do {
             let found_popup = null;
-            if (last_alive_lang !== "ja") try { //日服暂未OCR识别窗口标题所以无法检测
+            //日服暂未OCR识别窗口标题,除非已解除限制,否则跳过这个无法进行的检测
+            if (last_alive_lang !== "ja" || floatUI.storage.get("isJPAccSvcUnlocked", false)) try {
                 found_popup = findPopupInfoDetailTitle(["connection_lost", "auth_error", "generic_error", "error_occurred", "story_updated", "unexpected_error"].map((val) => string[val]));
             } catch (e) {
                 logException(e);
@@ -12284,8 +12285,8 @@ function algo_init() {
             log("解压完成");
 
             const libParentPath = apkPath.replace(/\/[^\/]+\.apk$/, "/");
-            privShell("mkdir -p " + getPathArg(libParentPath));
-            privShell("chmod 755 " + getPathArg(libParentPath));
+            privShell("mkdir -p " + getPathArg(files.join(libParentPath, "lib")));
+            privShell("chmod 755 " + getPathArg(files.join(libParentPath, "lib")));
             fileNames.forEach((newName) => {
                 let srcPath = files.join(extractDir, newName);
                 let dstPath = files.join(libParentPath, newName);
