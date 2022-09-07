@@ -12233,10 +12233,14 @@ function algo_init() {
         killerCmds.forEach((cmd) => privShell(cmd + " " + "com.aniplex.magireco"));
         sleep(2000);
 
-        const webviewPkgName = "com.android.webview";
-        const apkPath = getAPKPath(webviewPkgName);
+        const webviewPkgNames = [
+            "com.android.webview",
+            "com.google.android.webview",
+        ]
+        let apkPath = null;
+        webviewPkgNames.find((name) => (apkPath = getAPKPath(name)) != null);
         if (apkPath == null) {
-            toastLog("找不到"+webviewPkgName);
+            toastLog("通过已知包名找不到webview");
             return;
         }
 
