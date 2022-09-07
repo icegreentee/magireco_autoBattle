@@ -12285,8 +12285,8 @@ function algo_init() {
             log("解压完成");
 
             const libParentPath = apkPath.replace(/\/[^\/]+\.apk$/, "/");
-            privShell("mkdir -p " + getPathArg(libParentPath));
-            privShell("chmod 755 " + getPathArg(libParentPath));
+            privShell("mkdir -p " + getPathArg(files.join(libParentPath, "lib")));
+            privShell("chmod 755 " + getPathArg(files.join(libParentPath, "lib")));
             fileNames.forEach((newName) => {
                 let srcPath = files.join(extractDir, newName);
                 let dstPath = files.join(libParentPath, newName);
