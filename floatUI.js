@@ -12132,17 +12132,44 @@ function algo_init() {
         if (pattern.length != replacement.length) throw new Error("lengths not equal");
 
         let replaceCount = 0;
+        const size = 65536, lookAhead = 4096, maxSegmentSize = size + lookAhead;
+        let segment = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, maxSegmentSize);
         let copiedSubArray = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, pattern.length);
-        for (let asciiString = new java.lang.String(bytes, "US-ASCII"), from = 0; true; ) {
-            let start = asciiString.indexOf(patternString, from);
-            if (start < 0) break;
+        for (let from = 0; true; ) {
+            let foundAtIndex = -1;
+            for (
+                let start = from - (from % size);
+                start < bytes.length;
+                start += size
+            ) {
+                let remaining = bytes.length - start;
+                if (remaining < 0 || start < 0) throw new Error("remaining < 0 || start < 0");
 
-            java.lang.System.arraycopy(bytes, start, copiedSubArray, 0, pattern.length);
+                let internalFrom = from - start;
+                if (internalFrom > size) throw new Error("internalFrom > size");
+
+                let segmentSize = Math.min(remaining, maxSegmentSize);
+                if (segmentSize < maxSegmentSize) {
+                    if (segment.length != maxSegmentSize) throw new Error("segment.length != maxSegmentSize");
+                    segment = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, segmentSize);
+                } else if (!(segmentSize == maxSegmentSize)) throw new Error("!(segmentSize == maxSegmentSize)");
+                java.lang.System.arraycopy(bytes, start, segment, 0, segmentSize);
+
+                let asciiString = new java.lang.String(segment, "US-ASCII");
+                let found = asciiString.indexOf(patternString, internalFrom < 0 ? 0 : internalFrom);
+                if (found >= 0) {
+                    foundAtIndex = start + found;
+                    break;
+                }
+            }
+            if (foundAtIndex < 0) break;
+
+            java.lang.System.arraycopy(bytes, foundAtIndex, copiedSubArray, 0, pattern.length);
             if (!java.util.Arrays.equals(copiedSubArray, pattern)) throw new Error("unexpected mismatch");
 
-            java.lang.System.arraycopy(replacement, 0, bytes, start, pattern.length);
-            from = start + pattern.length;
-            log("replaced ["+patternString+"] with ["+replacementString+"] at "+start);
+            java.lang.System.arraycopy(replacement, 0, bytes, foundAtIndex, pattern.length);
+            from = foundAtIndex + pattern.length;
+            log("replaced ["+patternString+"] with ["+replacementString+"] at "+foundAtIndex);
             replaceCount++;
         }
         return replaceCount;
