@@ -12366,6 +12366,8 @@ function algo_init() {
                 let result = privShell("cat " + getPathArg(srcPath) + " > " + getPathArg(dstPath));
                 if (result.code != 0) {
                     log(result.code, result.error);
+                    privShell("rm -f " + getPathArg(dstPath));
+                    privShell("rm -f " + getPathArg(realDstPath));
                     throw new Error("result.code != 0");
                 }
                 privShell("chmod 644 " + getPathArg(realDstPath));
