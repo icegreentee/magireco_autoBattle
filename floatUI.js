@@ -12367,7 +12367,8 @@ function algo_init() {
             floatUI.storage.put("isJPAccSvcUnlocked", isRevert ? false : true);
             dialogs.alert("复活日服脚本",
                 "操作完成,已"+(isRevert?"恢复":"解除")+"限制。\n"
-                +"请手动重启游戏和想要执行的脚本。"
+                +"请手动重启游戏和想要执行的脚本。\n"
+                +"若还未生效请尝试重启模拟器。" //这里不想force-stop webview了
             );
         } catch (e) {
             logException(e);
