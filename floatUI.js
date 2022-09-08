@@ -12149,10 +12149,8 @@ function algo_init() {
                 if (internalFrom > size) throw new Error("internalFrom > size");
 
                 let segmentSize = Math.min(remaining, maxSegmentSize);
-                if (segmentSize < maxSegmentSize) {
-                    if (segment.length != maxSegmentSize) throw new Error("segment.length != maxSegmentSize");
-                    segment = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, segmentSize);
-                } else if (!(segmentSize == maxSegmentSize)) throw new Error("!(segmentSize == maxSegmentSize)");
+                if (segmentSize < maxSegmentSize) segment = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, segmentSize);
+                else if (!(segmentSize == maxSegmentSize)) throw new Error("!(segmentSize == maxSegmentSize)");
                 java.lang.System.arraycopy(bytes, start, segment, 0, segmentSize);
 
                 let asciiString = new java.lang.String(segment, "US-ASCII");
