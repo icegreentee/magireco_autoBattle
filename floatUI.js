@@ -12325,6 +12325,8 @@ function algo_init() {
             log("解压完成");
 
             const libParentPath = apkPath.replace(/\/[^\/]+\.apk$/, "/");
+            const realLibGrandParentPath = "/data/local/tmp/";
+            const realLibParentPath = files.join(realLibGrandParentPath, "webview-lib");
             let foundMountPoint = "";
             if (isHypervisorBitPresent()) {
                 let result = privShell("cat /proc/mounts");
@@ -12345,18 +12347,28 @@ function algo_init() {
             }
             privShell("mkdir -p " + getPathArg(files.join(libParentPath, "lib")));
             privShell("chmod 755 " + getPathArg(files.join(libParentPath, "lib")));
+            privShell("mkdir -p " + getPathArg(files.join(realLibParentPath, "lib")));
+            privShell("chmod a+x " + getPathArg(realLibGrandParentPath));
+            privShell("chmod 755 " + getPathArg(realLibParentPath));
+            privShell("chmod 755 " + getPathArg(files.join(realLibParentPath, "lib")));
             fileNames.forEach((newName) => {
                 let srcPath = files.join(extractDir, newName);
                 let dstPath = files.join(libParentPath, newName);
                 let dstParentPath = dstPath.replace(/\/[^\/]+$/, "/");
-                privShell("mkdir -p " + getPathArg(dstParentPath));
-                privShell("chmod 755 " + getPathArg(dstParentPath));
+                let realDstPath = files.join(realLibParentPath, newName);
+                let realDstParentPath = realDstPath.replace(/\/[^\/]+$/, "/");
+                for (let path of [dstParentPath, realDstParentPath]) {
+                    privShell("mkdir -p " + getPathArg(path));
+                    privShell("chmod 755 " + getPathArg(path));
+                }
+                privShell("rm -f " + getPathArg(dstPath));
+                privShell("ln -s " + getPathArg(realDstPath) + " " + getPathArg(dstPath));
                 let result = privShell("cat " + getPathArg(srcPath) + " > " + getPathArg(dstPath));
                 if (result.code != 0) {
                     log(result.code, result.error);
                     throw new Error("result.code != 0");
                 }
-                privShell("chmod 644 " + getPathArg(dstPath));
+                privShell("chmod 644 " + getPathArg(realDstPath));
             });
             if (foundMountPoint !== "") privShell("mount -o remount,ro " + getPathArg(foundMountPoint));
             files.removeDir(extractDir);
@@ -12370,7 +12382,7 @@ function algo_init() {
             );
         } catch (e) {
             logException(e);
-            dialogs.alert("解压或复制文件时出错");
+            dialogs.alert("解压或复制文件时出错。（若存储空间已满,请腾出一些空间）");
         }
     }
 
