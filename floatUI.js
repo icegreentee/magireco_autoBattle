@@ -12132,20 +12132,58 @@ function algo_init() {
         if (pattern.length != replacement.length) throw new Error("lengths not equal");
 
         let replaceCount = 0;
+        const size = 65536, lookAhead = 4096, maxSegmentSize = size + lookAhead;
+        let segment = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, maxSegmentSize);
         let copiedSubArray = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, pattern.length);
-        for (let asciiString = new java.lang.String(bytes, "US-ASCII"), from = 0; true; ) {
-            let start = asciiString.indexOf(patternString, from);
-            if (start < 0) break;
+        for (let from = 0; true; ) {
+            let foundAtIndex = -1;
+            for (
+                let start = from - (from % size);
+                start < bytes.length;
+                start += size
+            ) {
+                let remaining = bytes.length - start;
+                if (remaining < 0 || start < 0) throw new Error("remaining < 0 || start < 0");
 
-            java.lang.System.arraycopy(bytes, start, copiedSubArray, 0, pattern.length);
+                let internalFrom = from - start;
+                if (internalFrom > size) throw new Error("internalFrom > size");
+
+                let segmentSize = Math.min(remaining, maxSegmentSize);
+                if (segmentSize < maxSegmentSize) {
+                    if (segment.length != maxSegmentSize) throw new Error("segment.length != maxSegmentSize");
+                    segment = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, segmentSize);
+                } else if (!(segmentSize == maxSegmentSize)) throw new Error("!(segmentSize == maxSegmentSize)");
+                java.lang.System.arraycopy(bytes, start, segment, 0, segmentSize);
+
+                let asciiString = new java.lang.String(segment, "US-ASCII");
+                let found = asciiString.indexOf(patternString, internalFrom < 0 ? 0 : internalFrom);
+                if (found >= 0) {
+                    foundAtIndex = start + found;
+                    break;
+                }
+            }
+            if (foundAtIndex < 0) break;
+
+            java.lang.System.arraycopy(bytes, foundAtIndex, copiedSubArray, 0, pattern.length);
             if (!java.util.Arrays.equals(copiedSubArray, pattern)) throw new Error("unexpected mismatch");
 
-            java.lang.System.arraycopy(replacement, 0, bytes, start, pattern.length);
-            from = start + pattern.length;
-            log("replaced ["+patternString+"] with ["+replacementString+"] at "+start);
+            java.lang.System.arraycopy(replacement, 0, bytes, foundAtIndex, pattern.length);
+            from = foundAtIndex + pattern.length;
+            log("replaced ["+patternString+"] with ["+replacementString+"] at "+foundAtIndex);
             replaceCount++;
         }
         return replaceCount;
+    }
+
+    function isHypervisorBitPresent() {
+        let result = privShell("cat /proc/cpuinfo");
+        if (result.code != 0) throw new Error("result.code != 0");
+        let cpuFlags = result.result.split("\n").find(line => line.match(/^flags[^:]*:.*/));
+        if (cpuFlags == null) throw new Error("cpuFlags == null");
+        cpuFlags = cpuFlags.replace(/^flags[^:]*:/, "").split(" ");
+        let isHypervisor = cpuFlags.find(flag => flag === "hypervisor") != null;
+        log("isHypervisor", isHypervisor);
+        return isHypervisor;
     }
 
     function unlockAccessibilitySvcRunnable() {
@@ -12195,7 +12233,7 @@ function algo_init() {
         try {
             privShell("id");
         } catch (e) {
-            toastLog("需要root权限,Shizuku同理\n请确保永久授权,若已授权请再试一次");
+            dialogs.alert("需要root权限,Shizuku同理\n请确保永久授权,若已授权请再试一次");
             return;
         }
 
@@ -12233,10 +12271,14 @@ function algo_init() {
         killerCmds.forEach((cmd) => privShell(cmd + " " + "com.aniplex.magireco"));
         sleep(2000);
 
-        const webviewPkgName = "com.android.webview";
-        const apkPath = getAPKPath(webviewPkgName);
+        const webviewPkgNames = [
+            "com.android.webview",
+            "com.google.android.webview",
+        ]
+        let apkPath = null;
+        webviewPkgNames.find((name) => (apkPath = getAPKPath(name)) != null);
         if (apkPath == null) {
-            toastLog("找不到"+webviewPkgName);
+            toastLog("通过已知包名找不到webview");
             return;
         }
 
@@ -12285,6 +12327,24 @@ function algo_init() {
             log("解压完成");
 
             const libParentPath = apkPath.replace(/\/[^\/]+\.apk$/, "/");
+            let foundMountPoint = "";
+            if (isHypervisorBitPresent()) {
+                let result = privShell("cat /proc/mounts");
+                if (result.code != 0) throw new Error("result.code != 0");
+                let mounts = result.result.split("\n");
+                mounts.forEach((item) => {
+                    let splitted = item.split(" ");
+                    let mountPoint = splitted[1];
+                    let mountFlags = splitted[3];
+                    if (mountPoint == null) return false;
+                    if (mountFlags == null) return false;
+                    mountFlags = mountFlags.split(",");
+                    if (libParentPath.startsWith(mountPoint) && mountFlags.find(flag => flag === "ro")) {
+                        if (mountPoint.length > foundMountPoint.length) foundMountPoint = mountPoint;
+                    }
+                });
+                if (foundMountPoint !== "") privShell("mount -o remount,rw " + getPathArg(foundMountPoint));
+            }
             privShell("mkdir -p " + getPathArg(files.join(libParentPath, "lib")));
             privShell("chmod 755 " + getPathArg(files.join(libParentPath, "lib")));
             fileNames.forEach((newName) => {
@@ -12293,9 +12353,14 @@ function algo_init() {
                 let dstParentPath = dstPath.replace(/\/[^\/]+$/, "/");
                 privShell("mkdir -p " + getPathArg(dstParentPath));
                 privShell("chmod 755 " + getPathArg(dstParentPath));
-                privShell("cat " + getPathArg(srcPath) + " > " + getPathArg(dstPath));
+                let result = privShell("cat " + getPathArg(srcPath) + " > " + getPathArg(dstPath));
+                if (result.code != 0) {
+                    log(result.code, result.error);
+                    throw new Error("result.code != 0");
+                }
                 privShell("chmod 644 " + getPathArg(dstPath));
             });
+            if (foundMountPoint !== "") privShell("mount -o remount,ro " + getPathArg(foundMountPoint));
             files.removeDir(extractDir);
             log("文件复制完成");
 
@@ -12306,7 +12371,7 @@ function algo_init() {
             );
         } catch (e) {
             logException(e);
-            toastLog("解压或复制文件时出错");
+            dialogs.alert("解压或复制文件时出错");
         }
     }
 
