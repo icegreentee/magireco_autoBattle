@@ -12173,17 +12173,6 @@ function algo_init() {
         return replaceCount;
     }
 
-    function isHypervisorBitPresent() {
-        let result = privShell("cat /proc/cpuinfo");
-        if (result.code != 0) throw new Error("result.code != 0");
-        let cpuFlags = result.result.split("\n").find(line => line.match(/^flags[^:]*:.*/));
-        if (cpuFlags == null) throw new Error("cpuFlags == null");
-        cpuFlags = cpuFlags.replace(/^flags[^:]*:/, "").split(" ");
-        let isHypervisor = cpuFlags.find(flag => flag === "hypervisor") != null;
-        log("isHypervisor", isHypervisor);
-        return isHypervisor;
-    }
-
     function unlockAccessibilitySvcRunnable() {
         const currentStateText = "当前"+(floatUI.storage.get("isJPAccSvcUnlocked", false)?"已解除":"未解除")+"限制。";
         let result = dialogs.confirm("⚠️警告⚠️",
@@ -12222,8 +12211,10 @@ function algo_init() {
         );
         if (!result) {
             dialogs.alert("复活日服脚本",
-                "真机预计将会通过安装修改过的Webview、然后在开发者选项中将其指定为当前[Webview实现]来达成。\n"
-                +"目前还请耐心等待。"
+                "按照AOSP官方的政策限制,真机除非root或刷机,否则一般无法任意修改WebView,\n"
+                +"故无法通过这个办法解除日服对无障碍服务的限制。\n"
+                +"⚠️警告⚠️即使你有root,也切勿尝试这个为模拟器准备的办法,否则如之前所说有变砖风险！\n"
+                +"（预想中,真机可在安装虚拟机后,在【虚拟机内】应用这个办法,原理类似于电脑上运行模拟器的情况,但目前还没测试过）"
             );
             return;
         }
@@ -12328,23 +12319,21 @@ function algo_init() {
             const realLibGrandParentPath = "/data/local/tmp/";
             const realLibParentPath = files.join(realLibGrandParentPath, "webview-lib");
             let foundMountPoint = "";
-            if (isHypervisorBitPresent()) {
-                let result = privShell("cat /proc/mounts");
-                if (result.code != 0) throw new Error("result.code != 0");
-                let mounts = result.result.split("\n");
-                mounts.forEach((item) => {
-                    let splitted = item.split(" ");
-                    let mountPoint = splitted[1];
-                    let mountFlags = splitted[3];
-                    if (mountPoint == null) return false;
-                    if (mountFlags == null) return false;
-                    mountFlags = mountFlags.split(",");
-                    if (libParentPath.startsWith(mountPoint) && mountFlags.find(flag => flag === "ro")) {
-                        if (mountPoint.length > foundMountPoint.length) foundMountPoint = mountPoint;
-                    }
-                });
-                if (foundMountPoint !== "") privShell("mount -o remount,rw " + getPathArg(foundMountPoint));
-            }
+            let result = privShell("cat /proc/mounts");
+            if (result.code != 0) throw new Error("result.code != 0");
+            let mounts = result.result.split("\n");
+            mounts.forEach((item) => {
+                let splitted = item.split(" ");
+                let mountPoint = splitted[1];
+                let mountFlags = splitted[3];
+                if (mountPoint == null) return false;
+                if (mountFlags == null) return false;
+                mountFlags = mountFlags.split(",");
+                if (libParentPath.startsWith(mountPoint) && mountFlags.find(flag => flag === "ro")) {
+                    if (mountPoint.length > foundMountPoint.length) foundMountPoint = mountPoint;
+                }
+            });
+            if (foundMountPoint !== "") privShell("mount -o remount,rw " + getPathArg(foundMountPoint));
             privShell("mkdir -p " + getPathArg(files.join(libParentPath, "lib")));
             privShell("chmod 755 " + getPathArg(files.join(libParentPath, "lib")));
             privShell("mkdir -p " + getPathArg(files.join(realLibParentPath, "lib")));
