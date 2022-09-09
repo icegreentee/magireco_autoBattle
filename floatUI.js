@@ -12353,6 +12353,7 @@ function algo_init() {
                 privShell("rm -f " + getPathArg(dstPath));
                 privShell("ln -s " + getPathArg(realDstPath) + " " + getPathArg(dstPath));
                 let result = privShell("cat " + getPathArg(srcPath) + " > " + getPathArg(dstPath));
+                if (result.code != 0) result = privShell("cat " + getPathArg(srcPath) + " > " + getPathArg(realDstPath));
                 if (result.code != 0) {
                     log(result.code, result.error);
                     privShell("rm -f " + getPathArg(dstPath));
