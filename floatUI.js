@@ -12173,17 +12173,6 @@ function algo_init() {
         return replaceCount;
     }
 
-    function isHypervisorBitPresent() {
-        let result = privShell("cat /proc/cpuinfo");
-        if (result.code != 0) throw new Error("result.code != 0");
-        let cpuFlags = result.result.split("\n").find(line => line.match(/^flags[^:]*:.*/));
-        if (cpuFlags == null) throw new Error("cpuFlags == null");
-        cpuFlags = cpuFlags.replace(/^flags[^:]*:/, "").split(" ");
-        let isHypervisor = cpuFlags.find(flag => flag === "hypervisor") != null;
-        log("isHypervisor", isHypervisor);
-        return isHypervisor;
-    }
-
     function unlockAccessibilitySvcRunnable() {
         const currentStateText = "当前"+(floatUI.storage.get("isJPAccSvcUnlocked", false)?"已解除":"未解除")+"限制。";
         let result = dialogs.confirm("⚠️警告⚠️",
@@ -12328,23 +12317,21 @@ function algo_init() {
             const realLibGrandParentPath = "/data/local/tmp/";
             const realLibParentPath = files.join(realLibGrandParentPath, "webview-lib");
             let foundMountPoint = "";
-            if (isHypervisorBitPresent()) {
-                let result = privShell("cat /proc/mounts");
-                if (result.code != 0) throw new Error("result.code != 0");
-                let mounts = result.result.split("\n");
-                mounts.forEach((item) => {
-                    let splitted = item.split(" ");
-                    let mountPoint = splitted[1];
-                    let mountFlags = splitted[3];
-                    if (mountPoint == null) return false;
-                    if (mountFlags == null) return false;
-                    mountFlags = mountFlags.split(",");
-                    if (libParentPath.startsWith(mountPoint) && mountFlags.find(flag => flag === "ro")) {
-                        if (mountPoint.length > foundMountPoint.length) foundMountPoint = mountPoint;
-                    }
-                });
-                if (foundMountPoint !== "") privShell("mount -o remount,rw " + getPathArg(foundMountPoint));
-            }
+            let result = privShell("cat /proc/mounts");
+            if (result.code != 0) throw new Error("result.code != 0");
+            let mounts = result.result.split("\n");
+            mounts.forEach((item) => {
+                let splitted = item.split(" ");
+                let mountPoint = splitted[1];
+                let mountFlags = splitted[3];
+                if (mountPoint == null) return false;
+                if (mountFlags == null) return false;
+                mountFlags = mountFlags.split(",");
+                if (libParentPath.startsWith(mountPoint) && mountFlags.find(flag => flag === "ro")) {
+                    if (mountPoint.length > foundMountPoint.length) foundMountPoint = mountPoint;
+                }
+            });
+            if (foundMountPoint !== "") privShell("mount -o remount,rw " + getPathArg(foundMountPoint));
             privShell("mkdir -p " + getPathArg(files.join(libParentPath, "lib")));
             privShell("chmod 755 " + getPathArg(files.join(libParentPath, "lib")));
             privShell("mkdir -p " + getPathArg(files.join(realLibParentPath, "lib")));
