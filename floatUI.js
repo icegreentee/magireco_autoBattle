@@ -178,7 +178,7 @@ floatUI.scripts = [
         fn: tasks.unlockAccessibilitySvc,
     },
     {
-        name: "绕过Play检测",
+        name: "绕过GooglePlay检测",
         fn: tasks.fakeJPInstallSource,
     },
     {
@@ -12102,13 +12102,16 @@ function algo_init() {
             toastLog("需要root或shizuku adb权限\n请确保永久授权,若已授权请再试一次");
             return;
         }
-        let dialogResult = dialogs.confirm("绕过Play检测",
-            "要伪装安装来源为Google Play Store来绕过日服的检测吗？\n警告：将会强行停止游戏！");
+        let dialogResult = dialogs.confirm("绕过GooglePlay检测",
+            "要伪装安装来源为Google Play Store来绕过日服的检测吗？\n"
+            +"警告：将会强行停止游戏！\n"
+            +"注：雷电模拟器（安卓7）等环境下可能即便伪装成功也无法启动游戏,这时请尝试EX版。"
+        );
         if (!dialogResult) {
-            toastLog("取消绕过Play检测");
+            toastLog("取消绕过GooglePlay检测");
             return;
         }
-        toastLog("尝试绕过Play检测...");
+        toastLog("尝试绕过GooglePlay检测...");
         const apkPath = getAPKPath("com.aniplex.magireco");
         if (apkPath == null) {
             toastLog("获取APK路径失败\n可能未安装日服");
@@ -12117,10 +12120,10 @@ function algo_init() {
         result = privShell("pm install -r -i com.android.vending " + getPathArg(apkPath));
         if (result.code != 0) {
             log(result.code, result.error);
-            toastLog("绕过Play检测出错");
+            toastLog("绕过GooglePlay检测出错");
             return;
         }
-        toastLog("绕过Play检测完成");
+        toastLog("绕过GooglePlay检测完成");
     }
 
     function binaryReplaceText(bytes, pattern, replacement) {
@@ -12263,13 +12266,25 @@ function algo_init() {
         const webviewPkgNames = [
             "com.android.webview",
             "com.google.android.webview",
+            "com.android.chrome",
+            "com.chrome.beta",
+            "com.chrome.dev",
+            "com.chrome.canary",
+            "com.google.android.apps.chrome",
+            "com.google.android.webview.beta",
+            "com.google.android.webview.dev",
+            "com.google.android.webview.canary",
+            "com.google.android.webview.debug",
         ]
-        let apkPath = null;
-        webviewPkgNames.find((name) => (apkPath = getAPKPath(name)) != null);
-        if (apkPath == null) {
+        let foundWebviewPaths = {};
+        let foundWebviewPkgNames = webviewPkgNames.filter((name) => (foundWebviewPaths[name] = getAPKPath(name)) != null);
+        if (foundWebviewPkgNames.length == 0) {
             toastLog("通过已知包名找不到webview");
             return;
         }
+        let apkPath = null;
+        while (apkPath == null)
+            apkPath = foundWebviewPaths[foundWebviewPkgNames[dialogs.select("请选择要修改的WebView", foundWebviewPkgNames)]];
 
         try {
             let fileNames = [];
