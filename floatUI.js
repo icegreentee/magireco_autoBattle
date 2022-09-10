@@ -12263,13 +12263,25 @@ function algo_init() {
         const webviewPkgNames = [
             "com.android.webview",
             "com.google.android.webview",
+            "com.android.chrome",
+            "com.chrome.beta",
+            "com.chrome.dev",
+            "com.chrome.canary",
+            "com.google.android.apps.chrome",
+            "com.google.android.webview.beta",
+            "com.google.android.webview.dev",
+            "com.google.android.webview.canary",
+            "com.google.android.webview.debug",
         ]
-        let apkPath = null;
-        webviewPkgNames.find((name) => (apkPath = getAPKPath(name)) != null);
-        if (apkPath == null) {
+        let foundWebviewPaths = {};
+        let foundWebviewPkgNames = webviewPkgNames.filter((name) => (foundWebviewPaths[name] = getAPKPath(name)) != null);
+        if (foundWebviewPkgNames.length == 0) {
             toastLog("通过已知包名找不到webview");
             return;
         }
+        let apkPath = null;
+        while (apkPath == null)
+            apkPath = foundWebviewPaths[foundWebviewPkgNames[dialogs.select("请选择要修改的WebView", foundWebviewPkgNames)]];
 
         try {
             let fileNames = [];
