@@ -220,7 +220,7 @@ const HTMLHead1 =
 +"\n        <title>Dev Server</title>"
 +"\n    </head>";
 const HTMLHead2 =
- "\n    <body>"
+ "\n    <body aria-hidden=\"true\">"
 +"\n        <script>"
 +"\n            function blobToDataURI(blob, callback) {"
 +"\n                var reader = new FileReader();"
