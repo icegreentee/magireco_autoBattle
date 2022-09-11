@@ -1925,7 +1925,7 @@ var limit = {
     usePresetOpList: 0,
     default: 0,
     useAuto: true,
-    autoFollow: true,
+    autoFollow: false,
     breakAutoCycleDuration: "",
     forceStopTimeout: "600",
     periodicallyKillTimeout: "3600",
