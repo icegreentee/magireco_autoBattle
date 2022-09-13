@@ -12332,7 +12332,7 @@ function algo_init() {
                 )
             );
 
-            if (magiskMode) {
+            if (magiskMode && !isRevert) {
                 const webviewVersionName = getAPKVersionName("com.google.android.webview.debug");
                 if (dialogs.confirm("复活日服脚本",
                     "修改版WebView(版本["+webviewVersionName+"])必须为所有用户安装(包括炼妖壶工作空间),\n"
