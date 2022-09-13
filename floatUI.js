@@ -2938,12 +2938,16 @@ function algo_init() {
         }
     }
 
+    var lastAPCost = null;
     function getCostAP() {
         let detectedAPCost = detectCostAP();
-        if (detectedAPCost != null) return detectedAPCost;
+        if (detectedAPCost != null) return lastAPCost = detectedAPCost;
         else if (lastOpList != null && lastOpList.apCost != null && checkNumber(lastOpList.apCost)) {
             log("没有检测到AP消耗数值,返回动作录制记录里的AP消耗数值["+lastOpList.apCost+"]");
             return parseInt(lastOpList.apCost);
+        } else if (lastAPCost != null) {
+            toastLog("检测AP消耗数值失败\n沿用上次结果 ["+lastAPCost+"] AP");
+            return lastAPCost; //有时候狗粮本周回后可能会检测不到
         }
     }
 
@@ -4062,6 +4066,9 @@ function algo_init() {
             gamebounds = detected_screen_params.gamebounds;
             gameoffset = detected_screen_params.gameoffset;
         }
+
+        //把之前记住的AP消耗数值清除
+        lastAPCost = null;
     }
 
     function refillAP() {
