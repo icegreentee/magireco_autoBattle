@@ -250,7 +250,7 @@ ui.layout(
                                 <text text="警告:因为游戏本身存在列表拖动bug,所以很不推荐开启这个选项。开启后,如果触发了列表拖动bug,选择助战时可能错点到单向好友或路人助战身上,导致Pt收益大幅下降(互关好友或NPC助战的三分之一),或者也有可能死循环反复点击没有助战的空白处。" textColor="#ff0000" />
                             </vertical>
                             <vertical id="DefaultExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
-                                <Switch id="autoFollow" w="*" margin="0 3" checked="true" textColor="#000000" text="自动关注路人" />
+                                <Switch id="autoFollow" w="*" margin="0 3" checked="false" textColor="#000000" text="自动关注路人" />
                                 <text text="启用后如果助战选到了路人,会在结算时关注他。停用这个选项则不会关注路人,在结算时如果出现询问关注的弹窗,会直接关闭。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">

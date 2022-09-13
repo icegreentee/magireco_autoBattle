@@ -1925,7 +1925,7 @@ var limit = {
     usePresetOpList: 0,
     default: 0,
     useAuto: true,
-    autoFollow: true,
+    autoFollow: false,
     breakAutoCycleDuration: "",
     forceStopTimeout: "600",
     periodicallyKillTimeout: "3600",
@@ -12117,6 +12117,17 @@ function algo_init() {
         log("apkPath", apkPath);
         return apkPath;
     }
+    function getAPKVersionName(packageName) {
+        let result = privShell("dumpsys package " + getPathArg(packageName));
+        if (result.code != 0) {
+            log(result.code, result.error);
+            return;
+        }
+        let apkVersionName = result.result.match(/versionName=[0-9\.]+/);
+        if (apkVersionName != null) apkVersionName = apkVersionName[0].replace(/versionName=/, "");
+        log("apkVersionName", apkVersionName);
+        return apkVersionName;
+    }
 
     function fakeJPInstallSourceRunnable() {
         try {
@@ -12237,14 +12248,18 @@ function algo_init() {
             "请问当前环境是模拟器(包括云手机)吗？\n"
             +"真机请点击“取消”。"
         );
+        let magiskMode = false;
         if (!result) {
-            dialogs.alert("复活日服脚本",
-                "按照AOSP官方的政策限制,真机除非root或刷机,否则一般无法任意修改WebView,\n"
-                +"故无法通过这个办法解除日服对无障碍服务的限制。\n"
-                +"⚠️警告⚠️即使你有root,也切勿尝试这个为模拟器准备的办法,否则如之前所说有变砖风险！\n"
-                +"真机可在安装虚拟机（比如光速虚拟机）后,在【虚拟机内】应用这个办法,原理类似于电脑上运行模拟器的情况。"
+            result = dialogs.confirm("复活日服脚本",
+                "按照AOSP官方的政策限制,真机除非root或刷机,否则一般无法任意修改WebView。\n"
+                +"除此之外,可在安装虚拟机（比如光速虚拟机）后,在【虚拟机内】按照电脑上运行模拟器的情况操作。\n"
+                +"⚠️警告⚠️即使你有root,也强烈建议不要尝试这个为模拟器准备的办法,否则如之前所说有变砖风险！\n"
+                +"如果你确保能采取Magisk安全模式等措施救砖（而且还要忽视被官方检测封号等风险）,\n"
+                +"这里也提供冒险的方式,通过Magisk模块来修改WebView、解除无障碍服务限制。\n"
+                +"点击[取消]退出流程。\n"
             );
-            return;
+            if (!result) return;
+            magiskMode = true;
         }
 
         try {
@@ -12252,6 +12267,20 @@ function algo_init() {
         } catch (e) {
             dialogs.alert("需要root权限,Shizuku同理\n请确保永久授权,若已授权请再试一次");
             return;
+        }
+
+        if (magiskMode) {
+            try {
+                result = normalShell("magisk -V");
+                if (result.code == 0 && result.result.match(/^\d+((\n)|())$/)) result = true;
+                else result = false;
+            } catch (e) {
+                result = false;
+            }
+            if (!result) {
+                dialogs.alert("没找到Magisk");
+                return;
+            }
         }
 
         if (limit.privilege == null || !(limit.privilege.uid == 0)) {
@@ -12271,7 +12300,7 @@ function algo_init() {
         result = dialogs.confirm("复活日服脚本",
             currentStateText+"\n"
             +"确定要继续"+(isRevert?"恢复":"解除")+"限制吗？\n"
-            +"注意:真机请点击取消,因为相关分区一般处于只读状态无法修改,需要创建Magisk模块来绕过只读限制。\n"
+            +(magiskMode?"将会创建Magisk模块来绕过只读限制。\n":"")
             +"另外请注意:过程中会杀掉游戏进程！"
         );
         if (!result) {
@@ -12288,6 +12317,134 @@ function algo_init() {
         killerCmds.forEach((cmd) => privShell(cmd + " " + "com.aniplex.magireco"));
         sleep(2000);
 
+        result = magiskMode ? installWebViewOverlay(isRevert) : performWebViewSoHijack(isRevert);
+
+        if (result) {
+            floatUI.storage.put("isJPAccSvcUnlocked", isRevert ? false : true);
+            dialogs.alert("复活日服脚本",
+                "操作完成,已"+(isRevert?"恢复":"解除")+"限制。\n"
+                +(magiskMode?
+                    "Magisk模块已创建,将在重启系统后生效,然后还需要在[开发者选项]中修改[WebView实现]设置。"
+                    :(
+                        "请手动重启游戏和想要执行的脚本。\n"
+                        +"若还未生效请尝试重启系统。" //这里不想force-stop webview了
+                    )
+                )
+            );
+
+            if (magiskMode) {
+                const webviewVersionName = getAPKVersionName("com.google.android.webview.debug");
+                if (dialogs.confirm("复活日服脚本",
+                    "修改版WebView(版本["+webviewVersionName+"])必须为所有用户安装(包括炼妖壶工作空间),\n"
+                    +"才能在[开发者选项]的[WebView实现]中被选中。\n"
+                    +"要自动重新安装修改版WebView以确保安装到所有用户吗？\n"
+                    +"注意:过程中脚本可能会因此闪退！\n"
+                    +"强烈推荐手动进行安装到所有用户的操作(比如在炼妖壶中进行克隆)。"
+                )) {
+                    toastLog("为所有用户安装中...");
+                    let userIds = [];
+                    let result = privShell("pm list users");
+                    if (result.code != 0) {
+                        log(result.code, result.error);
+                        toastLog("列出所有用户时出错")
+                        return;
+                    }
+                    if (result.code == 0) {
+                        let matched = result.result.match(/UserInfo{\d+/g);
+                        if (matched != null) matched.forEach((item) => userIds.push(item.match(/\d+/)[0]));
+                    }
+                    if (userIds.length == 0) {
+                        toastLog("无法列出所有用户");
+                        return;
+                    }
+                    userIds.forEach((id) => privShell("pm install-existing --user " + id + " com.google.android.webview.debug"));
+                    toastLog("安装完成");
+                }
+            }
+
+        }
+    }
+    function installWebViewOverlay(isRevert) {
+        const moduleDir = "/data/adb/modules/webviewhack/";
+
+        const disableModulePath = files.join(moduleDir, "disable");
+        if (isRevert) {
+            privShell("echo -ne \"\" > " + getPathArg(disableModulePath));
+            dialogs.alert("已禁用Magisk模块,请在Magisk设置中确认已禁用,或者也可以卸载模块。\n重启生效。");
+            return true;
+        } else privShell("rm -f " + getPathArg(disableModulePath));
+
+        const webviewDownloadOptions = [
+            "GitHub",
+            "蓝奏云(密码:evsb)",
+        ]
+        const webviewDownloadLinks = [
+            "https://github.com/segfault-bilibili/mod-webview-overlay/releases/latest",
+            "https://wwu.lanzouv.com/ikKHT0blwyih"
+        ];
+        const webviewApkPath = getAPKPath("com.google.android.webview.debug");
+        if (webviewApkPath == null) {
+            let text = "请先安装好修改版WebView,照常安装即可。（马上将会询问要选择哪个下载链接打开）";
+            webviewDownloadOptions.forEach((opt, i) => text += "\n" + opt + ": " + webviewDownloadLinks[i]);
+            dialogs.alert("复活日服脚本", text);
+
+            let dialog_selected = null;
+            while (dialog_selected == null)
+                dialog_selected = dialogs.select("选择下载链接", webviewDownloadOptions);
+            $app.openUrl(webviewDownloadLinks[dialog_selected]);
+            return;
+        }
+
+        try {
+            const apkFileName = "treble-overlay-bromite-webview.apk";
+            const overlayApkPath1 = files.join(files.join(files.cwd(), "bin"), apkFileName);
+            const overlayApkPath2 = files.join(extFilesDir, apkFileName);
+            files.ensureDir(overlayApkPath2);
+            files.copy(overlayApkPath1, overlayApkPath2);
+
+            const dataLocalTmpDir = "/data/local/tmp/";
+            const overlayApkPath3 = files.join(dataLocalTmpDir, apkFileName);
+            privShell("mkdir -p " + getPathArg(dataLocalTmpDir));
+            privShell("cat " + getPathArg(overlayApkPath2) + " > " + getPathArg(overlayApkPath3));
+            files.remove(overlayApkPath2);
+            privShell("chmod a+x " + getPathArg(dataLocalTmpDir));
+            privShell("chmod 644 " + getPathArg(overlayApkPath3));
+            if (!compareFiles(overlayApkPath1, overlayApkPath3)) throw new Error("compareFiles returned false");
+
+            const magiskOverlayDir = files.join(moduleDir, "system/vendor/overlay/");
+            const overlayApkPath4 = files.join(magiskOverlayDir, apkFileName);
+            privShell("mkdir -p " + getPathArg(magiskOverlayDir));
+            privShell("cat " + getPathArg(overlayApkPath3) + " > " + getPathArg(overlayApkPath4));
+            privShell("rm -f " + getPathArg(overlayApkPath3));
+
+            const autoMountPath = files.join(moduleDir, "auto_mount");
+            privShell("echo -ne \"\" > " + getPathArg(autoMountPath));
+            const modulePropContent = "id=webviewhack\n"
+                +"name=WebView Hack\n"
+                +"version=1.0\n"
+                +"versionCode=100000\n"
+                +"author=device owner\n"
+                +"description=WebView Hack\n"
+                +"support=\n"
+                +"donate=\n"
+                +"template=1500\n";
+            const modulePropPath = files.join(moduleDir, "module.prop");
+            let result = privShell("echo -ne \"" + modulePropContent + "\" > " + getPathArg(modulePropPath));
+
+            if (result.code == 0) log("Magisk模块已创建");
+            else {
+                log(result.code, result.error);
+                dialogs.alert("创建Magisk模块时出错");
+                return;
+            }
+
+            return true;
+        } catch (e) {
+            logException(e);
+            dialogs.alert("解压或复制文件时出错。（若存储空间已满,请腾出一些空间）");
+        }
+    }
+    function performWebViewSoHijack(isRevert) {
         const webviewPkgNames = [
             "com.android.webview",
             "com.google.android.webview",
@@ -12308,8 +12465,11 @@ function algo_init() {
             return;
         }
         let apkPath = null;
-        while (apkPath == null)
+        while (true) {
             apkPath = foundWebviewPaths[foundWebviewPkgNames[dialogs.select("请选择要修改的WebView", foundWebviewPkgNames)]];
+            if (apkPath == null) continue;
+            if (dialogs.confirm("复活日服脚本", "APK文件路径为 [" + apkPath + "]\n确定吗？")) break;
+        }
 
         try {
             let fileNames = [];
@@ -12406,12 +12566,7 @@ function algo_init() {
             files.removeDir(extractDir);
             log("文件复制完成");
 
-            floatUI.storage.put("isJPAccSvcUnlocked", isRevert ? false : true);
-            dialogs.alert("复活日服脚本",
-                "操作完成,已"+(isRevert?"恢复":"解除")+"限制。\n"
-                +"请手动重启游戏和想要执行的脚本。\n"
-                +"若还未生效请尝试重启模拟器。" //这里不想force-stop webview了
-            );
+            return true;
         } catch (e) {
             logException(e);
             dialogs.alert("解压或复制文件时出错。（若存储空间已满,请腾出一些空间）");
