@@ -2941,13 +2941,18 @@ function algo_init() {
     var lastAPCost = null;
     function getCostAP() {
         let detectedAPCost = detectCostAP();
-        if (detectedAPCost != null) return lastAPCost = detectedAPCost;
-        else if (lastOpList != null && lastOpList.apCost != null && checkNumber(lastOpList.apCost)) {
+        if (detectedAPCost != null) {
+            if (lastAPCost != null && detectedAPCost < lastAPCost) {
+                toastLog("检测到本次AP消耗小于上次: ["+detectedAPCost+"] < ["+lastAPCost+"]\n沿用上次结果 ["+lastAPCost+"] AP");
+                return lastAPCost; //狗粮本貌似可能检测到偏低的数值
+            }
+            return lastAPCost = detectedAPCost;
+        } else if (lastOpList != null && lastOpList.apCost != null && checkNumber(lastOpList.apCost)) {
             log("没有检测到AP消耗数值,返回动作录制记录里的AP消耗数值["+lastOpList.apCost+"]");
             return parseInt(lastOpList.apCost);
         } else if (lastAPCost != null) {
             toastLog("检测AP消耗数值失败\n沿用上次结果 ["+lastAPCost+"] AP");
-            return lastAPCost; //有时候狗粮本周回后可能会检测不到
+            return lastAPCost;
         }
     }
 
