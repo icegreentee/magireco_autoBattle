@@ -86,7 +86,7 @@ async function walkThrough(fullpath) {
                 src: relativepath,
                 integrity: hashFuncName+"-"+digest,
             };
-            let isBinary = (path.dirname(relativepath) === "bin" && path.basename(relativepath).match(/\./) == null);
+            let isBinary = (path.dirname(relativepath) === "bin" && path.basename(relativepath).match(/\.c/) == null);
             if (relativepath.match(imageFileExts) || isBinary) {
                 let itemJsonString = JSON.stringify(item);
                 fileJsonHashes.push(itemJsonString);
