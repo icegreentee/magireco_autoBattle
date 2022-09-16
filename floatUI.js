@@ -8997,15 +8997,15 @@ function algo_init() {
         } else {
             throw "recognizeDiskUnknownrecogWhat"
         }
+        let firstDiskArea = getDiskArea(0, "action");
+        let gaussianX = parseInt(getAreaWidth(firstDiskArea) / 3);
+        let gaussianY = parseInt(getAreaHeight(firstDiskArea) / 3);
+        if (gaussianX % 2 == 0) gaussianX += 1;
+        if (gaussianY % 2 == 0) gaussianY += 1;
+        let gaussianSize = [gaussianX, gaussianY];
+        let capturedImgBlur = renewImage(images.gaussianBlur(capturedImg, gaussianSize));
         for (let i=0; i<possibilities.length; i++) {
             let refImg = knownImgs[possibilities[i]];
-            let firstDiskArea = getDiskArea(0, "action");
-            let gaussianX = parseInt(getAreaWidth(firstDiskArea) / 3);
-            let gaussianY = parseInt(getAreaHeight(firstDiskArea) / 3);
-            if (gaussianX % 2 == 0) gaussianX += 1;
-            if (gaussianY % 2 == 0) gaussianY += 1;
-            let gaussianSize = [gaussianX, gaussianY];
-            let capturedImgBlur = renewImage(images.gaussianBlur(capturedImg, gaussianSize));
             let refImgBlur = renewImage(images.gaussianBlur(refImg, gaussianSize));
             let similarity = images.getSimilarity(refImgBlur, capturedImgBlur, {"type": "MSSIM"});
             log("与", possibilities[i], "盘的相似度 MSSIM=", similarity);
