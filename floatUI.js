@@ -10771,7 +10771,7 @@ function algo_init() {
         for (let imgName in knownImgs) {
             let newsize = [0, 0];
             let knownArea = null;
-            if (diskActions.find((val) => val == imgName) != null) {
+            if (diskActions.find((val) => val == imgName || val+"BtnDown" == imgName) != null) {
                 knownArea = knownFirstDiskCoords["action"];
             } else if (diskAttribs.find((val) => val == imgName || val+"BtnDown" == imgName) != null) {
                 knownArea = knownFirstStandPointCoords["our"]["attrib"]; //防止图像大小不符导致MSSIM==-1
