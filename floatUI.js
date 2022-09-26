@@ -11888,6 +11888,9 @@ function algo_init() {
                     } else if (isBackToMirrorsTopButtonPresent(screenshot)) {
                         log("超时回镜层首页");
                         knownClickPos = getAreaCenter(knownBackToMirrorsTopButtonCoords);
+                    } else if (didWeWin(screenshot) || didWeLose(screenshot)) {
+                        log("镜层结算");
+                        knownClickPos = clickSets.screenCenter;
                     } else if (isBPExhausted()) {
                         log("BP耗尽窗口");
                         knownClickPos = clickSetsMod.bpClose;
