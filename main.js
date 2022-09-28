@@ -129,6 +129,15 @@ ui.layout(
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout id="swipe" layout_below="appbar">
             <ScrollView id="content">
                 <vertical gravity="center" layout_weight="1">
+                    <vertical id="hintMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
+                        <text id="hintMsg1" layout_weight="1" w="*" gravity="center" color="#000000" text="提示:点击展开QB悬浮窗后," />
+                        <text id="hintMsg2" layout_weight="1" w="*" gravity="center" color="#000000" text="从上往下第2个按钮可打开脚本选择列表" />
+                    </vertical>
+                    <vertical id="promoMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp" visibility="gone" >
+                        <text id="promoMsg1" layout_weight="1" w="*" gravity="center" color="#000000" text="在列表中选择“安装本地服务器”,"/>
+                        <text id="promoMsg2" layout_weight="1" w="*" gravity="center" color="#000000" text="可在国服10月12日关服前备份账号个人数据"/>
+                    </vertical>
+
                     <vertical id="cwvqlu_ver_vertical" visibility="gone" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <text id="cwvqlu_ver_text" text="" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
                         <text id="open_intro_on_bili_text" text="下载链接见B站视频简介 BV1nf4y1y713" textColor="#FFCC00" textSize="16" w="wrap_content" h="wrap_content"/>
@@ -500,6 +509,15 @@ ui.layout(
     </relative>
 );
 ui["cwvqlu_ver_text"].setText(deObStr("CwvqLU Pro 引擎版本过低"));
+
+ui.run(function () {
+    let now = new Date();
+    let d = new Date();
+    d.setFullYear(2022);d.setMonth(10-1);d.setDate(12);
+    d.setHours(11);d.setMinutes(0);d.setSeconds(0);d.setMilliseconds(0);
+    let isMagirecoCNDead = now.getTime() > d.getTime();
+    ui.promoMsg_vertical.setVisibility(isMagirecoCNDead ? View.GONE : View.VISIBLE);
+});
 
 ui.emitter.on("create_options_menu", menu => {
     //在菜单内显示图标
