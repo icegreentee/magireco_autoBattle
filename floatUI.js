@@ -182,6 +182,14 @@ floatUI.scripts = [
         fn: tasks.fakeJPInstallSource,
     },
     {
+        name: "安装CA证书",
+        fn: tasks.installCACert,
+    },
+    {
+        name: "安装本地服务器",
+        fn: tasks.localServerGuide,
+    },
+    {
         name: "理子活动脚本",
         fn: tasks.dungeonEvent,
     },
@@ -12588,6 +12596,134 @@ function algo_init() {
         }
     }
 
+    function copyToClipBoard(content, description) {
+        ui.run(() => {
+            let clip = android.content.ClipData.newPlainText("text", content);
+            activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE).setPrimaryClip(clip);
+            toast("内容已复制到剪贴板");
+        })
+        dialogs.rawInputWithContent("安装本地服务器", description, content);
+    }
+    function localServerGuideRunnable() {
+        let result = dialogs.confirm("安装本地服务器",
+            "目前暂时还未实现本地离线服务器功能，但可以在B站官服还没关闭时下载个人账号数据。");
+        if (!result) return;
+
+        const termuxDownloadLinks = [
+            "https://github.com/termux/termux-app/releases/latest",
+            "https://f-droid.org/en/packages/com.termux/",
+            "https://wwu.lanzouv.com/iRV2i0ci4pte",
+        ]
+        const termuxAptCmd = "apt update"
+            + " && apt -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confnew\" upgrade -y";
+        const installLocalServerCmd = "apt update"
+            + " && apt -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confnew\" install -y nodejs"
+            + " && npm install -g magireco-cn-local-server";
+        const launchLocalServerCmd = "magireco-cn-local-server";
+
+        let options = [
+            "1.安装Termux",
+            "2.更新Termux内的软件仓库",
+            "3.安装魔纪国服本地服务器",
+            "4.启动魔纪国服本地服务器",
+        ];
+        result = null;
+        while (result == null) {
+            result = dialogs.select("请选择现在进行到的步骤", options);
+        }
+        const prompt = "请在Termux中长按粘贴这条命令，然后按回车⏎开始执行";
+        switch (result) {
+            case 0:
+                options = [
+                    "1.官方F-Droid",
+                    "2.官方GitHub",
+                    "3.蓝奏云 密码:9sp9 (非官方)",
+                ]
+                result = null;
+                while (result == null) {
+                    result = termuxDownloadLinks[dialogs.select("请选择要去哪里下载Termux", options)]
+                }
+                $app.openUrl(result);
+                return;
+            case 1:
+                copyToClipBoard(termuxAptCmd, prompt);
+                return;
+            case 2:
+                copyToClipBoard(installLocalServerCmd, prompt);
+                return;
+            case 3:
+                copyToClipBoard(launchLocalServerCmd, prompt);
+                return;
+        }
+    }
+    function installCACertRunnable() {
+        let result = dialogs.confirm("安装CA证书",
+            "该操作需要root权限。"
+            +"\n请确保魔法纪录国服客户端和本app安装在同一个环境下。"
+            +"\n若是真机，强烈建议改在虚拟机中安装游戏客户端和本app。"
+        );
+        if (!result) return;
+
+        try {
+            privShell("id");
+        } catch (e) {
+            dialogs.alert("需要root权限,Shizuku同理\n请确保永久授权,若已授权请再试一次");
+            return;
+        }
+
+        const cacertFileName = "ca.crt";
+        const caSubjectHashOldFileName = "ca_subject_hash_old.txt";
+
+        let url = "http://magireco.local";
+        url = dialogs.rawInputWithContent("安装CA证书", "请输入国服本地服务器的Web控制界面网址", url);
+        if (url.match(/^(http|https):\/\/[^\/]+/) == null) {
+            dialogs.alert("网址必须以http://或者https://开头");
+            return;
+        }
+        url = url.replace(/\/*$/, "");
+
+        let cacertUrl = url + "/" + cacertFileName;
+        let caSubjectHashOldUrl = url + "/" + caSubjectHashOldFileName;
+
+        let cacertResp, caSubjectHashOldResp;
+        try {
+            cacertResp = http.get(cacertUrl);
+            caSubjectHashOldResp = http.get(caSubjectHashOldUrl);
+        } catch (e) {
+            log(e);
+        }
+        if (cacertResp == null || caSubjectHashOldResp == null
+            || cacertResp.statusCode != 200 || caSubjectHashOldResp.statusCode != 200
+        ) {
+            dialogs.alert("下载失败");
+            return;
+        }
+
+        let cacert = cacertResp.body.string();
+        let caSubjectHashOld = caSubjectHashOldResp.body.string();
+
+        if (!cacert.startsWith("-----BEGIN CERTIFICATE-----") || !caSubjectHashOld.match(/^[0-9a-f]{8}$/)) {
+            dialogs.alert("文件内容非法");
+            return;
+        }
+
+        let dir = files.join(extFilesDir, "cacert");
+        let cacertPath = files.join(dir, cacertFileName);
+        let cacertDstPath = "/system/etc/security/cacerts/" + caSubjectHashOld + ".0";
+        if (files.exists(cacertDstPath)) {
+            result = dialogs.confirm("安装CA证书",
+                "警告！文件已存在: [" + cacertDstPath + "]"
+                +"\n还要继续吗？");
+            if (!result) return;
+        }
+        files.ensureDir(cacertPath);
+        files.write(cacertPath, cacert);
+        log("written cacert files to extFilesDir");
+        result = privShell("cp " + getPathArg(cacertPath) + " " + getPathArg(cacertDstPath));
+        log(result);
+        dialogs.alert("安装CA证书", "操作" + (result.code == 0 ? "成功\n重启系统生效" : "失败"));
+    }
+
     /* ~~~~~~~~ 临时开荒辅助 开始 ~~~~~~~~ （有部分函数在外边） */
     var knownNewQuestCoords = {
         //[1078,473][1232,513]
@@ -12824,6 +12960,8 @@ function algo_init() {
         captureText: captureTextRunnable,
         unlockAccessibilitySvc: unlockAccessibilitySvcRunnable,
         fakeJPInstallSource: fakeJPInstallSourceRunnable,
+        installCACert: installCACertRunnable,
+        localServerGuide: localServerGuideRunnable,
         openUp: taskOpenUp,
     };
 }
