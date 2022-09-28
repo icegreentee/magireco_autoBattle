@@ -12610,8 +12610,8 @@ function algo_init() {
         if (!result) return;
 
         const termuxDownloadLinks = [
-            "https://github.com/termux/termux-app/releases/latest",
             "https://f-droid.org/en/packages/com.termux/",
+            "https://github.com/termux/termux-app/releases/latest",
             "https://wwu.lanzouv.com/iRV2i0ci4pte",
         ]
         const termuxAptCmd = "apt update"
