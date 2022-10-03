@@ -12592,7 +12592,7 @@ function algo_init() {
             return true;
         } catch (e) {
             logException(e);
-            dialogs.alert("解压或复制文件时出错。（若存储空间已满,请腾出一些空间）");
+            dialogs.alert("解压或复制文件时出错。\n若是雷电模拟器9，请在模拟器设置中将[磁盘共享]设为[System.vmdk可写]。\n若存储空间已满,请腾出一些空间。");
         }
     }
 
@@ -12754,7 +12754,7 @@ function algo_init() {
         result = privShell("chmod 644 " + getPathArg(cacertDstPath));
         log(result);
         if (foundMountPoint !== "") privShell("mount -o remount,ro " + getPathArg(foundMountPoint));
-        dialogs.alert("安装CA证书", "操作" + (result.code == 0 ? "成功\n重启系统生效" : "失败"));
+        dialogs.alert("安装CA证书", "操作" + (result.code == 0 ? "成功\n重启系统生效" : "失败\n（若是雷电模拟器9，请在模拟器设置中将[磁盘共享]设为[System.vmdk可写]）"));
     }
 
     /* ~~~~~~~~ 临时开荒辅助 开始 ~~~~~~~~ （有部分函数在外边） */
