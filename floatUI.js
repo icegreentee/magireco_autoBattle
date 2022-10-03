@@ -12574,8 +12574,9 @@ function algo_init() {
                     privShell("chmod 755 " + getPathArg(path));
                 }
                 privShell("rm -f " + getPathArg(dstPath));
-                privShell("ln -s " + getPathArg(realDstPath) + " " + getPathArg(dstPath));
-                let result = privShell("cat " + getPathArg(srcPath) + " > " + getPathArg(dstPath));
+                let result = privShell("ln -s " + getPathArg(realDstPath) + " " + getPathArg(dstPath));
+                if (result.code != 0) throw new Error("ln -s failed");
+                result = privShell("cat " + getPathArg(srcPath) + " > " + getPathArg(dstPath));
                 if (result.code != 0) result = privShell("cat " + getPathArg(srcPath) + " > " + getPathArg(realDstPath));
                 if (result.code != 0) {
                     log(result.code, result.error);
