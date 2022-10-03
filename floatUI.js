@@ -12720,7 +12720,8 @@ function algo_init() {
 
         let dir = files.join(extFilesDir, "cacert");
         let cacertPath = files.join(dir, cacertFileName);
-        let cacertDstPath = "/system/etc/security/cacerts/" + caSubjectHashOld + ".0";
+        const cacertDstDir = "/system/etc/security/cacerts/";
+        let cacertDstPath = cacertDstDir + caSubjectHashOld + ".0";
         if (files.exists(cacertDstPath)) {
             result = dialogs.confirm("安装CA证书",
                 "警告！文件已存在: [" + cacertDstPath + "]"
@@ -12730,10 +12731,29 @@ function algo_init() {
         files.ensureDir(cacertPath);
         files.write(cacertPath, cacert);
         log("written cacert files to extFilesDir");
+
+        let foundMountPoint = "";
+        result = privShell("cat /proc/mounts");
+        if (result.code != 0) throw new Error("result.code != 0");
+        let mounts = result.result.split("\n");
+        mounts.forEach((item) => {
+            let splitted = item.split(" ");
+            let mountPoint = splitted[1];
+            let mountFlags = splitted[3];
+            if (mountPoint == null) return false;
+            if (mountFlags == null) return false;
+            mountFlags = mountFlags.split(",");
+            if (cacertDstDir.startsWith(mountPoint) && mountFlags.find(flag => flag === "ro")) {
+                if (mountPoint.length > foundMountPoint.length) foundMountPoint = mountPoint;
+            }
+        });
+        if (foundMountPoint !== "") privShell("mount -o remount,rw " + getPathArg(foundMountPoint));
+
         result = privShell("cp " + getPathArg(cacertPath) + " " + getPathArg(cacertDstPath));
         log(result);
         result = privShell("chmod 644 " + getPathArg(cacertDstPath));
         log(result);
+        if (foundMountPoint !== "") privShell("mount -o remount,ro " + getPathArg(foundMountPoint));
         dialogs.alert("安装CA证书", "操作" + (result.code == 0 ? "成功\n重启系统生效" : "失败"));
     }
 
