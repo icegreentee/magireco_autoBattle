@@ -12605,8 +12605,15 @@ function algo_init() {
         dialogs.rawInputWithContent("安装本地服务器", description, content);
     }
     function localServerGuideRunnable() {
+        function isMagirecoCNDead() {
+            let now = new Date();
+            let d = new Date();
+            d.setFullYear(2022);d.setMonth(10-1);d.setDate(12);
+            d.setHours(11);d.setMinutes(0);d.setSeconds(0);d.setMilliseconds(0);
+            return now.getTime() > d.getTime();
+        }
         let result = dialogs.confirm("安装本地服务器",
-            "目前暂时还未实现本地离线服务器功能，但可以在B站官服还没关闭时下载个人账号数据。");
+            isMagirecoCNDead() ? "" : "目前可以在B站官服还没关闭时下载个人账号数据。");
         if (!result) return;
 
         const termuxDownloadLinks = [
@@ -12614,11 +12621,15 @@ function algo_init() {
             "https://github.com/termux/termux-app/releases/latest",
             "https://wwu.lanzouv.com/iRV2i0ci4pte",
         ]
-        const termuxAptCmd = "apt update"
-            + " && apt -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confnew\" upgrade -y";
+        const termuxAptCmd = "sed -i 's@^\\(deb.*stable main\\)$@#\\1\\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list"
+            + " && apt update"
+            + " && apt -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confnew\" upgrade -y"
+            + " && echo 软件仓库更新完成！";
         const installLocalServerCmd = "apt update"
             + " && apt -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confnew\" install -y nodejs"
-            + " && npm install -g magireco-cn-local-server";
+            + " && echo NodeJS安装完成！"
+            + " && npm install -g magireco-cn-local-server"
+            + " && echo 本地服务器安装完成！";
         const launchLocalServerCmd = "magireco-cn-local-server";
 
         let options = [
@@ -12631,7 +12642,7 @@ function algo_init() {
         while (result == null) {
             result = dialogs.select("请选择现在进行到的步骤", options);
         }
-        const prompt = "请在Termux中长按粘贴这条命令，然后按回车⏎开始执行";
+        const prompt = "请在Termux中长按粘贴(Paste)这条命令，然后按回车⏎开始执行";
         switch (result) {
             case 0:
                 options = [
