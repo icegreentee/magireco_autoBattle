@@ -12732,6 +12732,8 @@ function algo_init() {
         log("written cacert files to extFilesDir");
         result = privShell("cp " + getPathArg(cacertPath) + " " + getPathArg(cacertDstPath));
         log(result);
+        result = privShell("chmod 644 " + getPathArg(cacertDstPath));
+        log(result);
         dialogs.alert("安装CA证书", "操作" + (result.code == 0 ? "成功\n重启系统生效" : "失败"));
     }
 
