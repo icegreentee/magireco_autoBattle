@@ -12641,7 +12641,7 @@ function algo_init() {
         let options = [
             "1.安装Termux",
             "2.更新Termux内的软件仓库",
-            "3.安装魔纪国服本地服务器",
+            "3.安装或更新魔纪国服本地服务器",
             "4.启动魔纪国服本地服务器",
         ];
         result = null;
