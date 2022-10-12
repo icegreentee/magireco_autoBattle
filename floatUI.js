@@ -56,6 +56,7 @@ var origFunc = {
     press: function () {return press.apply(this, arguments)},
     buildDialog: function() {return dialogs.build.apply(this, arguments)},
 }
+var mustRoot = false;
 
 var OCR = null, ocr = null;
 const extFilesDir = context.getExternalFilesDir(null).getAbsolutePath(); //用于中转存放可执行文件
@@ -1705,15 +1706,18 @@ floatUI.main = function () {
         limit.privilege = null;
         files.remove(rootMarkerPath);
         if (device.sdkInt >= 23) {
-            dialogs.alert("直接获取root权限失败",
-                "即使没有root,也可以借助Shizuku来使用adb权限。如果有root权限,Shizuku也不会弹出通知,从而避免遮挡屏幕干扰截屏识图。\n"
-                +"请下载安装Shizuku,并按照说明启动它,然后在Shizuku中给本应用授权。\n"
-                +"当前环境"+(
-                    device.sdkInt >= 30 ? "是Android11或以上,可通过无线调试启动Shizuku,无需连电脑。\n"
-                    : "低于Android11,若是真机请连接电脑使用adb启动Shizuku。\n"
-                )+"(若是模拟器,请开启root权限)\n"
-                +"注：Shizuku可能有个小bug,在启动成功并开启授权后,仍然显示“已授权0个应用”,这时请尝试停止Shizuku服务再将其重启。");
-            $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
+            if (!mustRoot) {
+                mustRoot = false; //one-time only
+                dialogs.alert("直接获取root权限失败",
+                    "即使没有root,也可以借助Shizuku来使用adb权限。如果有root权限,Shizuku也不会弹出通知,从而避免遮挡屏幕干扰截屏识图。\n"
+                    +"请下载安装Shizuku,并按照说明启动它,然后在Shizuku中给本应用授权。\n"
+                    +"当前环境"+(
+                        device.sdkInt >= 30 ? "是Android11或以上,可通过无线调试启动Shizuku,无需连电脑。\n"
+                        : "低于Android11,若是真机请连接电脑使用adb启动Shizuku。\n"
+                    )+"(若是模拟器,请开启root权限)\n"
+                    +"注：Shizuku可能有个小bug,在启动成功并开启授权后,仍然显示“已授权0个应用”,这时请尝试停止Shizuku服务再将其重启。");
+                $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
+            }
         } else {
             toastLog("Android版本低于6，Shizuku已不再支持\n必须直接授予root权限，否则无法使用本app");
             //CwvqLU版本更新后，Shizuku 3.6.1就不能识别了，也就无法授权
@@ -12286,6 +12290,7 @@ function algo_init() {
         }
 
         try {
+            mustRoot = true;
             privShell("id");
         } catch (e) {
             dialogs.alert("需要root权限,Shizuku同理\n请确保永久授权,若已授权请再试一次");
@@ -12677,6 +12682,7 @@ function algo_init() {
         if (!result) return;
 
         try {
+            mustRoot = true;
             privShell("id");
         } catch (e) {
             dialogs.alert("需要root权限,Shizuku同理\n请确保永久授权,若已授权请再试一次");
