@@ -538,6 +538,9 @@ ui.emitter.on("create_options_menu", menu => {
     let item = menu.add("报告问题");
     item.setIcon(getTintDrawable("ic_report_black_48dp", colors.WHITE));
     item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+    item = menu.add("报告问题(含logcat)");
+    item.setIcon(getTintDrawable("ic_report_black_48dp", colors.WHITE));
+    item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
     item = menu.add("查看日志");
     item.setIcon(getTintDrawable("ic_assignment_black_48dp", colors.WHITE));
     item.setShowAsAction(MenuItem.SHOW_AS_ACTION_WITH_TEXT);
@@ -562,7 +565,7 @@ function setFollowRedirects(value) {
 
 const logMaxSize = 1048576;
 var reportTask = null;
-function reportBug() {
+function reportBug(includeLogcat) {
     toastLog("正在上传日志和最近一次的快照,请耐心等待...");
 
     log(appName);
@@ -615,33 +618,49 @@ function reportBug() {
         }
     }
 
+    function truncLogContent(logContent) {
+        let logSize = new java.lang.String(logContent).getBytes().length;
+        log("日志大小", logSize+"字节", logContent.length+"字符");
+        if (logSize > logMaxSize) {
+            //大于1MB时只截取尾部
+            //算法太渣，很慢，需要改
+            let excessSize = logSize - logMaxSize;
+            let rate = logSize / logContent.length;
+            let est = excessSize / rate;
+            do {
+                let logTailContent = new java.lang.String(logContent).substring(est, logContent.length-1);
+                let logTailSize = new java.lang.String(logTailContent).getBytes().length;
+                est += (logTailSize - logMaxSize) / rate;
+                sleep(1000);
+            } while (logTailSize - logMaxSize > 0 || logTailSize - logMaxSize <= -32);
+            log("截取尾部 日志大小", logTailSize+"字节", logContent.length+"字符");
+            logContent = logTailContent;
+        }
+        return logContent;
+    }
+
+    let logcatContent = null;
+    if (includeLogcat) try {
+        let result = floatUI.normalShell("logcat -d 150");
+        if (result.code == 0) {
+            logcatContent = result.result.split("\n").filter((line) => line.match(context.getPackageName())).join("\n");
+            logcatContent = truncLogContent(logcatContent);
+        }
+    } catch (e) {
+        log(e);
+    }
+
     var parentDir = files.join(engines.myEngine().cwd(), "..");
     var logDir = files.join(parentDir, "logs");
     var logContent = files.read(files.join(logDir, "log.txt"));
-    let logBytes = files.readBytes(files.join(logDir, "log.txt"));
-    let logSize = logBytes.length;
-    log("日志大小", logSize+"字节", logContent.length+"字符");
-    if (logSize > logMaxSize) {
-        //大于1MB时只截取尾部
-        //算法太渣，很慢，需要改
-        let excessSize = logSize - logMaxSize;
-        let rate = logSize / logContent.length;
-        let est = excessSize / rate;
-        do {
-            var logTailContent = new java.lang.String(logContent).substring(est, logContent.length-1);
-            var logTailSize = new java.lang.String(logTailContent).getBytes().length;
-            est += (logTailSize - logMaxSize) / rate;
-            sleep(1000);
-        } while (logTailSize - logMaxSize > 0 || logTailSize - logMaxSize <= -32);
-        logContent = logTailContent;
-        log("截取尾部 日志大小", logTailSize+"字节", logContent.length+"字符");
-    }
+    logContent = truncLogContent(logContent);
 
     var resultLinks = "";
 
     var uploadContents = {
         log: {content: logContent, syntax: "text"},
-        snapshot: {content: snapshotContent, syntax: "xml"}
+        logcat: {content: logcatContent, syntax: "text"},
+        snapshot: {content: snapshotContent, syntax: "xml"},
     };
     for (let key in uploadContents) {
         if (uploadContents[key].content == null) {
@@ -704,6 +723,9 @@ function reportBug() {
         log("报告问题对话框已关闭");
     }
 }
+function reportBugWithLogcat() {
+    return reportBug(true);
+}
 
 ui.emitter.on("options_item_selected", (e, item) => {
     switch (item.getTitle()) {
@@ -712,6 +734,13 @@ ui.emitter.on("options_item_selected", (e, item) => {
                 toastLog("已经在上传了,请稍后再试");
             } else {
                 reportTask = threads.start(reportBug);
+            }
+            break;
+        case "报告问题(含logcat)":
+            if (reportTask && reportTask.isAlive()) {
+                toastLog("已经在上传了,请稍后再试");
+            } else {
+                reportTask = threads.start(reportBugWithLogcat);
             }
             break;
         case "查看日志":

@@ -1607,6 +1607,7 @@ floatUI.main = function () {
         if (logstring !== false) log("不使用特权"+logstring+" ["+result.code+"]");
         return result;
     }
+    floatUI.normalShell = normalShell;
 
     //检查并申请root或adb权限
     getEUID = function (procStatusContent) {
