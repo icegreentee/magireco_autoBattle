@@ -132,6 +132,7 @@ ui.layout(
                     <vertical id="hintMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
                         <text id="hintMsg1" layout_weight="1" w="*" gravity="center" color="#000000" text="提示:点击展开QB悬浮窗后," />
                         <text id="hintMsg2" layout_weight="1" w="*" gravity="center" color="#000000" text="从上往下第2个按钮可打开脚本选择列表" />
+                        <text id="hintMsg3" layout_weight="1" w="*" gravity="center" color="#000000" text="另外注意:真机请务必授予“后台弹出界面”权限！" />
                     </vertical>
                     <vertical id="remindMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp" visibility="gone" >
                         <text id="remindMsg" layout_weight="1" w="*" gravity="center" color="#000000" text="提醒:若最近升级过模拟器,则需要重新复活日服脚本" />
