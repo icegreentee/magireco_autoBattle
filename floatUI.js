@@ -171,8 +171,9 @@ floatUI.scripts = [
         availableForJP: true,
     },
     {
-        name: "自动点击行动盘(无脑123盘)",
-        fn: tasks.simpleAutoBattle,
+        name: "点屏幕左下角保持亮屏",
+        fn: tasks.keepJPScreenOn,
+        availableForJP: true,
     },
     {
         name: "复活日服脚本",
@@ -189,6 +190,10 @@ floatUI.scripts = [
     {
         name: "安装本地服务器",
         fn: tasks.localServerGuide,
+    },
+    {
+        name: "自动点击行动盘(无脑123盘)",
+        fn: tasks.simpleAutoBattle,
     },
     {
         name: "理子活动脚本",
@@ -12983,6 +12988,18 @@ function algo_init() {
         }
     }
 
+    function keepJPScreenOnRunnable() {
+        initialize();
+        if (last_alive_lang !== "ja") {
+            dialogs.alert("保持亮屏仅支持日服");
+            return;
+        }
+        while (true) {
+            if (detectGameLang() === "ja") click(convertCoords({x: 0, y: 1919, pos: "bottom"}));
+            sleep(5000);
+        }
+    }
+
     return {
         recycleAllImages: recycleAllImages,
         default: taskDefault,
@@ -13004,6 +13021,7 @@ function algo_init() {
         installCACert: installCACertRunnable,
         localServerGuide: localServerGuideRunnable,
         openUp: taskOpenUp,
+        keepJPScreenOn: keepJPScreenOnRunnable,
     };
 }
 
