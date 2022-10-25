@@ -12633,7 +12633,13 @@ function algo_init() {
             "https://github.com/termux/termux-app/releases/latest",
             "https://wwu.lanzouv.com/iRV2i0ci4pte",
         ]
-        const termuxAptCmd = "sed -i 's@^\\(deb.*stable main\\)$@#\\1\\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list"
+        const termuxAptLine = "deb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main";
+        const termuxSedCmds = [
+            "s@^\\(deb.*stable main\\)$@#\\1\\n"+termuxAptLine+"@",
+            "/^#"+termuxAptLine.replace(/(\/|\.)/g, "\\$1")+"$/d",
+        ];
+        // not using multi-cmd sed syntax because line deletion is not triggered in case a new line is inserted
+        const termuxAptCmd = termuxSedCmds.map((cmd) => "sed -i '"+cmd+"' $PREFIX/etc/apt/sources.list").join(" && ")
             + " && apt update"
             + " && apt -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confnew\" upgrade -y"
             + " && echo 软件仓库更新完成！";
