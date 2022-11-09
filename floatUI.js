@@ -8514,8 +8514,10 @@ function algo_init() {
         "support",
         "mirrorsEntranceBtn",
         "mirrorsVS",
+        "mirrorsRankingVS",
         "mirrorsRedTriangle",
         "mirrorsReMatchBtn",
+        "mirrorsRankingReMatchBtnJP",
         "mirrorsExerciseSortingBtn",
         "bpExhaustRefillBtnJP",
         "bpRefillBtnJP",
@@ -11553,6 +11555,18 @@ function algo_init() {
                 pos: "center"
             }
         },
+        mirrorsRankingVS: {
+            topLeft: {
+                x: 650,
+                y: 500,
+                pos: "center"
+            },
+            bottomRight: {
+                x: 1000,
+                y: 800,
+                pos: "center"
+            }
+        },
         mirrorsRedTriangle: {
             topLeft: {
                 x: 760,
@@ -11570,7 +11584,7 @@ function algo_init() {
         let appearing = false;
         if (last_alive_lang === "ja") {
             let screenshot = compatCaptureScreen();
-            let imgNames = ["mirrorsVS", "mirrorsRedTriangle"];
+            let imgNames = ["mirrorsVS", "mirrorsRankingVS", "mirrorsRedTriangle"];
             appearing = imgNames.find((name) => {
                 let area = getConvertedArea(knownMatchingVSArea[name]);
                 let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
@@ -11596,7 +11610,7 @@ function algo_init() {
     }
     var knownMirrorsReMatchBtnArea = {
         topLeft: {
-            x: 1720,
+            x: 1680,
             y: 110,
             pos: "top"
         },
@@ -11613,8 +11627,8 @@ function algo_init() {
             let knownArea = isExercise ? knownMirrorsExerciseSortingBtnArea : knownMirrorsReMatchBtnArea;
             let area = getConvertedArea(knownArea);
             let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
-            let knownImgName = isExercise ? "mirrorsExerciseSortingBtn" : "mirrorsReMatchBtn";
-            appearing = images.findImage(img, knownImgs[knownImgName], {threshold: 0.9}) ? true : false;
+            let knownImgNames = isExercise ? ["mirrorsExerciseSortingBtn"] : ["mirrorsReMatchBtn", "mirrorsRankingReMatchBtnJP"];
+            appearing = knownImgNames.find((name) => images.findImage(img, knownImgs[name], {threshold: 0.9})) ? true : false;
         } else {
             let idToFind = isExercise ? "matchingList" : "matchingWrap";
             appearing = id(idToFind).findOnce();
