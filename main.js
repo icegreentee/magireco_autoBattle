@@ -628,9 +628,11 @@ function reportBug(includeLogcat) {
             let excessSize = logSize - logMaxSize;
             let rate = logSize / logContent.length;
             let est = excessSize / rate;
+            let logTailContent = null;
+            let logTailSize = 0;
             do {
-                let logTailContent = new java.lang.String(logContent).substring(est, logContent.length-1);
-                let logTailSize = new java.lang.String(logTailContent).getBytes().length;
+                logTailContent = new java.lang.String(logContent).substring(est, logContent.length-1);
+                logTailSize = new java.lang.String(logTailContent).getBytes().length;
                 est += (logTailSize - logMaxSize) / rate;
                 sleep(1000);
             } while (logTailSize - logMaxSize > 0 || logTailSize - logMaxSize <= -32);
