@@ -1964,6 +1964,7 @@ var limit = {
     CVAutoBattlePreferAccel: false,
     CVAutoBattlePreferABCCombo: false,
     CVAutoBattleClickDiskDuration: "50",
+    rootScreencapInterval: "0",
     dungeonEventRouteData: "",
     dungeonClickNonBattleNodeWaitSec: "8",
     dungeonPostRewardWaitSec: "8",
@@ -8195,9 +8196,30 @@ function algo_init() {
 
 
     var staleScreenshot = {img: null, lastTime: 0, timeout: 1000};
+    var lastRootScreencapTime = 0;
     var compatCaptureScreen = syncer.syn(function () {
         if (limit.rootScreencap) {
             //使用shell命令 screencap 截图
+
+            //提醒MuMu手游助手（黄MuMu）截屏卡死问题
+            const isMuMuAssistant = device.device.match(/^x86(_64)_assistant$/) && device.model === "MuMu";
+            if (isMuMuAssistant && !floatUI.storage.get("doNotRemindAboutMuMuAssistantScreencapBug", false)) {
+                let result = dialogs.confirm("⚠️警告⚠️",
+                    "看上去你在使用MuMu手游助手（黄MuMu），并且开启了root权限截屏。\n"
+                    +"MuMu手游助手被发现可能有一个问题，但可能并不是所有人都会遇到：\n"
+                    +"在频繁截屏时，整个模拟器系统可能会卡死。\n"
+                    +"如果碰到了这个问题，可尝试在识图自动战斗脚本设置中调大root权限截屏间隔；\n"
+                    +"如果没有碰到这个问题，则可以继续照常运行脚本。\n"
+                    +"点击\"确定\"继续运行脚本；\"取消\"则停止运行脚本。");
+                if (dialogs.confirm("是否不再提醒？", "点击\"确定\"，则不再就MuMu手游助手截屏卡死问题再次弹窗提醒。")) {
+                    floatUI.storage.put("doNotRemindAboutMuMuAssistantScreencapBug", true);
+                }
+                if (!result) {
+                    toastLog("停止运行脚本");
+                    stopThread();
+                }
+            }
+
             try {screencapShellCmdThread.interrupt();} catch (e) {};
             if (screencapLength < 0) screencapLength = detectScreencapLength();
             if (localHttpListenPort<0) localHttpListenPort = findListenPort();
@@ -8207,6 +8229,11 @@ function algo_init() {
             }
             let screenshot = null;
             for (let i=0; i<10; i++) {
+                let elapsedTime = new Date().getTime() - lastRootScreencapTime;
+                let waitTime = parseInt(limit.rootScreencapInterval) - elapsedTime;
+                if (waitTime > 0) sleep(waitTime);
+                lastRootScreencapTime = new Date().getTime();
+
                 screencapShellCmdThread = threads.start(function() {
                     let cmd = "screencap | "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin/scrcap2bmp -a -w5 -p"+localHttpListenPort;
                     let result = privShell(cmd, false);
@@ -8487,8 +8514,10 @@ function algo_init() {
         "support",
         "mirrorsEntranceBtn",
         "mirrorsVS",
+        "mirrorsRankingVS",
         "mirrorsRedTriangle",
         "mirrorsReMatchBtn",
+        "mirrorsRankingReMatchBtnJP",
         "mirrorsExerciseSortingBtn",
         "bpExhaustRefillBtnJP",
         "bpRefillBtnJP",
@@ -9838,7 +9867,15 @@ function algo_init() {
             let minRadius = parseInt(getAreaWidth(getSkillFullArea(0, 0)) * 0.33);
             let foundCircles = images.findCircles(skillFullImgGray, {minRadius: minRadius});
             log("找圆结果", foundCircles);
-            if (foundCircles != null && foundCircles.length > 0) {
+            if (foundCircles == null || foundCircles.length == 0) {
+                if (similarity > 2.7) {
+                    log("不便判断");
+                    return null;
+                } else {
+                    log("技能不存在");
+                    return false;
+                }
+            } else {
                 let firstSkillArea = getSkillArea(0, 0);
                 let gaussianX = parseInt(getAreaWidth(firstSkillArea) / 4);
                 let gaussianY = parseInt(getAreaHeight(firstSkillArea) / 4);
@@ -9862,9 +9899,6 @@ function algo_init() {
                     log("技能【可用】");
                     return true;
                 }
-            } else {
-                log("技能不存在");
-                return false;
             }
         }
     }
@@ -10158,12 +10192,23 @@ function algo_init() {
         //打开技能面板
         toggleSkillPanel(true);
 
+        const reScreenshotCountdownMax = 3;
         for (let pass=1; pass<=3; pass++) { //只循环3遍
             var availableSkillCount = 0;
             let screenshot = renewImage(images.copy(compatCaptureScreen())); //复制一遍以避免toggleSkillPanel回收screenshot导致崩溃退出的问题
+            let reScreenshotCountdown = reScreenshotCountdownMax;
             for (let diskPos=0; diskPos<5; diskPos++) {
                 for (let skillNo=0; skillNo<3; skillNo++) {
-                    if (isSkillAvailable(screenshot, diskPos, skillNo)) {
+                    let skillAvailableResult = isSkillAvailable(screenshot, diskPos, skillNo);
+                    if (skillAvailableResult == null) {
+                        //不便判断，重新截屏
+                        for (; reScreenshotCountdown > 0; reScreenshotCountdown--) {
+                            screenshot = renewImage(images.copy(compatCaptureScreen()));
+                            skillAvailableResult = isSkillAvailable(screenshot, diskPos, skillNo);
+                            if (skillAvailableResult != null) break;
+                        }
+                    }
+                    if (skillAvailableResult) {
                         availableSkillCount++;
                         let isSkillButtonClicked = false;
                         let lastOKClickTime = 0;
@@ -10203,6 +10248,7 @@ function algo_init() {
                                         isSkillDone = true;
                                         if (isSkillUsed) {
                                             log("技能使用完成");
+                                            reScreenshotCountdown = reScreenshotCountdownMax;
                                         } else {
                                             log("技能不可用");
                                         }
@@ -11509,6 +11555,18 @@ function algo_init() {
                 pos: "center"
             }
         },
+        mirrorsRankingVS: {
+            topLeft: {
+                x: 650,
+                y: 500,
+                pos: "center"
+            },
+            bottomRight: {
+                x: 1000,
+                y: 800,
+                pos: "center"
+            }
+        },
         mirrorsRedTriangle: {
             topLeft: {
                 x: 760,
@@ -11526,7 +11584,7 @@ function algo_init() {
         let appearing = false;
         if (last_alive_lang === "ja") {
             let screenshot = compatCaptureScreen();
-            let imgNames = ["mirrorsVS", "mirrorsRedTriangle"];
+            let imgNames = ["mirrorsVS", "mirrorsRankingVS", "mirrorsRedTriangle"];
             appearing = imgNames.find((name) => {
                 let area = getConvertedArea(knownMatchingVSArea[name]);
                 let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
@@ -11552,7 +11610,7 @@ function algo_init() {
     }
     var knownMirrorsReMatchBtnArea = {
         topLeft: {
-            x: 1720,
+            x: 1680,
             y: 110,
             pos: "top"
         },
@@ -11569,8 +11627,8 @@ function algo_init() {
             let knownArea = isExercise ? knownMirrorsExerciseSortingBtnArea : knownMirrorsReMatchBtnArea;
             let area = getConvertedArea(knownArea);
             let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
-            let knownImgName = isExercise ? "mirrorsExerciseSortingBtn" : "mirrorsReMatchBtn";
-            appearing = images.findImage(img, knownImgs[knownImgName], {threshold: 0.9}) ? true : false;
+            let knownImgNames = isExercise ? ["mirrorsExerciseSortingBtn"] : ["mirrorsReMatchBtn", "mirrorsRankingReMatchBtnJP"];
+            appearing = knownImgNames.find((name) => images.findImage(img, knownImgs[name], {threshold: 0.9})) ? true : false;
         } else {
             let idToFind = isExercise ? "matchingList" : "matchingWrap";
             appearing = id(idToFind).findOnce();
