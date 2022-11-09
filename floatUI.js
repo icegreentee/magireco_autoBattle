@@ -1964,6 +1964,7 @@ var limit = {
     CVAutoBattlePreferAccel: false,
     CVAutoBattlePreferABCCombo: false,
     CVAutoBattleClickDiskDuration: "50",
+    rootScreencapInterval: "0",
     dungeonEventRouteData: "",
     dungeonClickNonBattleNodeWaitSec: "8",
     dungeonPostRewardWaitSec: "8",
@@ -8195,9 +8196,30 @@ function algo_init() {
 
 
     var staleScreenshot = {img: null, lastTime: 0, timeout: 1000};
+    var lastRootScreencapTime = 0;
     var compatCaptureScreen = syncer.syn(function () {
         if (limit.rootScreencap) {
             //使用shell命令 screencap 截图
+
+            //提醒MuMu手游助手（黄MuMu）截屏卡死问题
+            const isMuMuAssistant = device.device.match(/^x86(_64)_assistant$/) && device.model === "MuMu";
+            if (isMuMuAssistant && !floatUI.storage.get("doNotRemindAboutMuMuAssistantScreencapBug", false)) {
+                let result = dialogs.confirm("⚠️警告⚠️",
+                    "看上去你在使用MuMu手游助手（黄MuMu），并且开启了root权限截屏。\n"
+                    +"MuMu手游助手被发现可能有一个问题，但可能并不是所有人都会遇到：\n"
+                    +"在频繁截屏时，整个模拟器系统可能会卡死。\n"
+                    +"如果碰到了这个问题，可尝试在识图自动战斗脚本设置中调大root权限截屏间隔；\n"
+                    +"如果没有碰到这个问题，则可以继续照常运行脚本。\n"
+                    +"点击\"确定\"继续运行脚本；\"取消\"则停止运行脚本。");
+                if (dialogs.confirm("是否不再提醒？", "点击\"确定\"，则不再就MuMu手游助手截屏卡死问题再次弹窗提醒。")) {
+                    floatUI.storage.put("doNotRemindAboutMuMuAssistantScreencapBug", true);
+                }
+                if (!result) {
+                    toastLog("停止运行脚本");
+                    stopThread();
+                }
+            }
+
             try {screencapShellCmdThread.interrupt();} catch (e) {};
             if (screencapLength < 0) screencapLength = detectScreencapLength();
             if (localHttpListenPort<0) localHttpListenPort = findListenPort();
@@ -8207,6 +8229,11 @@ function algo_init() {
             }
             let screenshot = null;
             for (let i=0; i<10; i++) {
+                let elapsedTime = new Date().getTime() - lastRootScreencapTime;
+                let waitTime = parseInt(limit.rootScreencapInterval) - elapsedTime;
+                if (waitTime > 0) sleep(waitTime);
+                lastRootScreencapTime = new Date().getTime();
+
                 screencapShellCmdThread = threads.start(function() {
                     let cmd = "screencap | "+"/data/local/tmp/"+CwvqLUPkgName+"/sbin/scrcap2bmp -a -w5 -p"+localHttpListenPort;
                     let result = privShell(cmd, false);

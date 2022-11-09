@@ -481,6 +481,14 @@ ui.layout(
                                 </linear>
                                 <text text="国服2.1.10a版更新后出现magia盘点不下去的问题,默认按住50毫秒后松开即可绕开这个问题,如果还有问题可以尝试调整这个数值。" textColor="#000000" />
                             </vertical>
+                            <vertical id="CVAutoBattleExtraSettings8" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <linear>
+                                    <text text="root权限截屏间隔" textColor="#000000" />
+                                    <input maxLength="4" id="rootScreencapInterval" hint="0" text="0" textSize="14" inputType="number|none" />
+                                    <text text="毫秒" textColor="#000000" />
+                                </linear>
+                                <text text="默认0毫秒，但默认值对于MuMu手游助手（黄MuMu）来说可能太短，可能会出现整个模拟器系统卡死的问题，这时可以尝试调大截屏间隔（比如500毫秒）。" textColor="#000000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -991,6 +999,7 @@ const persistParamList = [
     "CVAutoBattlePreferAccel",
     "CVAutoBattlePreferABCCombo",
     "CVAutoBattleClickDiskDuration",
+    "rootScreencapInterval",
     "dungeonEventRouteData",
     "dungeonClickNonBattleNodeWaitSec",
     "dungeonPostRewardWaitSec",
@@ -1132,6 +1141,19 @@ afterTextChanged: function (s) {
     let value = parseInt(str);
     if (isNaN(value) || value < 1 || value > 999) {
         s.replace(0, str.length, "50");
+    }
+}
+})
+);
+
+//限制rootScreencapInterval的取值
+ui["rootScreencapInterval"].addTextChangedListener(
+new android.text.TextWatcher({
+afterTextChanged: function (s) {
+    let str = ""+s;
+    let value = parseInt(str);
+    if (isNaN(value) || value < 0 || value > 9999) {
+        s.replace(0, str.length, "0");
     }
 }
 })
