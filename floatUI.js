@@ -9865,7 +9865,15 @@ function algo_init() {
             let minRadius = parseInt(getAreaWidth(getSkillFullArea(0, 0)) * 0.33);
             let foundCircles = images.findCircles(skillFullImgGray, {minRadius: minRadius});
             log("找圆结果", foundCircles);
-            if (foundCircles != null && foundCircles.length > 0) {
+            if (foundCircles == null || foundCircles.length == 0) {
+                if (similarity > 2.7) {
+                    log("不便判断");
+                    return null;
+                } else {
+                    log("技能不存在");
+                    return false;
+                }
+            } else {
                 let firstSkillArea = getSkillArea(0, 0);
                 let gaussianX = parseInt(getAreaWidth(firstSkillArea) / 4);
                 let gaussianY = parseInt(getAreaHeight(firstSkillArea) / 4);
@@ -9889,9 +9897,6 @@ function algo_init() {
                     log("技能【可用】");
                     return true;
                 }
-            } else {
-                log("技能不存在");
-                return false;
             }
         }
     }
@@ -10185,12 +10190,23 @@ function algo_init() {
         //打开技能面板
         toggleSkillPanel(true);
 
+        const reScreenshotCountdownMax = 3;
         for (let pass=1; pass<=3; pass++) { //只循环3遍
             var availableSkillCount = 0;
             let screenshot = renewImage(images.copy(compatCaptureScreen())); //复制一遍以避免toggleSkillPanel回收screenshot导致崩溃退出的问题
+            let reScreenshotCountdown = reScreenshotCountdownMax;
             for (let diskPos=0; diskPos<5; diskPos++) {
                 for (let skillNo=0; skillNo<3; skillNo++) {
-                    if (isSkillAvailable(screenshot, diskPos, skillNo)) {
+                    let skillAvailableResult = isSkillAvailable(screenshot, diskPos, skillNo);
+                    if (skillAvailableResult == null) {
+                        //不便判断，重新截屏
+                        for (; reScreenshotCountdown > 0; reScreenshotCountdown--) {
+                            screenshot = renewImage(images.copy(compatCaptureScreen()));
+                            skillAvailableResult = isSkillAvailable(screenshot, diskPos, skillNo);
+                            if (skillAvailableResult != null) break;
+                        }
+                    }
+                    if (skillAvailableResult) {
                         availableSkillCount++;
                         let isSkillButtonClicked = false;
                         let lastOKClickTime = 0;
@@ -10230,6 +10246,7 @@ function algo_init() {
                                         isSkillDone = true;
                                         if (isSkillUsed) {
                                             log("技能使用完成");
+                                            reScreenshotCountdown = reScreenshotCountdownMax;
                                         } else {
                                             log("技能不可用");
                                         }
