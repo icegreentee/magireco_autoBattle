@@ -644,8 +644,8 @@ function reportBug(includeLogcat) {
                 est += (logTailSize - logMaxSize) / rate;
                 sleep(1000);
             } while (logTailSize - logMaxSize > 0 || logTailSize - logMaxSize <= -32);
-            log("截取尾部 日志大小", logTailSize+"字节", logContent.length+"字符");
             logContent = logTailContent;
+            log("截取尾部 日志大小", logTailSize+"字节", logContent.length+"字符");
         }
         return logContent;
     }
