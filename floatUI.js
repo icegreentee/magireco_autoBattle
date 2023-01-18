@@ -1970,7 +1970,7 @@ var limit = {
     dungeonPostRewardWaitSec: "8",
     dungeonBattleTimeoutSec: "1200",
     dungeonBattleCountBeforeKill: "20",
-    openUpTryToConnect: false,
+    openUpTryToConnect: true,
     openUpClickAllSkills: false,
     firstRequestPrivilege: true,
     privilege: null
@@ -12992,6 +12992,7 @@ function algo_init() {
         initOCR();
 
         toastLog("临时开荒辅助脚本能够在一个章节(section)内自动选BATTLE进行周回；");
+        toastLog("且支持在第一回合自动凑连携（可在设置中关闭）；");
         toastLog("以及支持地图型周回,但在找不到没打过(new)的关卡时不会自动拖动地图；");
         toastLog("另外,不会嗑药,也不会处理掉线等情况。");
 
