@@ -498,7 +498,7 @@ ui.layout(
                                 <Switch id="toggleOpenUpExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
                             </vertical>
                             <vertical id="OpenUpExtraSettings1" visibility="gone" padding="10 8 0 6" w="*" h="auto">
-                                <Switch id="openUpTryToConnect" w="*" margin="0 3" checked="false" textColor="#000000" text="尽量凑连携" />
+                                <Switch id="openUpTryToConnect" w="*" margin="0 3" checked="true" textColor="#000000" text="尽量凑连携" />
                                 <text text="开启后会利用识图自动战斗脚本先解除游戏内建AUTO，然后在第1回合打出Puella Combo、第2回合尽量凑出连携，再重新开启内建AUTO。" textColor="#000000" />
                                 <text text="开启后推荐使用双人队（包括助战在内共2人），否则第2回合可能凑不出连携。" textColor="#ff0000" />
                             </vertical>
