@@ -2980,7 +2980,12 @@ function algo_init() {
         y: 325,
         pos: "top"
     }
-    const ptDistanceY = 243.75;
+    const ptDistanceY = 260; // dead CN 243.75;
+    const knownThirdPtPoint = {
+        x: knownFirstPtPoint.x,
+        y: knownFirstPtPoint.y + ptDistanceY * 2,
+        pos: knownFirstPtPoint.pos
+    }
 
     //屏幕范围内的最后一个助战Y坐标
     //考虑到屏幕底部可能有手势导航条之类的,稍微往里收窄一些
@@ -12919,6 +12924,10 @@ function algo_init() {
             topLeft: {x: 1854, y: 306, pos: "top"},
             bottomRight: {x: 1872, y: 356, pos: "top"},
         },
+        playerSupport3rd: {
+            topLeft: {x: 1854, y: 306 + ptDistanceY * 2, pos: "top"},
+            bottomRight: {x: 1872, y: 356 + ptDistanceY * 2, pos: "top"},
+        },
         NPCSupport: {
             topLeft: {x: 1854, y: 306, pos: "top"},
             bottomRight: {x: 1872, y: 356, pos: "top"},
@@ -12942,6 +12951,7 @@ function algo_init() {
     }
     const knownQuestColors = {
         playerSupport: "#7363a0",
+        playerSupport3rd: "#7363a0",
         NPCSupport: "#f26482",
         followPrompt: "#f7f7f7",
         charaExpEventLvUp: "#f26c84",
@@ -12958,6 +12968,10 @@ function algo_init() {
     }
     function isFirstSupportAvailable(screenshot) {
         let found = ["playerSupport", "NPCSupport"].find((type) => detectPureColor(screenshot, type)) ? true : false;
+        return found;
+    }
+    function isThirdSupportPlayer(screenshot) {
+        let found = ["playerSupport3rd"].find((type) => detectPureColor(screenshot, type)) ? true : false;
         return found;
     }
     function isPlayerLvUp(screenshot) {
@@ -13014,7 +13028,7 @@ function algo_init() {
 
             let screenshot = compatCaptureScreen();
             if (isFirstSupportAvailable(screenshot)) {
-                click(convertCoords(knownFirstPtPoint));
+                click(convertCoords(isThirdSupportPlayer(screenshot) ? knownThirdPtPoint : knownFirstPtPoint));
             } else if (isStartButtonPresent(screenshot)) {
                 click(convertCoords(clickSets.start));
                 if (limit.openUpTryToConnect) {
