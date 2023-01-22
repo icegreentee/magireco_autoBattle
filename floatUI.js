@@ -9986,14 +9986,26 @@ function algo_init() {
             x: 1919, y: 160, pos: "top"
         }
     }
+    const knownAutoButtonInClippedImgArea = {
+        topLeft: {
+            x: 58, y: 34, pos: "top"
+        },
+        bottomRight: {
+            x: 155, y: 59, pos: "top"
+        }
+    }
     function getAUTOSpeedImg(screenshot) {
         let area = getConvertedArea(knownAUTOSpeedButtonArea);
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
+    function getAUTOInClippedImg(clipped) {
+        let area = getConvertedArea(knownAutoButtonInClippedImgArea);
+        return renewImage(images.clip(clipped, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+    }
     function getAUTOButtonStatus(screenshot) {
         const knownColors = {
             on: "#ff95a8",
-            off: "#eee5da",
+            off: "#dacdbd",
             disabled: "#393939",
         }
         let img = getAUTOSpeedImg(screenshot);
@@ -10003,7 +10015,7 @@ function algo_init() {
         log("isAUTOEnabled foundResult", foundResult);
         if (foundResult == null) return {}; //镜层没有AUTO
         let bounds = foundResult.bounds;
-        let autoImg = renewImage(images.clip(img, bounds.left, bounds.top, bounds.width(), bounds.height()))
+        let autoImg = getAUTOInClippedImg(img);
         let onePx = renewImage(images.resize(autoImg, [1, 1], "LINEAR"));
         log("isAUTOEnabled onePx", colors.toString(images.pixel(onePx, 0, 0)));
         for (let status in knownColors) {
