@@ -13059,6 +13059,7 @@ function algo_init() {
                 for (let i = 0, deadlineTime = new Date().getTime() + 2000; i < 2 || new Date().getTime() < deadlineTime; i++) {
                     isNewQuest = isMarkedAsNewQuest((screenshot = compatCaptureScreen()));
                     if (isNewQuest) break; //再三确认已经不是new了
+                    sleep(50);
                 }
                 if (isNewQuest) {
                     click(convertCoords(getAreaCenter(knownNewQuestCoords)));
