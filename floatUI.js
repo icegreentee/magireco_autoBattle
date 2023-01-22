@@ -10996,7 +10996,7 @@ function algo_init() {
             //为了尽量连携肯定要偏向于Puella Combo
             mirrorsAutoBattleConfig.CVAutoBattlePreferABCCombo = false;
             //为尽量连携，第一回合先解除auto
-            for (let deadlineTime = new Date().getTime() + 30 * 1000, //等待AUTO按钮出现最多30秒
+            for (let deadlineTime = new Date().getTime() + 60 * 1000, //等待AUTO按钮出现最多60秒
                  consecutiveAutoBtnCount = 0;
                 new Date().getTime() < deadlineTime;
             ) {
