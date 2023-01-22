@@ -10996,13 +10996,16 @@ function algo_init() {
             //为了尽量连携肯定要偏向于Puella Combo
             mirrorsAutoBattleConfig.CVAutoBattlePreferABCCombo = false;
             //为尽量连携，第一回合先解除auto
-            for (let deadlineTime = new Date().getTime() + 30 * 1000; //等待AUTO按钮出现最多30秒
+            for (let deadlineTime = new Date().getTime() + 60 * 1000, //等待AUTO按钮出现最多60秒
+                 consecutiveAutoBtnCount = 0;
                 new Date().getTime() < deadlineTime;
             ) {
                 if (isSkipButtonPresent(compatCaptureScreen())) {
                     click(convertCoords(getAreaCenter(knownButtonCoords["skipBtn"])));
                 } else {
-                    if (toggleAutoBtn(false)) break;
+                    if (toggleAutoBtn(false)) consecutiveAutoBtnCount++;
+                    else consecutiveAutoBtnCount = 0;
+                    if (consecutiveAutoBtnCount >= 6) break;
                 }
                 sleep(50);
             }
@@ -11323,11 +11326,14 @@ function algo_init() {
 
             if (mirrorsAutoBattleConfig.CVAutoBattleTryToConnect) {
                 if (turn + 1 >= 3) {
-                    for (let deadlineTime = new Date().getTime() + 10 * 1000; //等待AUTO按钮出现最多10秒
+                    for (let deadlineTime = new Date().getTime() + 10 * 1000, //等待AUTO按钮出现最多10秒
+                         consecutiveAutoBtnCount = 0;
                         new Date().getTime() < deadlineTime;
                     ) {
-                        if (toggleAutoBtn(true)) break;
-                        sleep(500);
+                        if (toggleAutoBtn(true)) consecutiveAutoBtnCount++;
+                        else consecutiveAutoBtnCount = 0;
+                        if (consecutiveAutoBtnCount >= 6) break;
+                        sleep(50);
                     }
                     recycleAllImages();//回收所有图片
                     log("交给游戏内建AUTO");
@@ -13053,6 +13059,7 @@ function algo_init() {
                 for (let i = 0, deadlineTime = new Date().getTime() + 2000; i < 2 || new Date().getTime() < deadlineTime; i++) {
                     isNewQuest = isMarkedAsNewQuest((screenshot = compatCaptureScreen()));
                     if (isNewQuest) break; //再三确认已经不是new了
+                    sleep(50);
                 }
                 if (isNewQuest) {
                     click(convertCoords(getAreaCenter(knownNewQuestCoords)));
