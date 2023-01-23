@@ -464,16 +464,20 @@ ui.layout(
                                 <text text="开启后,会放出所有可用Magia/Doppel大招。如果遇到问题可以关闭" textColor="#000000" />
                             </vertical>
                             <vertical id="CVAutoBattleExtraSettings5" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <Switch id="CVAutoBattleAMALoop" w="*" margin="0 3" checked="true" textColor="#000000" text="进行AMA而不是MAA循环" />
+                                <text text="AMA可以更有效地利用日服精神强化中的100上MPUP" textColor="#000000" />
+                            </vertical>
+                            <vertical id="CVAutoBattleExtraSettings6" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattlePreferAccel" w="*" margin="0 3" checked="false" textColor="#000000" text="优先用Accel盘" />
                                 <text text="默认选盘倾向于用Blast盘。开启后,改为倾向于Accel。" textColor="#000000" />
                                 <text text="比如: 由比鹤乃单人队,因为队伍里只有一个成员也就是鹤乃,每回合的发牌就固定是鹤乃的盘型AABBC(只是顺序会随机打乱),然后,开启这个选项后,虽然从AABBC里可以挑选出ACB,但脚本仍然选择ACA。" textColor="#000000" />
                                 <text text="只有开启了这个选项,才能让单鹤乃(或者类似的情况)连续每回合都点击MAA这个3个盘。" textColor="#ff0000" />
                             </vertical>
-                            <vertical id="CVAutoBattleExtraSettings6" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="CVAutoBattleExtraSettings7" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="CVAutoBattlePreferABCCombo" w="*" margin="0 3" checked="false" textColor="#000000" text="优先凑A/B/C Combo" />
                                 <text text="默认优先凑出Puella Combo(3个盘都是同一个角色)。开启后,改为优先凑出Accel/Blast/Charge Combo(比如3个盘都是Accel)。" textColor="#000000" />
                             </vertical>
-                            <vertical id="CVAutoBattleExtraSettings7" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="CVAutoBattleExtraSettings8" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <linear>
                                     <text text="按下后等待" textColor="#000000" />
                                     <input maxLength="3" id="CVAutoBattleClickDiskDuration" hint="50" text="50" textSize="14" inputType="number|none" />
@@ -481,7 +485,7 @@ ui.layout(
                                 </linear>
                                 <text text="国服2.1.10a版更新后出现magia盘点不下去的问题,默认按住50毫秒后松开即可绕开这个问题,如果还有问题可以尝试调整这个数值。" textColor="#000000" />
                             </vertical>
-                            <vertical id="CVAutoBattleExtraSettings8" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                            <vertical id="CVAutoBattleExtraSettings9" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <linear>
                                     <text text="root权限截屏间隔" textColor="#000000" />
                                     <input maxLength="4" id="rootScreencapInterval" hint="0" text="0" textSize="14" inputType="number|none" />
@@ -996,6 +1000,7 @@ const persistParamList = [
     "CVAutoBattleClickAllSkills",
     "CVAutoBattleClickSkillsSinceTurn",
     "CVAutoBattleClickAllMagiaDisks",
+    "CVAutoBattleAMALoop",
     "CVAutoBattlePreferAccel",
     "CVAutoBattlePreferABCCombo",
     "CVAutoBattleClickDiskDuration",

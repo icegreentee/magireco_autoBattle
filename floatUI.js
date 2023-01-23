@@ -1961,6 +1961,7 @@ var limit = {
     CVAutoBattleClickAllSkills: true,
     CVAutoBattleClickSkillsSinceTurn: "1",
     CVAutoBattleClickAllMagiaDisks: true,
+    CVAutoBattleAMALoop: true,
     CVAutoBattlePreferAccel: false,
     CVAutoBattlePreferABCCombo: false,
     CVAutoBattleClickDiskDuration: "50",
@@ -10397,7 +10398,8 @@ function algo_init() {
     }
 
     //闭着眼放出所有Magia/Doppel大招
-    function clickAllMagiaDisks() {
+    function clickAllMagiaDisks(count) {
+        if (count == null) count = 99;
         //打开技能面板
         if (!toggleMagiaPanel(true)) return;
 
@@ -10406,6 +10408,8 @@ function algo_init() {
             clickDisk(disk);
             //如果已经点完3个盘就不用继续往下点了
             if (clickedDisksCount >= 3) return;
+            //还没点够3个盘，但已完成要求，所以还需要退出循环关闭面板
+            if (--count <= 0) break;
         }
 
         //关闭技能面板
@@ -11159,10 +11163,18 @@ function algo_init() {
                 if (advAttrEnemies.length > 0) avoidAimAtEnemies(advAttrEnemies);
             }
 
+            let enteredAMALoop = false;
+
             if (mirrorsAutoBattleConfig.CVAutoBattleClickAllMagiaDisks) {
                 //闭着眼放出所有Magia/Doppel大招
                 if (mirrorsAutoBattleConfig.CVAutoBattleTryToConnect && turn <= 2) log("第二回合先点连携盘");
-                else clickAllMagiaDisks();
+                else if (
+                    mirrorsAutoBattleConfig.CVAutoBattleAMALoop && getAliveStandPoints("our").length == 1
+                    && findSameActionDisks(allActionDisks, "accel").length >= 2
+                ) {
+                    enteredAMALoop = true;
+                    log("使用AMA循环，第一个盘先不点击M/D");
+                } else clickAllMagiaDisks();
                 //如果三个盘都是Magia/Doppel那就不用选A/B/C盘了
                 if (clickedDisksCount >= 3) continue;
             }
@@ -11318,7 +11330,23 @@ function algo_init() {
             }
 
             //完成选盘，有连携就点完剩下两个盘；没连携就点完三个盘
-            for (let i=clickedDisksCount, triedMagia = false; i<3; i++) {
+            for (let i=clickedDisksCount; i<3; i++) {
+                log("clickedDisksCount="+clickedDisksCount);
+                if (enteredAMALoop && clickedDisksCount == 1) {
+                    clickAllMagiaDisks(1);
+                    if (clickedDisksCount == 2) {
+                        log("AMA循环：已完成点击A盘和M/D盘");
+                        let firstClickedDisk = getDiskByPriority(allActionDisks, ordinalWord[0]);
+                        let accelDisks = findSameActionDisks(allActionDisks, "accel");
+                        let nextAccelDisk = accelDisks.find((disk) => disk.priority !== firstClickedDisk.priority);
+                        prioritiseDisks([nextAccelDisk].filter((disk) => disk != null));
+                        continue;
+                    } else if (clickedDisksCount == 1) log("AMA循环：未点击M/D盘，可能没有M/D盘可供点击");
+                    else if (clickedDisksCount >= 3) {
+                        log("AMA循环：点击了2个或以上M/D盘");
+                        break;
+                    }
+                }
                 let diskToClick = getDiskByPriority(allActionDisks, ordinalWord[i]);
                 //有时候点连携盘会变成长按拿起又放下，改成拖出去连携来避免这个问题
                 if (diskToClick.connectable) {
