@@ -10000,7 +10000,7 @@ function algo_init() {
         return renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
     function getAUTOInClippedImg(clipped) {
-        let area = getConvertedArea(knownAutoButtonInClippedImgArea);
+        let area = getConvertedAreaNoCutout(knownAutoButtonInClippedImgArea);
         return renewImage(images.clip(clipped, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
     }
     function getAUTOButtonStatus(screenshot) {
