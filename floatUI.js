@@ -12967,12 +12967,12 @@ function algo_init() {
 
     const knownQuestCoords = {
         playerSupport: {
-            topLeft: {x: 1854, y: 306, pos: "top"},
-            bottomRight: {x: 1872, y: 356, pos: "top"},
+            topLeft: {x: 1796, y: 285, pos: "top"},
+            bottomRight: {x: 1854, y: 298, pos: "top"},
         },
         playerSupport3rd: {
-            topLeft: {x: 1854, y: 306 + ptDistanceY * 2, pos: "top"},
-            bottomRight: {x: 1872, y: 356 + ptDistanceY * 2, pos: "top"},
+            topLeft: {x: 1796, y: 285 + ptDistanceY * 2, pos: "top"},
+            bottomRight: {x: 1854, y: 298 + ptDistanceY * 2, pos: "top"},
         },
         NPCSupport: {
             topLeft: {x: 1854, y: 306, pos: "top"},
