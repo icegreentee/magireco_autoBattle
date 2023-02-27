@@ -156,7 +156,7 @@ floatUI.scripts = [
         fn: tasks.default,
     },
     {
-        name: "临时开荒辅助",
+        name: "半自动辅助开荒(临时)",
         fn: tasks.openUp,
         availableForJP: true,
     },
@@ -12885,7 +12885,7 @@ function algo_init() {
         dialogs.alert("安装CA证书", "操作" + (result.code == 0 ? "成功\n重启系统生效" : "失败\n（若是雷电模拟器9，请在模拟器设置中将[磁盘共享]设为[System.vmdk可写]）"));
     }
 
-    /* ~~~~~~~~ 临时开荒辅助 开始 ~~~~~~~~ （有部分函数在外边） */
+    /* ~~~~~~~~ 半自动辅助开荒 开始 ~~~~~~~~ （有部分函数在外边） */
     var knownNewQuestCoords = {
         //[1078,473][1232,513]
         //内置OCR插件貌似传入更大图片区域识别效果更好，所以这里传入整个关卡按钮
@@ -13045,13 +13045,13 @@ function algo_init() {
         initialize();
 
         if (last_alive_lang !== "ja") {
-            dialogs.alert("临时开荒仅支持日服");
+            dialogs.alert("半自动辅助开荒仅支持日服");
             return;
         }
 
         initOCR();
 
-        toastLog("临时开荒辅助脚本能够在一个章节(section)内自动选BATTLE进行周回；");
+        toastLog("半自动辅助开荒脚本能够在一个章节(section)内自动选BATTLE进行周回；");
         toastLog("且支持在第一回合自动凑连携（可在设置中关闭）；");
         toastLog("以及支持地图型周回,但在找不到没打过(new)的关卡时不会自动拖动地图；");
         toastLog("另外,不会嗑药,也不会处理掉线等情况。");
