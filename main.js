@@ -496,7 +496,7 @@ ui.layout(
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
-                        <text text="(日服)临时开荒辅助脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
+                        <text text="(日服)半自动辅助开荒脚本设置" textColor="#000000" padding="5" w="*" bg="#eeeeee" />
                         <vertical padding="10 6 0 6" w="*" h="auto">
                             <vertical padding="0 8 0 6" w="*" h="auto">
                                 <Switch id="toggleOpenUpExtraSettings" w="*" margin="0 3" checked="false" textColor="#666666" text="显示更多选项" />
