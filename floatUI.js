@@ -4033,29 +4033,6 @@ function algo_init() {
             case "ja":
                 let availableForJP = floatUI.scripts.find((item) => item.name === currentTaskName && item.availableForJP);
                 let isJPAccSvcUnlocked = floatUI.storage.get("isJPAccSvcUnlocked", false);
-                if (isJPAccSvcUnlocked && !floatUI.storage.get("doNotWarnAboutJPAccSvcUnlocking", false)) {
-                    let startTime = new Date().getTime();
-                    let result = dialogs.confirm("⚠️警告⚠️",
-                        "目前已通过[复活日服脚本]解除限制,但可能存在未知风险,包括但不限于：\n"
-                        +"1.被官方针对性检测并制裁（封号）；\n"
-                        +"2.很多App(包括设置、短信、电话等系统App)都可能依赖Webview,\n"
-                        +"  因此修改Webview有可能导致App大面积崩溃,从而导致设备【近乎变砖】。\n"
-                        +"  （对于模拟器而言,则是数据损坏、无法启动）\n"
-                        +"很抱歉之前没有好好提醒各位。但是,\n"
-                        +"只有在干净未被修改过的环境中重新下载安装游戏,才是唯一相对保险的办法。\n"
-                        +"虽然可以重新运行[复活日服脚本]并选择[恢复限制],但这【并不是】恢复原状！\n"
-                        +"（点击[确定]后将不再弹出这个提醒）"
-                    );
-                    if (result) {
-                        if (new Date().getTime() - startTime < 10000) {
-                            toast("不到10秒就点击了确定,下次仍会提醒");
-                        } else {
-                            toast("将不再提醒,但请不要低估严重性！");
-                            floatUI.storage.put("doNotWarnAboutJPAccSvcUnlocking", true);
-                        }
-                    } else toast("下次仍会提醒");
-                    sleep(3000);
-                }
                 if (!availableForJP) {
                     if (isJPAccSvcUnlocked) {
                         toastLog("已通过[复活日服脚本]解除限制");
