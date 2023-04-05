@@ -10993,8 +10993,11 @@ function algo_init() {
                  consecutiveAutoBtnCount = 0;
                 new Date().getTime() < deadlineTime;
             ) {
-                if (isSkipButtonPresent(compatCaptureScreen())) {
+                let screenshot = compatCaptureScreen();
+                if (isSkipButtonPresent(screenshot)) {
                     click(convertCoords(getAreaCenter(knownButtonCoords["skipBtn"])));
+                } else if (isDownloadDataOKButtonPresent(screenshot)) {
+                    click(convertCoords(clickSets.dataDownloadOK));
                 } else {
                     if (toggleAutoBtn(false)) consecutiveAutoBtnCount++;
                     else consecutiveAutoBtnCount = 0;
