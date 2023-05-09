@@ -134,6 +134,11 @@ ui.layout(
                         <text id="hintMsg2" layout_weight="1" w="*" gravity="center" color="#000000" text="从上往下第2个按钮可打开脚本选择列表" />
                         <text id="hintMsg3" layout_weight="1" w="*" gravity="center" color="#000000" text="另外注意:真机请务必授予“后台弹出界面”权限！" />
                     </vertical>
+                    <vertical id="tempFixMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
+                        <text id="tempFixMsg1" layout_weight="1" w="*" gravity="center" color="#00ff00" text="若是模拟器环境下,游戏出现音频减速降调bug," />
+                        <text id="tempFixMsg2" layout_weight="1" w="*" gravity="center" color="#00ff00" text="脚本目前提供实验性的“音频减速降调bug临时修正”," />
+                        <text id="tempFixMsg3" layout_weight="1" w="*" gravity="center" color="#00ff00" text="可在开启模拟器的root权限后尝试。" />
+                    </vertical>
                     <vertical id="remindMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp" visibility="gone" >
                         <text id="remindMsg" layout_weight="1" w="*" gravity="center" color="#000000" text="提醒:若最近升级过模拟器,则需要重新复活日服脚本" />
                     </vertical>
