@@ -956,7 +956,7 @@ if (!$floaty.checkPermission()) {
     } else {
         toast("请重新启动脚本");
     }
-    exit();
+    if (device.sdkInt < 31) exit();
 } else {
     floatUI.storage = storage; //必须放在floatUI.main()前面
     floatUI.main();
