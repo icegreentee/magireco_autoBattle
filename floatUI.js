@@ -12284,10 +12284,10 @@ function algo_init() {
 
     function binaryReplaceText(bytes, pattern, replacement) {
         if (typeof pattern !== "string" || typeof replacement !== "string") throw new Error("not string");
-        pattern = new java.lang.String(pattern).getBytes("US-ASCII");
-        replacement = new java.lang.String(replacement).getBytes("US-ASCII");
-        const patternString = new java.lang.String(pattern, "US-ASCII");
-        const replacementString = new java.lang.String(replacement, "US-ASCII");
+        pattern = new java.lang.String(pattern).getBytes("ISO-8859-1");
+        replacement = new java.lang.String(replacement).getBytes("ISO-8859-1");
+        const patternString = new java.lang.String(pattern, "ISO-8859-1");
+        const replacementString = new java.lang.String(replacement, "ISO-8859-1");
         if (pattern.length != replacement.length) throw new Error("lengths not equal");
 
         let replaceCount = 0;
@@ -12312,7 +12312,7 @@ function algo_init() {
                 else if (!(segmentSize == maxSegmentSize)) throw new Error("!(segmentSize == maxSegmentSize)");
                 java.lang.System.arraycopy(bytes, start, segment, 0, segmentSize);
 
-                let asciiString = new java.lang.String(segment, "US-ASCII");
+                let asciiString = new java.lang.String(segment, "ISO-8859-1");
                 let found = asciiString.indexOf(patternString, internalFrom < 0 ? 0 : internalFrom);
                 if (found >= 0) {
                     foundAtIndex = start + found;
