@@ -134,6 +134,11 @@ ui.layout(
                         <text id="hintMsg2" layout_weight="1" w="*" gravity="center" color="#000000" text="从上往下第2个按钮可打开脚本选择列表" />
                         <text id="hintMsg3" layout_weight="1" w="*" gravity="center" color="#000000" text="另外注意:真机请务必授予“后台弹出界面”权限！" />
                     </vertical>
+                    <vertical id="tempFixMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
+                        <text id="tempFixMsg1" layout_weight="1" w="*" gravity="center" color="#00ff00" text="若是模拟器环境下,游戏出现音频减速降调bug," />
+                        <text id="tempFixMsg2" layout_weight="1" w="*" gravity="center" color="#00ff00" text="脚本目前提供实验性的“音频减速降调bug临时修正”," />
+                        <text id="tempFixMsg3" layout_weight="1" w="*" gravity="center" color="#00ff00" text="可在开启模拟器的root权限后尝试。" />
+                    </vertical>
                     <vertical id="remindMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp" visibility="gone" >
                         <text id="remindMsg" layout_weight="1" w="*" gravity="center" color="#000000" text="提醒:若最近升级过模拟器,则需要重新复活日服脚本" />
                     </vertical>
@@ -312,8 +317,8 @@ ui.layout(
                                 <spinner id="usePresetOpList" textSize="14" textColor="#000000" entries="{{floatUI.presetOpLists.map(x=>x.name).join('|')}}" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
-                                <Switch id="promptAutoRelaunch" text="启动周回脚本时询问是否自动重开" checked="true" textColor="#000000" />
-                                <text text="想要使用自动重开功能的话,务必开启这个选项。如果暂时不想使用自动重开功能,感觉每次启动都弹出对话框很烦人,又不想清除掉导入进来或录制下来的选关动作数据,可以在这里关闭弹窗提示。" textColor="#000000" />
+                                <Switch id="promptAutoRelaunch" text="启用自动重开功能" checked="true" textColor="#000000" />
+                                <text text="想要使用自动重开功能的话,务必开启这个选项。如果暂时不想使用自动重开功能,感觉每次启动都弹出对话框很烦人,又不想清除掉导入进来或录制下来的选关动作数据,可以在这里暂时停用这个功能。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <Switch id="reLoginNeverAbandon" text="重新登录时只点击恢复战斗" checked="false" textColor="#000000" />
@@ -951,7 +956,7 @@ if (!$floaty.checkPermission()) {
     } else {
         toast("请重新启动脚本");
     }
-    exit();
+    if (device.sdkInt < 31) exit();
 } else {
     floatUI.storage = storage; //必须放在floatUI.main()前面
     floatUI.main();
@@ -1439,7 +1444,7 @@ var toUpdate = sync(function () {
         const extraFileNames = ["main.js", "floatUI.js"];
         let downloaded = downloadAndVerifyEssentialFiles(latestVersionName, extraFileNames);
         if (downloaded == null) {
-            setVersionMsgToastLog("有文件下载或验证失败，请稍后重试，或尝试切换下载源");
+            setVersionMsgToastLog("有文件下载或验证失败，请稍后重试，或尝试在右上角菜单中切换下载源");
             return;
         }
         setVersionMsgLog("已下载必要文件，写入...", "#666666", true);

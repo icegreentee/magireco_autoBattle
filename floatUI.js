@@ -184,6 +184,10 @@ floatUI.scripts = [
         fn: tasks.fakeJPInstallSource,
     },
     {
+        name: "音频减速降调bug临时修正",
+        fn: tasks.fixAudioSampleRate,
+    },
+    {
         name: "安装CA证书",
         fn: tasks.installCACert,
     },
@@ -12284,10 +12288,10 @@ function algo_init() {
 
     function binaryReplaceText(bytes, pattern, replacement) {
         if (typeof pattern !== "string" || typeof replacement !== "string") throw new Error("not string");
-        pattern = new java.lang.String(pattern).getBytes("US-ASCII");
-        replacement = new java.lang.String(replacement).getBytes("US-ASCII");
-        const patternString = new java.lang.String(pattern, "US-ASCII");
-        const replacementString = new java.lang.String(replacement, "US-ASCII");
+        pattern = new java.lang.String(pattern).getBytes("ISO-8859-1");
+        replacement = new java.lang.String(replacement).getBytes("ISO-8859-1");
+        const patternString = new java.lang.String(pattern, "ISO-8859-1");
+        const replacementString = new java.lang.String(replacement, "ISO-8859-1");
         if (pattern.length != replacement.length) throw new Error("lengths not equal");
 
         let replaceCount = 0;
@@ -12312,7 +12316,7 @@ function algo_init() {
                 else if (!(segmentSize == maxSegmentSize)) throw new Error("!(segmentSize == maxSegmentSize)");
                 java.lang.System.arraycopy(bytes, start, segment, 0, segmentSize);
 
-                let asciiString = new java.lang.String(segment, "US-ASCII");
+                let asciiString = new java.lang.String(segment, "ISO-8859-1");
                 let found = asciiString.indexOf(patternString, internalFrom < 0 ? 0 : internalFrom);
                 if (found >= 0) {
                     foundAtIndex = start + found;
@@ -12617,6 +12621,8 @@ function algo_init() {
                 let bytes = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, size);
                 let stream = zipfile.getInputStream(entry);
                 for (let off = 0, len = 65536; off < size; ) {
+                    let remaining = size - off;
+                    if (remaining < 65536) len = remaining;
                     let readSize = stream.read(bytes, off, len);
                     if (readSize < 0) throw new Error("unexpected EOF");
                     off += readSize;
@@ -13106,6 +13112,129 @@ function algo_init() {
         }
     }
 
+    function fixAudioSampleRateRunnable() {
+        let hardwareSampleRate = activity.getSystemService(android.content.Context.AUDIO_SERVICE)
+            .getProperty(android.media.AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE);
+        log(`hardwareSampleRate=${hardwareSampleRate}`);
+        if (!dialogs.confirm("音频减速降调bug临时修正",
+            `（当前环境下，系统汇报其音频输出采样率为${hardwareSampleRate}Hz）\n`
+            +`自从游戏客户端更新至3.0.1以来，已知在部分模拟器环境下，存在音频减速降调bug。\n`
+            +`使用root权限，可以修改游戏客户端原生库代码，从而临时性地修正问题。\n`
+            +`警告：1.需要强关游戏客户端。\n`
+            +`2.直接修改游戏客户端代码理论上存在未知风险，请自行斟酌。\n`
+            +`3.而且此修正方法会在游戏app更新时被覆盖恢复、从而失效，需要重新修正。\n`
+            +`\n`
+            +`原理说明：此修正方法通过黑箱摸索得到，其原理尚不完全清楚。`
+            +`观察发现，音频被拉长至原先的108.84%，这与48kHz的音频被误操作灌入44.1kHz缓冲区的情况吻合。`
+            +`而在问题出现的环境下，系统汇报其音频输出采样率为44.1kHz；正常环境下则汇报48kHz。`
+            +`然后实验发现，修改criNcv_GetHardwareSamplingRate_ANDROID函数的返回值、使其固定返回48000，问题即会消失。`
+            +`但目前仍然不能解释，为什么app得到了偏低的采样率数值后，按照逻辑本应该出现加速升调，而实际上却是减速降调。`
+        )) {
+            toastLog("取消音频减速降调bug临时修正");
+            return;
+        }
+
+        try {
+            privShell("id");
+        } catch (e) {
+            toastLog("需要root或shizuku adb权限\n请确保永久授权,若已授权请再试一次");
+            return;
+        }
+
+        const isRevert = !dialogs.confirm("音频减速降调bug临时修正",
+            "点击\"取消\"可以撤销临时修正，把文件还原为官方原版。\n"
+            +"点击\"确定\"则会对文件进行修改，以应用临时修正。"
+        );
+        log("isRevert", isRevert);
+
+        if (!dialogs.confirm("音频减速降调bug临时修正",
+            "确认要执行 [" + (isRevert ? "还原" : "修正") + "] 操作么？\n"
+            +"将会强关游戏客户端。"
+        )) {
+            toastLog("取消操作");
+            return;
+        }
+
+        toastLog("即将强关游戏客户端...");
+        const pkgName = "com.aniplex.magireco";
+        killGame(pkgName);
+
+        const apkPath = getAPKPath(pkgName);
+        if (apkPath == null) {
+            toastLog("获取APK路径失败\n可能未安装日服");
+            return;
+        }
+
+        const extractDir = files.join(files.cwd(), "audio_sr_fix");
+        const libFileName = "lib/arm64-v8a/libmadomagi_native.so";
+
+        try {
+            let fileNames = [];
+            files.ensureDir(files.join(extractDir, "lib"));
+            let zipfile = java.util.zip.ZipFile(apkPath);
+            let zipentries = zipfile.entries();
+            while (zipentries.hasMoreElements()) {
+                let entry = zipentries.nextElement();
+                let name = entry.getName();
+
+                if (name !== libFileName) continue;
+                if (entry.isDirectory()) continue;
+
+                let path = files.join(extractDir, name);
+                files.ensureDir(path);
+                let size = entry.getSize();
+                if (size < 0) throw new Error("ZipEntry.size < 0");
+                let bytes = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, size);
+                let stream = zipfile.getInputStream(entry);
+                for (let off = 0, len = 65536; off < size; ) {
+                    let remaining = size - off;
+                    if (remaining < 65536) len = remaining;
+                    let readSize = stream.read(bytes, off, len);
+                    if (readSize < 0) throw new Error("unexpected EOF");
+                    off += readSize;
+                    if (off > size) throw new Error("unexpected data beyond end");
+                }
+                stream.close();
+
+                if (isRevert) {
+                    log("keep file as-is");
+                } else if (name.match(/\.so$/)) {
+                    let count = binaryReplaceText(bytes,
+                        "\x08\x7A\x00\xD0\x00\x51\x4F\xB9\xC0\x03\x5F\xD6",
+                        "\x08\x7A\x00\xD0\x00\x70\x97\x52\xC0\x03\x5F\xD6"
+                    );
+                    log("replaced "+count+" occurrences in ["+name+"]");
+                }
+
+                files.writeBytes(path, bytes);
+                log("written to ["+path+"]");
+                fileNames.push(name);
+            }
+            zipfile.close();
+            log("解压完成");
+        } catch (e) {
+            logException(e);
+            dialogs.alert("解压文件时出错");
+            return;
+        }
+
+        try {
+            const binaryCopyFromPath = files.join(extractDir, libFileName);
+            const binaryCopyToPath = apkPath.replace(/\/[^\/]+\.apk$/, "/" + libFileName.replace("arm64-v8a", "arm64"));
+            let result = privShell("cat " + getPathArg(binaryCopyFromPath) + " > " + getPathArg(binaryCopyToPath));
+            if (result.code != 0) throw new Error("result.code != 0");
+            log("文件已覆盖");
+
+            files.removeDir(extractDir);
+
+            dialogs.alert("音频减速降调bug临时修正", "操作完成，请重新启动游戏");
+        } catch (e) {
+            logException(e);
+            dialogs.alert("覆盖文件时出错");
+            return;
+        }
+    }
+
     return {
         recycleAllImages: recycleAllImages,
         default: taskDefault,
@@ -13128,6 +13257,7 @@ function algo_init() {
         localServerGuide: localServerGuideRunnable,
         openUp: taskOpenUp,
         keepJPScreenOn: keepJPScreenOnRunnable,
+        fixAudioSampleRate: fixAudioSampleRateRunnable,
     };
 }
 
