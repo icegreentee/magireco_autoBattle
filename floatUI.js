@@ -13155,11 +13155,16 @@ function algo_init() {
             return;
         }
 
-        toastLog("即将强关游戏客户端...");
-        const pkgName = "com.aniplex.magireco";
-        killGame(pkgName);
+        toastLog("即将杀进程关闭游戏..."); //必须先杀进程
+        const killerCmds = [
+            "am force-stop",
+            "killall",
+            "pkill",
+        ];
+        killerCmds.forEach((cmd) => privShell(cmd + " " + "com.aniplex.magireco"));
+        sleep(2000);
 
-        const apkPath = getAPKPath(pkgName);
+        const apkPath = getAPKPath("com.aniplex.magireco");
         if (apkPath == null) {
             toastLog("获取APK路径失败\n可能未安装日服");
             return;
