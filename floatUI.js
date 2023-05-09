@@ -12617,6 +12617,8 @@ function algo_init() {
                 let bytes = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, size);
                 let stream = zipfile.getInputStream(entry);
                 for (let off = 0, len = 65536; off < size; ) {
+                    let remaining = size - off;
+                    if (remaining < 65536) len = remaining;
                     let readSize = stream.read(bytes, off, len);
                     if (readSize < 0) throw new Error("unexpected EOF");
                     off += readSize;
