@@ -312,8 +312,8 @@ ui.layout(
                                 <spinner id="usePresetOpList" textSize="14" textColor="#000000" entries="{{floatUI.presetOpLists.map(x=>x.name).join('|')}}" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings2" visibility="gone" padding="10 8 0 0" w="*" h="auto">
-                                <Switch id="promptAutoRelaunch" text="启动周回脚本时询问是否自动重开" checked="true" textColor="#000000" />
-                                <text text="想要使用自动重开功能的话,务必开启这个选项。如果暂时不想使用自动重开功能,感觉每次启动都弹出对话框很烦人,又不想清除掉导入进来或录制下来的选关动作数据,可以在这里关闭弹窗提示。" textColor="#000000" />
+                                <Switch id="promptAutoRelaunch" text="启用自动重开功能" checked="true" textColor="#000000" />
+                                <text text="想要使用自动重开功能的话,务必开启这个选项。如果暂时不想使用自动重开功能,感觉每次启动都弹出对话框很烦人,又不想清除掉导入进来或录制下来的选关动作数据,可以在这里暂时停用这个功能。" textColor="#000000" />
                             </vertical>
                             <vertical id="DefaultCrashRestartExtraSettings3" visibility="gone" padding="10 8 0 0" w="*" h="auto">
                                 <Switch id="reLoginNeverAbandon" text="重新登录时只点击恢复战斗" checked="false" textColor="#000000" />
