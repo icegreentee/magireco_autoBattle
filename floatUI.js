@@ -12259,7 +12259,7 @@ function algo_init() {
         try {
             privShell("id");
         } catch (e) {
-            toastLog("需要root或shizuku adb权限\n请确保永久授权,若已授权请再试一次");
+            dialogs.alert("需要root或shizuku adb权限\n请确保永久授权,若已授权请再试一次");
             return;
         }
         let dialogResult = dialogs.confirm("绕过GooglePlay检测",
@@ -13137,7 +13137,7 @@ function algo_init() {
         try {
             privShell("id");
         } catch (e) {
-            toastLog("需要root或shizuku adb权限\n请确保永久授权,若已授权请再试一次");
+            dialogs.alert("需要root或shizuku adb权限\n请确保永久授权,若已授权请再试一次");
             return;
         }
 
