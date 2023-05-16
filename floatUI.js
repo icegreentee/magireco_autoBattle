@@ -12642,6 +12642,7 @@ function algo_init() {
                 fileNames.push(newName);
             }
             zipfile.close();
+            if (fileNames.length == 0) throw new Error("extracted nothing");
             log("解压完成");
 
             const libParentPath = apkPath.replace(/\/[^\/]+\.apk$/, "/");
@@ -13173,8 +13174,8 @@ function algo_init() {
         const extractDir = files.join(files.cwd(), "audio_sr_fix");
         const libFileName = "lib/arm64-v8a/libmadomagi_native.so";
 
+        let fileNames = [];
         try {
-            let fileNames = [];
             files.ensureDir(files.join(extractDir, "lib"));
             let zipfile = java.util.zip.ZipFile(apkPath);
             let zipentries = zipfile.entries();
@@ -13216,6 +13217,7 @@ function algo_init() {
                 fileNames.push(name);
             }
             zipfile.close();
+            if (fileNames.length == 0) throw new Error("extracted nothing");
             log("解压完成");
         } catch (e) {
             logException(e);
