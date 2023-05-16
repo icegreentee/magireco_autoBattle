@@ -13172,7 +13172,19 @@ function algo_init() {
         }
 
         const extractDir = files.join(files.cwd(), "audio_sr_fix");
-        const libFileName = "lib/arm64-v8a/libmadomagi_native.so";
+        const searchPatterns = [
+            //3.0.2
+            {
+                abi: "arm64-v8a",
+                pattern: "\x08\x7A\x00\xD0\x00\x51\x4F\xB9\xC0\x03\x5F\xD6",
+                replace: "\x08\x7A\x00\xD0\x00\x70\x97\x52\xC0\x03\x5F\xD6"
+            },
+            {
+                abi: "armeabi-v7a",
+                pattern: "\x04\x00\x9F\xE5\x00\x00\x9F\xE7\x1E\xFF\x2F\xE1\xDC\x41\xBC\x00",
+                replace: "\x04\x00\x9F\xE5\x80\x0B\x0B\xE3\x1E\xFF\x2F\xE1\xDC\x41\xBC\x00"
+            },
+        ]
 
         let fileNames = [];
         try {
@@ -13182,8 +13194,8 @@ function algo_init() {
             while (zipentries.hasMoreElements()) {
                 let entry = zipentries.nextElement();
                 let name = entry.getName();
-
-                if (name !== libFileName) continue;
+                let searchPattern = searchPatterns.find((p) => name === "lib/" + p.abi + "/libmadomagi_native.so");
+                if (searchPattern == null) continue;
                 if (entry.isDirectory()) continue;
 
                 let path = files.join(extractDir, name);
@@ -13205,11 +13217,12 @@ function algo_init() {
                 if (isRevert) {
                     log("keep file as-is");
                 } else if (name.match(/\.so$/)) {
-                    let count = binaryReplaceText(bytes,
-                        "\x08\x7A\x00\xD0\x00\x51\x4F\xB9\xC0\x03\x5F\xD6",
-                        "\x08\x7A\x00\xD0\x00\x70\x97\x52\xC0\x03\x5F\xD6"
-                    );
+                    let count = binaryReplaceText(bytes, searchPattern.pattern, searchPattern.replace);
                     log("replaced "+count+" occurrences in ["+name+"]");
+                    if (count == 0) {
+                        dialogs.alert("未找到特征", "请等待脚本更新适配");
+                        return;
+                    }
                 }
 
                 files.writeBytes(path, bytes);
@@ -13226,10 +13239,19 @@ function algo_init() {
         }
 
         try {
-            const binaryCopyFromPath = files.join(extractDir, libFileName);
-            const binaryCopyToPath = apkPath.replace(/\/[^\/]+\.apk$/, "/" + libFileName.replace("arm64-v8a", "arm64"));
-            let result = privShell("cat " + getPathArg(binaryCopyFromPath) + " > " + getPathArg(binaryCopyToPath));
-            if (result.code != 0) throw new Error("result.code != 0");
+            fileNames.forEach((libFileName) => {
+                const binaryCopyFromPath = files.join(extractDir, libFileName);
+                const binaryCopyToPath = apkPath.replace(/\/[^\/]+\.apk$/,
+                    "/" + libFileName
+                        .replace("arm64-v8a", "arm64")
+                        .replace("armeabi-v7a", "arm")
+                );
+                let result = privShell("ls " + getPathArg(binaryCopyToPath));
+                if (result.code == 0) {
+                    let result = privShell("cat " + getPathArg(binaryCopyFromPath) + " > " + getPathArg(binaryCopyToPath));
+                    if (result.code != 0) throw new Error("result.code != 0");
+                }
+            });
             log("文件已覆盖");
 
             files.removeDir(extractDir);
