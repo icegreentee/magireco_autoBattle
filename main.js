@@ -134,7 +134,7 @@ ui.layout(
                         <text id="hintMsg2" layout_weight="1" w="*" gravity="center" color="#000000" text="从上往下第2个按钮可打开脚本选择列表" />
                         <text id="hintMsg3" layout_weight="1" w="*" gravity="center" color="#000000" text="另外注意:真机请务必授予“后台弹出界面”权限！" />
                     </vertical>
-                    <vertical id="tempFixMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp">
+                    <vertical id="tempFixMsg_vertical" margin="0 5" padding="10 6 0 6" bg="#ffffff" w="*" h="auto" elevation="1dp" visibility="gone" >
                         <text id="tempFixMsg1" layout_weight="1" w="*" gravity="center" color="#00ff00" text="若是模拟器环境下,游戏出现音频减速降调bug," />
                         <text id="tempFixMsg2" layout_weight="1" w="*" gravity="center" color="#00ff00" text="脚本目前提供实验性的“音频减速降调bug临时修正”," />
                         <text id="tempFixMsg3" layout_weight="1" w="*" gravity="center" color="#00ff00" text="可在开启模拟器的root权限后尝试。" />
@@ -538,6 +538,15 @@ ui.run(function () {
     d.setHours(11);d.setMinutes(0);d.setSeconds(0);d.setMilliseconds(0);
     let isMagirecoCNDead = now.getTime() > d.getTime();
     ui.promoMsg_vertical.setVisibility(isMagirecoCNDead ? View.GONE : View.VISIBLE);
+
+    try {
+        let hardwareSampleRate = Number(activity.getSystemService(android.content.Context.AUDIO_SERVICE)
+            .getProperty(android.media.AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE));
+        log("hardwareSampleRate", hardwareSampleRate);
+        ui.tempFixMsg_vertical.setVisibility(hardwareSampleRate == 48000 ? View.GONE : View.VISIBLE);
+    } catch (e) {
+        log(e);
+    }
 });
 
 ui.emitter.on("create_options_menu", menu => {
