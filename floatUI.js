@@ -2065,7 +2065,7 @@ var clickSets = {
         pos: "center"
     },
     skip: {
-        x: 1870,
+        x: 1750,
         y: 50,
         pos: "top"
     },
