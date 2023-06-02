@@ -8529,8 +8529,10 @@ function algo_init() {
         "sectionOnMapJP",
         "sectionOnMapChap7JP",
         "intermission",
+        "sectionOnMapBranchJP",
         "shinnyNew",
         "shinnyNewChap7",
+        "shinnyNewBranch",
     ];
 
     var loadAllImages = syncer.syn(function () {
@@ -10614,6 +10616,15 @@ function algo_init() {
                 x: 1919, y: 1079, pos: "bottom"
             }
         },
+        sectionOnMapBranchJP: {
+            //搜索整个地图
+            topLeft: {
+                x: 0, y: 128, pos: "top"
+            },
+            bottomRight: {
+                x: 1919, y: 1079, pos: "bottom"
+            }
+        },
     };
     function getButtonArea(type) {
         let knownArea = knownButtonCoords[type];
@@ -10679,6 +10690,10 @@ function algo_init() {
                 topLeft: {x: 0, y: 0, pos: "top"},
                 bottomRight: {x: 210, y: 150, pos: "top"}
             },
+            sectionOnMapBranchJP: {
+                topLeft: {x: 0, y: 0, pos: "top"},
+                bottomRight: {x: 270, y: 210, pos: "top"}
+            },
         }
         const btnOffset = {
             sectionOnMapJP: getConvertedAreaNoCutout({
@@ -10693,11 +10708,16 @@ function algo_init() {
                 topLeft: {x: 0, y: 0, pos: "top"},
                 bottomRight: {x: 116, y: 22, pos: "top"}
             }),
+            sectionOnMapBranchJP: getConvertedAreaNoCutout({
+                topLeft: {x: 0, y: 0, pos: "top"},
+                bottomRight: {x: 209, y: 42, pos: "top"}
+            }),
         }
         const shinnyNewMap = {
             sectionOnMapJP: "shinnyNew",
             intermission: "shinnyNew",
             sectionOnMapChap7JP: "shinnyNewChap7",
+            sectionOnMapBranchJP: "shinnyNewBranch",
         }
 
         let points = [];
@@ -10751,6 +10771,10 @@ function algo_init() {
                     log("found area", area);
                     ["x", "y"].forEach((axis) => point[axis] += area.topLeft[axis]);
                     point.x += parseInt(template.getWidth() / 2);
+                    if (area.imgName === "sectionOnMapBranchJP") {
+                        //杜鹃花型点NEW无反应，需要点NEW往下一点点的位置
+                        point.y += parseInt(template.getHeight() * 2);
+                    }
                     return true;
                 }
             }) != null) break;
