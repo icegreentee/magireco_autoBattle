@@ -13136,6 +13136,7 @@ function algo_init() {
                 click(newSectionOnMapPoint);
                 if (newSectionOnMapPoint.isBranch) {
                     sleep(3000);
+                    toast("杜鹃花型活动 暂不会点击特殊关卡(比如FREE)");
                     let branchStartPoint = findButton(compatCaptureScreen(), "branchStart");
                     if (branchStartPoint != null) click(branchStartPoint);
                     else log("branchStartPoint == null");
