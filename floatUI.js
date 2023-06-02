@@ -8533,6 +8533,7 @@ function algo_init() {
         "shinnyNew",
         "shinnyNewChap7",
         "shinnyNewBranch",
+        "branchStart",
     ];
 
     var loadAllImages = syncer.syn(function () {
@@ -10625,6 +10626,14 @@ function algo_init() {
                 x: 1919, y: 1079, pos: "bottom"
             }
         },
+        branchStart: {
+            topLeft: {
+                x: 960, y: 540, pos: "top"
+            },
+            bottomRight: {
+                x: 1919, y: 1079, pos: "bottom"
+            }
+        }
     };
     function getButtonArea(type) {
         let knownArea = knownButtonCoords[type];
@@ -10773,11 +10782,13 @@ function algo_init() {
                 }
                 if (point != null) {
                     log("found area", area);
+                    point = {x: point.x, y: point.y, isBranch: false}; // convert to JS object
                     ["x", "y"].forEach((axis) => point[axis] += area.topLeft[axis]);
                     point.x += parseInt(template.getWidth() / 2);
                     if (area.imgName === "sectionOnMapBranchJP") {
                         //杜鹃花型点NEW无反应，需要点NEW往下一点点的位置
                         point.y += parseInt(template.getHeight() * 2);
+                        point.isBranch = true;
                     }
                     return true;
                 }
@@ -13123,6 +13134,12 @@ function algo_init() {
                 }
             } else if ((newSectionOnMapPoint = findNewSectionOnMap(screenshot))) {
                 click(newSectionOnMapPoint);
+                if (newSectionOnMapPoint.isBranch) {
+                    sleep(3000);
+                    let branchStartPoint = findButton(compatCaptureScreen(), "branchStart");
+                    if (branchStartPoint != null) click(branchStartPoint);
+                    else log("branchStartPoint == null");
+                }
                 newSectionOnMapPoint = null;
             }
             sleep(1000);
