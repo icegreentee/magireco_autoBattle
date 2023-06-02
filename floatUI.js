@@ -8530,6 +8530,7 @@ function algo_init() {
         "sectionOnMapChap7JP",
         "intermission",
         "sectionOnMapBranchJP",
+        "freeSectionOnMapBranchJP",
         "shinnyNew",
         "shinnyNewChap7",
         "shinnyNewBranch",
@@ -10626,6 +10627,15 @@ function algo_init() {
                 x: 1919, y: 1079, pos: "bottom"
             }
         },
+        freeSectionOnMapBranchJP: {
+            //搜索整个地图
+            topLeft: {
+                x: 0, y: 128, pos: "top"
+            },
+            bottomRight: {
+                x: 1919, y: 1079, pos: "bottom"
+            }
+        },
         branchStart: {
             topLeft: {
                 x: 960, y: 540, pos: "top"
@@ -10707,6 +10717,10 @@ function algo_init() {
                 topLeft: {x: 0, y: 0, pos: "top"},
                 bottomRight: {x: 270, y: 210, pos: "top"}
             },
+            freeSectionOnMapBranchJP: {
+                topLeft: {x: 0, y: 0, pos: "top"},
+                bottomRight: {x: 270, y: 210, pos: "top"}
+            },
         }
         const btnOffset = {
             sectionOnMapJP: getConvertedAreaNoCutout({
@@ -10725,12 +10739,17 @@ function algo_init() {
                 topLeft: {x: 0, y: 0, pos: "top"},
                 bottomRight: {x: 209, y: 42, pos: "top"}
             }),
+            freeSectionOnMapBranchJP: getConvertedAreaNoCutout({
+                topLeft: {x: 0, y: 0, pos: "top"},
+                bottomRight: {x: 108, y: 52, pos: "top"}
+            }),
         }
         const shinnyNewMap = {
             sectionOnMapJP: "shinnyNew",
             intermission: "shinnyNew",
             sectionOnMapChap7JP: "shinnyNewChap7",
             sectionOnMapBranchJP: "shinnyNewBranch",
+            freeSectionOnMapBranchJP: "shinnyNewBranch",
         }
 
         let points = [];
@@ -10785,10 +10804,15 @@ function algo_init() {
                     point = {x: point.x, y: point.y, isBranch: false}; // convert to JS object
                     ["x", "y"].forEach((axis) => point[axis] += area.topLeft[axis]);
                     point.x += parseInt(template.getWidth() / 2);
-                    if (area.imgName === "sectionOnMapBranchJP") {
-                        //杜鹃花型点NEW无反应，需要点NEW往下一点点的位置
-                        point.y += parseInt(template.getHeight() * 2);
-                        point.isBranch = true;
+                    switch (area.imgName) {
+                        case "sectionOnMapBranchJP":
+                        case "freeSectionOnMapBranchJP":
+                            {
+                                //杜鹃花型点NEW无反应，需要点NEW往下一点点的位置
+                                point.y += parseInt(template.getHeight() * 2);
+                                point.isBranch = true;
+                                break;
+                            }
                     }
                     return true;
                 }
@@ -13102,12 +13126,20 @@ function algo_init() {
             if (isFirstSupportAvailable(screenshot)) {
                 click(convertCoords(isThirdSupportPlayer(screenshot) ? knownThirdPtPoint : knownFirstPtPoint));
             } else if (isStartButtonPresent(screenshot)) {
-                click(convertCoords(clickSets.start));
+                for (let attempt = 5; attempt > 0; attempt--) {
+                    click(convertCoords(clickSets.start));
+                    sleep(2000);
+                    if (!isStartButtonPresent(compatCaptureScreen())) break;
+                }
+                toast("[尽量凑连携] 已" + (limit.openUpTryToConnect ? "启用" : "停用"));
                 if (limit.openUpTryToConnect) {
-                    mirrorsAutoBattleMain({
-                        CVAutoBattleTryToConnect: true,
-                        CVAutoBattleClickAllSkills: limit.openUpClickAllSkills ? true : false,
-                    });
+                    if (!isStartButtonPresent(compatCaptureScreen())) {
+                        //必须在开始按钮消失后才能认为战斗已经开始
+                        mirrorsAutoBattleMain({
+                            CVAutoBattleTryToConnect: true,
+                            CVAutoBattleClickAllSkills: limit.openUpClickAllSkills ? true : false,
+                        });
+                    }
                 }
             } else if (isDownloadDataOKButtonPresent(screenshot)) {
                 click(convertCoords(clickSets.dataDownloadOK));
@@ -13136,7 +13168,7 @@ function algo_init() {
                 click(newSectionOnMapPoint);
                 if (newSectionOnMapPoint.isBranch) {
                     sleep(3000);
-                    toast("杜鹃花型活动 暂不会点击特殊关卡(比如FREE)");
+                    toast("杜鹃花型活动 部分特殊关卡 暂不会被点击(比如CHALLENGE)");
                     let branchStartPoint = findButton(compatCaptureScreen(), "branchStart");
                     if (branchStartPoint != null) click(branchStartPoint);
                     else log("branchStartPoint == null");
