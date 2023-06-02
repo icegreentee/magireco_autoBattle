@@ -13126,12 +13126,20 @@ function algo_init() {
             if (isFirstSupportAvailable(screenshot)) {
                 click(convertCoords(isThirdSupportPlayer(screenshot) ? knownThirdPtPoint : knownFirstPtPoint));
             } else if (isStartButtonPresent(screenshot)) {
-                click(convertCoords(clickSets.start));
+                for (let attempt = 5; attempt > 0; attempt--) {
+                    click(convertCoords(clickSets.start));
+                    sleep(2000);
+                    if (!isStartButtonPresent(compatCaptureScreen())) break;
+                }
+                toast("[尽量凑连携] 已" + (limit.openUpTryToConnect ? "启用" : "停用"));
                 if (limit.openUpTryToConnect) {
-                    mirrorsAutoBattleMain({
-                        CVAutoBattleTryToConnect: true,
-                        CVAutoBattleClickAllSkills: limit.openUpClickAllSkills ? true : false,
-                    });
+                    if (!isStartButtonPresent(compatCaptureScreen())) {
+                        //必须在开始按钮消失后才能认为战斗已经开始
+                        mirrorsAutoBattleMain({
+                            CVAutoBattleTryToConnect: true,
+                            CVAutoBattleClickAllSkills: limit.openUpClickAllSkills ? true : false,
+                        });
+                    }
                 }
             } else if (isDownloadDataOKButtonPresent(screenshot)) {
                 click(convertCoords(clickSets.dataDownloadOK));
