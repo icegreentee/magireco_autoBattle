@@ -10641,6 +10641,10 @@ function algo_init() {
         let template = knownImgs[type];
         let img = getButtonImg(screenshot, type);
         let point = images.findImage(img, template, {threshold: 0.9});
+        if (point != null) {
+            let area = getButtonArea(type);
+            ["x", "y"].forEach((axis) => point[axis] += area.topLeft[axis]);
+        }
         log(type, point);
         return point;
     }
