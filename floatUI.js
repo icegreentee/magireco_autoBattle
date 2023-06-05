@@ -2648,6 +2648,21 @@ function algo_init() {
         return !isNaN(Number(content)) && !isNaN(parseInt(content));
     }
 
+    function safeFindImage(img, template, options) {
+        let w1 = img.getWidth(), w2 = template.getWidth();
+        let h1 = img.getHeight(), h2 = template.getHeight();
+        if (w1 < w2) {
+            log("safeFindImage w1 < w2", w1, w2);
+            return null;
+        }
+        if (h1 < h2) {
+            log("safeFindImage h1 < h2", h1, h2);
+            return null;
+        }
+        if (options == null) return images.findImage(img, template);
+        else return images.findImage(img, template, options);
+    }
+
     function initOCR() {
         if (ocr != null) return true;
 
@@ -2782,7 +2797,7 @@ function algo_init() {
         let clipY = 0;
         let img = images.clip(screenshot, clipX, clipY, halfWidth, halfHeight);
         let template = knownImgs["closeBtn"];
-        let foundPoint = images.findImage(img, template, {threshold: 0.9});
+        let foundPoint = safeFindImage(img, template, {threshold: 0.9});
         if (foundPoint == null) {
             result = null;
         } else {
@@ -10521,7 +10536,7 @@ function algo_init() {
         //结算页面有闪光，会干扰判断，但是只会产生假阴性，不会出现假阳性
         let template = knownImgs[type];
         let img = getMirrorsResultImg(screenshot);
-        let found = images.findImage(img, template, {threshold: 0.9}) ? true : false;
+        let found = safeFindImage(img, template, {threshold: 0.9}) ? true : false;
         log(type, found);
         return found;
     }
@@ -10659,7 +10674,7 @@ function algo_init() {
     function findButton(screenshot, type) {
         let template = knownImgs[type];
         let img = getButtonImg(screenshot, type);
-        let point = images.findImage(img, template, {threshold: 0.9});
+        let point = safeFindImage(img, template, {threshold: 0.9});
         if (point != null) {
             let area = getButtonArea(type);
             ["x", "y"].forEach((axis) => point[axis] += area.topLeft[axis]);
@@ -10795,7 +10810,7 @@ function algo_init() {
                 let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
                 let template = knownImgs[shinnyNewMap[area.imgName]];
                 try {
-                    point = images.findImage(img, template, {threshold: 0.85});
+                    point = safeFindImage(img, template, {threshold: 0.85});
                 } catch (e) {
                     point = null;
                 }
@@ -10851,7 +10866,7 @@ function algo_init() {
     function isBackToMirrorsTopButtonPresent(screenshot) {
         let template = knownImgs["backToMirrorsTop"];
         let img = getBackToMirrorsTopButtonImg(screenshot);
-        let found = images.findImage(img, template, {threshold: 0.9}) ? true : false;
+        let found = safeFindImage(img, template, {threshold: 0.9}) ? true : false;
         log("backToMirrorsTop", found);
         return found;
     }
@@ -11570,7 +11585,7 @@ function algo_init() {
             }
             */
             let clipped = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
-            let found = diskAttribs.find((attrib) => images.findImage(clipped, knownImgs[attrib + "32x32"], {threshold: 0.8}));
+            let found = diskAttribs.find((attrib) => safeFindImage(clipped, knownImgs[attrib + "32x32"], {threshold: 0.8}));
             if (found) {
                 log("getMirrorsLvAt rowNum", rowNum, "columnNum", columnNum, "attrib", found, "assume 100");
                 return 100;
@@ -11686,7 +11701,7 @@ function algo_init() {
             appearing = imgNames.find((name) => {
                 let area = getConvertedArea(knownMatchingVSArea[name]);
                 let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
-                return images.findImage(img, knownImgs[name], {threshold: 0.9});
+                return safeFindImage(img, knownImgs[name], {threshold: 0.9});
             }) ? true : false;
         } else {
             appearing = id("matchingWrap").findOnce() || id("matchingList").findOnce();
@@ -11726,7 +11741,7 @@ function algo_init() {
             let area = getConvertedArea(knownArea);
             let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
             let knownImgNames = isExercise ? ["mirrorsExerciseSortingBtn"] : ["mirrorsReMatchBtn", "mirrorsRankingReMatchBtnJP"];
-            appearing = knownImgNames.find((name) => images.findImage(img, knownImgs[name], {threshold: 0.9})) ? true : false;
+            appearing = knownImgNames.find((name) => safeFindImage(img, knownImgs[name], {threshold: 0.9})) ? true : false;
         } else {
             let idToFind = isExercise ? "matchingList" : "matchingWrap";
             appearing = id(idToFind).findOnce();
@@ -11974,7 +11989,7 @@ function algo_init() {
             let screenshot = compatCaptureScreen();
             let area = getConvertedArea(knownBPArea[imgName[stage]]);
             let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
-            appearing = images.findImage(img, knownImgs[imgName[stage]], {threshold: 0.9}) ? true : false;
+            appearing = safeFindImage(img, knownImgs[imgName[stage]], {threshold: 0.9}) ? true : false;
         } else {
             appearing = id(idToFind[stage]).findOnce();
         }
