@@ -13101,10 +13101,14 @@ function algo_init() {
 
         initOCR();
 
-        toastLog("半自动辅助开荒脚本能够在一个章节(section)内自动选BATTLE进行周回；");
-        toastLog("且支持在第一回合自动凑连携（可在设置中关闭）；");
-        toastLog("以及支持地图型周回,但在找不到没打过(new)的关卡时不会自动拖动地图；");
-        toastLog("另外,不会嗑药,也不会处理掉线等情况。");
+        toast("半自动辅助开荒脚本能够在一个章节(section)内自动选BATTLE进行周回；");
+        toast("且支持在第一回合自动凑连携（可在设置中关闭）；");
+        threads.start(function () {
+            // avoid exceeded toast quota
+            sleep(6000);
+            toast("以及支持地图型周回,但在找不到没打过(new)的关卡时不会自动拖动地图；");
+            toast("另外,不会嗑药,也不会处理掉线等情况。");
+        });
 
         log("缩放图片...");
         resizeKnownImgs();//必须放在initialize后面
@@ -13213,6 +13217,14 @@ function algo_init() {
             return;
         }
 
+        if (parseInt(getProjectVersion().split(".").join("")) < 724) {
+            alert("请升级",
+                "请先下载最新APK安装包(而不是在线更新)，升级auto脚本到7.2.4或以上。\n"
+               +"详情请见app底部QQ群。"
+            );
+            return;
+        }
+
         try {
             privShell("id");
         } catch (e) {
@@ -13250,20 +13262,6 @@ function algo_init() {
         }
 
         const extractDir = files.join(files.cwd(), "audio_sr_fix");
-        const searchPatterns = [
-            //3.0.2
-            {
-                abi: "arm64-v8a",
-                pattern: "\x08\x7A\x00\xD0\x00\x51\x4F\xB9\xC0\x03\x5F\xD6",
-                replace: "\x08\x7A\x00\xD0\x00\x70\x97\x52\xC0\x03\x5F\xD6"
-            },
-            {
-                abi: "armeabi-v7a",
-                pattern: "\x04\x00\x9F\xE5\x00\x00\x9F\xE7\x1E\xFF\x2F\xE1\xDC\x41\xBC\x00",
-                replace: "\x04\x00\x9F\xE5\x80\x0B\x0B\xE3\x1E\xFF\x2F\xE1\xDC\x41\xBC\x00"
-            },
-        ]
-
         let fileNames = [];
         try {
             files.ensureDir(files.join(extractDir, "lib"));
@@ -13272,8 +13270,7 @@ function algo_init() {
             while (zipentries.hasMoreElements()) {
                 let entry = zipentries.nextElement();
                 let name = entry.getName();
-                let searchPattern = searchPatterns.find((p) => name === "lib/" + p.abi + "/libmadomagi_native.so");
-                if (searchPattern == null) continue;
+                if (!name.match(/^lib\/(arm64-v8a|armeabi-v7a)\/libmadomagi_native\.so$/)) continue;
                 if (entry.isDirectory()) continue;
 
                 let path = files.join(extractDir, name);
@@ -13292,19 +13289,39 @@ function algo_init() {
                 }
                 stream.close();
 
+                files.writeBytes(path, bytes);
+                log("written to ["+path+"]");
+
                 if (isRevert) {
                     log("keep file as-is");
-                } else if (name.match(/\.so$/)) {
-                    let count = binaryReplaceText(bytes, searchPattern.pattern, searchPattern.replace);
-                    log("replaced "+count+" occurrences in ["+name+"]");
-                    if (count == 0) {
-                        dialogs.alert("未找到特征", "请等待脚本更新适配");
+                } else {
+                    files.remove(files.join(extractDir, "running"));
+                    files.remove(files.join(extractDir, "done"));
+                    log("starting audiofix.js");
+                    let exec = engines.execScriptFile(files.join(files.cwd(), "audiofix.js"));
+                    for (let deadlineTime = Date.now() + 30000; Date.now() < deadlineTime; ) {
+                        if (files.exists(files.join(extractDir, "running"))) break;
+                    }
+                    if (!files.exists(files.join(extractDir, "running"))) {
+                        log("failed to launch nodejs");
+                        dialogs.alert("启动NodeJS引擎出错", "请下载最新APK安装包更新后重试");
                         return;
+                    }
+                    let isDone = false;
+                    for (let deadlineTime = Date.now() + 30000; Date.now() < deadlineTime; ) {
+                        if (files.exists(files.join(extractDir, "done"))) {
+                            isDone = true;
+                            break;
+                        }
+                        sleep(1000);
+                    }
+                    if (!isDone) {
+                        exec.getEngine().forceStop();
+                        log("timeout");
+                        dialogs.alert("执行超时");
                     }
                 }
 
-                files.writeBytes(path, bytes);
-                log("written to ["+path+"]");
                 fileNames.push(name);
             }
             zipfile.close();

@@ -5,7 +5,7 @@
         "build"
     ],
     "packageName": "top.momoe.auto",
-    "versionName": "7.2.3",
+    "versionName": "7.2.4",
     "versionInfo": "",
     "versionCode": 1,
     "icon":"./images/icon.png",
@@ -24,6 +24,7 @@
         "armeabi-v7a"
     ],
     "features": {
+      "nodejs": "enabled",
       "builtInOCR": "with-models"
     }
 }
