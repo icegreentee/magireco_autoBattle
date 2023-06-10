@@ -188,6 +188,16 @@ ui.layout(
                             <text id="autoRecoverText1" visibility="gone" textSize="12" text="强烈建议把上面的“自动开启无障碍服务”也一并开启！" textColor="#FF0000" />
                             <text id="autoRecoverText2" visibility="gone" textSize="12" text="脚本可以监工游戏,防止游戏因为掉线/闪退/内存泄漏溢出而中断自动周回。但是游戏闪退时貌似有几率会带着脚本一起崩溃,原因不明。" textColor="#000000" />
                             <text id="autoRecoverText3" visibility="gone" textSize="12" text="为了对付这个问题,目前有个临时的办法(需要root或adb权限),就是在logcat里监控脚本是否还在运行,如果发现脚本超过1分钟没动弹,就杀死脚本和游戏进程,然后重启脚本,再由脚本重启游戏。目前只有“副本周回(剧情/活动通用)”脚本支持这个功能。" textColor="#000000" />
+                            <Switch id="override_gameoffset" margin="0 3" w="*" checked="false" textColor="#000000" text="手工指定刘海偏移" />
+                            <linear id="override_gameoffsetText1" visibility="gone" padding="0 0 0 0" w="*" h="auto">
+                                <text text="刘海偏移x" textSize="12" textColor="#000000" />
+                                <input maxLength="6" margin="0 0 0 0" id="override_gameoffset_x" hint="0" text="0" textSize="12" inputType="number" />
+                            </linear>
+                            <linear id="override_gameoffsetText2" visibility="gone" padding="0 0 0 0" w="*" h="auto">
+                                <text text="刘海偏移y" textSize="12" textColor="#000000" />
+                                <input maxLength="6" margin="0 0 0 0" id="override_gameoffset_y" hint="0" text="0" textSize="12" inputType="number" />
+                            </linear>
+                            <text id="override_gameoffsetText3" visibility="gone" textSize="12" text="一般情况下无需手工指定刘海偏移,指定错误会导致脚本无法正常执行。" textColor="#ff0000" />
                         </vertical>
                     </vertical>
 
@@ -993,6 +1003,9 @@ const persistParamList = [
     "doNotToggleForegroundService",
     "autoEnableAccSvc",
     "autoRecover",
+    "override_gameoffset",
+    "override_gameoffset_x",
+    "override_gameoffset_y",
     "promptAutoRelaunch",
     "reLoginNeverAbandon",
     "usePresetOpList",

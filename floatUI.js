@@ -1923,6 +1923,9 @@ var limit = {
     doNotHideFloaty: false,
     doNotToggleForegroundService: false,
     autoRecover: false,
+    override_gameoffset: false,
+    override_gameoffset_x: "0",
+    override_gameoffset_y: "0",
     drug1: false,
     drug2: false,
     drug3: false,
@@ -4004,6 +4007,12 @@ function algo_init() {
             detected_gameoffset.y += parseInt(detected_gamebounds.centerY() - (detected_screen.height / 2));
         }
         log("detected_gameoffset", detected_gameoffset);
+
+        if (limit.override_gameoffset) {
+            detected_gameoffset.x = parseInt(limit.override_gameoffset_x);
+            detected_gameoffset.y = parseInt(limit.override_gameoffset_y);
+            log("override detected_gameoffset", detected_gameoffset);
+        }
 
         return {
             screen: detected_screen,
