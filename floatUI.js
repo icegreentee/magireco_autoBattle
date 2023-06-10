@@ -1977,6 +1977,7 @@ var limit = {
     dungeonBattleCountBeforeKill: "20",
     openUpTryToConnect: true,
     openUpClickAllSkills: false,
+    openUpPureColorThreshold: "3",
     firstRequestPrivilege: true,
     privilege: null
 }
@@ -13069,27 +13070,32 @@ function algo_init() {
         playerLvUp: "#b28750",
         resultExpItem: "#b28750",
     }
-    function detectPureColor(screenshot, type) {
+    function detectPureColor(screenshot, type, threshold) {
         let area = getConvertedArea(knownQuestCoords[type]);
-        let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)))
-        let imgRanged = renewImage(images.interval(img, knownQuestColors[type], 0));
+        let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
+        if (threshold == null) threshold = 0;
+        let imgRanged = renewImage(images.interval(img, knownQuestColors[type], threshold));
         let found = images.findColor(imgRanged, "#000000", 0) ? false : true;
         log(type, found);
         return found;
     }
     function isFirstSupportAvailable(screenshot) {
-        let found = ["playerSupport", "NPCSupport"].find((type) => detectPureColor(screenshot, type)) ? true : false;
+        let threshold = parseInt(limit.openUpPureColorThreshold);
+        let found = ["playerSupport", "NPCSupport"].find((type) => detectPureColor(screenshot, type, threshold)) ? true : false;
         return found;
     }
     function isThirdSupportPlayer(screenshot) {
-        let found = ["playerSupport3rd"].find((type) => detectPureColor(screenshot, type)) ? true : false;
+        let threshold = parseInt(limit.openUpPureColorThreshold);
+        let found = ["playerSupport3rd"].find((type) => detectPureColor(screenshot, type, threshold)) ? true : false;
         return found;
     }
     function isPlayerLvUp(screenshot) {
-        return detectPureColor(screenshot, "playerLvUp");
+        let threshold = parseInt(limit.openUpPureColorThreshold);
+        return detectPureColor(screenshot, "playerLvUp", threshold);
     }
     function isQuestResult(screenshot) {
-        let found = ["followPrompt", "charaExpEventLvUp", "resultExpItem"].find((type) => detectPureColor(screenshot, type)) ? true : false;
+        let threshold = parseInt(limit.openUpPureColorThreshold);
+        let found = ["followPrompt", "charaExpEventLvUp", "resultExpItem"].find((type) => detectPureColor(screenshot, type, threshold)) ? true : false;
         return found;
     }
 

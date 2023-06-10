@@ -51,7 +51,6 @@ function parseElf(elf) {
                 throw new Error(`eh.e_machine (${eh.e_machine}) != EM_ARM`);
             }
             is64 = false;
-            addrLen = 4;
             eh.e_entry_START_ADDRESS = elf.readUInt32LE(0x18);
             eh.e_phoff_PROGRAM_HEADER_OFFSET_IN_FILE = elf.readUInt32LE(0x1c);
             eh.e_shoff_SECTION_HEADER_OFFSET_IN_FILE = elf.readUInt32LE(0x20);
