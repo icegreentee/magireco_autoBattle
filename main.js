@@ -516,6 +516,14 @@ ui.layout(
                                 <text text="为节省时间，在凑连携时默认不使用主动技能。" textColor="#000000" />
                                 <text text="注：是否使用Magia仍然依照识图自动战斗脚本的设置。" textColor="#000000" />
                             </vertical>
+                            <vertical id="OpenUpExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
+                                <linear>
+                                    <text text="纯色检测容差" textColor="#000000" />
+                                    <input maxLength="1" id="openUpPureColorThreshold" hint="3" text="3" textSize="14" inputType="number|none" />
+                                </linear>
+                                <text text="（多见于真机）屏幕可能会进行调色，导致色彩偏离参考值、从而匹配失败。" textColor="#000000" />
+                                <text text="警告：过度增加这个数值则可能导致误匹配、误操作！" textColor="#ff0000" />
+                            </vertical>
                         </vertical>
                     </vertical>
                     <vertical margin="0 5" bg="#ffffff" elevation="1dp" w="*" h="auto">
@@ -1026,6 +1034,7 @@ const persistParamList = [
     "dungeonBattleCountBeforeKill",
     "openUpTryToConnect",
     "openUpClickAllSkills",
+    "openUpPureColorThreshold",
 ];
 const tempParamList = [
     "drug1",
