@@ -3621,6 +3621,74 @@ function algo_init() {
             "更新資料",
             "發生錯誤",
         ],
+        ja_aniplex: [//实际不会使用，会转而修改ja
+            "サポートキャラを選んでください",
+            "未設定",
+            "AP回復",
+            "回復",
+            "回復確認",
+            "回復する",
+            "APが不足しています",
+            "アイテムが足りない",//在线翻译的，不知道日服实际是啥，但日服已经无法用无障碍服务抓取控件信息了，加入了这个其实也没有意义了
+            "チーム名変更",
+            "開始",
+            "フォロー",
+            "フォロー追加",
+            "決定",
+            "エリア",//从复刻血夜活动看到了，但是没X用，因为无障碍服务并没有恢复
+            "ポイントの移動",//同上
+            "エリア攻略失敗",//同上
+            "CPが不足しています。",//同上
+            "CP回復藥",//同上
+            /^消費AP *\d*/,
+            /^\d+個$/,
+            /^最終ログイン.+/,
+            /＋\d+個$/,
+            /[\s\S]*周回/,
+            /.+まで$/,
+            /^event_branch.*/,
+            "com.aniplex.magireco",
+            "通信エラー",
+            "認証エラー",//这个是脑补的。实际上日服貌似只能引继，没有多端登录，所以也就没有被“顶号”、被踢下线……
+            "エラー",
+            "エラー",
+            "データ更新",
+            "予期せぬエラー",
+        ],
+        ja_rayshift: [//实际不会使用，会转而修改ja
+            "サポートキャラを選んでください",
+            "未設定",
+            "AP回復",
+            "回復",
+            "回復確認",
+            "回復する",
+            "APが不足しています",
+            "アイテムが足りない",//在线翻译的，不知道日服实际是啥，但日服已经无法用无障碍服务抓取控件信息了，加入了这个其实也没有意义了
+            "チーム名変更",
+            "開始",
+            "フォロー",
+            "フォロー追加",
+            "決定",
+            "エリア",//从复刻血夜活动看到了，但是没X用，因为无障碍服务并没有恢复
+            "ポイントの移動",//同上
+            "エリア攻略失敗",//同上
+            "CPが不足しています。",//同上
+            "CP回復藥",//同上
+            /^消費AP *\d*/,
+            /^\d+個$/,
+            /^最終ログイン.+/,
+            /＋\d+個$/,
+            /[\s\S]*周回/,
+            /.+まで$/,
+            /^event_branch.*/,
+            "io.kamihama.magiatranslate",
+            "通信エラー",
+            "認証エラー",//这个是脑补的。实际上日服貌似只能引继，没有多端登录，所以也就没有被“顶号”、被踢下线……
+            "エラー",
+            "エラー",
+            "データ更新",
+            "予期せぬエラー",
+        ],
         ja: [
             "サポートキャラを選んでください",
             "未設定",
@@ -3791,12 +3859,13 @@ function algo_init() {
     var string = {};
     var last_alive_lang = null; //用于游戏闪退重启
 
+    const package_name_index = strings.name.findIndex((e) => e == "package_name");
     function detectGameLang() {
         let detectedLang = null;
         for (detectedLang in strings) {
             if (detectedLang == "name") continue;
             try {
-                if (findPackageName(strings[detectedLang][strings.name.findIndex((e) => e == "package_name")], 1000)) {
+                if (findPackageName(strings[detectedLang][package_name_index], 1000)) {
                     if (detectedLang != last_alive_lang) log("区服", detectedLang);
                     break;
                 }
@@ -3804,6 +3873,18 @@ function algo_init() {
             detectedLang = null;
         }
         if (detectedLang != null) {
+            const ja_types = ["ja_aniplex", "ja_rayshift"];
+            if (ja_types.find((name) => name === detectedLang) != null) {
+                floatUI.presetOpLists.forEach((item) => {
+                    if (item.content == null) return;
+                    let parsed = JSON.parse(item.content);
+                    if (ja_types.find((name) => strings[name][package_name_index] === parsed.package_name) == null) return;
+                    parsed.package_name = strings[detectedLang][package_name_index];
+                    item.content = JSON.stringify(parsed);
+                });
+                strings.ja[package_name_index] = strings[detectedLang][package_name_index];
+                detectedLang = "ja";
+            }
             //如果游戏不在前台的话，last_alive_lang和string不会被重新赋值
             last_alive_lang = detectedLang;
             for (let i = 0; i < strings.name.length; i++) {
@@ -12529,7 +12610,11 @@ function algo_init() {
             "killall",
             "pkill",
         ];
-        killerCmds.forEach((cmd) => privShell(cmd + " " + "com.aniplex.magireco"));
+        const pkgsToKill = [
+            "com.aniplex.magireco",
+            "io.kamihama.magiatranslate",
+        ];
+        killerCmds.forEach((cmd) => pkgsToKill.forEach((pkg) => privShell(cmd + " " + pkg)));
         sleep(2000);
 
         result = magiskMode ? installWebViewOverlay(isRevert) : performWebViewSoHijack(isRevert);
@@ -13131,15 +13216,6 @@ function algo_init() {
 
         initOCR();
 
-        toast("半自动辅助开荒脚本能够在一个章节(section)内自动选BATTLE进行周回；");
-        toast("且支持在第一回合自动凑连携（可在设置中关闭）；");
-        threads.start(function () {
-            // avoid exceeded toast quota
-            sleep(6000);
-            toast("以及支持地图型周回,但在找不到没打过(new)的关卡时不会自动拖动地图；");
-            toast("另外,不会嗑药,也不会处理掉线等情况。");
-        });
-
         log("缩放图片...");
         resizeKnownImgs();//必须放在initialize后面
         log("图片缩放完成");  
@@ -13152,6 +13228,15 @@ function algo_init() {
         } else if (!limit.rootScreencap) {
             startScreenCapture();
         }
+
+        toast("半自动辅助开荒脚本能够在一个章节(section)内自动选BATTLE进行周回；");
+        toast("且支持在第一回合自动凑连携（可在设置中关闭）；");
+        threads.start(function () {
+            // avoid exceeded toast quota
+            sleep(6000);
+            toast("以及支持地图型周回,但在找不到没打过(new)的关卡时不会自动拖动地图；");
+            toast("另外,不会嗑药,也不会处理掉线等情况。");
+        });
 
         while (true) {
             let newSectionOnMapPoint = null;
