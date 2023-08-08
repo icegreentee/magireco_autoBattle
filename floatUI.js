@@ -8618,6 +8618,7 @@ function algo_init() {
         "mirrorsExerciseSortingBtn",
         "bpExhaustRefillBtnJP",
         "bpRefillBtnJP",
+        "bpRefillBtn2JP",
         "bpRefilledOKBtnJP",
         "mirrorsWinLetterI",
         "mirrorsLoseLetterE",
@@ -12077,14 +12078,14 @@ function algo_init() {
         },
     }
     function detectBPRelatedWindow(stage) {
-        const imgName = ["bpExhaustRefillBtnJP", "bpRefillBtnJP", "bpRefilledOKBtnJP"];
+        const imgNames = [["bpExhaustRefillBtnJP"], ["bpRefillBtnJP", "bpRefillBtn2JP"], ["bpRefilledOKBtnJP"]];
         const idToFind = ["popupInfoDetailTitle", "bpTextWrap", "popupInfoDetailTitle"];
         let appearing = false;
         if (last_alive_lang === "ja") {
             let screenshot = compatCaptureScreen();
-            let area = getConvertedArea(knownBPArea[imgName[stage]]);
+            let area = getConvertedArea(knownBPArea[imgNames[stage][0]]);
             let img = renewImage(images.clip(screenshot, area.topLeft.x, area.topLeft.y, getAreaWidth(area), getAreaHeight(area)));
-            appearing = safeFindImage(img, knownImgs[imgName[stage]], {threshold: 0.9}) ? true : false;
+            appearing = imgNames[stage].find((name) => safeFindImage(img, knownImgs[name], {threshold: 0.9})) ? true : false;
         } else {
             appearing = id(idToFind[stage]).findOnce();
         }
