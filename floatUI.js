@@ -2706,6 +2706,9 @@ function algo_init() {
             stopThread();
         }
 
+        //预热OCR，绕过MuMu12下ocrGetNumber奇怪的崩溃
+        ocr.detect(knownImgs["blank1920x1080"]);
+
         log("已加载OCR插件");
         return true;
     }
@@ -8574,6 +8577,7 @@ function algo_init() {
     const ImgPathBase = files.join(files.cwd(), "images");
     var knownImgs = {}, knownImgOrigSize = {};
     const knownImgNames = [
+        "blank1920x1080",
         "accel",
         "blast",
         "charge",
