@@ -177,7 +177,7 @@ ui.layout(
                             <Switch id="doNotHideFloaty" margin="0 3" w="*" checked="false" textColor="#000000" text="切出设置界面时不隐藏悬浮窗" />
                             <text id="doNotHideFloatyText1" visibility="gone" textSize="12" text="默认情况下，为了避免OPPO等品牌手机在有悬浮窗时拒绝开启无障碍服务的问题，如果没开启无障碍服务，在切出这个设置界面时就会自动隐藏悬浮窗，在切回来时再重新显示。" textColor="#000000" />
                             <text id="doNotHideFloatyText2" visibility="gone" textSize="12" text="开启这个选项后，切出这个设置界面时就不会再自动隐藏悬浮窗。" textColor="#000000" />
-                            <Switch id="doNotToggleForegroundService" margin="0 3" w="*" checked="false" textColor="#000000" text="脚本开始/结束时,不自动开启/停用前台服务" />
+                            <Switch id="doNotToggleForegroundService" margin="0 3" w="*" checked="false" textColor="#000000" text="保持截屏权限与前台服务开启" />
                             <text id="doNotToggleForegroundServiceText1" visibility="gone" textSize="12" text="在脚本运行时开启无障碍服务,目的是为了尽量防止脚本进程被杀。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText2" visibility="gone" textSize="12" text="但是,在前台服务开启时,会在通知栏显示一条常驻通知,比较扰民。所以,默认是只在脚本运行时开启前台服务,脚本结束运行后即自动停用前台服务,而且,不仅会自动停用前台服务,如果之前申请了截屏权限,还会把截屏权限也一并停用。" textColor="#000000" />
                             <text id="doNotToggleForegroundServiceText3" visibility="gone" textSize="12" text="如果不想让脚本自己控制前台服务、不想让脚本自己停用截屏权限,那就把这个选项开启。" textColor="#000000" />
