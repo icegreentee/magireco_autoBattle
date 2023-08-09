@@ -12142,7 +12142,7 @@ function algo_init() {
 
         function watchmanWait() {
             log("进入镜层守夜模式");
-            for (let waitTime = 910, interval = 5; waitTime > 0; waitTime -= interval) {
+            for (let waitTime = 910, interval = 30; waitTime > 0; waitTime -= interval) {
                 if (waitTime >= 10) instantToast("镜层守夜模式 "+(waitTime)+"秒后重试开始战斗");
                 sleep(interval * 1000);
             }
