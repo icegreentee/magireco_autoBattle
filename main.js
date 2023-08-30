@@ -427,12 +427,11 @@ ui.layout(
                             </vertical>
                             <vertical id="MirrorsExtraSettings3" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <linear>
-                                    <text text="对手人数因子" textColor="#000000" />
+                                    <text text="考虑对手人数" textColor="#000000" />
                                     <input maxLength="3" id="mirrorsEnemyNumFactor" hint="0" text="0" textSize="14" inputType="number|none" />
                                 </linear>
                                 <text text="可以认为对手人数越多越难打。" textColor="#000000" />
-                                <text text="取值范围0-100。典型情况一般设为10以下。比如对手是5人队,5-1=4,然后设为10时会乘1+0.4=1.4,设为100时会乘1+4=5。" textColor="#000000" />
-                                <text text="默认不考虑对手人数,即因子为0。" textColor="#000000" />
+                                <text text="取值范围0-100。默认为0,即不考虑对手人数。典型情况一般设为10以下。设为100时,即为直接乘上对手人数。" textColor="#000000" />
                             </vertical>
                             <vertical id="MirrorsExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="mirrorsWatchman" w="*" margin="0 3" checked="true" textColor="#000000" text="镜层守夜人模式" />
