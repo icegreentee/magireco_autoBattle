@@ -2782,7 +2782,7 @@ function algo_init() {
 
         return result;
     }
-    function findPopupInfoDetailTitleJP(title_to_find, wait) {
+    function findPopupInfoDetailTitleJP(title_to_find, wait, screenshot) {
         let default_x = getFragmentViewBounds().right - 1;
         let default_y = 0;
         let result = {
@@ -2797,7 +2797,7 @@ function algo_init() {
 
         if (last_alive_lang !== "ja") throw new Error("last_alive_lang must be ja");
 
-        let screenshot = compatCaptureScreen();
+        if (screenshot == null) screenshot = compatCaptureScreen();
         let halfWidth = parseInt(screenshot.getWidth() / 2);
         let halfHeight = parseInt(screenshot.getHeight() / 2);
         let clipX = screenshot.getWidth() - halfWidth;
@@ -13288,6 +13288,7 @@ function algo_init() {
 
         while (true) {
             let newSectionOnMapPoint = null;
+            let found_popup = null;
 
             let screenshot = compatCaptureScreen();
             if (isFirstSupportAvailable(screenshot)) {
@@ -13312,6 +13313,8 @@ function algo_init() {
                 click(convertCoords(clickSets.dataDownloadOK));
             } else if (isSkipButtonPresent(screenshot)) {
                 click(convertCoords(getAreaCenter(knownButtonCoords["skipBtn"])));
+            } else if (found_popup = findPopupInfoDetailTitleJP(undefined, undefined, screenshot)) {
+                click(found_popup.close); //解决误触MENU
             } else if (isPlayerLvUp(screenshot)) {
                 click(convertCoords(clickSets.levelup));
             } else if (isQuestResult(screenshot)) {
