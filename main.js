@@ -430,8 +430,10 @@ ui.layout(
                                     <text text="考虑对手人数" textColor="#000000" />
                                     <input maxLength="3" id="mirrorsEnemyNumFactor" hint="0" text="0" textSize="14" inputType="number|none" />
                                 </linear>
-                                <text text="可以认为对手人数越多越难打。" textColor="#000000" />
-                                <text text="取值范围0-100。默认为0,即不考虑对手人数。典型情况一般设为10以下。设为100时,即为直接乘上对手人数。" textColor="#000000" />
+                                <text text="可以认为对手人数越多越难打,调高这个数值就会避开人多的队伍。" textColor="#000000" />
+                                <text text="取值范围0-100。默认为0,即不考虑对手人数,只比较人均战力。(人均战力折合考虑了每个人的Lv等级)" textColor="#000000" />
+                                <text text="典型情况一般设为10以下。" textColor="#000000" />
+                                <text text="设为100时,可以近似看作直接比较总战力。(实际上折合考虑了Lv等级,所以与总战力可能略有不同)" textColor="#000000" />
                             </vertical>
                             <vertical id="MirrorsExtraSettings4" visibility="gone" padding="10 8 0 6" w="*" h="auto">
                                 <Switch id="mirrorsWatchman" w="*" margin="0 3" checked="true" textColor="#000000" text="镜层守夜人模式" />
