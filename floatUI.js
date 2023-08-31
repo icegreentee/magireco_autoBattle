@@ -2782,7 +2782,7 @@ function algo_init() {
 
         return result;
     }
-    function findPopupInfoDetailTitleJP(title_to_find, wait) {
+    function findPopupInfoDetailTitleJP(title_to_find, wait, screenshot) {
         let default_x = getFragmentViewBounds().right - 1;
         let default_y = 0;
         let result = {
@@ -2797,7 +2797,7 @@ function algo_init() {
 
         if (last_alive_lang !== "ja") throw new Error("last_alive_lang must be ja");
 
-        let screenshot = compatCaptureScreen();
+        if (screenshot == null) screenshot = compatCaptureScreen();
         let halfWidth = parseInt(screenshot.getWidth() / 2);
         let halfHeight = parseInt(screenshot.getHeight() / 2);
         let clipX = screenshot.getWidth() - halfWidth;
@@ -8633,6 +8633,9 @@ function algo_init() {
         "OKButton",
         "OKButtonGray",
         "downloadDataOKBtn",
+        "communicationError",
+        "reconnectOK",
+        "reload",
         "newQuest",
         "startBtn",
         "closeBtn",
@@ -10557,6 +10560,12 @@ function algo_init() {
                         break;
                     }
                 }
+                if (cycles % 5 == 0) {
+                    if (isCommunicationErrorPresent(screenshot) && isReconnectOKButtonPresent(screenshot)) {
+                        log("点击掉线重连按钮");
+                        click(convertCoords(clickSets.reconection));
+                    }
+                }
             }
             if (mirrorsAutoBattleConfig.CVAutoBattleDebug) {
                 if (cycles < 30) {
@@ -10674,6 +10683,30 @@ function algo_init() {
             },
             bottomRight: {
                 x: 1190, y: 880, pos: "center"
+            }
+        },
+        communicationError: {
+            topLeft: {
+                x: 813, y: 240, pos: "center"
+            },
+            bottomRight: {
+                x: 1106, y: 348, pos: "center"
+            }
+        },
+        reconnectOK: {
+            topLeft: {
+                x: 483, y: 656, pos: "center"
+            },
+            bottomRight: {
+                x: 911, y: 799, pos: "center"
+            }
+        },
+        reload: {
+            topLeft: {
+                x: 747, y: 760, pos: "center"
+            },
+            bottomRight: {
+                x: 1174, y: 904, pos: "center"
             }
         },
         mirrorsEntranceBtn: {
@@ -10809,6 +10842,15 @@ function algo_init() {
     }
     function isSectionClear(screenshot) {
         return isButtonPresent(screenshot, "sectionClearMagiaStone");
+    }
+    function isCommunicationErrorPresent(screenshot) {
+        return isButtonPresent(screenshot, "communicationError");
+    }
+    function isReconnectOKButtonPresent(screenshot) {
+        return isButtonPresent(screenshot, "reconnectOK");
+    }
+    function isReloadButtonPresent(screenshot) {
+        return isButtonPresent(screenshot, "reload");
     }
     function findNewSectionOnMap(screenshot) {
         const btnSize = {
@@ -12101,6 +12143,23 @@ function algo_init() {
         return detectBPRelatedWindow(2);
     }
 
+    function killAndRestartGame() {
+        for (let attempt = 0; attempt < 10; attempt++) {
+            killGame();
+            log("等待10秒");
+            sleep(10 * 1000);
+            log("重启游戏");
+            reLaunchGame();
+            log("等待5秒");
+            sleep(5000);
+            log("重新登录");
+            if (reLogin()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function taskMirrors() {
         log("镜层周回\n自动战斗策略:"+(limit.useCVAutoBattle?"识图":"无脑123盘"));
 
@@ -12161,7 +12220,10 @@ function algo_init() {
                     let knownClickPos = null;
                     let screenshot = compatCaptureScreen();
                     let buttonPoint = null;
-                    if (isMirrorsTop(screenshot)) {
+                    if (isMirrorsEntranceButtonPresent(screenshot)) {
+                        log("已回到首页");
+                        knownClickPos = clickSets.enterMirrors;
+                    } else if (isMirrorsTop(screenshot)) {
                         log("镜层首页");
                         knownClickPos = clickSets.mirrorsTop;
                     } else if (isNextMirror(screenshot)) {
@@ -12176,6 +12238,13 @@ function algo_init() {
                     } else if (didWeWin(screenshot) || didWeLose(screenshot)) {
                         log("镜层结算");
                         knownClickPos = clickSets.screenCenter;
+                    } else if (isReloadButtonPresent(screenshot)) {
+                        log("掉线");
+                        if (!killAndRestartGame()) {
+                            log("多次重新登录失败,停止运行");
+                            return;
+                        }
+                        totalBattleTime = 0;
                     } else if (isBPExhausted()) {
                         log("BP耗尽窗口");
                         knownClickPos = clickSetsMod.bpClose;
@@ -12304,31 +12373,10 @@ function algo_init() {
                 log("镜层战斗时间["+battleTime+"]秒 累计["+totalBattleTime+"]秒");
                 if (limit.mirrorsRelaunchTime !== "" && totalBattleTime >= parseInt(limit.mirrorsRelaunchTime)) {
                     log("镜层累计周回战斗时间["+totalBattleTime+"]秒已超过设定值["+limit.mirrorsRelaunchTime+"],杀进程重开");
-                    let reloginSuccess = false;
-                    for (let attempt = 0; attempt < 10; attempt++) {
-                        killGame();
-                        log("等待10秒");
-                        sleep(10 * 1000);
-                        log("重启游戏");
-                        reLaunchGame();
-                        log("等待5秒");
-                        sleep(5000);
-                        log("重新登录");
-                        if (reLogin()) {
-                            reloginSuccess = true;
-                            break;
-                        }
-                    }
-                    if (!reloginSuccess) {
+                    if (!killAndRestartGame()) {
                         log("多次重新登录失败,停止运行");
                         return;
                     }
-                    while (isMirrorsEntranceButtonPresent(compatCaptureScreen())) {
-                        log("点击进入镜层");
-                        click(convertCoords(clickSets.enterMirrors));
-                        sleep(5000);
-                    }
-                    log("已重新进入镜层");
                     totalBattleTime = 0;
                 }
             }
@@ -13240,6 +13288,7 @@ function algo_init() {
 
         while (true) {
             let newSectionOnMapPoint = null;
+            let found_popup = null;
 
             let screenshot = compatCaptureScreen();
             if (isFirstSupportAvailable(screenshot)) {
@@ -13264,6 +13313,8 @@ function algo_init() {
                 click(convertCoords(clickSets.dataDownloadOK));
             } else if (isSkipButtonPresent(screenshot)) {
                 click(convertCoords(getAreaCenter(knownButtonCoords["skipBtn"])));
+            } else if (found_popup = findPopupInfoDetailTitleJP(undefined, undefined, screenshot)) {
+                click(found_popup.close); //解决误触MENU
             } else if (isPlayerLvUp(screenshot)) {
                 click(convertCoords(clickSets.levelup));
             } else if (isQuestResult(screenshot)) {
