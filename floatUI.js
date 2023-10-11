@@ -1695,23 +1695,26 @@ floatUI.main = function () {
             return;
         }
 
-        //legacy
         const rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
-        files.remove(rootMarkerPath);
 
         limit.privilege = testShizukuPriv();
         if (limit.privilege) return;
 
         toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
-        sleep(2500);
-        toastLog("请务必选择“永久”授权，而不是一次性授权！");
+        if (!files.isFile(rootMarkerPath)) {
+            sleep(2500);
+            toast("请务必选择“永久”授权，而不是一次性授权！");
+        }
         floatUI.hideAllFloaty();
 
         limit.privilege = testOrRequestShellRootPriv();
         if (limit.privilege) {
+            files.create(rootMarkerPath);
             startShizukuSvc();
             floatUI.recoverAllFloaty();
             return;
+        } else {
+            files.remove(rootMarkerPath);
         }
 
         toast("直接获取root权限失败！");
