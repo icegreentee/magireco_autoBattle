@@ -12,7 +12,7 @@ const inclusionRules = [
     {
         dirname: ".",
         recursive: false,
-        filename: /\.(js|json|xml)$/,
+        filename: /\.(js|json)$/,
     },
     {
         dirname: "bin",
