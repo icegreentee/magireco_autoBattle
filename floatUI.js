@@ -131,7 +131,6 @@ var rootShell = () => { };
 var privShell = () => { };
 var normalShell = () => { };
 // 检查root或adb权限
-var getEUID = () => { };
 var requestShellPrivilege = () => { };
 var requestShellPrivilegeThread = null;
 // 嗑药数量限制和统计
@@ -1619,102 +1618,104 @@ floatUI.main = function () {
     floatUI.normalShell = normalShell;
 
     //检查并申请root或adb权限
-    getEUID = function (procStatusContent) {
-        let matched = null;
+    let getEUID = (useShizuku) => {
+        const idshellcmds = ["id", "cat /proc/self/status"];
+        for (let shellcmd of idshellcmds) {
+            let result = null;
+            try {
+                result = useShizuku ? shizukuShell(shellcmd) : rootShell(shellcmd);
+            } catch (e) {
+                result = {code: 1, result: "-1", err: ""};
+                logException(e);
+            }
 
-        //shellcmd="id"
-        matched = procStatusContent.match(/^uid=\d+/);
-        if (matched != null) {
-            matched = matched[0].match(/\d+/);
-        }
-        if (matched != null) {
-            return parseInt(matched[0]);
-        }
+            if (result.code == 0) {
+                let matched = null;
 
-        //shellcmd="cat /proc/self/status"
-        matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
-        if (matched != null) {
-            matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
-        }
-        if (matched != null) {
-            return parseInt(matched[0]);
-        }
+                //shellcmd="id"
+                matched = result.result.match(/^uid=\d+/);
+                if (matched != null) {
+                    matched = matched[0].match(/\d+/);
+                }
+                if (matched != null) {
+                    return parseInt(matched[0]);
+                }
 
-        return -1;
+                //shellcmd="cat /proc/self/status"
+                matched = result.result.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
+                if (matched != null) {
+                    matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
+                }
+                if (matched != null) {
+                    return parseInt(matched[0]);
+                }
+            }
+        }
+    }
+    let testShizukuPriv = () => {
+        let euid = getEUID(true);
+        switch (euid) {
+        case 0:
+            log("Shizuku有root权限");
+            return {shizuku: true, uid: euid};
+        case 2000:
+            log("Shizuku有adb shell权限");
+            return {shizuku: true, uid: euid};
+        default:
+            log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
+        }
+    }
+    let testOrRequestShellRootPriv = () => {
+        let euid = getEUID(false);
+        log("直接获取root权限 euid", euid);
+        if (euid == 0) return {shizuku: null, uid: euid};
+    }
+    let startShizukuSvc = () => {
+        if (!limit.privilege) return;
+        if (limit.privilege.shizuku) return;
+        const startShizukuSvcCmds = ["sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh"];
+        try {
+            startShizukuSvcCmds.find((cmd) => rootShell(cmd).code == 0);
+        } catch (e) {
+            log(e);
+        }
+        for (let attempt = 0; attempt < 30; attempt++) {
+            sleep(500);
+            let shizukuPriv = testShizukuPriv();
+            if (shizukuPriv && shizukuPriv.shizuku) {
+                limit.privilege = shizukuPriv;
+                log("已启动Shizuku服务");
+                break;
+            }
+        }
     }
     requestShellPrivilege = function () {
         if (limit.privilege) {
             log("已经获取到root或adb权限了");
-            return limit.privilege;
+            return;
         }
 
-        let euid = -1;
-
-        let rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
-
-        const idshellcmds = ["id", "cat /proc/self/status"];
-
-        for (let shellcmd of idshellcmds) {
-            let result = null;
-            try {
-                result = shizukuShell(shellcmd);
-            } catch (e) {
-                result = {code: 1, result: "-1", err: ""};
-                logException(e);
-            }
-            if (result.code == 0) {
-                euid = getEUID(result.result);
-            }
-            switch (euid) {
-            case 0:
-                log("Shizuku有root权限");
-                limit.privilege = {shizuku: true, uid: euid};
-                break;
-            case 2000:
-                log("Shizuku有adb shell权限");
-                limit.privilege = {shizuku: true, uid: euid};
-                break;
-            default:
-                log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
-                limit.privilege = null;
-            }
-            if (limit.privilege != null) {
-                return;
-            }
-        }
-
-        if (!files.isFile(rootMarkerPath)) {
-            toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
-            sleep(2500);
-            toastLog("请务必选择“永久”授权，而不是一次性授权！");
-            floatUI.hideAllFloaty();
-        } else {
-            log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
-        }
-
-        for (let shellcmd of idshellcmds) {
-            let result = null;
-            try {
-                result = rootShell(shellcmd);
-            } catch (e) {
-                logException(e);
-                result = {code: 1, result: "-1", err: ""};
-            }
-            euid = -1;
-            if (result.code == 0) euid = getEUID(result.result);
-            if (euid == 0) {
-                log("直接获取root权限成功");
-                limit.privilege = {shizuku: null, uid: euid};
-                files.create(rootMarkerPath);
-                floatUI.recoverAllFloaty();
-                return limit.privilege;
-            }
-        }
-
-        toastLog("直接获取root权限失败！");
-        sleep(2500);
-        limit.privilege = null;
+        //legacy
+        const rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
         files.remove(rootMarkerPath);
+
+        limit.privilege = testShizukuPriv();
+        if (limit.privilege) return;
+
+        toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
+        sleep(2500);
+        toastLog("请务必选择“永久”授权，而不是一次性授权！");
+        floatUI.hideAllFloaty();
+
+        limit.privilege = testOrRequestShellRootPriv();
+        if (limit.privilege) {
+            startShizukuSvc();
+            floatUI.recoverAllFloaty();
+            return;
+        }
+
+        toast("直接获取root权限失败！");
+        sleep(2500);
         if (device.sdkInt >= 23) {
             if (!mustRoot) {
                 mustRoot = false; //one-time only
@@ -1736,7 +1737,6 @@ floatUI.main = function () {
         }
 
         floatUI.recoverAllFloaty();
-        return limit.privilege;
     }
 
     if (device.sdkInt < 24) {
