@@ -131,7 +131,6 @@ var rootShell = () => { };
 var privShell = () => { };
 var normalShell = () => { };
 // 检查root或adb权限
-var getEUID = () => { };
 var requestShellPrivilege = () => { };
 var requestShellPrivilegeThread = null;
 // 嗑药数量限制和统计
@@ -1619,112 +1618,113 @@ floatUI.main = function () {
     floatUI.normalShell = normalShell;
 
     //检查并申请root或adb权限
-    getEUID = function (procStatusContent) {
-        let matched = null;
+    let getEUID = (useShizuku) => {
+        const idshellcmds = ["id", "cat /proc/self/status"];
+        for (let shellcmd of idshellcmds) {
+            let result = null;
+            try {
+                result = useShizuku ? shizukuShell(shellcmd) : rootShell(shellcmd);
+            } catch (e) {
+                result = {code: 1, result: "-1", err: ""};
+                logException(e);
+            }
 
-        //shellcmd="id"
-        matched = procStatusContent.match(/^uid=\d+/);
-        if (matched != null) {
-            matched = matched[0].match(/\d+/);
-        }
-        if (matched != null) {
-            return parseInt(matched[0]);
-        }
+            if (result.code == 0) {
+                let matched = null;
 
-        //shellcmd="cat /proc/self/status"
-        matched = procStatusContent.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
-        if (matched != null) {
-            matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
-        }
-        if (matched != null) {
-            return parseInt(matched[0]);
-        }
+                //shellcmd="id"
+                matched = result.result.match(/^uid=\d+/);
+                if (matched != null) {
+                    matched = matched[0].match(/\d+/);
+                }
+                if (matched != null) {
+                    return parseInt(matched[0]);
+                }
 
-        return -1;
+                //shellcmd="cat /proc/self/status"
+                matched = result.result.match(/(^|\n)Uid:\s+\d+\s+\d+\s+\d+\s+\d+($|\n)/);
+                if (matched != null) {
+                    matched = matched[0].match(/\d+(?=\s+\d+\s+\d+($|\n))/);
+                }
+                if (matched != null) {
+                    return parseInt(matched[0]);
+                }
+            }
+        }
+    }
+    let testShizukuPriv = () => {
+        let euid = getEUID(true);
+        switch (euid) {
+        case 0:
+            log("Shizuku有root权限");
+            return {shizuku: true, uid: euid};
+        case 2000:
+            log("Shizuku有adb shell权限");
+            return {shizuku: true, uid: euid};
+        default:
+            log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
+        }
+    }
+    let testOrRequestShellRootPriv = () => {
+        let euid = getEUID(false);
+        log("直接获取root权限 euid", euid);
+        if (euid == 0) return {shizuku: null, uid: euid};
+    }
+    let startShizukuSvc = () => {
+        if (!limit.privilege) return;
+        if (limit.privilege.shizuku) return;
+        const startShizukuSvcCmds = ["sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh"];
+        try {
+            startShizukuSvcCmds.find((cmd) => rootShell(cmd).code == 0);
+        } catch (e) {
+            log(e);
+        }
+        for (let attempt = 0; attempt < 30; attempt++) {
+            sleep(500);
+            let shizukuPriv = testShizukuPriv();
+            if (shizukuPriv && shizukuPriv.shizuku) {
+                limit.privilege = shizukuPriv;
+                log("已启动Shizuku服务");
+                break;
+            }
+        }
     }
     requestShellPrivilege = function () {
         if (limit.privilege) {
             log("已经获取到root或adb权限了");
-            return limit.privilege;
+            return;
         }
 
-        let euid = -1;
+        const rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
 
-        let rootMarkerPath = files.join(engines.myEngine().cwd(), "hasRoot");
+        limit.privilege = testShizukuPriv();
+        if (limit.privilege) return;
 
-        const idshellcmds = ["id", "cat /proc/self/status"];
-
-        for (let shellcmd of idshellcmds) {
-            let result = null;
-            try {
-                result = shizukuShell(shellcmd);
-            } catch (e) {
-                result = {code: 1, result: "-1", err: ""};
-                logException(e);
-            }
-            if (result.code == 0) {
-                euid = getEUID(result.result);
-            }
-            switch (euid) {
-            case 0:
-                log("Shizuku有root权限");
-                limit.privilege = {shizuku: true, uid: euid};
-                break;
-            case 2000:
-                log("Shizuku有adb shell权限");
-                limit.privilege = {shizuku: true, uid: euid};
-                break;
-            default:
-                log("通过Shizuku获取权限失败，Shizuku是否正确安装并启动了？");
-                limit.privilege = null;
-            }
-            if (limit.privilege != null) {
-                return;
-            }
-        }
-
+        toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
         if (!files.isFile(rootMarkerPath)) {
-            toastLog("Shizuku没有安装/没有启动/没有授权\n尝试直接获取root权限...");
             sleep(2500);
-            toastLog("请务必选择“永久”授权，而不是一次性授权！");
-            floatUI.hideAllFloaty();
+            toast("请务必选择“永久”授权，而不是一次性授权！");
+        }
+        floatUI.hideAllFloaty();
+
+        limit.privilege = testOrRequestShellRootPriv();
+        if (limit.privilege) {
+            files.create(rootMarkerPath);
+            startShizukuSvc();
+            floatUI.recoverAllFloaty();
+            return;
         } else {
-            log("Shizuku没有安装/没有启动/没有授权\n之前成功直接获取过root权限,再次检测...");
+            files.remove(rootMarkerPath);
         }
 
-        for (let shellcmd of idshellcmds) {
-            let result = null;
-            try {
-                result = rootShell(shellcmd);
-            } catch (e) {
-                logException(e);
-                result = {code: 1, result: "-1", err: ""};
-            }
-            euid = -1;
-            if (result.code == 0) euid = getEUID(result.result);
-            if (euid == 0) {
-                log("直接获取root权限成功");
-                limit.privilege = {shizuku: null, uid: euid};
-                files.create(rootMarkerPath);
-                floatUI.recoverAllFloaty();
-                return limit.privilege;
-            }
-        }
-
-        toastLog("直接获取root权限失败！");
+        toast("直接获取root权限失败！");
         sleep(2500);
-        limit.privilege = null;
-        files.remove(rootMarkerPath);
         if (device.sdkInt >= 23) {
             if (!mustRoot) {
                 mustRoot = false; //one-time only
                 dialogs.alert("直接获取root权限失败",
-                    "即使没有root,也可以借助Shizuku来使用adb权限。如果有root权限,Shizuku也不会弹出通知,从而避免遮挡屏幕干扰截屏识图。\n"
-                    +"请下载安装Shizuku,并按照说明启动它,然后在Shizuku中给本应用授权。\n"
-                    +"当前环境"+(
-                        device.sdkInt >= 30 ? "是Android11或以上,可通过无线调试启动Shizuku,无需连电脑。\n"
-                        : "低于Android11,若是真机请连接电脑使用adb启动Shizuku。\n"
-                    )+"(若是模拟器,请开启root权限)\n"
+                    "请下载安装Shizuku,并按照说明启动它,然后在Shizuku中给本应用授权\n"
+                    +"若是模拟器,请同时在模拟器设置中开启root权限。\n"
                     +"注：Shizuku可能有个小bug,在启动成功并开启授权后,仍然显示“已授权0个应用”,这时请尝试停止Shizuku服务再将其重启。");
                 $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
             }
@@ -1736,7 +1736,6 @@ floatUI.main = function () {
         }
 
         floatUI.recoverAllFloaty();
-        return limit.privilege;
     }
 
     if (device.sdkInt < 24) {
@@ -2310,7 +2309,7 @@ function algo_init() {
     }
 
     function click(x, y) {
-        //isGameDead和getFragmentViewBounds其实是在后面定义的
+        //isGameDead、getFragmentViewBounds、_click其实是在后面定义的
         if (isGameDead() == "crashed") {
             log("游戏已经闪退,放弃点击");
             return;
@@ -2344,6 +2343,10 @@ function algo_init() {
             if (xy.clamped[axis] != xy.orig[axis])
                 log("点击坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
 
+        _click(x, y);
+    }
+
+    function _click(x, y) {
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             // now accessibility gesture APIs are available
@@ -2639,6 +2642,27 @@ function algo_init() {
                 wait
             );
     }
+
+    let findInParentOrChildren = (p, element, field, val) => {
+        if (element == null) return;
+        let array = [];
+        if (p) {
+            let parent = element.parent();
+            if (parent == null) return;
+            array.push(parent);
+        } else {
+            let children = element.children();
+            for (let i = 0; i < children.length; i++) {
+                array.push(children[i]);
+            }
+        }
+        let found = array.find((item) => item[field]() === val);
+        if (found != null) log("found", field, found[field]());
+        else array.find((item) => found = findInParentOrChildren(p, item, field, val));
+        return found;
+    }
+    let findInParent = (element, field, val) => findInParentOrChildren(true, element, field, val);
+    let findInChildren = (element, field, val) => findInParentOrChildren(false, element, field, val);
 
     function getContent(element) {
         if (element == null) return "";
@@ -4526,13 +4550,7 @@ function algo_init() {
             if (aerrElement != null) {
                 log("点击系统弹窗的\""+idText.text+"\"按钮");
                 let x = aerrElement.bounds().centerX(), y = aerrElement.bounds().centerY();
-                if (device.sdkInt >= 24) {
-                    log("使用无障碍服务模拟点击坐标 "+x+","+y);
-                    origFunc.click(x, y);
-                    log("点击完成");
-                } else {
-                    clickOrSwipeRoot(x, y);
-                }
+                _click(x, y);
                 log("等待3秒...");
                 sleep(3000);
             }
@@ -8091,12 +8109,45 @@ function algo_init() {
                         stopThread();
                     }
                 }
+                let thread = threads.start(function () {
+                    //自动点击“立即开始”截屏按钮
+                    for (let clicked = false, attempt = 0; attempt < 60; attempt++) {
+                        sleep(500);
+                        try {
+                            if (auto.root.packageName() !== "com.android.systemui") {
+                                if (clicked) break;
+                                else continue;
+                            }
+                            let element = id("com.android.systemui:id/dialog_title").findOnce();
+                            log("dialog_title", getContent(element));
+                            if (element != null && getContent(element).match(/auto/)) {
+                                element = findInParent(element, "id", "android:id/topPanel");
+                                element = findInParent(element, "id", "android:id/parentPanel");
+                            }
+                            if (element != null && element.id() === "android:id/parentPanel") {
+                                element = findInChildren(element, "id", "android:id/buttonPanel");
+                                element = findInChildren(element, "id", "android:id/button1");
+                                if (element != null) {
+                                    let bounds = element.bounds();
+                                    let x = bounds.centerX(), y = bounds.centerY();
+                                    log("点击按钮", getContent(element), x, y);
+                                    _click(x, y);
+                                    clicked = true;
+                                }
+                            }
+                        } catch (e) {
+                            log(e);
+                        }
+                    }
+                });
                 try {
                     floatUI.hideAllFloaty();
                     requestScreenCaptureSuccess = requestScreenCapture(screencap_landscape);
                 } catch (e) {
                     //logException(e); issue #126
                     try {log(e);} catch (e2) {};
+                } finally {
+                    try {thread.interrupt();} catch (e) {};
                 }
                 floatUI.recoverAllFloaty();
             }
