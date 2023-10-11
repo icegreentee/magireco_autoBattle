@@ -2640,6 +2640,27 @@ function algo_init() {
             );
     }
 
+    let findInParentOrChildren = (p, element, field, val) => {
+        if (element == null) return;
+        let array = [];
+        if (p) {
+            let parent = element.parent();
+            if (parent == null) return;
+            array.push(parent);
+        } else {
+            let children = element.children();
+            for (let i = 0; i < children.length; i++) {
+                array.push(children[i]);
+            }
+        }
+        let found = array.find((item) => item[field]() === val);
+        if (found != null) log("found", field, found[field]());
+        else array.find((item) => found = findInParentOrChildren(p, item, field, val));
+        return found;
+    }
+    let findInParent = (element, field, val) => findInParentOrChildren(true, element, field, val);
+    let findInChildren = (element, field, val) => findInParentOrChildren(false, element, field, val);
+
     function getContent(element) {
         if (element == null) return "";
         let text = element.text();
@@ -8091,12 +8112,45 @@ function algo_init() {
                         stopThread();
                     }
                 }
+                let thread = threads.start(function () {
+                    //自动点击“立即开始”截屏按钮
+                    for (let clicked = false, attempt = 0; attempt < 60; attempt++) {
+                        sleep(500);
+                        try {
+                            if (auto.root.packageName() !== "com.android.systemui") {
+                                if (clicked) break;
+                                else continue;
+                            }
+                            let element = id("com.android.systemui:id/dialog_title").findOnce();
+                            log("dialog_title", getContent(element));
+                            if (element != null && getContent(element).match(/auto/)) {
+                                element = findInParent(element, "id", "android:id/topPanel");
+                                element = findInParent(element, "id", "android:id/parentPanel");
+                            }
+                            if (element != null && element.id() === "android:id/parentPanel") {
+                                element = findInChildren(element, "id", "android:id/buttonPanel");
+                                element = findInChildren(element, "id", "android:id/button1");
+                                if (element != null) {
+                                    let bounds = element.bounds();
+                                    let x = bounds.centerX(), y = bounds.centerY();
+                                    log("点击按钮", getContent(element), x, y);
+                                    origFunc.click(x, y);
+                                    clicked = true;
+                                }
+                            }
+                        } catch (e) {
+                            log(e);
+                        }
+                    }
+                });
                 try {
                     floatUI.hideAllFloaty();
                     requestScreenCaptureSuccess = requestScreenCapture(screencap_landscape);
                 } catch (e) {
                     //logException(e); issue #126
                     try {log(e);} catch (e2) {};
+                } finally {
+                    try {thread.interrupt();} catch (e) {};
                 }
                 floatUI.recoverAllFloaty();
             }
