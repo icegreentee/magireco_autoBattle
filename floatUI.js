@@ -2310,7 +2310,7 @@ function algo_init() {
     }
 
     function click(x, y) {
-        //isGameDead和getFragmentViewBounds其实是在后面定义的
+        //isGameDead、getFragmentViewBounds、_click其实是在后面定义的
         if (isGameDead() == "crashed") {
             log("游戏已经闪退,放弃点击");
             return;
@@ -2344,6 +2344,10 @@ function algo_init() {
             if (xy.clamped[axis] != xy.orig[axis])
                 log("点击坐标"+axis+"="+xy.orig[axis]+"超出游戏画面之外,强制修正至"+axis+"="+xy.clamped[axis]);
 
+        _click(x, y);
+    }
+
+    function _click(x, y) {
         // system version higher than Android 7.0
         if (device.sdkInt >= 24) {
             // now accessibility gesture APIs are available
@@ -4547,13 +4551,7 @@ function algo_init() {
             if (aerrElement != null) {
                 log("点击系统弹窗的\""+idText.text+"\"按钮");
                 let x = aerrElement.bounds().centerX(), y = aerrElement.bounds().centerY();
-                if (device.sdkInt >= 24) {
-                    log("使用无障碍服务模拟点击坐标 "+x+","+y);
-                    origFunc.click(x, y);
-                    log("点击完成");
-                } else {
-                    clickOrSwipeRoot(x, y);
-                }
+                _click(x, y);
                 log("等待3秒...");
                 sleep(3000);
             }
@@ -8134,7 +8132,7 @@ function algo_init() {
                                     let bounds = element.bounds();
                                     let x = bounds.centerX(), y = bounds.centerY();
                                     log("点击按钮", getContent(element), x, y);
-                                    origFunc.click(x, y);
+                                    _click(x, y);
                                     clicked = true;
                                 }
                             }
