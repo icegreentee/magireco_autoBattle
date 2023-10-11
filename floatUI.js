@@ -1723,12 +1723,8 @@ floatUI.main = function () {
             if (!mustRoot) {
                 mustRoot = false; //one-time only
                 dialogs.alert("直接获取root权限失败",
-                    "即使没有root,也可以借助Shizuku来使用adb权限。如果有root权限,Shizuku也不会弹出通知,从而避免遮挡屏幕干扰截屏识图。\n"
-                    +"请下载安装Shizuku,并按照说明启动它,然后在Shizuku中给本应用授权。\n"
-                    +"当前环境"+(
-                        device.sdkInt >= 30 ? "是Android11或以上,可通过无线调试启动Shizuku,无需连电脑。\n"
-                        : "低于Android11,若是真机请连接电脑使用adb启动Shizuku。\n"
-                    )+"(若是模拟器,请开启root权限)\n"
+                    "请下载安装Shizuku,并按照说明启动它,然后在Shizuku中给本应用授权\n"
+                    +"若是模拟器,请同时在模拟器设置中开启root权限。\n"
                     +"注：Shizuku可能有个小bug,在启动成功并开启授权后,仍然显示“已授权0个应用”,这时请尝试停止Shizuku服务再将其重启。");
                 $app.openUrl("https://shizuku.rikka.app/zh-hans/download.html");
             }
