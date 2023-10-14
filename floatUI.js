@@ -2183,8 +2183,8 @@ var clickSets = {
         pos: "center"
     },
     enterMirrors: {
-        x:   1283,
-        y:   646,
+        x:   1430,
+        y:   580,
         pos: "bottom"
     },
 }
