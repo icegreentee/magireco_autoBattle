@@ -10761,12 +10761,12 @@ function algo_init() {
             }
         },
         mirrorsEntranceBtn: {
-            //[1213,613][1354,679]
+            //[1377,562][1466,607]
             topLeft: {
-                x: 1150, y: 550, pos: "bottom"
+                x: 1310, y: 500, pos: "bottom"
             },
             bottomRight: {
-                x: 1400, y: 730, pos: "bottom"
+                x: 1530, y: 670, pos: "bottom"
             }
         },
         closeBtn: {
