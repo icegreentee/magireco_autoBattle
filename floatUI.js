@@ -8080,7 +8080,7 @@ function algo_init() {
         }
 
         if (hasScreenCaptureError) {
-            toastLog("通过录屏API截图时出错\n请使用root或adb权限截屏");
+            toastLog("通过录屏API截图时出错\n请尝试重启系统,或尝试使用root或adb权限截屏");
             stopThread();
         }
 
@@ -8253,7 +8253,9 @@ function algo_init() {
             hasScreenCaptureError = true;
             dialogs.alert("截屏出错",
                 "通过录屏API截屏时出错。\n"
-                +"请尝试在识图自动战斗脚本设置中开启\"使用root或adb权限截屏\",或者换一个模拟器(比如安卓9的MuMu)再试试。");
+                +"请尝试重启系统；\n"
+                +"或者可以尝试在识图自动战斗脚本设置中开启\"使用root或adb权限截屏\"；\n"
+                +"或者换一个模拟器(比如安卓12的MuMu)再试试。");
             throw e;
         }
     }
@@ -12274,6 +12276,9 @@ function algo_init() {
                     if (isMirrorsEntranceButtonPresent(screenshot)) {
                         log("已回到首页");
                         knownClickPos = clickSets.enterMirrors;
+                    } else if (isKimochiResults(screenshot)) {
+                        log("误入心魔战战绩");
+                        knownClickPos = clickSets.back;
                     } else if (isMirrorsTop(screenshot)) {
                         log("镜层首页");
                         knownClickPos = clickSets.mirrorsTop;
@@ -13258,6 +13263,14 @@ function algo_init() {
             topLeft: {x: 801, y: 374, pos: "center"},
             bottomRight: {x: 832, y: 405, pos: "center"},
         },
+        kimochiResults1: {
+            topLeft: {x: 16, y: 170, pos: "top"},
+            bottomRight: {x: 32, y: 196, pos: "top"},
+        },
+        kimochiResults2: {
+            topLeft: {x: 340, y: 170, pos: "top"},
+            bottomRight: {x: 700, y: 196, pos: "top"},
+        },
     }
     const knownQuestColors = {
         playerSupport: "#7363a0",
@@ -13267,6 +13280,8 @@ function algo_init() {
         charaExpEventLvUp: "#f26c84",
         playerLvUp: "#b28750",
         resultExpItem: "#b28750",
+        kimochiResults1: "#a47121",
+        kimochiResults2: "#a47121",
     }
     function detectPureColor(screenshot, type, threshold) {
         let area = getConvertedArea(knownQuestCoords[type]);
@@ -13295,6 +13310,10 @@ function algo_init() {
         let threshold = parseInt(limit.openUpPureColorThreshold);
         let found = ["followPrompt", "charaExpEventLvUp", "resultExpItem"].find((type) => detectPureColor(screenshot, type, threshold)) ? true : false;
         return found;
+    }
+    function isKimochiResults(screenshot) {
+        let threshold = parseInt(limit.openUpPureColorThreshold);
+        return [1, 2].reduce((prev, cur) => prev && detectPureColor(screenshot, `kimochiResults${cur}`, threshold), true);
     }
 
     function taskOpenUp() {
